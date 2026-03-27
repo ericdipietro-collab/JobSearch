@@ -1,0 +1,13 @@
+# Ignore local job search results
+*.csv
+*.xlsx
+*.bak
+*.log
+
+# Ignore Python environment and cache
+__pycache__/
+.venv/
+.env
+
+# Ignore Streamlit local config
+.streamlit/
