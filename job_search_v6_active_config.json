@@ -1,7 +1,7 @@
 {
-  "preferences_path": "C:\\Users\\liker\\Documents\\GitHub\\JobSearch\\config\\job_search_preferences.yaml",
+  "preferences_path": "C:\\Users\\liker\\Documents\\GitHub\\JobSearch\\config\\job_search_preferences_tiered_softdrop_final_patched.yaml",
   "loaded_from_yaml": true,
-  "company_registry_path": "C:\\Users\\liker\\Documents\\GitHub\\JobSearch\\config\\job_search_companies.yaml",
+  "company_registry_path": "C:\\Users\\liker\\Documents\\GitHub\\JobSearch\\config\\job_search_companies_test.yaml",
   "company_registry_from_yaml": true,
   "preferences": {
     "version": 1,
@@ -463,6 +463,6 @@
       }
     }
   },
-  "selected_company_count": 1,
+  "selected_company_count": 19,
   "skip_external_boards": true
 }
