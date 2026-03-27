@@ -261,13 +261,21 @@ def _early_sanitize_url(url: Optional[str]) -> str:
 
 
 BASE_DIR = Path(__file__).resolve().parent
-COMPANY_REGISTRY_FILE_CANDIDATES = [
+
+# Prioritize: 1. CLI Override, 2. Organized /config folder, 3. Legacy root files
+candidates = [
     Path(CLI_COMPANIES_PATH_OVERRIDE).expanduser().resolve() if CLI_COMPANIES_PATH_OVERRIDE else None,
+    BASE_DIR / "config" / "job_search_companies.yaml",
     BASE_DIR / "job_search_companies.yaml",
-    BASE_DIR / "companies.yaml",
     BASE_DIR / "config" / "companies.yaml",
+    BASE_DIR / "companies.yaml",
 ]
-COMPANY_REGISTRY_FILE_CANDIDATES = [p for p in COMPANY_REGISTRY_FILE_CANDIDATES if p is not None]
+
+# Identify the first path that exists; default to the /config standard if none are found
+COMPANY_REGISTRY_PATH = next(
+    (p for p in candidates if p and p.exists()), 
+    BASE_DIR / "config" / "job_search_companies.yaml"
+)
 
 
 def _normalize_company_record(raw: Dict[str, Any]) -> Dict[str, Any]:
@@ -311,13 +319,17 @@ def _load_company_registry_from_yaml() -> Tuple[Optional[Path], Optional[List[Di
     return None, None
 
 
-PREFERENCES_FILE_CANDIDATES = [
-    Path(CLI_PREFERENCES_PATH_OVERRIDE).expanduser().resolve() if CLI_PREFERENCES_PATH_OVERRIDE else None,
-    BASE_DIR / "job_search_preferences.yaml",
-    BASE_DIR / "preferences.yaml",
+# Apply the same logic for preferences
+pref_candidates = [
     BASE_DIR / "config" / "job_search_preferences.yaml",
+    BASE_DIR / "job_search_preferences.yaml",
+    BASE_DIR / "config" / "preferences.yaml",
 ]
-PREFERENCES_FILE_CANDIDATES = [p for p in PREFERENCES_FILE_CANDIDATES if p is not None]
+
+YAML_PREFERENCES = next(
+    (p for p in pref_candidates if p.exists()), 
+    BASE_DIR / "config" / "job_search_preferences.yaml"
+)
 
 
 def _load_preferences_from_yaml() -> Tuple[Optional[Path], Dict[str, Any]]:

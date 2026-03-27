@@ -12,9 +12,9 @@ import yaml
 from bs4 import BeautifulSoup
 
 # Configuration
-YAML_FILE = "job_search_companies.yaml"
-BACKUP_FILE = "job_search_companies.yaml.bak"
-REPORT_FILE = "heal_ats_yaml_report.csv"
+YAML_FILE = "config/job_search_companies.yaml"
+BACKUP_FILE = "config/job_search_companies.yaml.bak"
+REPORT_FILE = "results/heal_ats_yaml_report.csv"
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
