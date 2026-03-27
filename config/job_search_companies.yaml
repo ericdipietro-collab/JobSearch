@@ -2,14 +2,14 @@ companies:
 - name: Access Softek
   tier: 4
   priority: medium
-  adapter: ashby
+  adapter: lever
   adapter_key: accesssoftek
   domain: jobs.lever.co
   industry:
   - digital banking
   notes: Wealth, lending, and banking tech for credit
   sub_industry: Digital Banking
-  careers_url: https://jobs.ashbyhq.com/accesssoftek
+  careers_url: https://jobs.lever.co/accesssoftek
   active: true
 - name: Acorns
   tier: 4
@@ -4736,14 +4736,14 @@ companies:
 - name: Tala
   tier: 4
   priority: medium
-  adapter: ashby
+  adapter: lever
   adapter_key: tala
   domain: boards.greenhouse.io
   industry:
   - emerging market lending
   notes: Uses alternative data to underwrite consumers
   sub_industry: Emerging Market Lending
-  careers_url: https://jobs.ashbyhq.com/tala
+  careers_url: https://jobs.lever.co/tala
   active: true
 - name: Talend (Qlik)
   tier: 4
@@ -4980,12 +4980,12 @@ companies:
 - name: TriNet
   tier: 2
   priority: medium
-  adapter: ashby
+  adapter: lever
   domain: trinet.com
   industry: peo | hris | payroll data
   notes: Massive US PEO needing technical product managers for complex payroll ledgers.
   sub_industry: HRIS / Payroll
-  careers_url: https://jobs.ashbyhq.com/trinet
+  careers_url: https://jobs.lever.co/trinet
   active: true
   adapter_key: trinet
 - name: Trintech
@@ -5024,13 +5024,13 @@ companies:
 - name: TrueML
   tier: 2
   priority: medium
-  adapter: ashby
+  adapter: lever
   adapter_key: trueml
   domain: trueml.com
   industry: fintech | digital collections | data mapping
   notes: US digital-first debt collection and recovery platform.
   sub_industry: FinTech
-  careers_url: https://jobs.ashbyhq.com/trueml
+  careers_url: https://jobs.lever.co/trueml
   active: true
 - name: Truework
   tier: 2
@@ -5069,14 +5069,14 @@ companies:
 - name: Trustly
   tier: 4
   priority: medium
-  adapter: ashby
+  adapter: lever
   adapter_key: trustly
   domain: boards.greenhouse.io
   industry:
   - open banking payments
   notes: Account-to-account payment network leveraging open banking
   sub_industry: Open Banking Payments
-  careers_url: https://jobs.ashbyhq.com/trustly
+  careers_url: https://jobs.lever.co/trustly
   active: true
 - name: Two Sigma
   tier: 2
