@@ -11,13 +11,18 @@ import requests
 import yaml
 from bs4 import BeautifulSoup
 
-# Configuration
-# Configuration
+# --- Updated Configuration Section ---
 BASE_DIR = Path(__file__).resolve().parent
 YAML_FILE = BASE_DIR / "config" / "job_search_companies.yaml"
-# We don't need a full path for the name here, just the filename string
-BACKUP_FILENAME = "job_search_companies.yaml.bak" 
+BACKUP_FILE = BASE_DIR / "config" / "job_search_companies.yaml.bak"
 REPORT_FILE = BASE_DIR / "results" / "heal_ats_yaml_report.csv"
+
+# ... inside heal_registry() ...
+yaml_path = Path(YAML_FILE)
+# Then use the variables directly:
+shutil.copy2(yaml_path, BACKUP_FILE) 
+report_path = REPORT_FILE
+report_path.parent.mkdir(parents=True, exist_ok=True)
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -228,77 +233,67 @@ def try_current_link(session: requests.Session, company: dict) -> DiscoveryResul
 
 def discover_for_company(session: requests.Session, company: dict) -> DiscoveryResult:
     name = company.get("name", "Unknown")
+    # Use the company name as a potential ATS slug (common for Greenhouse/Lever)
+    slug = re.sub(r'[^a-zA-Z0-9]', '', name).lower()
     domain = normalize_domain(company.get("domain", ""))
-    if not domain:
-        return DiscoveryResult(None, None, None, "ERROR", "No domain provided")
-
-    # We will track the first URL that returns a 200 OK as our fallback
-    best_fallback_url = None
     
-    # 1. Build a list of candidate URLs to check
-    # Start with the root and subdomains
-    base_candidates = [f"https://{domain}"]
-    for sub in SUBDOMAINS:
-        base_candidates.append(f"https://{sub}.{domain}")
+    if not domain:
+        return DiscoveryResult(None, None, None, "ERROR", "No domain")
 
-    # 2. Iterate through base candidates and their specific career paths
-    for base_url in base_candidates:
-        # Check the base URL itself first (e.g., careers.company.com)
-        urls_to_check = [base_url] + [urljoin(base_url, p) for p in CAREER_PATHS]
-        
-        for url in urls_to_check:
+    # --- PHASE 1: DIRECT ATS GUESSING (The "Hail Mary") ---
+    # This is fast and avoids hitting the company's main website.
+    ats_guesses = [
+        ("greenhouse", f"https://boards.greenhouse.io/{slug}"),
+        ("lever", f"https://jobs.lever.co/{slug}"),
+        ("ashby", f"https://jobs.ashbyhq.com/{slug}"),
+    ]
+    
+    for adapter, url in ats_guesses:
+        try:
+            resp = session.get(url, timeout=5, allow_redirects=True)
+            if resp.status_code == 200 and adapter in resp.url:
+                return DiscoveryResult(adapter, slug, resp.url, "FOUND", f"Direct {adapter} match")
+        except: continue
+
+    # --- PHASE 2: REDUCED WATERFALL PROBING ---
+    # We include 'www.' and only check the most likely career paths
+    base_candidates = [f"https://{domain}", f"https://www.{domain}", f"https://careers.{domain}"]
+    best_fallback = None
+
+    for base in base_candidates:
+        # Check only the top 3 most common paths to reduce noise
+        for path in ["", "/careers", "/jobs"]:
+            url = urljoin(base, path)
             try:
-                # Use a small timeout for rapid discovery
                 resp = session.get(url, timeout=REQUEST_TIMEOUT, allow_redirects=True)
+                
+                # If we get a 403, we are being blocked. Log it!
+                if resp.status_code == 403:
+                    return DiscoveryResult(None, None, None, "BLOCKED", "Anti-bot (403)")
+                
                 if resp.status_code != 200:
                     continue
 
+                content = resp.text.lower()
                 final_url = resp.url
                 
-                # If we reached a valid page, save it as a potential fallback if it looks relevant
-                if not best_fallback_url:
-                    # Basic heuristic: contains "job", "career", or "openings"
-                    if any(x in final_url.lower() for x in ["job", "career", "opening", "work"]):
-                        best_fallback_url = final_url
+                # Capture fallback URL if it looks like a career page
+                if not best_fallback and any(x in final_url for x in ["job", "career"]):
+                    best_fallback = final_url
 
-                # 3. Pattern Match for high-priority ATS
-                content = resp.text.lower()
-                
-                # Check for Greenhouse
-                if "boards.greenhouse.io" in content or "greenhouse.io" in final_url:
-                    key = extract_ats_key(content, final_url, "greenhouse")
-                    return DiscoveryResult("greenhouse", key, final_url, "FOUND", "Greenhouse detected")
-
-                # Check for Lever
-                if "jobs.lever.co" in content or "lever.co" in final_url:
-                    key = extract_ats_key(content, final_url, "lever")
-                    return DiscoveryResult("lever", key, final_url, "FOUND", "Lever detected")
-
-                # Check for Ashby
-                if "jobs.ashbyhq.com" in content or "ashbyhq.com" in final_url:
-                    key = extract_ats_key(content, final_url, "ashby")
-                    return DiscoveryResult("ashby", key, final_url, "FOUND", "Ashby detected")
-
-                # Check for Workday
-                if ".myworkdayjobs.com" in final_url or "myworkdayjobs" in content:
-                    # Workday is often the final URL after redirects
-                    return DiscoveryResult("workday", None, final_url, "FOUND", "Workday detected")
+                # Check for ATS markers in the page content
+                for ats in ["greenhouse", "lever", "ashby", "workday"]:
+                    if f"{ats}.io" in content or f"{ats}.co" in content or f"{ats}." in final_url:
+                        key = extract_ats_key(content, final_url, ats) if ats != "workday" else None
+                        return DiscoveryResult(ats, key, final_url, "FOUND", f"{ats} detected")
 
             except Exception:
                 continue
 
-    # 4. Final Fallback: If no ATS found, but we found a career-related page
-    if best_fallback_url:
-        return DiscoveryResult(
-            adapter="manual", # Main scraper can use this as a signal to just provide the link
-            adapter_key=None,
-            careers_url=best_fallback_url,
-            status="FALLBACK",
-            detail="Generic career page found; no specific ATS detected"
-        )
+    if best_fallback:
+        return DiscoveryResult("manual", None, best_fallback, "FALLBACK", "Generic career page")
 
-    return DiscoveryResult(None, None, None, "NOT_FOUND", "Could not resolve career page or ATS")
-
+    return DiscoveryResult(None, None, None, "NOT_FOUND", "No ATS or Career page found")
 
 def update_company_record(company: dict, result: DiscoveryResult) -> bool:
     changed = False
@@ -334,7 +329,7 @@ def heal_registry(yaml_file: str = YAML_FILE) -> None:
     print(f"Scanning {len(companies)} companies...")
 
     # Updated backup logic
-    shutil.copy2(YAML_FILE, YAML_FILE.with_name(BACKUP_FILENAME))
+    shutil.copy2(yaml_path, Path(BACKUP_FILE))
 
     session = make_session()
     updated_count = 0
@@ -379,7 +374,9 @@ def heal_registry(yaml_file: str = YAML_FILE) -> None:
     with yaml_path.open("w", encoding="utf-8") as f:
         yaml.safe_dump(data, f, sort_keys=False, allow_unicode=True)
 
-    report_path = yaml_path.with_name(REPORT_FILE)
+    report_path = Path(REPORT_FILE)
+# Add this line to ensure the 'results' folder exists
+    report_path.parent.mkdir(parents=True, exist_ok=True)
     with report_path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(
             f,
@@ -390,7 +387,7 @@ def heal_registry(yaml_file: str = YAML_FILE) -> None:
 
     print("\nDone.")
     print(f"Updated companies: {updated_count}")
-    print(f"Backup written to: {yaml_path.with_name(BACKUP_FILE)}")
+    print(f"Backup written to: {BACKUP_FILE}")
     print(f"Report written to: {report_path}")
 
 
