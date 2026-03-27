@@ -2,6 +2,9 @@
 
 Use this file as the single entrypoint for running the repository while the
 main `job_search_v6.py` script is being stabilized.
+
+After pulling the repo, run:
+    python run_job_search_v6.py [args...]
 """
 
 from __future__ import annotations
@@ -24,6 +27,10 @@ def _extract_arg_value(flag: str) -> Optional[str]:
     return None
 
 
+def _has_flag(flag: str) -> bool:
+    return any(token == flag or token.startswith(flag + "=") for token in sys.argv[1:])
+
+
 def _resolve_candidate(path_str: Optional[str]) -> Optional[Path]:
     if not path_str:
         return None
@@ -38,6 +45,8 @@ def _resolve_candidate(path_str: Optional[str]) -> Optional[Path]:
 def _prepare_builtins() -> None:
     prefs_override = _resolve_candidate(_extract_arg_value("--prefs") or _extract_arg_value("--preferences"))
     companies_override = _resolve_candidate(_extract_arg_value("--companies"))
+    if companies_override is None and _has_flag("--test-companies"):
+        companies_override = (BASE_DIR / "config" / "job_search_companies_test.yaml").resolve()
 
     builtins.CLI_PREFERENCES_PATH_OVERRIDE = str(prefs_override) if prefs_override else None
     builtins.CLI_COMPANIES_PATH_OVERRIDE = str(companies_override) if companies_override else None
@@ -45,9 +54,7 @@ def _prepare_builtins() -> None:
     builtins.COMPANY_REGISTRY_FILE_CANDIDATES = [
         p for p in [
             companies_override,
-            BASE_DIR / "config" / "job_search_companies_test.yaml",
             BASE_DIR / "config" / "job_search_companies.yaml",
-            BASE_DIR / "job_search_companies_test.yaml",
             BASE_DIR / "job_search_companies.yaml",
             BASE_DIR / "config" / "companies.yaml",
             BASE_DIR / "companies.yaml",
@@ -78,6 +85,11 @@ def _replace_once(source: str, target: str, replacement: str) -> str:
 
 
 def _patch_source(source: str) -> str:
+    source = _replace_once(
+        source,
+        '    CLI_COMPANIES_PATH_OVERRIDE = str((Path(__file__).resolve().parent / "job_search_companies_test.yaml"))\n',
+        '    CLI_COMPANIES_PATH_OVERRIDE = str((Path(__file__).resolve().parent / "config" / "job_search_companies_test.yaml"))\n',
+    )
     source = _replace_once(
         source,
         "    role_family = classify_role_family(norm_title)\n    salary_info = extract_salary_info(desc)\n",
