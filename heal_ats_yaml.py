@@ -12,9 +12,12 @@ import yaml
 from bs4 import BeautifulSoup
 
 # Configuration
-YAML_FILE = "config/job_search_companies.yaml"
-BACKUP_FILE = "config/job_search_companies.yaml.bak"
-REPORT_FILE = "results/heal_ats_yaml_report.csv"
+# Configuration
+BASE_DIR = Path(__file__).resolve().parent
+YAML_FILE = BASE_DIR / "config" / "job_search_companies.yaml"
+# We don't need a full path for the name here, just the filename string
+BACKUP_FILENAME = "job_search_companies.yaml.bak" 
+REPORT_FILE = BASE_DIR / "results" / "heal_ats_yaml_report.csv"
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -36,6 +39,9 @@ CAREER_PATHS = [
 ]
 ATS_PRIORITY = ["greenhouse", "lever", "ashby", "workday"]
 
+# Add these to your configuration section
+SUBDOMAINS = ["careers", "jobs", "work-with-us"]
+# Keep your existing CAREER_PATHS
 
 @dataclass
 class DiscoveryResult:
@@ -221,66 +227,97 @@ def try_current_link(session: requests.Session, company: dict) -> DiscoveryResul
 
 
 def discover_for_company(session: requests.Session, company: dict) -> DiscoveryResult:
-    current = try_current_link(session, company)
-    if current.status in {"current_ok", "current_upgraded", "current_ok_custom"}:
-        return current
-
+    name = company.get("name", "Unknown")
     domain = normalize_domain(company.get("domain", ""))
     if not domain:
-        return DiscoveryResult(None, None, None, "missing_domain", "no domain present")
+        return DiscoveryResult(None, None, None, "ERROR", "No domain provided")
 
-    urls_to_try = []
-    for prefix in ["https://", "https://www."]:
-        base = f"{prefix}{domain}"
-        urls_to_try.extend(urljoin(base, p) for p in CAREER_PATHS)
-        urls_to_try.append(base)
+    # We will track the first URL that returns a 200 OK as our fallback
+    best_fallback_url = None
+    
+    # 1. Build a list of candidate URLs to check
+    # Start with the root and subdomains
+    base_candidates = [f"https://{domain}"]
+    for sub in SUBDOMAINS:
+        base_candidates.append(f"https://{sub}.{domain}")
 
-    seen = set()
-    ordered_urls = []
-    for url in urls_to_try:
-        if url not in seen:
-            seen.add(url)
-            ordered_urls.append(url)
+    # 2. Iterate through base candidates and their specific career paths
+    for base_url in base_candidates:
+        # Check the base URL itself first (e.g., careers.company.com)
+        urls_to_check = [base_url] + [urljoin(base_url, p) for p in CAREER_PATHS]
+        
+        for url in urls_to_check:
+            try:
+                # Use a small timeout for rapid discovery
+                resp = session.get(url, timeout=REQUEST_TIMEOUT, allow_redirects=True)
+                if resp.status_code != 200:
+                    continue
 
-    best_fallback: Optional[DiscoveryResult] = None
-    for url in ordered_urls:
-        result = discover_from_url(session, url)
-        if result.status.startswith("ats_found"):
-            return result
-        if result.status == "career_page_only" and best_fallback is None:
-            best_fallback = result
+                final_url = resp.url
+                
+                # If we reached a valid page, save it as a potential fallback if it looks relevant
+                if not best_fallback_url:
+                    # Basic heuristic: contains "job", "career", or "openings"
+                    if any(x in final_url.lower() for x in ["job", "career", "opening", "work"]):
+                        best_fallback_url = final_url
 
-    if best_fallback:
-        return best_fallback
+                # 3. Pattern Match for high-priority ATS
+                content = resp.text.lower()
+                
+                # Check for Greenhouse
+                if "boards.greenhouse.io" in content or "greenhouse.io" in final_url:
+                    key = extract_ats_key(content, final_url, "greenhouse")
+                    return DiscoveryResult("greenhouse", key, final_url, "FOUND", "Greenhouse detected")
 
-    return current
+                # Check for Lever
+                if "jobs.lever.co" in content or "lever.co" in final_url:
+                    key = extract_ats_key(content, final_url, "lever")
+                    return DiscoveryResult("lever", key, final_url, "FOUND", "Lever detected")
+
+                # Check for Ashby
+                if "jobs.ashbyhq.com" in content or "ashbyhq.com" in final_url:
+                    key = extract_ats_key(content, final_url, "ashby")
+                    return DiscoveryResult("ashby", key, final_url, "FOUND", "Ashby detected")
+
+                # Check for Workday
+                if ".myworkdayjobs.com" in final_url or "myworkdayjobs" in content:
+                    # Workday is often the final URL after redirects
+                    return DiscoveryResult("workday", None, final_url, "FOUND", "Workday detected")
+
+            except Exception:
+                continue
+
+    # 4. Final Fallback: If no ATS found, but we found a career-related page
+    if best_fallback_url:
+        return DiscoveryResult(
+            adapter="manual", # Main scraper can use this as a signal to just provide the link
+            adapter_key=None,
+            careers_url=best_fallback_url,
+            status="FALLBACK",
+            detail="Generic career page found; no specific ATS detected"
+        )
+
+    return DiscoveryResult(None, None, None, "NOT_FOUND", "Could not resolve career page or ATS")
 
 
 def update_company_record(company: dict, result: DiscoveryResult) -> bool:
     changed = False
-    adapter = company.get("adapter")
-    adapter_key = company.get("adapter_key")
-    careers_url = company.get("careers_url")
-
-    new_adapter = result.adapter
-    new_adapter_key = result.adapter_key
-    new_careers_url = result.careers_url
-
-    if new_adapter and adapter != new_adapter:
-        company["adapter"] = new_adapter
+    
+    # If we found something, update the careers_url
+    if result.careers_url and company.get("careers_url") != result.careers_url:
+        company["careers_url"] = result.careers_url
+        changed = True
+    
+    # Update the adapter
+    if result.adapter and company.get("adapter") != result.adapter:
+        company["adapter"] = result.adapter
         changed = True
 
-    if (new_adapter_key or "") != (adapter_key or ""):
-        company["adapter_key"] = new_adapter_key or ""
+    # Update the key if found
+    if result.adapter_key and company.get("adapter_key") != result.adapter_key:
+        company["adapter_key"] = result.adapter_key
         changed = True
-
-    if new_careers_url and normalize_url(careers_url) != normalize_url(new_careers_url):
-        company["careers_url"] = new_careers_url
-        changed = True
-
-    if company.get("adapter") in {"custom_site", "manual", "custom_manual"} and not company.get("adapter_key"):
-        company["adapter_key"] = ""
-
+        
     return changed
 
 
@@ -296,7 +333,8 @@ def heal_registry(yaml_file: str = YAML_FILE) -> None:
     companies = data.get("companies", [])
     print(f"Scanning {len(companies)} companies...")
 
-    shutil.copy2(yaml_path, yaml_path.with_name(BACKUP_FILE))
+    # Updated backup logic
+    shutil.copy2(YAML_FILE, YAML_FILE.with_name(BACKUP_FILENAME))
 
     session = make_session()
     updated_count = 0
