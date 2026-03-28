@@ -42,13 +42,14 @@ companies:
 - name: ADP
   tier: 1
   priority: high
-  adapter: workday
-  domain: adp.com
+  adapter: custom_manual
+  domain: jobs.adp.com
   industry: payroll | ledgers | enterprise compliance
   notes: The standard in payroll; requires massive architectural focus on ledger math.
   sub_industry: HRIS / Payroll
-  careers_url: https://adp.wd5.myworkdayjobs.com/External
-  active: true
+  careers_url: https://jobs.adp.com/en/jobs/
+  status: active
+  heal_skip: true
 - name: Advisor360
   tier: 2
   priority: medium

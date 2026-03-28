@@ -161,6 +161,13 @@ def discover_for_company(session: requests.Session, company: dict) -> DiscoveryR
     existing_url = company.get("careers_url", "")
     existing_adapter = company.get("adapter", "")
 
+    # --- MANUAL OVERRIDE: heal_skip=true means the user has verified this entry ---
+    # Validate the existing URL still works, but never run auto-discovery.
+    if company.get("heal_skip"):
+        if _validate_existing_url(session, existing_url, name, existing_adapter):
+            return DiscoveryResult(None, None, existing_url, None, "VALID", "User-verified (heal_skip)")
+        return DiscoveryResult(None, None, existing_url, None, "NOT_FOUND", "User-verified URL unreachable — update manually")
+
     # --- PRE-CHECK: if the existing URL is still live, skip full discovery ---
     if _validate_existing_url(session, existing_url, name, existing_adapter):
         return DiscoveryResult(None, None, existing_url, None, "VALID", "Existing URL confirmed")
@@ -261,13 +268,16 @@ def discover_for_company(session: requests.Session, company: dict) -> DiscoveryR
             _jitter(0.3, 0.7)
 
     # --- PHASE 4: WATERFALL (company careers page — scan for embedded ATS links) ---
+    # Ordered by likelihood: dedicated careers/jobs subdomains first, then www, then root.
     search_bases = [
         f"https://careers.{comp_domain}",
+        f"https://jobs.{comp_domain}",
+        f"https://hiring.{comp_domain}",
         f"https://www.{comp_domain}",
         f"https://{comp_domain}",
     ]
     for base in search_bases:
-        for path in ["", "/careers", "/jobs", "/about-us/careers.html"]:
+        for path in ["", "/careers", "/jobs", "/en/jobs", "/about-us/careers.html", "/company/careers"]:
             try:
                 url = urljoin(base, path)
                 resp = session.get(url, timeout=REQUEST_TIMEOUT, allow_redirects=True)
@@ -282,8 +292,11 @@ def discover_for_company(session: requests.Session, company: dict) -> DiscoveryR
                 content = resp.text.lower()
 
                 # Detect redirect straight to a known ATS/HR platform
-                if "salesforce.com" in f_url or "myworkdayjobs.com" in f_url:
-                    return DiscoveryResult("manual", None, resp.url, None, "FOUND", f"Redirected to {urlparse(f_url).netloc}")
+                _known_hr = ("salesforce.com", "myworkdayjobs.com", "icims.com",
+                             "taleo.net", "successfactors.com", "smartrecruiters.com",
+                             "jobvite.com", "brassring.com")
+                if any(h in f_url for h in _known_hr):
+                    return DiscoveryResult("custom_manual", None, resp.url, urlparse(f_url).netloc, "FOUND", f"Redirected to {urlparse(f_url).netloc}")
 
                 if not best_fallback_url and any(x in f_url for x in ["career", "job", "opening"]):
                     best_fallback_url = resp.url
@@ -319,13 +332,16 @@ def update_company_record(company: dict, result: DiscoveryResult) -> bool:
     """
     changed = False
 
-    # If the existing URL was confirmed valid, only fill in a missing domain.
+    # If the existing URL was confirmed valid, just mark active and fill missing domain.
     if result.status == "VALID":
         if result.careers_url and not company.get("domain"):
             new_domain = urlparse(result.careers_url).netloc.lower()
             if new_domain:
                 company["domain"] = new_domain
                 changed = True
+        if company.get("status") != "active":
+            company["status"] = "active"
+            changed = True
         return changed
 
     # Non-actionable outcomes: don't touch URL/adapter, but mark broken on NOT_FOUND.
