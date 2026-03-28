@@ -2,9 +2,9 @@ companies:
 - name: Addepar
   tier: 1
   priority: high
-  adapter: ashby
-  adapter_key: addepar
-  domain: boards.greenhouse.io
+  adapter: greenhouse
+  adapter_key: addepar1
+  domain: job-boards.greenhouse.io
   industry:
     - wealth management
     - portfolio analytics
@@ -12,8 +12,8 @@ companies:
     - investment
   notes: Wealth mgmt data + portfolio analytics — Aladdin-adjacent, direct domain match
   sub_industry: Wealth Data
-  careers_url: https://jobs.ashbyhq.com/addepar
-  active: true
+  careers_url: https://job-boards.greenhouse.io/addepar1
+  status: active
 - name: Affirm
   tier: 1
   priority: high
@@ -29,13 +29,13 @@ companies:
   notes: 3 active applications — financial reporting + capital platform
   sub_industry: FinTech / Payments
   careers_url: https://job-boards.greenhouse.io/affirm
-  active: true
+  status: active
 - name: Bill.com
   tier: 1
   priority: high
-  adapter: ashby
+  adapter: greenhouse
   adapter_key: billcom
-  domain: boards.greenhouse.io
+  domain: job-boards.greenhouse.io
   industry:
     - b2b payments
     - financial operations
@@ -43,8 +43,8 @@ companies:
     - reconciliation
   notes: B2B financial ops + AP/AR automation — payments + data integration fit
   sub_industry: B2B Payments / Financial Ops
-  careers_url: https://jobs.ashbyhq.com/billcom
-  active: true
+  careers_url: https://job-boards.greenhouse.io/billcom
+  status: active
 - name: CAIS
   tier: 2
   priority: medium
@@ -59,7 +59,7 @@ companies:
   notes: Alts distribution platform — same buyer/user profile as SUBSCRIBE + iCapital
   sub_industry: Alts Platform
   careers_url: https://job-boards.greenhouse.io/cais
-  active: true
+  status: active
 - name: Carta
   tier: 1
   priority: high
@@ -70,15 +70,15 @@ companies:
     - equity management
     - cap tables
     - api
-  notes: He designed a custom data model for RSUs and stock options; perfect domain match.
+  notes: Designed a custom data model for RSUs and stock options; perfect domain match.
   sub_industry: Equity Management
   careers_url: https://job-boards.greenhouse.io/carta
-  active: true
+  status: active
 - name: Charles Schwab
   tier: 2
   priority: medium
-  adapter: ashby
-  adapter_key: charlesschwab
+  adapter: custom_manual
+  adapter_key: ''
   domain: jobs.schwabjobs.com
   industry:
     - brokerage
@@ -88,14 +88,14 @@ companies:
     - financial services
   notes: Custodian PM — NFS/DTCC background directly relevant post-TDA merger
   sub_industry: Brokerage
-  careers_url: https://jobs.ashbyhq.com/charlesschwab
-  active: true
+  careers_url: https://jobs.schwabjobs.com/
+  status: active
 - name: Clearwater Analytics
   tier: 1
   priority: high
-  adapter: ashby
+  adapter: custom_manual
   adapter_key: clearwateranalytics
-  domain: boards.greenhouse.io
+  domain: cwan.com
   industry:
     - investment accounting
     - reconciliation
@@ -103,12 +103,12 @@ companies:
     - investment data
   notes: Investment accounting + reconciliation + reporting — direct Allstate overlap
   sub_industry: Investment Accounting
-  careers_url: https://jobs.ashbyhq.com/clearwateranalytics
-  active: true
+  careers_url: https://www.cwan.com/careers
+  status: active
 - name: Confluent
   tier: 2
   priority: medium
-  adapter: ashby
+  adapter: greenhouse
   adapter_key: confluent
   domain: boards.greenhouse.io
   industry:
@@ -119,13 +119,13 @@ companies:
     - messaging
   notes: JMS/messaging pivot at InvestCloud IS Kafka territory — apply sooner than other T2
   sub_industry: Data Streaming
-  careers_url: https://jobs.ashbyhq.com/confluent
-  active: true
+  careers_url: https://job-boards.greenhouse.io/confluent
+  status: active
 - name: Envestnet
   tier: 1
   priority: high
-  adapter: ashby
-  adapter_key: envestnet
+  adapter: workday
+  adapter_key: ''
   domain: envestnet.wd5.myworkdayjobs.com
   industry:
     - wealth management
@@ -135,13 +135,13 @@ companies:
     - platform
   notes: Advisor tech ecosystem — knows every platform Eric integrates with
   sub_industry: WealthTech
-  careers_url: https://jobs.ashbyhq.com/envestnet
-  active: true
+  careers_url: https://envestnet.wd5.myworkdayjobs.com/en-US/Envestnet_Careers
+  status: active
 - name: FactSet
   tier: 2
   priority: medium
-  adapter: ashby
-  adapter_key: factset
+  adapter: workday
+  adapter_key: ''
   domain: factset.wd108.myworkdayjobs.com
   industry:
     - capital markets
@@ -150,13 +150,13 @@ companies:
     - portfolio analytics
   notes: Capital markets data + workflow PM — Aladdin/IDW background applies
   sub_industry: Financial Data
-  careers_url: https://jobs.ashbyhq.com/factset
-  active: true
+  careers_url: https://factset.wd108.myworkdayjobs.com/FactSetCareers
+  status: active
 - name: Fidelity Investments
   tier: 2
   priority: medium
-  adapter: ashby
-  adapter_key: fidelityinvestments
+  adapter: custom_manual
+  adapter_key: ''
   domain: jobs.fidelity.com
   industry:
     - brokerage
@@ -166,8 +166,8 @@ companies:
     - nfs
   notes: NFS platform is primary proof point — custodian PM roles exist
   sub_industry: Brokerage / Clearing
-  careers_url: https://jobs.ashbyhq.com/fidelityinvestments
-  active: true
+  careers_url: https://jobs.fidelity.com
+  status: active
 - name: Gusto
   tier: 1
   priority: high
@@ -183,12 +183,12 @@ companies:
   notes: Payroll infrastructure + financial data + reconciliation — already applied
   sub_industry: Payroll / FinTech
   careers_url: https://job-boards.greenhouse.io/gusto
-  active: true
+  status: active
 - name: iCapital
   tier: 1
   priority: high
-  adapter: ashby
-  adapter_key: icapital
+  adapter: greenhouse
+  adapter_key: icapitalnetwork
   domain: boards.greenhouse.io
   industry:
     - alternative investments
@@ -197,13 +197,13 @@ companies:
     - fintech
   notes: Closest analog to SUBSCRIBE — alts distribution for wealth managers
   sub_industry: Alts Platform
-  careers_url: https://jobs.ashbyhq.com/icapital
-  active: true
+  careers_url: https://job-boards.greenhouse.io/icapitalnetwork
+  status: active
 - name: Koyfin
   tier: 2
   priority: medium
-  adapter: ashby
-  adapter_key: koyfin
+  adapter: custom_manual
+  adapter_key: ''
   domain: www.koyfin.com
   industry:
     - advisor technology
@@ -212,8 +212,8 @@ companies:
     - financial data
   notes: Strong domain fit. Eyes open on options/quant depth gap.
   sub_industry: WealthTech
-  careers_url: https://jobs.ashbyhq.com/koyfin
-  active: true
+  careers_url: https://www.koyfin.com/about/careers/
+  status: active
 - name: Marqeta
   tier: 1
   priority: high
@@ -229,13 +229,13 @@ companies:
   notes: Card issuing infrastructure + B2B API platform
   sub_industry: Card Issuing APIs
   careers_url: https://job-boards.greenhouse.io/marqeta
-  active: true
+  status: active
 - name: Morningstar
   tier: 2
   priority: medium
-  adapter: ashby
-  adapter_key: morningstar
-  domain: morningstar.wd5.myworkdayjobs.com
+  adapter: custom_manual
+  adapter_key: ''
+  domain: careers.morningstar.com
   industry:
     - financial data
     - investment
@@ -244,8 +244,8 @@ companies:
     - capital markets
   notes: Data + analytics + advisor tools — strong domain match
   sub_industry: Financial Data
-  careers_url: https://jobs.ashbyhq.com/morningstar
-  active: true
+  careers_url: https://careers.morningstar.com
+  status: active
 - name: Plaid
   tier: 1
   priority: high
@@ -261,11 +261,11 @@ companies:
   notes: Financial data connectivity + API-first — integration depth maps directly
   sub_industry: FinTech Infrastructure / Data APIs
   careers_url: https://jobs.lever.co/plaid
-  active: true
+  status: active
 - name: Ridgeline
   tier: 2
   priority: medium
-  adapter: ashby
+  adapter: greenhouse
   adapter_key: ridgeline
   domain: boards.greenhouse.io
   industry:
@@ -275,14 +275,14 @@ companies:
     - platform
   notes: Investment management platform — monitor for right roles
   sub_industry: WealthTech / Cloud
-  careers_url: https://jobs.ashbyhq.com/ridgeline
-  active: true
+  careers_url: https://job-boards.greenhouse.io/ridgeline
+  status: active
 - name: Snowflake
   tier: 3
   priority: low
-  adapter: ashby
-  adapter_key: snowflake
-  domain: snowflake.wd1.myworkdayjobs.com
+  adapter: custom_manual
+  adapter_key: ''
+  domain: careers.snowflake.com
   industry:
     - data platform
     - cloud
@@ -290,5 +290,5 @@ companies:
     - data warehouse
   notes: Target once AWS + Snowflake training complete — financial services PM angle
   sub_industry: Data Platform
-  careers_url: https://jobs.ashbyhq.com/snowflake
-  active: true
+  careers_url: https://careers.snowflake.com/us/en/
+  status: active
