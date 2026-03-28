@@ -37,6 +37,8 @@ COMMON_CAREER_PATHS = [
     "",
     "/careers",
     "/careers/",
+    "/career-opportunities",
+    "/career-opportunities/",
     "/jobs",
     "/jobs/",
     "/about/careers",
@@ -55,10 +57,15 @@ COMMON_SUBDOMAINS = ["", "www", "careers", "jobs"]
 CAREER_LINK_HINTS = [
     "career",
     "careers",
+    "career opportunities",
+    "career-opportunities",
     "job",
     "jobs",
     "open positions",
     "openings",
+    "open roles",
+    "roles",
+    "all roles",
     "join our team",
     "join-us",
     "work with us",
@@ -379,6 +386,27 @@ def try_current_careers_url(session: requests.Session, company: dict) -> Optiona
             status="CURRENT_VALID",
             detail=f"current url validated and exposes {adapter}",
         )
+
+    for link in career_links_from_page(final_url, html):
+        sub_resp = fetch(session, link)
+        if sub_resp is None:
+            continue
+        sub_valid, _ = validate_candidate_page(company, sub_resp)
+        if not sub_valid:
+            continue
+        sub_url = sub_resp.url
+        sub_html = sub_resp.text or ""
+        embedded = detect_embedded_ats(sub_url, sub_html)
+        if embedded:
+            adapter, adapter_key, ats_url = embedded
+            return DiscoveryResult(
+                adapter=adapter,
+                adapter_key=adapter_key,
+                careers_url=ats_url,
+                domain=normalize_domain(urlparse(ats_url).netloc),
+                status="CURRENT_UPGRADED",
+                detail=f"current url validated and linked page exposes {adapter}",
+            )
 
     adapter = company.get("adapter")
     adapter_key = company.get("adapter_key")
