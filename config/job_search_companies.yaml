@@ -43,11 +43,12 @@ companies:
   tier: 1
   priority: high
   adapter: custom_manual
-  domain: jobs.adp.com
-  industry: payroll | ledgers | enterprise compliance
-  notes: The standard in payroll; requires massive architectural focus on ledger math.
-  sub_industry: HRIS / Payroll
+  active: true
   careers_url: https://jobs.adp.com/en/jobs/
+  domain: jobs.adp.com
+  industry:
+  - payroll | ledgers | enterprise compliance
+  notes: The standard in payroll; requires massive architectural focus on ledger math.
   status: active
   heal_skip: true
 - name: Advisor360

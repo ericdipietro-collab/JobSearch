@@ -161,12 +161,10 @@ def discover_for_company(session: requests.Session, company: dict) -> DiscoveryR
     existing_url = company.get("careers_url", "")
     existing_adapter = company.get("adapter", "")
 
-    # --- MANUAL OVERRIDE: heal_skip=true means the user has verified this entry ---
-    # Validate the existing URL still works, but never run auto-discovery.
+    # --- MANUAL OVERRIDE: heal_skip=true means full trust — no network check ---
+    # The user has manually verified this entry; skip all discovery phases.
     if company.get("heal_skip"):
-        if _validate_existing_url(session, existing_url, name, existing_adapter):
-            return DiscoveryResult(None, None, existing_url, None, "VALID", "User-verified (heal_skip)")
-        return DiscoveryResult(None, None, existing_url, None, "NOT_FOUND", "User-verified URL unreachable — update manually")
+        return DiscoveryResult(None, None, existing_url, None, "VALID", "User-verified (heal_skip)")
 
     # --- PRE-CHECK: if the existing URL is still live, skip full discovery ---
     if _validate_existing_url(session, existing_url, name, existing_adapter):
@@ -398,18 +396,16 @@ def heal_registry(heal_all: bool = False) -> None:
     companies = data.get("companies", [])
 
     # Determine which companies need healing.
-    # Statuses that require attention: new, changed, broken, or no status yet.
+    # heal_skip=true entries are always excluded — user has manually verified them.
     # "active" companies are skipped unless --all is passed.
     NEEDS_HEAL = {"new", "changed", "broken", "", None}
-    to_heal = [
-        c for c in companies
-        if c.get("active") is not False
-        and (heal_all or c.get("status") in NEEDS_HEAL)
-    ]
+    skipped_trust = [c for c in companies if c.get("heal_skip")]
+    eligible = [c for c in companies if not c.get("heal_skip") and c.get("active") is not False]
+    to_heal = [c for c in eligible if heal_all or c.get("status") in NEEDS_HEAL]
     skipped = len(companies) - len(to_heal)
 
     mode = "all active" if heal_all else "new / changed / broken"
-    print(f"Scanning {len(to_heal)} companies ({mode}) — skipping {skipped} already active.")
+    print(f"Scanning {len(to_heal)} companies ({mode}) — skipping {skipped} (active/inactive) + {len(skipped_trust)} user-verified (heal_skip).")
     if not to_heal:
         print("Nothing to heal.")
         return
