@@ -367,6 +367,23 @@ if page == "Run Pipeline":
             st.error(f"Failed to start pipeline: {exc}")
 
     # Manual sync controls (always visible)
+    st.divider()
+    st.markdown("### History")
+    _hist_path = RESULTS_DIR / "job_search_history_v6.json"
+    _hist_count = 0
+    if _hist_path.exists():
+        try:
+            _hist_count = len(json.loads(_hist_path.read_text(encoding="utf-8")))
+        except Exception:
+            pass
+    st.caption(
+        f"The scraper skips jobs already in the history file so you only see new postings each run. "
+        f"Current history: **{_hist_count}** jobs seen."
+    )
+    if st.button("🗑 Clear History", help="Remove all seen-job records so the next run re-evaluates everything"):
+        _hist_path.write_text("{}", encoding="utf-8")
+        st.success("History cleared. The next run will re-evaluate all jobs.")
+
     if _ATS_AVAILABLE:
         st.divider()
         st.markdown("### ATS Database")
@@ -415,7 +432,11 @@ elif page == "Results":
     overrides = load_status_overrides()
 
     if df_all.empty:
-        st.info("Results file is empty. Run the pipeline first.")
+        st.warning(
+            "The pipeline ran but found no new jobs matching your filters. "
+            "This usually means all matching jobs are already in your history file from a previous run. "
+            "Go to **Run Pipeline → Clear History** and run again to re-evaluate all jobs."
+        )
         st.stop()
 
     df = _apply_overrides(df_all, overrides)
