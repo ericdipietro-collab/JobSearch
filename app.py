@@ -1097,7 +1097,13 @@ elif page == "Companies":
                     "Priority", ["high", "medium", "low"],
                     index=["high", "medium", "low"].index(existing.get("priority", "medium")),
                 )
-                f_active   = st.checkbox("Active", value=bool(existing.get("active", True)))
+                f_active     = st.checkbox("Active", value=bool(existing.get("active", True)))
+                f_heal_skip  = st.checkbox(
+                    "Skip Healer (heal_skip)",
+                    value=bool(existing.get("heal_skip", False)),
+                    help="When checked, the ATS healer will never probe or modify this entry. "
+                         "Use for sites that block automated checks (e.g. Cloudflare-protected).",
+                )
             with rc2:
                 _current_adapter = existing.get("adapter", "custom_manual")
                 _adapter_idx = KNOWN_ADAPTERS.index(_current_adapter) if _current_adapter in KNOWN_ADAPTERS else KNOWN_ADAPTERS.index("custom_manual")
@@ -1139,6 +1145,8 @@ elif page == "Companies":
                         "industry":    [i.strip() for i in f_industry.split(",") if i.strip()],
                         "notes":       f_notes.strip(),
                     }
+                    if f_heal_skip:
+                        rec["heal_skip"] = True
                     if f_adapter_key.strip():
                         rec["adapter_key"] = f_adapter_key.strip()
 
