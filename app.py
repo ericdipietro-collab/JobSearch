@@ -37,6 +37,7 @@ RESULTS_DIR = BASE_DIR / "results"
 XLSX_PATH      = RESULTS_DIR / "job_search_v6_results.xlsx"
 REJECTED_CSV   = RESULTS_DIR / "job_search_v6_rejected.csv"
 STATUS_JSON    = RESULTS_DIR / "job_status.json"
+STORE_JSON     = RESULTS_DIR / "job_search_store.json"   # cumulative job store
 PREFS_YAML     = CONFIG_DIR  / "job_search_preferences.yaml"
 COMPANIES_YAML = CONFIG_DIR  / "job_search_companies.yaml"
 COMPANIES_BAK  = CONFIG_DIR  / "job_search_companies.yaml.bak"
@@ -129,24 +130,87 @@ def _now_iso() -> str:
 
 # ── Data I/O ──────────────────────────────────────────────────────────────────
 
-@st.cache_data(show_spinner=False)
-def _load_xlsx() -> pd.DataFrame:
-    """Read 'All Jobs' sheet from the scraper Excel. Cached until invalidated."""
-    if not XLSX_PATH.exists():
-        return pd.DataFrame()
+def _load_store() -> dict:
+    """Load the cumulative job store from disk."""
+    if not STORE_JSON.exists():
+        return {}
     try:
-        df = pd.read_excel(XLSX_PATH, sheet_name="All Jobs", dtype=str)
-        for num_col in ("score", "tier", "age_days", "salary_low", "salary_high"):
-            if num_col in df.columns:
-                df[num_col] = pd.to_numeric(df[num_col], errors="coerce")
-        df["_key"] = df.apply(
-            lambda r: _job_key(r.get("company", ""), r.get("title", ""), r.get("url", "")),
-            axis=1,
+        return json.loads(STORE_JSON.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _save_store(store: dict) -> None:
+    RESULTS_DIR.mkdir(exist_ok=True)
+    STORE_JSON.write_text(
+        json.dumps(store, ensure_ascii=False, default=str, indent=None),
+        encoding="utf-8",
+    )
+
+
+def _merge_run_into_store(new_df: pd.DataFrame) -> dict:
+    """
+    Merge the latest pipeline run's kept jobs into the persistent store.
+    Scraper fields (score, salary, etc.) are always refreshed.
+    Jobs never leave the store — Applied jobs are preserved forever.
+    Returns {"added": N, "updated": N, "total": N}.
+    """
+    store = _load_store()
+    overrides = load_status_overrides()
+    added = updated = 0
+
+    for _, row in new_df.iterrows():
+        # Sanitise NaN so JSON serialisation doesn't choke
+        row_dict = {
+            k: (None if (isinstance(v, float) and math.isnan(v)) else v)
+            for k, v in row.to_dict().items()
+        }
+        key = _job_key(
+            str(row_dict.get("company") or ""),
+            str(row_dict.get("title") or ""),
+            str(row_dict.get("url") or ""),
         )
-        return df
-    except Exception as exc:
-        st.error(f"Could not read results file: {exc}")
+        if key in store:
+            store[key].update(row_dict)
+            updated += 1
+        else:
+            store[key] = row_dict
+            added += 1
+
+    _save_store(store)
+    _load_jobs.clear()
+    return {"added": added, "updated": updated, "total": len(store)}
+
+
+@st.cache_data(show_spinner=False)
+def _load_jobs() -> pd.DataFrame:
+    """
+    Load the accumulated job store as a DataFrame.
+    On first use (store empty), seeds from the last XLSX run if one exists.
+    """
+    store = _load_store()
+
+    # First-time migration: seed from existing XLSX so history isn't lost.
+    if not store and XLSX_PATH.exists():
+        try:
+            seed_df = pd.read_excel(XLSX_PATH, sheet_name="All Jobs", dtype=str)
+            if not seed_df.empty:
+                _merge_run_into_store(seed_df)
+                store = _load_store()
+        except Exception:
+            pass
+
+    if not store:
         return pd.DataFrame()
+
+    rows = list(store.values())
+    keys = list(store.keys())
+    df = pd.DataFrame(rows)
+    for num_col in ("score", "tier", "age_days", "salary_low", "salary_high"):
+        if num_col in df.columns:
+            df[num_col] = pd.to_numeric(df[num_col], errors="coerce")
+    df["_key"] = keys
+    return df
 
 
 @st.cache_data(show_spinner=False)
@@ -160,7 +224,7 @@ def _load_rejected_csv() -> pd.DataFrame:
 
 
 def _invalidate_data_cache() -> None:
-    _load_xlsx.clear()
+    _load_jobs.clear()
     _load_rejected_csv.clear()
 
 
@@ -252,7 +316,7 @@ else:
 st.sidebar.divider()
 
 # Quick stats in sidebar when results exist
-_df_sidebar = _load_xlsx()
+_df_sidebar = _load_jobs()
 _ov_sidebar = load_status_overrides()
 if not _df_sidebar.empty:
     _applied    = sum(1 for v in _ov_sidebar.values() if v.get("user_status") == "Applied")
@@ -346,17 +410,24 @@ if page == "Run Pipeline":
 
             if proc.returncode == 0:
                 status_label.success("Pipeline finished successfully.")
+                # Merge new jobs into the persistent store
+                if XLSX_PATH.exists():
+                    try:
+                        _new_df = pd.read_excel(XLSX_PATH, sheet_name="All Jobs", dtype=str)
+                        _merge_stats = _merge_run_into_store(_new_df)
+                        st.info(
+                            f"Results: **{_merge_stats['added']}** new jobs added · "
+                            f"**{_merge_stats['updated']}** existing updated · "
+                            f"**{_merge_stats['total']}** total in library"
+                        )
+                    except Exception as _merge_exc:
+                        st.warning(f"Could not merge results: {_merge_exc}")
                 if _ATS_AVAILABLE and XLSX_PATH.exists():
                     try:
                         _sync_conn = get_db()
                         _sync_result = sync_from_excel(_sync_conn, XLSX_PATH, STATUS_JSON)
-                        st.info(
-                            f"ATS sync: {_sync_result['inserted']} new · "
-                            f"{_sync_result['updated']} updated · "
-                            f"{_sync_result['skipped']} skipped"
-                        )
-                    except Exception as _sync_exc:
-                        st.warning(f"ATS sync failed: {_sync_exc}")
+                    except Exception:
+                        pass
             else:
                 status_label.error(f"Pipeline exited with code {proc.returncode}.")
 
@@ -389,11 +460,14 @@ if page == "Run Pipeline":
         st.markdown("### ATS Database")
         _sc1, _sc2 = st.columns(2)
         with _sc1:
-            if st.button("↻ Sync Excel → DB", help="Import current results into the ATS database"):
+            if st.button("↻ Sync Excel → Store", help="Merge the last pipeline Excel output into the persistent job library"):
                 if XLSX_PATH.exists():
-                    with st.spinner("Syncing…"):
-                        _r = sync_from_excel(get_db(), XLSX_PATH, STATUS_JSON)
-                    st.success(f"{_r['inserted']} new · {_r['updated']} updated · {_r['skipped']} skipped")
+                    with st.spinner("Merging…"):
+                        _sd = pd.read_excel(XLSX_PATH, sheet_name="All Jobs", dtype=str)
+                        _sr = _merge_run_into_store(_sd)
+                        if _ATS_AVAILABLE:
+                            sync_from_excel(get_db(), XLSX_PATH, STATUS_JSON)
+                    st.success(f"{_sr['added']} added · {_sr['updated']} updated · {_sr['total']} total")
                 else:
                     st.warning("No results file found. Run the pipeline first.")
         with _sc2:
@@ -428,14 +502,13 @@ elif page == "Results":
         st.info("No results file found. Run the pipeline first.")
         st.stop()
 
-    df_all = _load_xlsx()
+    df_all = _load_jobs()
     overrides = load_status_overrides()
 
     if df_all.empty:
-        st.warning(
-            "The pipeline ran but found no new jobs matching your filters. "
-            "This usually means all matching jobs are already in your history file from a previous run. "
-            "Go to **Run Pipeline → Clear History** and run again to re-evaluate all jobs."
+        st.info(
+            "No jobs yet. Run the pipeline from **Run Pipeline** to fetch results. "
+            "If you've already run it and see nothing, use **Clear History** there and run again."
         )
         st.stop()
 

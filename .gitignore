@@ -15,6 +15,7 @@ job_search_v6_adapter_health.csv
 *_active_config.json
 *_history_v6.json
 job_search_history_v6.json
+job_search_store.json
 
 # Personal preferences (salary targets, home location).
 # Copy config/job_search_preferences.example.yaml → config/job_search_preferences.yaml
