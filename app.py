@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -53,6 +54,81 @@ if _ATS_AVAILABLE:
 # ── Page config ───────────────────────────────────────────────────────────────
 
 st.set_page_config(page_title="Job Search Dashboard", layout="wide", page_icon="💼")
+
+# ── Global CSS ────────────────────────────────────────────────────────────────
+st.markdown("""
+<style>
+/* ── Scrollbars: wider and always visible ──────────────────────────────────── */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #1e1e2e; border-radius: 6px; }
+::-webkit-scrollbar-thumb { background: #555; border-radius: 6px; border: 2px solid #1e1e2e; }
+::-webkit-scrollbar-thumb:hover { background: #888; }
+
+/* ── Sidebar ───────────────────────────────────────────────────────────────── */
+[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #0f0f1a 0%, #1a1a2e 100%);
+    border-right: 1px solid #2a2a3e;
+}
+[data-testid="stSidebar"] h1 { color: #a78bfa; font-size: 1.3rem; letter-spacing: 0.03em; }
+[data-testid="stSidebar"] .stRadio label { color: #c4c4d4 !important; font-size: 0.95rem; }
+[data-testid="stSidebar"] .stRadio label:hover { color: #a78bfa !important; }
+
+/* ── Metric cards ──────────────────────────────────────────────────────────── */
+[data-testid="stMetric"] {
+    background: #1e1e2e;
+    border: 1px solid #2a2a3e;
+    border-radius: 10px;
+    padding: 12px 16px;
+}
+[data-testid="stMetricLabel"] { color: #8888aa !important; font-size: 0.78rem !important; text-transform: uppercase; letter-spacing: 0.05em; }
+[data-testid="stMetricValue"] { color: #e2e2f0 !important; font-size: 1.6rem !important; font-weight: 700; }
+
+/* ── Section headers ───────────────────────────────────────────────────────── */
+h1 { color: #c4b5fd; font-weight: 700; }
+h2 { color: #a78bfa; border-bottom: 1px solid #2a2a3e; padding-bottom: 6px; }
+h3 { color: #c4b5fd; font-weight: 600; }
+
+/* ── Primary button ────────────────────────────────────────────────────────── */
+button[kind="primary"] {
+    background: linear-gradient(135deg, #7c3aed, #4f46e5) !important;
+    border: none !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.02em;
+}
+button[kind="primary"]:hover { opacity: 0.88; }
+
+/* ── Data tables & editors ─────────────────────────────────────────────────── */
+[data-testid="stDataFrame"] iframe,
+[data-testid="stDataEditor"] iframe {
+    border-radius: 8px;
+    border: 1px solid #2a2a3e !important;
+}
+
+/* ── Code / log blocks ─────────────────────────────────────────────────────── */
+.stCode pre, [data-testid="stCode"] pre {
+    background: #0d0d1a !important;
+    border: 1px solid #2a2a3e;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    overflow-x: auto;
+}
+
+/* ── Progress bar ──────────────────────────────────────────────────────────── */
+[data-testid="stProgressBar"] > div { background: #4f46e5 !important; border-radius: 4px; }
+
+/* ── Tabs ──────────────────────────────────────────────────────────────────── */
+[data-testid="stTabs"] [role="tablist"] { border-bottom: 2px solid #2a2a3e; }
+[data-testid="stTabs"] [role="tab"][aria-selected="true"] { color: #a78bfa !important; border-bottom: 2px solid #a78bfa; }
+[data-testid="stTabs"] [role="tab"] { color: #8888aa !important; }
+
+/* ── Info / success / warning boxes ───────────────────────────────────────── */
+[data-testid="stAlert"] { border-radius: 8px; }
+
+/* ── Divider ───────────────────────────────────────────────────────────────── */
+hr { border-color: #2a2a3e !important; }
+</style>
+""", unsafe_allow_html=True)
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -196,9 +272,16 @@ st.sidebar.divider()
 _df_sidebar = _load_xlsx()
 _ov_sidebar = load_status_overrides()
 if not _df_sidebar.empty:
-    _applied = sum(1 for v in _ov_sidebar.values() if v.get("user_status") == "Applied")
+    _applied    = sum(1 for v in _ov_sidebar.values() if v.get("user_status") == "Applied")
+    _apply_now  = int((_df_sidebar.get("action_bucket", pd.Series(dtype=str)).str.upper() == "APPLY NOW").sum())
+    _review     = int((_df_sidebar.get("action_bucket", pd.Series(dtype=str)).str.upper() == "REVIEW TODAY").sum())
     st.sidebar.metric("Total Jobs", len(_df_sidebar))
+    c1, c2 = st.sidebar.columns(2)
+    c1.metric("Apply Now", _apply_now)
+    c2.metric("Review", _review)
     st.sidebar.metric("Applied", _applied)
+else:
+    st.sidebar.caption("No results yet.")
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -225,43 +308,80 @@ if page == "Run Pipeline":
         if extra_args.strip():
             cmd.extend(extra_args.strip().split())
 
-        log_box = st.empty()
-        with st.spinner("Pipeline running… this may take several minutes."):
-            try:
-                proc = subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                    env={**os.environ, "PYTHONIOENCODING": "utf-8"},
-                    cwd=str(BASE_DIR),
-                    timeout=3600,
-                )
-                _invalidate_data_cache()
-                combined = (proc.stdout or "") + (proc.stderr or "")
-                if proc.returncode == 0:
-                    st.success("Pipeline finished successfully.")
-                    # Auto-sync into ATS database
-                    if _ATS_AVAILABLE and XLSX_PATH.exists():
-                        try:
-                            _sync_conn = get_db()
-                            _sync_result = sync_from_excel(_sync_conn, XLSX_PATH, STATUS_JSON)
-                            st.info(
-                                f"ATS sync: {_sync_result['inserted']} new · "
-                                f"{_sync_result['updated']} updated · "
-                                f"{_sync_result['skipped']} skipped"
-                            )
-                        except Exception as _sync_exc:
-                            st.warning(f"ATS sync failed: {_sync_exc}")
+        status_label = st.empty()
+        progress_bar  = st.empty()
+        log_box       = st.empty()
+
+        try:
+            proc = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                encoding="utf-8",
+                errors="replace",
+                env={**os.environ, "PYTHONIOENCODING": "utf-8"},
+                cwd=str(BASE_DIR),
+            )
+
+            lines_buf: list[str] = []
+            total_companies = 0
+            done_companies  = 0
+            # Pattern: "  CompanyName   tier=N  evaluated=N ..."
+            _CO_LINE = re.compile(r"^\s{1,4}\S.*tier=\d+.*evaluated=\s*\d+")
+            _TOT_LINE = re.compile(r"Companies selected:\s*(\d+)\s*of\s*(\d+)")
+
+            status_label.markdown("**Pipeline running…**")
+
+            for raw in iter(proc.stdout.readline, ""):
+                line = raw.rstrip()
+                lines_buf.append(line)
+
+                m_tot = _TOT_LINE.search(line)
+                if m_tot:
+                    total_companies = int(m_tot.group(2))
+
+                if _CO_LINE.match(line):
+                    done_companies += 1
+
+                if total_companies > 0:
+                    pct = min(done_companies / total_companies, 1.0)
+                    progress_bar.progress(
+                        pct,
+                        text=f"Company {done_companies} of {total_companies}",
+                    )
                 else:
-                    st.error(f"Pipeline exited with code {proc.returncode}.")
-                # Show last 8 000 chars so the log box doesn't get enormous
-                log_box.code(combined[-8000:] if len(combined) > 8000 else combined, language=None)
-            except subprocess.TimeoutExpired:
-                st.error("Pipeline timed out after 60 minutes.")
-            except Exception as exc:
-                st.error(f"Failed to start pipeline: {exc}")
+                    progress_bar.progress(0, text="Starting…")
+
+                # Rolling log — last 40 lines so the page stays usable
+                log_box.code("\n".join(lines_buf[-40:]), language=None)
+
+            proc.wait()
+            combined = "\n".join(lines_buf)
+
+            _invalidate_data_cache()
+            progress_bar.progress(1.0, text=f"{done_companies} of {total_companies} companies complete")
+
+            if proc.returncode == 0:
+                status_label.success("Pipeline finished successfully.")
+                if _ATS_AVAILABLE and XLSX_PATH.exists():
+                    try:
+                        _sync_conn = get_db()
+                        _sync_result = sync_from_excel(_sync_conn, XLSX_PATH, STATUS_JSON)
+                        st.info(
+                            f"ATS sync: {_sync_result['inserted']} new · "
+                            f"{_sync_result['updated']} updated · "
+                            f"{_sync_result['skipped']} skipped"
+                        )
+                    except Exception as _sync_exc:
+                        st.warning(f"ATS sync failed: {_sync_exc}")
+            else:
+                status_label.error(f"Pipeline exited with code {proc.returncode}.")
+
+            # Final full log
+            log_box.code(combined[-8000:] if len(combined) > 8000 else combined, language=None)
+
+        except Exception as exc:
+            st.error(f"Failed to start pipeline: {exc}")
 
     # Manual sync controls (always visible)
     if _ATS_AVAILABLE:
@@ -1012,29 +1132,45 @@ elif page == "Companies":
             cmd = [sys.executable, str(BASE_DIR / "heal_ats_yaml.py")]
             if heal_all_flag:
                 cmd.append("--all")
-            log_box = st.empty()
-            with st.spinner("Healing… this may take several minutes."):
-                try:
-                    proc = subprocess.run(
-                        cmd,
-                        capture_output=True,
-                        text=True,
-                        encoding="utf-8",
-                        errors="replace",
-                        env={**os.environ, "PYTHONIOENCODING": "utf-8"},
-                        cwd=str(BASE_DIR),
-                        timeout=7200,
-                    )
-                    combined = (proc.stdout or "") + (proc.stderr or "")
-                    if proc.returncode == 0:
-                        st.success("Heal complete.")
-                    else:
-                        st.error(f"Healer exited with code {proc.returncode}.")
-                    log_box.code(combined[-8000:] if len(combined) > 8000 else combined, language=None)
-                except subprocess.TimeoutExpired:
-                    st.error("Heal timed out after 2 hours.")
-                except Exception as exc:
-                    st.error(f"Failed to start healer: {exc}")
+            heal_status  = st.empty()
+            heal_progress = st.empty()
+            log_box      = st.empty()
+            try:
+                proc = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    encoding="utf-8",
+                    errors="replace",
+                    env={**os.environ, "PYTHONIOENCODING": "utf-8"},
+                    cwd=str(BASE_DIR),
+                )
+                lines_buf: list[str] = []
+                done_co = 0
+                # heal lines look like "[  3/485] OK  CompanyName  ..."
+                _HEAL_LINE = re.compile(r"^\[\s*(\d+)/\s*(\d+)\]")
+                heal_status.markdown("**Healing…**")
+                for raw in iter(proc.stdout.readline, ""):
+                    line = raw.rstrip()
+                    lines_buf.append(line)
+                    m = _HEAL_LINE.match(line)
+                    if m:
+                        done_co   = int(m.group(1))
+                        total_co  = int(m.group(2))
+                        heal_progress.progress(
+                            done_co / total_co,
+                            text=f"Company {done_co} of {total_co}",
+                        )
+                    log_box.code("\n".join(lines_buf[-40:]), language=None)
+                proc.wait()
+                combined = "\n".join(lines_buf)
+                if proc.returncode == 0:
+                    heal_status.success("Heal complete.")
+                else:
+                    heal_status.error(f"Healer exited with code {proc.returncode}.")
+                log_box.code(combined[-8000:] if len(combined) > 8000 else combined, language=None)
+            except Exception as exc:
+                st.error(f"Failed to start healer: {exc}")
 
         # Show last heal report if it exists
         heal_report = RESULTS_DIR / "heal_ats_yaml_report.csv"
