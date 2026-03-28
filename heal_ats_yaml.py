@@ -189,11 +189,11 @@ def discover_for_company(session: requests.Session, company: dict) -> DiscoveryR
             resp = session.get(url, timeout=8, allow_redirects=True)
             if resp.status_code == 406:
                 print(f"  !!! BLOCKED by Greenhouse (406) — sleeping {RATE_LIMIT_SLEEP}s")
-                time.sleep(RATE_LIMIT_SLEEP)
+                time.sleep(2)  # brief back-off; parallel workers don't need the full 45s stall
                 return DiscoveryResult(None, None, None, None, "BLOCKED", "Greenhouse WAF 406")
             if _is_rate_limited(resp.status_code):
                 print(f"  Rate limited ({resp.status_code}) on Greenhouse — sleeping {RATE_LIMIT_SLEEP}s")
-                time.sleep(RATE_LIMIT_SLEEP)
+                time.sleep(2)  # brief back-off; parallel workers don't need the full 45s stall
                 return DiscoveryResult(None, None, None, None, "RATE_LIMITED", f"Greenhouse HTTP {resp.status_code}")
             if resp.status_code == 200 and "greenhouse.io" in resp.url.lower():
                 if not _is_ats_not_found(resp.text) and verify_page_ownership(resp.text, name):
@@ -209,7 +209,7 @@ def discover_for_company(session: requests.Session, company: dict) -> DiscoveryR
             resp = session.get(url, timeout=8, allow_redirects=True)
             if _is_rate_limited(resp.status_code):
                 print(f"  Rate limited ({resp.status_code}) on Ashby — sleeping {RATE_LIMIT_SLEEP}s")
-                time.sleep(RATE_LIMIT_SLEEP)
+                time.sleep(2)  # brief back-off; parallel workers don't need the full 45s stall
                 return DiscoveryResult(None, None, None, None, "RATE_LIMITED", f"Ashby HTTP {resp.status_code}")
             if resp.status_code == 200 and "ashbyhq.com" in resp.url.lower():
                 if not _is_ats_not_found(resp.text) and verify_page_ownership(resp.text, name):
@@ -225,7 +225,7 @@ def discover_for_company(session: requests.Session, company: dict) -> DiscoveryR
             resp = session.get(url, timeout=8, allow_redirects=True)
             if _is_rate_limited(resp.status_code):
                 print(f"  Rate limited ({resp.status_code}) on Lever — sleeping {RATE_LIMIT_SLEEP}s")
-                time.sleep(RATE_LIMIT_SLEEP)
+                time.sleep(2)  # brief back-off; parallel workers don't need the full 45s stall
                 return DiscoveryResult(None, None, None, None, "RATE_LIMITED", f"Lever HTTP {resp.status_code}")
             if resp.status_code == 200 and "lever.co" in resp.url.lower():
                 if not _is_ats_not_found(resp.text) and verify_page_ownership(resp.text, name):
@@ -253,7 +253,7 @@ def discover_for_company(session: requests.Session, company: dict) -> DiscoveryR
                 resp = session.get(wd_url, timeout=7, allow_redirects=True)
                 if _is_rate_limited(resp.status_code):
                     print(f"  Rate limited ({resp.status_code}) on Workday wd{wd_n} — sleeping {RATE_LIMIT_SLEEP}s")
-                    time.sleep(RATE_LIMIT_SLEEP)
+                    time.sleep(2)  # brief back-off; parallel workers don't need the full 45s stall
                     return DiscoveryResult(None, None, None, None, "RATE_LIMITED", f"Workday HTTP {resp.status_code}")
                 if resp.status_code == 200 and not _is_ats_not_found(resp.text):
                     final_url = resp.url
@@ -284,7 +284,7 @@ def discover_for_company(session: requests.Session, company: dict) -> DiscoveryR
                 resp = session.get(url, timeout=REQUEST_TIMEOUT, allow_redirects=True)
                 if _is_rate_limited(resp.status_code):
                     print(f"  Rate limited ({resp.status_code}) on {base} — sleeping {RATE_LIMIT_SLEEP}s")
-                    time.sleep(RATE_LIMIT_SLEEP)
+                    time.sleep(2)  # brief back-off; parallel workers don't need the full 45s stall
                     break
                 if resp.status_code != 200:
                     continue
@@ -444,16 +444,28 @@ def heal_registry(heal_all: bool = False) -> None:
             print(f"[{idx:>4}/{len(to_heal)}] {marker:<7} {name:<35} {result.status} → status:{company.get('status','?')}")
         return row
 
+    # Worker timeout: max seconds we'll wait for a single company before giving up.
+    # Covers stuck TCP connections and rate-limit sleeps that outlast everything else.
+    WORKER_TIMEOUT = 120
+
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
         futures = {
-            pool.submit(_heal_one, idx, company): idx
+            pool.submit(_heal_one, idx, company): (idx, company.get("name", "?"))
             for idx, company in enumerate(to_heal, start=1)
         }
         for future in as_completed(futures):
-            row = future.result()
-            if row["changed"]:
-                updated_count += 1
-            report_rows.append(row)
+            idx, name = futures[future]
+            try:
+                row = future.result(timeout=WORKER_TIMEOUT)
+                if row["changed"]:
+                    updated_count += 1
+                report_rows.append(row)
+            except TimeoutError:
+                with print_lock:
+                    print(f"[{idx:>4}/{len(to_heal)}] TIMEOUT  {name:<35} worker exceeded {WORKER_TIMEOUT}s — skipped")
+            except Exception as exc:
+                with print_lock:
+                    print(f"[{idx:>4}/{len(to_heal)}] ERROR    {name:<35} {exc}")
 
     # Sort report by original order for the CSV
     report_rows.sort(key=lambda r: r["idx"])
