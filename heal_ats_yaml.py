@@ -3,7 +3,9 @@ import csv
 import random
 import re
 import shutil
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -20,10 +22,11 @@ BACKUP_FILE = BASE_DIR / "config" / "job_search_companies.yaml.bak"
 REPORT_FILE = BASE_DIR / "results" / "heal_ats_yaml_report.csv"
 REPORT_FILE.parent.mkdir(exist_ok=True)
 
-REQUEST_TIMEOUT = 12
-MIN_SLEEP = 1.5       # minimum seconds between companies
-MAX_SLEEP = 4.0       # maximum seconds between companies
+REQUEST_TIMEOUT = 7    # reduced: 12 → 7s (parallel workers tolerate tighter timeouts)
+MIN_SLEEP = 1.5        # minimum seconds between companies (sequential mode only)
+MAX_SLEEP = 4.0        # maximum seconds between companies (sequential mode only)
 RATE_LIMIT_SLEEP = 45  # sleep when we hit a 429/503
+MAX_WORKERS = 8        # parallel threads for discovery
 
 # Rotate User-Agents per company to reduce bot-detection fingerprinting.
 USER_AGENTS = [
@@ -411,24 +414,21 @@ def heal_registry(heal_all: bool = False) -> None:
         return
 
     shutil.copy2(YAML_FILE, BACKUP_FILE)
-    session = make_session()
     updated_count, report_rows = 0, []
+    print_lock = threading.Lock()
 
-    for idx, company in enumerate(to_heal, start=1):
+    def _heal_one(idx: int, company: dict):
+        """Worker: create its own session, discover, update in-place, return report row."""
+        session = make_session()
         name = company.get("name", "<unknown>")
-
-        # Rotate User-Agent per company to vary the fingerprint.
-        session.headers["User-Agent"] = random.choice(USER_AGENTS)
-
         old_adapter = company.get("adapter", "")
         old_url = company.get("careers_url", "")
 
         result = discover_for_company(session, company)
         changed = update_company_record(company, result)
-        if changed:
-            updated_count += 1
 
-        report_rows.append({
+        row = {
+            "idx": idx,
             "name": name,
             "heal_status": result.status,
             "detail": result.detail,
@@ -437,23 +437,34 @@ def heal_registry(heal_all: bool = False) -> None:
             "new_adapter": company.get("adapter", ""),
             "old_url": old_url,
             "new_url": company.get("careers_url", ""),
-        })
-
+            "changed": changed,
+        }
         marker = "UPDATED" if changed else "OK"
-        print(f"[{idx:>4}/{len(to_heal)}] {marker:<7} {name:<35} {result.status} → status:{company.get('status','?')}")
+        with print_lock:
+            print(f"[{idx:>4}/{len(to_heal)}] {marker:<7} {name:<35} {result.status} → status:{company.get('status','?')}")
+        return row
 
-        # Jittered delay between companies — looks more human, avoids rate limits.
-        _jitter(MIN_SLEEP, MAX_SLEEP)
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
+        futures = {
+            pool.submit(_heal_one, idx, company): idx
+            for idx, company in enumerate(to_heal, start=1)
+        }
+        for future in as_completed(futures):
+            row = future.result()
+            if row["changed"]:
+                updated_count += 1
+            report_rows.append(row)
+
+    # Sort report by original order for the CSV
+    report_rows.sort(key=lambda r: r["idx"])
 
     with YAML_FILE.open("w", encoding="utf-8") as f:
         yaml.safe_dump(data, f, sort_keys=False, allow_unicode=True)
 
     REPORT_FILE.parent.mkdir(parents=True, exist_ok=True)
     with REPORT_FILE.open("w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(
-            f,
-            fieldnames=["name", "heal_status", "detail", "company_status", "old_adapter", "new_adapter", "old_url", "new_url"],
-        )
+        csv_fields = ["name", "heal_status", "detail", "company_status", "old_adapter", "new_adapter", "old_url", "new_url"]
+        writer = csv.DictWriter(f, fieldnames=csv_fields, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(report_rows)
 
