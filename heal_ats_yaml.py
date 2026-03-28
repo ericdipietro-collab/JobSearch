@@ -93,10 +93,14 @@ ATS_PATTERNS = {
         re.compile(r"https?://jobs\.ashbyhq\.com/([\w.-]+)", re.I),
     ],
     "workday": [
-        re.compile(r"https?://([\w.-]+\.myworkdayjobs\.com/[^\"'\s<>]+)", re.I),
+        # Stop at &, \, {, } in addition to quotes/whitespace/angle-brackets so that
+        # HTML-encoded quotes (&#34;) and JSON remnants don't bleed into the captured path.
+        re.compile(r"https?://([\w.-]+\.myworkdayjobs\.com/[^\"'&\s<>\\{}]+)", re.I),
     ],
 }
 
+
+_WORKDAY_AUTH_PATHS = re.compile(r"/(login|logout|auth|register|resetpassword)(/.*)?$", re.I)
 
 def extract_ats_key(text: str, url: str, adapter: str) -> Optional[str]:
     patterns = ATS_PATTERNS.get(adapter, [])
@@ -104,7 +108,10 @@ def extract_ats_key(text: str, url: str, adapter: str) -> Optional[str]:
         for source in [url, text]:
             m = p.search(source)
             if m:
-                return m.group(1).split("?")[0].strip("/")
+                key = m.group(1).split("?")[0].strip("/\\ ")
+                if adapter == "workday":
+                    key = _WORKDAY_AUTH_PATHS.sub("", key).strip("/\\ ")
+                return key or None
     return None
 
 
