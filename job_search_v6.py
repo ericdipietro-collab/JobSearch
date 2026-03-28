@@ -4491,51 +4491,7 @@ DISCOVERY_URLS_BY_COMPANY: Dict[str, List[str]] = {
     "MuleSoft": ["https://careers.salesforce.com/en/jobs/"],
 }
 
-EXTERNAL_BOARD_REGISTRY: List[Dict[str, Any]] = [
-    {
-        "name": "eFinancialCareers",
-        "adapter": "efinancialcareers",
-        "search_urls": [
-            "https://www.efinancialcareers.com/jobs",
-            "https://www.efinancialcareers.com/jobs/remote",
-            "https://www.efinancialcareers.com/jobs/capital-markets",
-        ],
-        "notes": "Finance-native board with capital markets and remote filters.",
-    },
-    {
-        "name": "Wellfound",
-        "adapter": "wellfound",
-        "search_urls": [
-            "https://wellfound.com/remote",
-            "https://wellfound.com/role/r/technical-product-manager",
-            "https://wellfound.com/jobs",
-            "https://wellfound.com/job-collections/remote-product-manager-jobs",
-        ],
-        "notes": "Startup/fintech recall booster with salary and remote metadata on many listings.",
-    },
-    {
-        "name": "Built In",
-        "adapter": "builtin",
-        "search_urls": [
-            "https://builtin.com/jobs/remote/fintech",
-            "https://builtin.com/jobs/remote/product/fintech",
-            "https://builtin.com/jobs/product/fintech",
-        ],
-        "notes": "Broad fintech board with useful salary and remote labels.",
-    },
-    {
-        "name": "Welcome to the Jungle",
-        "adapter": "welcometothejungle",
-        "search_urls": [
-            "https://app.welcometothejungle.com/companies/Plaid",
-            "https://app.welcometothejungle.com/companies/Ramp",
-            "https://app.welcometothejungle.com/companies/Lemfi",
-            "https://app.welcometothejungle.com/companies/Cardless",
-            "https://app.welcometothejungle.com/companies/Aleph",
-        ],
-        "notes": "Welcome to the Jungle company pages for fintech-heavy employers; job extraction happens from company pages and detail pages.",
-    },
-]
+EXTERNAL_BOARD_REGISTRY: List[Dict[str, Any]] = []
 
 EXTERNAL_BOARD_COMMON_DOMAIN_MARKERS = [
     "fintech", "financial services", "financial infrastructure", "capital markets",
