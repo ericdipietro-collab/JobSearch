@@ -22,8 +22,8 @@ try:
     from db.schema import init_db
     from services.opportunity_service import sync_from_excel
     from services.importer import import_tracker_csv
-    from pages.pipeline_page import render_pipeline
-    from pages.analytics_page import render_analytics
+    from views.pipeline_page import render_pipeline
+    from views.analytics_page import render_analytics
     _ATS_AVAILABLE = True
 except ImportError:
     _ATS_AVAILABLE = False
