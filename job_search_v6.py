@@ -5626,6 +5626,11 @@ def ashby(company: Company, rejected_jobs: Optional[List[RejectedJob]] = None) -
         for item in raw.get("secondaryLocations") or []:
             locations.append(clean(item.get("location")))
         location = " / ".join([x for x in unique_preserve(locations) if x])
+        # Honour Ashby's dedicated remote flags — a job can be remote even if the
+        # location field only lists an office city.
+        is_remote_flag = raw.get("isRemote") or (raw.get("workplaceType") or "").lower() == "remote"
+        if is_remote_flag and "remote" not in location.lower():
+            location = f"{location} / Remote" if location else "Remote"
         comp = raw.get("compensation") or {}
         desc = " ".join([
             clean(raw.get("descriptionHtml") or raw.get("descriptionPlain")),
@@ -5687,10 +5692,16 @@ def lever(company: Company, rejected_jobs: Optional[List[RejectedJob]] = None) -
     jobs: List[Job] = []
 
     for raw in data:
+        lever_location = (raw.get("categories") or {}).get("location", "")
+        # Lever's workplaceType field ("remote"/"hybrid"/"on-site") is more reliable
+        # than the location string for remote detection.
+        lever_workplace = (raw.get("workplaceType") or "").lower()
+        if lever_workplace == "remote" and "remote" not in lever_location.lower():
+            lever_location = f"{lever_location} / Remote" if lever_location else "Remote"
         job = make_job(
             company=company,
             title=raw.get("text", ""),
-            location=(raw.get("categories") or {}).get("location", ""),
+            location=lever_location,
             url=raw.get("hostedUrl", ""),
             source="Lever",
             description=raw.get("descriptionPlain", ""),
