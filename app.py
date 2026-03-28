@@ -982,7 +982,7 @@ elif page == "Companies":
             cols_s[i].metric(f"{icon} {s.title()}", cnt)
         st.divider()
 
-    tab_list, tab_edit, tab_heal, tab_raw = st.tabs(["Company List", "Add / Edit Company", "Heal ATS", "Raw YAML Editor"])
+    tab_list, tab_edit, tab_bulk, tab_heal, tab_raw = st.tabs(["Company List", "Add / Edit Company", "Bulk URL Fix", "Heal ATS", "Raw YAML Editor"])
 
     # ── Company list (editable table) ─────────────────────────────────────────
     with tab_list:
@@ -1281,6 +1281,114 @@ elif page == "Companies":
                     )
             except Exception as exc:
                 st.warning(f"Could not read heal report: {exc}")
+
+    # ── Bulk URL fix ──────────────────────────────────────────────────────────
+    with tab_bulk:
+        if not companies:
+            st.info("No companies in registry.")
+        else:
+            st.caption(
+                "Edit careers URLs and adapters in bulk. "
+                "Filter to broken/new companies to focus on what needs fixing. "
+                "Click **Save Changes** when done."
+            )
+
+            # Filter controls
+            bc1, bc2 = st.columns([2, 3])
+            with bc1:
+                bulk_filter = st.selectbox(
+                    "Show",
+                    ["Broken / New only", "All companies"],
+                    key="bulk_filter",
+                )
+            with bc2:
+                bulk_search = st.text_input(
+                    "Search by name", placeholder="Type to filter…", key="bulk_search"
+                )
+
+            # Build the editable slice
+            bulk_rows = []
+            for c in companies:
+                status = (c.get("status") or "").lower()
+                if bulk_filter == "Broken / New only" and status not in ("broken", "new", "changed", "", None):
+                    continue
+                name = c.get("name", "")
+                if bulk_search and bulk_search.lower() not in name.lower():
+                    continue
+                bulk_rows.append({
+                    "name":         name,
+                    "adapter":      c.get("adapter") or "",
+                    "careers_url":  c.get("careers_url") or "",
+                    "status":       c.get("status") or "",
+                    "heal_skip":    bool(c.get("heal_skip", False)),
+                })
+
+            if not bulk_rows:
+                st.info("No companies match the current filter.")
+            else:
+                st.caption(f"{len(bulk_rows)} companies shown.")
+                bulk_df = pd.DataFrame(bulk_rows)
+                edited_bulk = st.data_editor(
+                    bulk_df,
+                    use_container_width=True,
+                    num_rows="fixed",
+                    column_config={
+                        "name":        st.column_config.TextColumn("Company", disabled=True, width="medium"),
+                        "adapter":     st.column_config.SelectboxColumn("Adapter", options=KNOWN_ADAPTERS, width="small"),
+                        "careers_url": st.column_config.TextColumn("Careers URL", width="large"),
+                        "status":      st.column_config.SelectboxColumn(
+                            "Status",
+                            options=["active", "broken", "new", "changed"],
+                            width="small",
+                        ),
+                        "heal_skip":   st.column_config.CheckboxColumn("Skip Healer", width="small"),
+                    },
+                    key="bulk_editor",
+                )
+
+                if st.button("💾 Save Changes", type="primary", key="bulk_save"):
+                    try:
+                        shutil.copy2(COMPANIES_YAML, COMPANIES_BAK)
+                        # Build lookup of edits by name
+                        edits = {
+                            row["name"]: row
+                            for row in edited_bulk.to_dict("records")
+                        }
+                        ATS_FIELDS = {"adapter", "adapter_key", "careers_url", "domain"}
+                        changed_count = 0
+                        for company in companies:
+                            name = company.get("name", "")
+                            if name not in edits:
+                                continue
+                            edit = edits[name]
+                            ats_changed = any(
+                                str(edit.get(f) or "") != str(company.get(f) or "")
+                                for f in ATS_FIELDS if f in edit
+                            )
+                            updated = False
+                            for field in ("adapter", "careers_url", "status"):
+                                new_val = edit.get(field, "")
+                                if str(company.get(field) or "") != str(new_val):
+                                    company[field] = new_val
+                                    updated = True
+                            if edit.get("heal_skip"):
+                                if not company.get("heal_skip"):
+                                    company["heal_skip"] = True
+                                    updated = True
+                            elif "heal_skip" in company:
+                                del company["heal_skip"]
+                                updated = True
+                            if ats_changed and edit.get("status") not in ("broken", "new"):
+                                company["status"] = "changed"
+                            if updated:
+                                changed_count += 1
+
+                        with COMPANIES_YAML.open("w", encoding="utf-8") as f:
+                            yaml.safe_dump({"companies": companies}, f, sort_keys=False, allow_unicode=True)
+                        st.success(f"Saved {changed_count} updated companies.")
+                        st.rerun()
+                    except Exception as exc:
+                        st.error(f"Save failed: {exc}")
 
     # ── Raw YAML editor ───────────────────────────────────────────────────────
     with tab_raw:
