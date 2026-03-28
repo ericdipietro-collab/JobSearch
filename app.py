@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import shutil
 import subprocess
 import sys
@@ -13,6 +14,18 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 import yaml
+
+# ── ATS database layer ────────────────────────────────────────────────────────
+try:
+    from db.connection import get_db
+    from db.schema import init_db
+    from services.opportunity_service import sync_from_excel
+    from services.importer import import_tracker_csv
+    from pages.pipeline_page import render_pipeline
+    from pages.analytics_page import render_analytics
+    _ATS_AVAILABLE = True
+except ImportError:
+    _ATS_AVAILABLE = False
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 
@@ -26,6 +39,16 @@ STATUS_JSON    = RESULTS_DIR / "job_status.json"
 PREFS_YAML     = CONFIG_DIR  / "job_search_preferences.yaml"
 COMPANIES_YAML = CONFIG_DIR  / "job_search_companies.yaml"
 COMPANIES_BAK  = CONFIG_DIR  / "job_search_companies.yaml.bak"
+DB_PATH        = RESULTS_DIR / "jobsearch.db"
+TRACKER_CSV    = RESULTS_DIR / "ApplicationTracker.csv"
+
+# Initialise DB on startup (idempotent)
+if _ATS_AVAILABLE:
+    import sqlite3 as _sqlite3
+    from db.schema import init_db as _init_db
+    _init_conn = _sqlite3.connect(str(DB_PATH))
+    _init_db(_init_conn)
+    _init_conn.close()
 
 # ── Page config ───────────────────────────────────────────────────────────────
 
@@ -154,9 +177,10 @@ def _apply_overrides(df: pd.DataFrame, overrides: dict) -> pd.DataFrame:
 
 st.sidebar.title("💼 Job Search")
 
+_nav_options = ["Results", "Pipeline", "Analytics", "Run Pipeline", "Preferences", "Companies"]
 page = st.sidebar.radio(
     "Navigate",
-    ["Results", "Run Pipeline", "Preferences", "Companies"],
+    _nav_options,
     label_visibility="collapsed",
 )
 
@@ -208,6 +232,9 @@ if page == "Run Pipeline":
                     cmd,
                     capture_output=True,
                     text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    env={**os.environ, "PYTHONIOENCODING": "utf-8"},
                     cwd=str(BASE_DIR),
                     timeout=3600,
                 )
@@ -215,6 +242,18 @@ if page == "Run Pipeline":
                 combined = (proc.stdout or "") + (proc.stderr or "")
                 if proc.returncode == 0:
                     st.success("Pipeline finished successfully.")
+                    # Auto-sync into ATS database
+                    if _ATS_AVAILABLE and XLSX_PATH.exists():
+                        try:
+                            _sync_conn = get_db()
+                            _sync_result = sync_from_excel(_sync_conn, XLSX_PATH, STATUS_JSON)
+                            st.info(
+                                f"ATS sync: {_sync_result['inserted']} new · "
+                                f"{_sync_result['updated']} updated · "
+                                f"{_sync_result['skipped']} skipped"
+                            )
+                        except Exception as _sync_exc:
+                            st.warning(f"ATS sync failed: {_sync_exc}")
                 else:
                     st.error(f"Pipeline exited with code {proc.returncode}.")
                 # Show last 8 000 chars so the log box doesn't get enormous
@@ -224,10 +263,43 @@ if page == "Run Pipeline":
             except Exception as exc:
                 st.error(f"Failed to start pipeline: {exc}")
 
+    # Manual sync controls (always visible)
+    if _ATS_AVAILABLE:
+        st.divider()
+        st.markdown("### ATS Database")
+        _sc1, _sc2 = st.columns(2)
+        with _sc1:
+            if st.button("↻ Sync Excel → DB", help="Import current results into the ATS database"):
+                if XLSX_PATH.exists():
+                    with st.spinner("Syncing…"):
+                        _r = sync_from_excel(get_db(), XLSX_PATH, STATUS_JSON)
+                    st.success(f"{_r['inserted']} new · {_r['updated']} updated · {_r['skipped']} skipped")
+                else:
+                    st.warning("No results file found. Run the pipeline first.")
+        with _sc2:
+            if TRACKER_CSV.exists() and st.button("⬆ Import ApplicationTracker.csv"):
+                with st.spinner("Importing…"):
+                    _tr = import_tracker_csv(get_db(), TRACKER_CSV)
+                st.success(f"{_tr['inserted']} inserted · {_tr['updated']} updated · {_tr['errors']} errors")
+
 
 # ════════════════════════════════════════════════════════════════════════════════
 # PAGE: RESULTS
 # ════════════════════════════════════════════════════════════════════════════════
+
+elif page == "Pipeline":
+    if _ATS_AVAILABLE:
+        conn = get_db()
+        render_pipeline(conn)
+    else:
+        st.error("ATS database modules not available. Check that db/ and services/ packages are installed.")
+
+elif page == "Analytics":
+    if _ATS_AVAILABLE:
+        conn = get_db()
+        render_analytics(conn)
+    else:
+        st.error("ATS database modules not available.")
 
 elif page == "Results":
     st.title("Job Search Results")
@@ -427,19 +499,55 @@ elif page == "Preferences":
     prefs = load_yaml_file(PREFS_YAML)
     raw_yaml = PREFS_YAML.read_text(encoding="utf-8") if PREFS_YAML.exists() else ""
 
-    tab_form, tab_raw = st.tabs(["Key Settings", "Full YAML Editor"])
+    if not prefs:
+        st.warning("No preferences file found at config/job_search_preferences.yaml")
+        st.stop()
 
-    # ── Structured form ───────────────────────────────────────────────────────
-    with tab_form:
-        if not prefs:
-            st.warning("No preferences file found at config/job_search_preferences.yaml")
-            st.stop()
+    comp     = prefs.get("search", {}).get("compensation", {})
+    search   = prefs.get("search", {})
+    scoring  = prefs.get("scoring", {})
+    titles   = prefs.get("titles", {})
+    keywords = prefs.get("keywords", {})
 
-        comp = prefs.get("search", {}).get("compensation", {})
-        search = prefs.get("search", {})
-        scoring = prefs.get("scoring", {})
-        titles = prefs.get("titles", {})
+    # ── Shared widget: editable keyword→weight table ───────────────────────────
+    def _kw_weight_editor(data_dict: dict, editor_key: str, note: str = "") -> dict:
+        """Render a keyword→weight mapping as an editable table; return updated dict."""
+        rows = [{"keyword": k, "weight": int(v)} for k, v in sorted(data_dict.items(), key=lambda x: -x[1])]
+        df_kw = pd.DataFrame(rows) if rows else pd.DataFrame(columns=["keyword", "weight"])
+        if note:
+            st.caption(note)
+        edited = st.data_editor(
+            df_kw,
+            column_config={
+                "keyword": st.column_config.TextColumn("Keyword / Phrase", width="large"),
+                "weight": st.column_config.NumberColumn("Points", min_value=1, max_value=50, step=1, width="small"),
+            },
+            num_rows="dynamic",
+            hide_index=True,
+            use_container_width=True,
+            key=editor_key,
+        )
+        result: dict = {}
+        for _, row in edited.iterrows():
+            kw = str(row.get("keyword") or "").strip()
+            wt = row.get("weight")
+            if kw and wt is not None and not (isinstance(wt, float) and math.isnan(wt)):
+                try:
+                    result[kw] = int(wt)
+                except (ValueError, TypeError):
+                    pass
+        return result
 
+    tab_comp, tab_title, tab_jd, tab_scoring, tab_raw = st.tabs([
+        "Compensation & Location",
+        "Title Keywords",
+        "JD Keywords",
+        "Scoring",
+        "Full YAML Editor",
+    ])
+
+    # ── Compensation & Location ───────────────────────────────────────────────
+    with tab_comp:
         st.subheader("Compensation")
         fc1, fc2, fc3 = st.columns(3)
         with fc1:
@@ -463,30 +571,7 @@ elif page == "Preferences":
             index=loc_opts.index(search.get("location_policy", "remote_only")),
         )
 
-        st.subheader("Scoring")
-        f_min_score = st.number_input(
-            "Min Score to Keep", value=int(scoring.get("minimum_score_to_keep", 35)),
-            min_value=0, max_value=100,
-        )
-
-        st.subheader("Title — Negative Disqualifiers")
-        dq_current = titles.get("negative_disqualifiers", [])
-        f_disqualifiers = st.text_area(
-            "One keyword per line — jobs matching any of these are immediately rejected",
-            value="\n".join(str(k) for k in dq_current),
-            height=220,
-        )
-
-        st.subheader("Title — Positive Keywords")
-        pos_current = titles.get("positive_keywords", [])
-        f_pos_kws = st.text_area(
-            "One keyword per line — job title must match at least one",
-            value="\n".join(str(k) for k in pos_current),
-            height=200,
-            key="pos_kws_area",
-        )
-
-        if st.button("Save Key Settings", type="primary"):
+        if st.button("Save Compensation & Location", type="primary", key="save_comp"):
             try:
                 prefs.setdefault("search", {}).setdefault("compensation", {}).update({
                     "min_salary_usd": f_min_sal,
@@ -497,19 +582,167 @@ elif page == "Preferences":
                     "salary_floor_basis": f_basis,
                 })
                 prefs["search"]["location_policy"] = f_loc_policy
-                prefs.setdefault("scoring", {})["minimum_score_to_keep"] = f_min_score
-                prefs.setdefault("titles", {})["negative_disqualifiers"] = [
-                    ln.strip() for ln in f_disqualifiers.splitlines() if ln.strip()
-                ]
-                prefs["titles"]["positive_keywords"] = [
-                    ln.strip() for ln in f_pos_kws.splitlines() if ln.strip()
-                ]
                 save_yaml_file(PREFS_YAML, prefs)
-                st.success("Preferences saved.")
+                st.success("Saved.")
             except Exception as exc:
                 st.error(f"Save failed: {exc}")
 
-    # ── Raw YAML editor ───────────────────────────────────────────────────────
+    # ── Title Keywords ─────────────────────────────────────────────────────────
+    with tab_title:
+        fast_track_min = int(titles.get("fast_track_min_weight", 8))
+        st.info(
+            f"**How title scoring works:** A title must match at least one positive keyword "
+            f"to pass the gate. Weighted keywords then determine the score boost — weight "
+            f"≥ **{fast_track_min}** triggers a Fast-Track base score of 50. "
+            f"Disqualifiers are hard rejects applied before any scoring."
+        )
+
+        col_pos, col_neg = st.columns(2)
+        with col_pos:
+            st.subheader("Positive Keywords (gate — unweighted)")
+            st.caption("Title must match at least one of these to proceed past the title gate.")
+            pos_current = titles.get("positive_keywords", [])
+            f_pos_kws = st.text_area(
+                "pos_kws", label_visibility="collapsed",
+                value="\n".join(str(k) for k in pos_current),
+                height=300, key="pos_kws_area",
+            )
+
+        with col_neg:
+            st.subheader("Negative Disqualifiers (hard reject)")
+            st.caption("Any match in the title immediately drops the job — no scoring attempted.")
+            dq_current = titles.get("negative_disqualifiers", [])
+            f_disqualifiers = st.text_area(
+                "neg_dq", label_visibility="collapsed",
+                value="\n".join(str(k) for k in dq_current),
+                height=300, key="neg_dq_area",
+            )
+
+        st.subheader("Title Weights (scoring)")
+        f_title_weights = _kw_weight_editor(
+            titles.get("positive_weights", {}),
+            "title_weights_editor",
+            note=(
+                f"Weight ≥ {fast_track_min} → Fast-Track (base score 50, JD points halved). "
+                f"Lower weights add to score incrementally."
+            ),
+        )
+
+        if st.button("Save Title Keywords", type="primary", key="save_titles"):
+            try:
+                prefs.setdefault("titles", {}).update({
+                    "positive_keywords": [ln.strip() for ln in f_pos_kws.splitlines() if ln.strip()],
+                    "negative_disqualifiers": [ln.strip() for ln in f_disqualifiers.splitlines() if ln.strip()],
+                    "positive_weights": f_title_weights,
+                })
+                save_yaml_file(PREFS_YAML, prefs)
+                st.success("Saved.")
+            except Exception as exc:
+                st.error(f"Save failed: {exc}")
+
+    # ── JD Keywords ───────────────────────────────────────────────────────────
+    with tab_jd:
+        st.info(
+            "**How JD scoring works:** Positive keywords in the job description add points "
+            "(capped, then halved for Fast-Track titles). Negative keywords subtract points "
+            "— a few high-weight negatives can push a job below the keep threshold entirely."
+        )
+
+        col_jd_pos, col_jd_neg = st.columns(2)
+        with col_jd_pos:
+            st.subheader("Positive JD Keywords")
+            f_body_pos = _kw_weight_editor(
+                keywords.get("body_positive", {}),
+                "body_pos_editor",
+                note="Points added per match. Domain-specific signals (e.g. 'aladdin', 'IBOR') score highest.",
+            )
+
+        with col_jd_neg:
+            st.subheader("Negative JD Keywords")
+            f_body_neg = _kw_weight_editor(
+                keywords.get("body_negative", {}),
+                "body_neg_editor",
+                note="Points subtracted per match. High values (20+) reliably push bad-fit roles below threshold.",
+            )
+
+        if st.button("Save JD Keywords", type="primary", key="save_jd"):
+            try:
+                prefs.setdefault("keywords", {}).update({
+                    "body_positive": f_body_pos,
+                    "body_negative": f_body_neg,
+                })
+                save_yaml_file(PREFS_YAML, prefs)
+                st.success("Saved.")
+            except Exception as exc:
+                st.error(f"Save failed: {exc}")
+
+    # ── Scoring ───────────────────────────────────────────────────────────────
+    with tab_scoring:
+        st.subheader("Score Threshold")
+        f_min_score = st.number_input(
+            "Min Score to Keep", value=int(scoring.get("minimum_score_to_keep", 35)),
+            min_value=0, max_value=100,
+        )
+
+        st.subheader("Keyword Matching")
+        kw_cfg = scoring.get("keyword_matching", {})
+        sc1, sc2, sc3 = st.columns(3)
+        with sc1:
+            f_pos_cap = st.number_input(
+                "Positive Keyword Cap", value=int(kw_cfg.get("positive_keyword_cap", 40)),
+                min_value=1, max_value=100,
+            )
+        with sc2:
+            f_neg_cap = st.number_input(
+                "Negative Keyword Cap", value=int(kw_cfg.get("negative_keyword_cap", 45)),
+                min_value=1, max_value=100,
+            )
+        with sc3:
+            f_unique_only = st.checkbox(
+                "Count Unique Matches Only",
+                value=bool(kw_cfg.get("count_unique_matches_only", True)),
+            )
+
+        st.subheader("Salary Score Adjustments")
+        adj = scoring.get("adjustments", {})
+        ac1, ac2 = st.columns(2)
+        with ac1:
+            f_missing_sal_pen = st.number_input(
+                "Missing Salary Penalty", value=int(adj.get("missing_salary_penalty", 6)), min_value=0, max_value=30,
+            )
+            f_sal_above_bonus = st.number_input(
+                "Salary ≥ Target Bonus", value=int(adj.get("salary_at_or_above_target_bonus", 6)), min_value=0, max_value=30,
+            )
+        with ac2:
+            f_sal_floor_bonus = st.number_input(
+                "Salary Meets Floor Bonus", value=int(adj.get("salary_meets_floor_bonus", 2)), min_value=0, max_value=30,
+            )
+            f_sal_below_pen = st.number_input(
+                "Salary Below Target Penalty", value=int(adj.get("salary_below_target_penalty", 12)), min_value=0, max_value=30,
+            )
+
+        if st.button("Save Scoring", type="primary", key="save_scoring"):
+            try:
+                prefs.setdefault("scoring", {}).update({
+                    "minimum_score_to_keep": f_min_score,
+                    "keyword_matching": {
+                        "count_unique_matches_only": f_unique_only,
+                        "positive_keyword_cap": f_pos_cap,
+                        "negative_keyword_cap": f_neg_cap,
+                    },
+                    "adjustments": {
+                        "missing_salary_penalty": f_missing_sal_pen,
+                        "salary_at_or_above_target_bonus": f_sal_above_bonus,
+                        "salary_meets_floor_bonus": f_sal_floor_bonus,
+                        "salary_below_target_penalty": f_sal_below_pen,
+                    },
+                })
+                save_yaml_file(PREFS_YAML, prefs)
+                st.success("Saved.")
+            except Exception as exc:
+                st.error(f"Save failed: {exc}")
+
+    # ── Full YAML editor ───────────────────────────────────────────────────────
     with tab_raw:
         st.caption("Edit the full YAML directly. Indentation must be consistent.")
         f_raw_yaml = st.text_area(
@@ -537,7 +770,19 @@ elif page == "Companies":
     data = load_yaml_file(COMPANIES_YAML)
     companies: list = data.get("companies", [])
 
-    tab_list, tab_edit, tab_raw = st.tabs(["Company List", "Add / Edit Company", "Raw YAML Editor"])
+    # Status summary badges above tabs
+    STATUS_COLORS = {"active": "🟢", "new": "🔵", "changed": "🟡", "broken": "🔴"}
+    if companies:
+        from collections import Counter
+        sc = Counter(c.get("status") or "unscanned" for c in companies)
+        cols_s = st.columns(len(sc) + 1)
+        cols_s[0].metric("Total", len(companies))
+        for i, (s, cnt) in enumerate(sc.most_common(), 1):
+            icon = STATUS_COLORS.get(s, "⚪")
+            cols_s[i].metric(f"{icon} {s.title()}", cnt)
+        st.divider()
+
+    tab_list, tab_edit, tab_heal, tab_raw = st.tabs(["Company List", "Add / Edit Company", "Heal ATS", "Raw YAML Editor"])
 
     # ── Company list (editable table) ─────────────────────────────────────────
     with tab_list:
@@ -545,17 +790,39 @@ elif page == "Companies":
             st.info("No companies in registry.")
         else:
             df_co = pd.DataFrame(companies)
-            # Reorder so useful columns come first
-            front = ["name", "tier", "priority", "adapter", "adapter_key", "domain", "careers_url", "active"]
+            # Normalize mixed-type columns so PyArrow can build the Arrow table.
+            # 'industry' is often a list in YAML but must be a plain string for data_editor.
+            for col in df_co.columns:
+                if df_co[col].apply(lambda v: isinstance(v, list)).any():
+                    df_co[col] = df_co[col].apply(
+                        lambda v: ", ".join(str(i) for i in v) if isinstance(v, list) else (str(v) if v is not None else "")
+                    )
+            # Reorder so useful columns come first; ensure status column exists
+            if "status" not in df_co.columns:
+                df_co["status"] = ""
+            front = ["name", "status", "tier", "priority", "adapter", "adapter_key", "domain", "careers_url", "active"]
             rest  = [c for c in df_co.columns if c not in front]
             df_co = df_co[[c for c in front if c in df_co.columns] + rest]
 
-            q = st.text_input("Filter", placeholder="Search by name, adapter, or tier…")
+            # Filter controls
+            fc1, fc2 = st.columns([3, 1])
+            with fc1:
+                q = st.text_input("Filter", placeholder="Search by name, adapter, or tier…")
+            with fc2:
+                status_filter = st.selectbox(
+                    "Status", ["All", "active", "new", "changed", "broken", "unscanned"],
+                    label_visibility="collapsed",
+                )
             if q:
                 mask = df_co.apply(
                     lambda row: row.astype(str).str.contains(q, case=False, na=False).any(), axis=1
                 )
                 df_co = df_co[mask]
+            if status_filter != "All":
+                if status_filter == "unscanned":
+                    df_co = df_co[df_co["status"].fillna("").eq("")]
+                else:
+                    df_co = df_co[df_co["status"].fillna("").eq(status_filter)]
 
             st.caption(f"{len(df_co)} {'companies' if len(df_co) != 1 else 'company'}")
 
@@ -567,6 +834,9 @@ elif page == "Companies":
                     "active": st.column_config.CheckboxColumn("Active", width="small"),
                     "adapter": st.column_config.SelectboxColumn("Adapter", options=KNOWN_ADAPTERS),
                     "priority": st.column_config.SelectboxColumn("Priority", options=["high", "medium", "low"]),
+                    "status": st.column_config.SelectboxColumn(
+                        "Status", options=["", "active", "new", "changed", "broken"], width="small",
+                    ),
                 },
                 hide_index=True,
                 use_container_width=True,
@@ -578,13 +848,31 @@ elif page == "Companies":
                 try:
                     shutil.copy2(COMPANIES_YAML, COMPANIES_BAK)
                     records = edited_co.to_dict(orient="records")
-                    # Replace float NaN with None so YAML serialises cleanly
-                    import math
-                    cleaned = [
-                        {k: (None if isinstance(v, float) and math.isnan(v) else v)
-                         for k, v in rec.items()}
-                        for rec in records
-                    ]
+                    # Build lookup of original records to detect ATS-relevant changes
+                    orig_by_name = {c.get("name"): c for c in companies}
+                    ATS_FIELDS = {"adapter", "adapter_key", "careers_url", "domain"}
+                    cleaned = []
+                    for rec in records:
+                        clean_rec = {}
+                        for k, v in rec.items():
+                            if isinstance(v, float) and math.isnan(v):
+                                clean_rec[k] = None
+                            elif k == "industry" and isinstance(v, str):
+                                clean_rec[k] = [i.strip() for i in v.split(",") if i.strip()] or None
+                            else:
+                                clean_rec[k] = v
+                        # Auto-flag status when ATS fields change via the table editor
+                        orig = orig_by_name.get(clean_rec.get("name"))
+                        if orig is None:
+                            clean_rec.setdefault("status", "new")
+                        elif clean_rec.get("status") == "active":
+                            ats_changed = any(
+                                str(clean_rec.get(f) or "") != str(orig.get(f) or "")
+                                for f in ATS_FIELDS
+                            )
+                            if ats_changed:
+                                clean_rec["status"] = "changed"
+                        cleaned.append(clean_rec)
                     data["companies"] = cleaned
                     save_yaml_file(COMPANIES_YAML, data)
                     st.success(f"Saved {len(cleaned)} companies. Backup → {COMPANIES_BAK.name}")
@@ -639,6 +927,7 @@ elif page == "Companies":
             else:
                 try:
                     shutil.copy2(COMPANIES_YAML, COMPANIES_BAK)
+                    ATS_FIELDS = {"adapter", "adapter_key", "careers_url", "domain"}
                     rec = {
                         "name":        f_name.strip(),
                         "tier":        int(f_tier),
@@ -658,9 +947,16 @@ elif page == "Companies":
                         None,
                     )
                     if idx is not None:
+                        # Flag as changed if any ATS field was edited
+                        ats_changed = any(
+                            str(rec.get(f) or "") != str(existing.get(f) or "")
+                            for f in ATS_FIELDS
+                        )
+                        rec["status"] = "changed" if ats_changed else existing.get("status", "")
                         companies[idx] = rec
                         st.success(f"Updated '{f_name}'.")
                     else:
+                        rec["status"] = "new"
                         companies.append(rec)
                         st.success(f"Added '{f_name}'.")
 
@@ -678,6 +974,89 @@ elif page == "Companies":
                 st.rerun()
             except Exception as exc:
                 st.error(f"Delete failed: {exc}")
+
+    # ── Heal ATS ──────────────────────────────────────────────────────────────
+    with tab_heal:
+        from collections import Counter as _Counter
+        _sc = _Counter(c.get("status") or "" for c in companies if c.get("active") is not False)
+        _needs = _sc.get("new", 0) + _sc.get("changed", 0) + _sc.get("broken", 0) + _sc.get("", 0)
+        _active = _sc.get("active", 0)
+
+        st.markdown(
+            "Runs `heal_ats_yaml.py` to probe ATS boards and update company records. "
+            "By default only **new**, **changed**, **broken**, and **unscanned** companies are checked — "
+            "this is much faster than scanning all 485 entries."
+        )
+
+        hc1, hc2, hc3, hc4 = st.columns(4)
+        hc1.metric("🔵 New", _sc.get("new", 0))
+        hc2.metric("🟡 Changed", _sc.get("changed", 0))
+        hc3.metric("🔴 Broken", _sc.get("broken", 0))
+        hc4.metric("⚪ Unscanned", _sc.get("", 0))
+        st.caption(f"🟢 {_active} already active (will be skipped unless 'Heal All' is checked)")
+
+        st.divider()
+
+        heal_all_flag = st.checkbox(
+            "Heal All (re-scan every active company too)",
+            help="Unchecked = only new/changed/broken/unscanned. Checked = every active company is re-probed.",
+        )
+
+        if _needs == 0 and not heal_all_flag:
+            st.success("Nothing to heal — all companies are active.")
+        else:
+            target_count = len(companies) if heal_all_flag else _needs
+            st.info(f"Will scan **{target_count}** {'companies' if target_count != 1 else 'company'}.")
+
+        if st.button("🔧 Run Heal ATS", type="primary", key="run_heal"):
+            cmd = [sys.executable, str(BASE_DIR / "heal_ats_yaml.py")]
+            if heal_all_flag:
+                cmd.append("--all")
+            log_box = st.empty()
+            with st.spinner("Healing… this may take several minutes."):
+                try:
+                    proc = subprocess.run(
+                        cmd,
+                        capture_output=True,
+                        text=True,
+                        encoding="utf-8",
+                        errors="replace",
+                        env={**os.environ, "PYTHONIOENCODING": "utf-8"},
+                        cwd=str(BASE_DIR),
+                        timeout=7200,
+                    )
+                    combined = (proc.stdout or "") + (proc.stderr or "")
+                    if proc.returncode == 0:
+                        st.success("Heal complete.")
+                    else:
+                        st.error(f"Healer exited with code {proc.returncode}.")
+                    log_box.code(combined[-8000:] if len(combined) > 8000 else combined, language=None)
+                except subprocess.TimeoutExpired:
+                    st.error("Heal timed out after 2 hours.")
+                except Exception as exc:
+                    st.error(f"Failed to start healer: {exc}")
+
+        # Show last heal report if it exists
+        heal_report = RESULTS_DIR / "heal_ats_yaml_report.csv"
+        if heal_report.exists():
+            st.divider()
+            st.subheader("Last Heal Report")
+            try:
+                df_heal = pd.read_csv(heal_report, dtype=str)
+                st.caption(f"{len(df_heal)} companies scanned in last run")
+                status_col = "heal_status" if "heal_status" in df_heal.columns else "status"
+                if status_col in df_heal.columns:
+                    st.dataframe(
+                        df_heal,
+                        use_container_width=True,
+                        hide_index=True,
+                        column_config={
+                            "new_url": st.column_config.LinkColumn("New URL"),
+                            "old_url": st.column_config.LinkColumn("Old URL"),
+                        },
+                    )
+            except Exception as exc:
+                st.warning(f"Could not read heal report: {exc}")
 
     # ── Raw YAML editor ───────────────────────────────────────────────────────
     with tab_raw:

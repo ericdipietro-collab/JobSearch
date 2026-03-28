@@ -1,46 +1,49 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Job Search Preferences — example / template
+#
+# Copy this file to config/job_search_preferences.yaml and fill in your own
+# values.  The real preferences file is gitignored to keep personal salary and
+# location data off of GitHub.
+# ──────────────────────────────────────────────────────────────────────────────
+
 version: 1
 search:
+  # remote_only | remote_or_hybrid | any
   location_policy: remote_only
   geography:
     us_only: true
   location_preferences:
     remote_us:
       enabled: true
-      bonus: 14
+      bonus: 14          # score boost for confirmed-remote roles
     local_hybrid:
       enabled: true
-      primary_zip: '80504'
+      # ── PERSONAL: set to your own zip code ──────────────────────────────────
+      primary_zip: 'YOUR_ZIP'
       radius_miles: 30
+      # City/town names that indicate a role is within commuting distance.
+      # Add any city names that appear in job listings near you.
       markers:
-      - '80504'
-      - firestone
-      - frederick
-      - dacono
-      - mead
-      - longmont
-      - erie
-      - lafayette
-      - louisville
-      - boulder
-      - broomfield
-      - westminster
-      - thornton
-      - northglenn
-      - johnstown
-      - loveland
+      - YOUR_CITY
+      - NEARBY_CITY_1
+      - NEARBY_CITY_2
+      # ────────────────────────────────────────────────────────────────────────
       bonus: 4
-      allow_if_salary_at_least_usd: 170000
+      allow_if_salary_at_least_usd: 120000   # hybrid only if salary meets this floor
   compensation:
     enforce_min_salary: true
-    target_salary_usd: 170000
-    min_salary_usd: 170000
-    preferred_remote_min_salary_usd: 170000
-    allow_missing_salary: true
-    salary_floor_basis: midpoint
-    negotiation_buffer_pct: 0.05
+    # ── PERSONAL: set your salary floor ─────────────────────────────────────
+    target_salary_usd: 150000
+    min_salary_usd: 150000
+    preferred_remote_min_salary_usd: 150000
+    # ────────────────────────────────────────────────────────────────────────
+    allow_missing_salary: true    # include jobs that don't list salary
+    salary_floor_basis: midpoint  # midpoint | low_end | high_end
+    negotiation_buffer_pct: 0.05  # 5% negotiation buffer applied to floor
   recency:
     enforce_job_age: true
     max_job_age_days: 21
+
 scoring:
   minimum_score_to_keep: 35
   apply_now:
@@ -109,34 +112,26 @@ scoring:
         min_score: 40
     - label: IGNORE
       when: {}
+
+# ── Title keyword configuration ───────────────────────────────────────────────
+# Customise these for your target role family.
 titles:
   require_one_positive_keyword: true
+  # Title must contain at least one of these to pass the title gate.
   positive_keywords:
   - product manager
   - product management
   - program manager
   - architect
   - integration
-  - integrations
   - solution
   - platform
   - business systems analyst
   - business analyst
-  - bsa
   - technical product
   - technical program
   - product lead
   - product owner
-  - solutions consultant
-  - integrations manager
-  - integration manager
-  - application manager
-  - business transformation
-  - investment solutions
-  - ' senior pm'
-  - ' staff pm'
-  - ' principal pm'
-  - ' lead pm'
   negative_disqualifiers:
   - software engineer
   - engineering manager
@@ -151,7 +146,6 @@ titles:
   - recruiter
   - talent
   - human resources
-  - ' hr '
   - attorney
   - counsel
   - legal
@@ -160,16 +154,16 @@ titles:
   - customer success
   - customer support
   - marketing manager
-  - 'content '
   - designer
   - ux researcher
   - data scientist
   - research scientist
-  - finance analyst
   - financial analyst
   - controller
   - accountant
   - sales
+  # Title weights — higher weight = stronger signal.
+  # Weight >= fast_track_min_weight triggers base score of fast_track_base_score.
   positive_weights:
     technical product manager: 8
     solution architect: 7
@@ -182,184 +176,50 @@ titles:
     principal product manager: 5
     staff product manager: 5
     program manager: 3
-  constraints:
-    product_manager_requires_modifier: true
-    product_manager_allowed_modifiers:
-    - staff
-    - principal
-    - senior
-    - lead
-    - integration
-    - integrations
-    - platform
-    - api
-    - data
-    - infrastructure
-    - technical
-    - core
-    - enterprise
-    - capital
-    - financial
-    - payments
-    - investment
-    - trading
-    - brokerage
-    - wealth
-    - reporting
-    - fund
-    - alternative
-    - analytics
-    - ledger
-    - reconciliation
-    - solution
-    - payments
-    - money movement
-    - billing
-    - capital
-    - advisor
-    business_analyst_requires_modifier: true
-    business_analyst_allowed_modifiers:
-    - senior
-    - lead
-    - principal
-    - systems
-    - technical
-    - investment
-    - financial
-    - capital markets
-    - data
   fast_track_base_score: 50
   fast_track_min_weight: 8
+
+# ── Job description keyword scoring ──────────────────────────────────────────
+# Edit these to match your domain expertise and target market.
 keywords:
   body_positive:
-    aladdin: 12
-    eagle pace: 12
-    charles river: 10
-    investment data warehouse: 10
-    idw: 8
-    ss&c: 8
-    maximis: 8
-    ibor: 8
-    abor: 8
+    # Domain-specific signals — replace with keywords relevant to your field.
+    # Higher scores = stronger domain fit signal.
     capital markets: 8
     fixed income: 6
-    equities: 5
-    derivatives: 5
-    trading systems: 7
     portfolio analytics: 7
-    risk analytics: 6
     financial reporting: 7
     reconciliation: 7
-    subledger: 7
-    gl integration: 7
     fund accounting: 7
-    month-end close: 6
-    sox: 5
-    nfs: 8
-    dtcc: 7
-    custodian: 7
-    brokerage: 7
-    self-directed trading: 7
-    tax lots: 6
-    settlements: 5
-    clearing: 5
-    alternative investments: 8
-    private markets: 8
-    private equity: 7
-    hedge fund: 7
-    fund administration: 7
-    subscription documents: 8
-    investor onboarding: 6
     wealth management: 7
-    advisor technology: 7
-    wealthtech: 7
-    ria platform: 7
-    portfolio reporting: 6
-    payment rails: 6
-    ach: 5
-    money movement: 6
-    disbursements: 5
-    b2b payments: 7
+    investment management: 7
     api integration: 7
     data integration: 6
-    custodian api: 8
-    market data api: 7
-    integration platform: 6
     financial services: 5
     fintech: 4
-    data platform: 4
     etl: 4
     data pipeline: 4
-    investment management: 7
-    portfolio management: 7
-    managed accounts: 7
-    separately managed accounts: 8
-    bill pay: 7
-    payment operations: 6
-    payables: 5
-    card issuing: 7
-    partner platform: 5
-    partner api: 6
-    asset management: 5
-    ledger: 6
-    double entry: 8
-    double-entry: 8
-    general ledger: 6
-    journal entry: 5
-    gl mapping: 6
   body_negative:
-    earned wage access: 30
-    ewa: 20
-    buy now pay later: 30
-    bnpl: 25
-    consumer lending: 25
-    mortgage: 20
-    home equity: 20
-    personal finance: 20
-    credit scoring: 15
-    consumer loans: 20
+    # Roles / technologies that are a poor fit — scoring penalty per match.
+    # High values (20+) will push a job below the keep threshold.
     incident management: 25
     site reliability: 30
     kubernetes: 20
     ci/cd: 15
-    observability: 20
-    pagerduty: 25
-    datadog: 20
     vector database: 30
     llm infrastructure: 30
-    embedding models: 30
     ml platform: 25
     model training: 20
     deep learning: 25
-    feature engineering: 15
-    consumer app: 20
-    mobile banking: 20
-    retail banking: 15
-    user acquisition: 20
-    growth hacking: 25
-    developer tools: 20
-    sdk for developers: 25
-    cli tool: 20
-    auth platform: 15
-    small business payroll: 20
-    employee scheduling: 25
-    restaurant software: 30
     blockchain: 20
     defi: 25
-    smart contracts: 25
     web3: 25
-    cryptocurrency: 20
-    nft: 25
     write production code: 25
     daily coding: 25
     hands-on coding: 25
-    golang: 20
-    rust language: 20
-    c++ development: 20
     marketing automation: 25
-    lifecycle campaigns: 20
-    a/b testing consumer: 20
     seo/sem: 25
+
 policy:
   title_rescue:
     adjacent_title_bonus: 8
@@ -368,16 +228,12 @@ policy:
     strong_body_domain_markers:
     - risk
     - fraud
-    - merchant
     - banking
     - platform
     - api
     - integrations
     - compliance
-    - credit
-    - underwriting
     - payments
-    - money movement
     - ledger
     adjacent_title_markers:
     - strategic insights
@@ -387,7 +243,6 @@ policy:
     analyst_variant_markers:
     - strategic insights
     - credit risk
-    - merchant risk
     - risk analyst
     - implementation analyst
     - implementation specialist
