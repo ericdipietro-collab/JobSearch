@@ -306,7 +306,13 @@ def discover_for_company(session: requests.Session, company: dict) -> DiscoveryR
                 if any(h in f_url for h in _known_hr):
                     return DiscoveryResult("custom_manual", None, resp.url, urlparse(f_url).netloc, "FOUND", f"Redirected to {urlparse(f_url).netloc}")
 
-                if not best_fallback_url and any(x in f_url for x in ["career", "job", "opening"]):
+                # Reject stale or aggregator URLs as fallback candidates.
+                _stale_markers = ("/old/", "/archive/", "/legacy/", "/deprecated/")
+                _aggregator_domains = ("dejobs.org", "jobs2careers.com", "jora.com", "neuvoo.com")
+                url_is_stale = any(m in f_url for m in _stale_markers)
+                url_is_aggregator = any(d in f_url for d in _aggregator_domains)
+
+                if not best_fallback_url and not url_is_stale and not url_is_aggregator and any(x in f_url for x in ["career", "job", "opening"]):
                     best_fallback_url = resp.url
 
                 # Content-based ATS link detection — extract adapter key when possible
@@ -327,7 +333,7 @@ def discover_for_company(session: requests.Session, company: dict) -> DiscoveryR
 
     # --- PHASE 5: FALLBACK ---
     if best_fallback_url:
-        return DiscoveryResult("manual", None, best_fallback_url, None, "FALLBACK", "Generic Career Page")
+        return DiscoveryResult("custom_manual", None, best_fallback_url, None, "FALLBACK", "Generic Career Page")
 
     return DiscoveryResult(None, None, None, None, "NOT_FOUND", "No board detected")
 
