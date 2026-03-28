@@ -341,9 +341,73 @@ elif page == "Results":
         if df_rej.empty:
             st.info("No scraper-filtered jobs found.")
         else:
-            rej_vis = [c for c in ["company", "title", "drop_stage", "drop_reason", "location", "url"] if c in df_rej.columns]
             st.caption(f"{len(df_rej)} job(s) filtered by scraper rules")
-            st.dataframe(df_rej[rej_vis], use_container_width=True, hide_index=True)
+
+            # Stage breakdown summary
+            if "drop_stage" in df_rej.columns:
+                stage_counts = df_rej["drop_stage"].value_counts()
+                sc = st.columns(min(len(stage_counts), 5))
+                for i, (stage, cnt) in enumerate(stage_counts.items()):
+                    sc[i % len(sc)].metric(stage or "Unknown", cnt)
+                st.divider()
+
+            # Build a readable rejection summary column
+            def _fmt_rejection(row: pd.Series) -> str:
+                stage = str(row.get("drop_stage") or "").strip()
+                reason = str(row.get("drop_reason") or "").strip()
+                if not stage and not reason:
+                    return "—"
+                STAGE_LABELS = {
+                    "Title Gate":      "Title didn't pass gate",
+                    "Salary Floor":    "Salary below minimum",
+                    "Location Policy": "Location not eligible",
+                    "Score Threshold": "Score too low",
+                    "Duplicate":       "Already seen",
+                }
+                label = STAGE_LABELS.get(stage, stage)
+                # Make certain raw codes more readable
+                detail = reason
+                if reason.startswith("title_fail:"):
+                    code = reason.replace("title_fail:", "")
+                    detail = {
+                        "no_positive_keyword": "No required title keyword matched",
+                        "hard_disqualifier":   "Matched a disqualifying title keyword",
+                        "modifier_required":   "Title keyword requires a qualifying modifier",
+                    }.get(code, code)
+                elif " < " in reason and stage == "Score Threshold":
+                    parts = reason.split(" < ")
+                    detail = f"Scored {parts[0]} (need {parts[1]})"
+                return f"{label}: {detail}" if detail else label
+
+            df_display = df_rej.copy()
+            df_display["Rejection Reason"] = df_display.apply(_fmt_rejection, axis=1)
+
+            rej_vis = [c for c in ["company", "title", "Rejection Reason", "location", "url"] if c in df_display.columns]
+            if "score" in df_display.columns:
+                df_display["score"] = pd.to_numeric(df_display["score"], errors="coerce")
+                rej_vis.insert(2, "score")
+
+            # Optional stage filter
+            if "drop_stage" in df_rej.columns:
+                stage_filter = st.multiselect(
+                    "Filter by stage",
+                    options=sorted(df_rej["drop_stage"].dropna().unique()),
+                    default=[],
+                    placeholder="All stages",
+                )
+                if stage_filter:
+                    df_display = df_display[df_display["drop_stage"].isin(stage_filter)]
+
+            st.dataframe(
+                df_display[[c for c in rej_vis if c in df_display.columns]],
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "url": st.column_config.LinkColumn("URL", width="small"),
+                    "score": st.column_config.NumberColumn("Score", format="%.1f", width="small"),
+                    "Rejection Reason": st.column_config.TextColumn("Rejection Reason", width="large"),
+                },
+            )
 
     # Persist any changes made this render
     if all_changed_overrides:
