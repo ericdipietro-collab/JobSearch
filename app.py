@@ -58,75 +58,40 @@ st.set_page_config(page_title="Job Search Dashboard", layout="wide", page_icon="
 # ── Global CSS ────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-/* ── Scrollbars: wider and always visible ──────────────────────────────────── */
-::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track { background: #1e1e2e; border-radius: 6px; }
-::-webkit-scrollbar-thumb { background: #555; border-radius: 6px; border: 2px solid #1e1e2e; }
-::-webkit-scrollbar-thumb:hover { background: #888; }
-
-/* ── Sidebar ───────────────────────────────────────────────────────────────── */
-[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #0f0f1a 0%, #1a1a2e 100%);
-    border-right: 1px solid #2a2a3e;
-}
-[data-testid="stSidebar"] h1 { color: #a78bfa; font-size: 1.3rem; letter-spacing: 0.03em; }
-[data-testid="stSidebar"] .stRadio label { color: #c4c4d4 !important; font-size: 0.95rem; }
-[data-testid="stSidebar"] .stRadio label:hover { color: #a78bfa !important; }
-
-/* ── Metric cards ──────────────────────────────────────────────────────────── */
+/* ── Metric cards: subtle border, no forced background colour ──────────────── */
 [data-testid="stMetric"] {
-    background: #1e1e2e;
-    border: 1px solid #2a2a3e;
+    border: 1px solid rgba(128,128,160,0.25);
     border-radius: 10px;
     padding: 12px 16px;
 }
-[data-testid="stMetricLabel"] { color: #8888aa !important; font-size: 0.78rem !important; text-transform: uppercase; letter-spacing: 0.05em; }
-[data-testid="stMetricValue"] { color: #e2e2f0 !important; font-size: 1.6rem !important; font-weight: 700; }
-
-/* ── Section headers ───────────────────────────────────────────────────────── */
-h1 { color: #c4b5fd; font-weight: 700; }
-h2 { color: #a78bfa; border-bottom: 1px solid #2a2a3e; padding-bottom: 6px; }
-h3 { color: #c4b5fd; font-weight: 600; }
+[data-testid="stMetricLabel"] { font-size: 0.78rem !important; text-transform: uppercase; letter-spacing: 0.05em; }
+[data-testid="stMetricValue"] { font-size: 1.6rem !important; font-weight: 700; }
 
 /* ── Primary button ────────────────────────────────────────────────────────── */
-button[kind="primary"] {
+[data-testid="stBaseButton-primary"] {
     background: linear-gradient(135deg, #7c3aed, #4f46e5) !important;
     border: none !important;
     font-weight: 600 !important;
     letter-spacing: 0.02em;
+    color: white !important;
 }
-button[kind="primary"]:hover { opacity: 0.88; }
-
-/* ── Data tables & editors ─────────────────────────────────────────────────── */
-[data-testid="stDataFrame"] iframe,
-[data-testid="stDataEditor"] iframe {
-    border-radius: 8px;
-    border: 1px solid #2a2a3e !important;
-}
+[data-testid="stBaseButton-primary"]:hover { opacity: 0.88; }
 
 /* ── Code / log blocks ─────────────────────────────────────────────────────── */
-.stCode pre, [data-testid="stCode"] pre {
-    background: #0d0d1a !important;
-    border: 1px solid #2a2a3e;
-    border-radius: 8px;
+[data-testid="stCode"] pre {
     font-size: 0.82rem;
     line-height: 1.5;
-    overflow-x: auto;
 }
 
-/* ── Progress bar ──────────────────────────────────────────────────────────── */
-[data-testid="stProgressBar"] > div { background: #4f46e5 !important; border-radius: 4px; }
+/* ── Rounded table/editor frames ───────────────────────────────────────────── */
+[data-testid="stDataFrame"] > div,
+[data-testid="stDataEditor"] > div {
+    border-radius: 8px;
+    overflow: hidden;
+}
 
-/* ── Tabs ──────────────────────────────────────────────────────────────────── */
-[data-testid="stTabs"] [role="tablist"] { border-bottom: 2px solid #2a2a3e; }
-[data-testid="stTabs"] [role="tab"][aria-selected="true"] { color: #a78bfa !important; border-bottom: 2px solid #a78bfa; }
-[data-testid="stTabs"] [role="tab"] { color: #8888aa !important; }
-
-/* ── Info / success / warning boxes ───────────────────────────────────────── */
+/* ── Alert rounding ────────────────────────────────────────────────────────── */
 [data-testid="stAlert"] { border-radius: 8px; }
-
-/* ── Divider ───────────────────────────────────────────────────────────────── */
-hr { border-color: #2a2a3e !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -226,6 +191,24 @@ def save_yaml_file(path: Path, data: dict) -> None:
         yaml.safe_dump(data, fh, sort_keys=False, allow_unicode=True)
 
 
+def _scroll_hint(n_cols: int = 0, threshold: int = 6) -> None:
+    """Render a right-scroll indicator when a table has many columns."""
+    if n_cols < threshold:
+        return
+    st.markdown(
+        '<div style="'
+        "display:flex; align-items:center; justify-content:flex-end; gap:6px;"
+        "margin:-6px 0 10px; padding:5px 10px; border-radius:6px;"
+        "background:linear-gradient(90deg,transparent 0%,rgba(124,58,237,0.18) 100%);"
+        "border-right:3px solid #7c3aed; font-size:0.78rem; font-weight:600;"
+        "color:#a78bfa; letter-spacing:0.04em;"
+        '">'
+        "more columns &nbsp;&#8594;"
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+
 def _apply_overrides(df: pd.DataFrame, overrides: dict) -> pd.DataFrame:
     """
     Attach user_status and effective_bucket columns.
@@ -314,12 +297,12 @@ if page == "Run Pipeline":
 
         try:
             proc = subprocess.Popen(
-                cmd,
+                [sys.executable, "-u"] + cmd[1:],  # -u = unbuffered stdout
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 encoding="utf-8",
                 errors="replace",
-                env={**os.environ, "PYTHONIOENCODING": "utf-8"},
+                env={**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUNBUFFERED": "1"},
                 cwd=str(BASE_DIR),
             )
 
@@ -490,6 +473,7 @@ elif page == "Results":
             display_df["user_status"] = display_df["user_status"].fillna("")
 
             st.caption(f"{len(bucket_df)} job(s)")
+            _scroll_hint(len(vis_cols) + 1)  # +1 for Move To column
 
             edited_df = st.data_editor(
                 display_df.drop(columns=["_key"]),
@@ -590,8 +574,10 @@ elif page == "Results":
                 if stage_filter:
                     df_display = df_display[df_display["drop_stage"].isin(stage_filter)]
 
+            _rej_cols = [c for c in rej_vis if c in df_display.columns]
+            _scroll_hint(len(_rej_cols))
             st.dataframe(
-                df_display[[c for c in rej_vis if c in df_display.columns]],
+                df_display[_rej_cols],
                 use_container_width=True,
                 hide_index=True,
                 column_config={
@@ -1137,12 +1123,12 @@ elif page == "Companies":
             log_box      = st.empty()
             try:
                 proc = subprocess.Popen(
-                    cmd,
+                    [sys.executable, "-u"] + cmd[1:],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     encoding="utf-8",
                     errors="replace",
-                    env={**os.environ, "PYTHONIOENCODING": "utf-8"},
+                    env={**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUNBUFFERED": "1"},
                     cwd=str(BASE_DIR),
                 )
                 lines_buf: list[str] = []
