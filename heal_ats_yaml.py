@@ -1,3 +1,4 @@
+import argparse
 import csv
 import random
 import re
@@ -327,8 +328,13 @@ def update_company_record(company: dict, result: DiscoveryResult) -> bool:
                 changed = True
         return changed
 
-    # Skip all updates for non-actionable outcomes.
-    if result.status in ("BLOCKED", "RATE_LIMITED", "NOT_FOUND"):
+    # Non-actionable outcomes: don't touch URL/adapter, but mark broken on NOT_FOUND.
+    if result.status == "NOT_FOUND":
+        if company.get("status") != "broken":
+            company["status"] = "broken"
+            return True
+        return False
+    if result.status in ("BLOCKED", "RATE_LIMITED"):
         return False
 
     # Update careers_url
@@ -357,10 +363,15 @@ def update_company_record(company: dict, result: DiscoveryResult) -> bool:
         company["adapter_key"] = result.adapter_key
         changed = True
 
+    # Mark confirmed/discovered entries as active.
+    if company.get("status") != "active":
+        company["status"] = "active"
+        changed = True
+
     return changed
 
 
-def heal_registry() -> None:
+def heal_registry(heal_all: bool = False) -> None:
     if not YAML_FILE.exists():
         print(f"Error: {YAML_FILE} not found.")
         return
@@ -369,16 +380,30 @@ def heal_registry() -> None:
         data = yaml.safe_load(f) or {}
 
     companies = data.get("companies", [])
-    print(f"Scanning {len(companies)} companies...")
+
+    # Determine which companies need healing.
+    # Statuses that require attention: new, changed, broken, or no status yet.
+    # "active" companies are skipped unless --all is passed.
+    NEEDS_HEAL = {"new", "changed", "broken", "", None}
+    to_heal = [
+        c for c in companies
+        if c.get("active") is not False
+        and (heal_all or c.get("status") in NEEDS_HEAL)
+    ]
+    skipped = len(companies) - len(to_heal)
+
+    mode = "all active" if heal_all else "new / changed / broken"
+    print(f"Scanning {len(to_heal)} companies ({mode}) — skipping {skipped} already active.")
+    if not to_heal:
+        print("Nothing to heal.")
+        return
 
     shutil.copy2(YAML_FILE, BACKUP_FILE)
     session = make_session()
     updated_count, report_rows = 0, []
 
-    for idx, company in enumerate(companies, start=1):
+    for idx, company in enumerate(to_heal, start=1):
         name = company.get("name", "<unknown>")
-        if company.get("active") is False:
-            continue
 
         # Rotate User-Agent per company to vary the fingerprint.
         session.headers["User-Agent"] = random.choice(USER_AGENTS)
@@ -393,8 +418,9 @@ def heal_registry() -> None:
 
         report_rows.append({
             "name": name,
-            "status": result.status,
+            "heal_status": result.status,
             "detail": result.detail,
+            "company_status": company.get("status", ""),
             "old_adapter": old_adapter,
             "new_adapter": company.get("adapter", ""),
             "old_url": old_url,
@@ -402,7 +428,7 @@ def heal_registry() -> None:
         })
 
         marker = "UPDATED" if changed else "OK"
-        print(f"[{idx:>4}/{len(companies)}] {marker:<7} {name:<35} {result.status} (Domain: {company.get('domain')})")
+        print(f"[{idx:>4}/{len(to_heal)}] {marker:<7} {name:<35} {result.status} → status:{company.get('status','?')}")
 
         # Jittered delay between companies — looks more human, avoids rate limits.
         _jitter(MIN_SLEEP, MAX_SLEEP)
@@ -414,13 +440,21 @@ def heal_registry() -> None:
     with REPORT_FILE.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(
             f,
-            fieldnames=["name", "status", "detail", "old_adapter", "new_adapter", "old_url", "new_url"],
+            fieldnames=["name", "heal_status", "detail", "company_status", "old_adapter", "new_adapter", "old_url", "new_url"],
         )
         writer.writeheader()
         writer.writerows(report_rows)
 
-    print(f"\nDone. Updated {updated_count} companies.")
+    print(f"\nDone. Updated {updated_count} of {len(to_heal)} companies scanned.")
 
 
 if __name__ == "__main__":
-    heal_registry()
+    parser = argparse.ArgumentParser(description="Heal and verify ATS URLs in the company registry.")
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        dest="heal_all",
+        help="Scan all active companies, not just those flagged new/changed/broken.",
+    )
+    args = parser.parse_args()
+    heal_registry(heal_all=args.heal_all)

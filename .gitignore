@@ -1,14 +1,61 @@
-# Ignore personal results and logs
+# ── Run outputs ───────────────────────────────────────────────────────────────
+# Everything in results/ is generated at runtime and may contain personal data.
+results/
+
+# Scraper outputs that sometimes land in the project root
+job_search_v6_*.csv
+job_search_v6_*.xlsx
+job_search_v6_*.log
+job_search_v6_*.json
+job_search_registry_health_v6.csv
+job_search_v6_adapter_health.csv
+
+# ── Personal config / run state ───────────────────────────────────────────────
+# Generated at runtime — contain absolute local paths and run history.
+*_active_config.json
+*_history_v6.json
+job_search_history_v6.json
+
+# Personal preferences (salary targets, home location).
+# Copy config/job_search_preferences.example.yaml → config/job_search_preferences.yaml
+# and fill in your own values.
+config/job_search_preferences.yaml
+config/job_search_preferences_tiered_softdrop_final_patched*.yaml
+config/job_search_preferences_transparent_final.yaml
+config/*.yaml.bak
+
+# ── SQLite ATS database (personal job tracking data) ─────────────────────────
+*.db
+*.db-shm
+*.db-wal
+
+# ── Common output/backup formats ─────────────────────────────────────────────
+*.bak
 *.csv
 *.xlsx
 *.log
-*.bak
 
-# Ignore local environment data
+# ── Python ────────────────────────────────────────────────────────────────────
 __pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
 .venv/
-.env/
-.DS_Store
+venv/
+env/
+*.egg-info/
+dist/
+build/
 
-# Streamlit local config
+# ── Old / development versions ────────────────────────────────────────────────
+core/
+
+# ── Tools & editors ───────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.env
 .streamlit/
+.claude/
+.vscode/
+.idea/

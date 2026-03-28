@@ -2180,12 +2180,12 @@ companies:
 - name: Fisher Investments
   tier: 1
   priority: high
-  adapter: workday
-  domain: fisherinvestments.com
+  adapter: manual
+  domain: www.fisherinvestments.com
   industry: wealth management | reporting | ledger math
   notes: Massive independent money manager needing robust internal platforms.
   sub_industry: WealthTech
-  careers_url: https://fisherinvestments.wd1.myworkdayjobs.com/Fisher_Investments_Careers
+  careers_url: https://www.fisherinvestments.com/careers
   active: true
 - name: Fivetran
   tier: 1
@@ -2756,7 +2756,7 @@ companies:
   - tech
   notes: They hire more engineers than Google; massive need for remote Solution
   sub_industry: Banking / Tech
-  careers_url: https://www.jpmorganchase.com/careers?redirect=careers_jpm
+  careers_url: https://www.jpmorganchase.com/careers
   active: true
 - name: Jumio
   tier: 2
@@ -3789,13 +3789,14 @@ companies:
 - name: Piermont Bank
   tier: 2
   priority: medium
-  adapter: custom_site
-  domain: piermontbank.com
+  adapter: greenhouse
+  domain: job-boards.greenhouse.io
   industry: baas | digital banking | commercial banking
   notes: US digital commercial bank built specifically for fintech partnerships.
   sub_industry: BaaS / Tech Bank
-  careers_url: https://www.piermontbank.com/careers/
+  careers_url: https://job-boards.greenhouse.io/piermontbank
   active: true
+  adapter_key: piermontbank
 - name: PIMCO
   tier: 1
   priority: high
@@ -4292,14 +4293,14 @@ companies:
 - name: SigFig
   tier: 4
   priority: medium
-  adapter: lever
+  adapter: manual
   adapter_key: sigfig
-  domain: jobs.lever.co
+  domain: www.sigfig.com
   industry:
   - b2b wealthtech
   notes: Re-emphasizing) Builds digital wealth solutions for massive enterprise
   sub_industry: B2B WealthTech(
-  careers_url: https://jobs.lever.co/sigfig
+  careers_url: https://www.sigfig.com/careers
   active: true
 - name: Signifyd
   tier: 2
@@ -4672,12 +4673,12 @@ companies:
   priority: medium
   adapter: greenhouse
   adapter_key: tastytrade
-  domain: tastytrade.com
+  domain: job-boards.greenhouse.io
   industry: brokerage | derivatives | trading systems
   notes: US brokerage built for options traders; excellent fit for his fixed income/trading
     tech.
   sub_industry: Brokerage
-  careers_url: https://boards.greenhouse.io/tastytrade
+  careers_url: https://job-boards.greenhouse.io/tastytrade
   active: true
 - name: TCW Group
   tier: 2
