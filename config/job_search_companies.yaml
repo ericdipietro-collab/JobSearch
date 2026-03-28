@@ -11,6 +11,7 @@ companies:
   sub_industry: Digital Banking
   careers_url: https://jobs.lever.co/accesssoftek
   active: true
+  status: active
 - name: Acorns
   tier: 4
   priority: medium
@@ -23,6 +24,7 @@ companies:
   sub_industry: Micro-Investing(
   careers_url: https://www.acorns.com/careers/
   active: true
+  status: active
 - name: Addepar
   tier: 1
   priority: high
@@ -39,6 +41,7 @@ companies:
   sub_industry: Wealth Data
   careers_url: https://job-boards.greenhouse.io/addepar1
   active: true
+  status: active
 - name: ADP
   tier: 1
   priority: high
@@ -62,6 +65,7 @@ companies:
   sub_industry: WealthTech
   careers_url: https://www.advisor360.com/careers
   active: true
+  status: active
 - name: Advyzon
   tier: 1
   priority: high
@@ -73,6 +77,7 @@ companies:
   sub_industry: WealthTech
   careers_url: https://jobs.lever.co/advyzon
   active: true
+  status: broken
 - name: Affirm
   tier: 1
   priority: high
@@ -89,6 +94,7 @@ companies:
   sub_industry: FinTech / Payments
   careers_url: https://boards.greenhouse.io/affirm
   active: true
+  status: active
 - name: AgentSync
   tier: 2
   priority: medium
@@ -100,6 +106,7 @@ companies:
   sub_industry: InsureTech / Compliance
   careers_url: https://agentsync.io/careers
   active: true
+  status: active
 - name: Airbase
   tier: 4
   priority: medium
@@ -112,6 +119,7 @@ companies:
   sub_industry: Spend Management
   careers_url: https://www.paylocity.com/company/careers/
   active: true
+  status: active
 - name: Airbyte
   tier: 2
   priority: medium
@@ -123,6 +131,7 @@ companies:
   sub_industry: Data Infrastructure
   careers_url: https://airbyte.com/company/careers
   active: true
+  status: active
 - name: Akoya
   tier: 2
   priority: medium
@@ -134,6 +143,7 @@ companies:
   sub_industry: Open Banking
   careers_url: https://akoya.com/careers
   active: true
+  status: active
 - name: Alation
   tier: 2
   priority: medium
@@ -145,6 +155,7 @@ companies:
   sub_industry: Data Cataloging
   careers_url: https://www.alation.com/careers/
   active: true
+  status: active
 - name: Albert
   tier: 2
   priority: medium
@@ -156,6 +167,7 @@ companies:
   sub_industry: Digital Banking
   careers_url: https://albert.com/careers
   active: true
+  status: active
 - name: Alignment Healthcare
   tier: 2
   priority: medium
@@ -167,6 +179,7 @@ companies:
   careers_url: https://alignmenthealthcare5.impl-wd12.myworkdayjobs.com/en-US/ahc_external/introduceYourself
   active: true
   adapter_key: alignmenthealthcare5.impl-wd12.myworkdayjobs.com/en-US/ahc_external/introduceYourself
+  status: active
 - name: Alkami Technology
   tier: 2
   priority: medium
@@ -178,6 +191,7 @@ companies:
   sub_industry: Digital Banking Tech
   careers_url: https://www.alkami.com/careers/
   active: true
+  status: active
 - name: AllianceBernstein
   tier: 1
   priority: high
@@ -190,6 +204,7 @@ companies:
   careers_url: https://abglobal.wd1.myworkdayjobs.com/alliancebernsteincareers
   active: true
   adapter_key: abglobal.wd1.myworkdayjobs.com/alliancebernsteincareers
+  status: active
 - name: Alliant Credit Union
   tier: 2
   priority: medium
@@ -201,6 +216,7 @@ companies:
   sub_industry: Credit Union Tech
   careers_url: https://alliantcreditunion.wd1.myworkdayjobs.com/Alliant_Careers
   active: true
+  status: broken
 - name: Alloy
   tier: 4
   priority: medium
@@ -213,6 +229,7 @@ companies:
   sub_industry: Identity Ops
   careers_url: https://boards.greenhouse.io/alloy
   active: true
+  status: active
 - name: Allvue Systems
   tier: 2
   priority: medium
@@ -225,6 +242,7 @@ companies:
   sub_industry: Alt Investment Tech
   careers_url: https://careers.allvuesystems.com/
   active: true
+  status: active
 - name: Ally Financial
   tier: 2
   priority: medium
@@ -235,6 +253,7 @@ companies:
   sub_industry: Digital Banking
   careers_url: https://www.ally.com/about/careers/
   active: true
+  status: active
 - name: Alpaca
   tier: 4
   priority: medium
@@ -247,6 +266,7 @@ companies:
   sub_industry: Brokerage APIs
   careers_url: https://job-boards.greenhouse.io/alpaca
   active: true
+  status: active
 - name: Alteryx
   tier: 2
   priority: medium
@@ -257,6 +277,7 @@ companies:
   sub_industry: Data Analytics
   careers_url: https://www.alteryx.com/about-us/careers
   active: true
+  status: active
 - name: Altruist
   tier: 1
   priority: high
@@ -268,6 +289,7 @@ companies:
   sub_industry: RIA Custodian
   careers_url: https://altruist.com/careers/
   active: true
+  status: active
 - name: Alviere
   tier: 4
   priority: medium
@@ -280,6 +302,7 @@ companies:
   sub_industry: Embedded Finance
   careers_url: https://alviere.com/careers/
   active: true
+  status: active
 - name: American Century Investments
   tier: 2
   priority: medium
@@ -290,6 +313,7 @@ companies:
   sub_industry: Asset Management
   careers_url: https://www.americancentury.com/about/careers/
   active: true
+  status: active
 - name: American Express
   tier: 4
   priority: medium
@@ -302,6 +326,7 @@ companies:
   sub_industry: Payments
   careers_url: https://aexp.eightfold.ai/careers
   active: true
+  status: active
 - name: Ameriprise Financial
   tier: 1
   priority: high
@@ -312,6 +337,7 @@ companies:
   sub_industry: Broker-Dealer Tech
   careers_url: https://careers.ameriprise.com/
   active: true
+  status: active
 - name: Anaplan
   tier: 2
   priority: medium
@@ -324,6 +350,7 @@ companies:
   careers_url: https://job-boards.greenhouse.io/anaplan
   active: true
   adapter_key: anaplan
+  status: active
 - name: Anchorage Digital
   tier: 2
   priority: medium
@@ -335,6 +362,7 @@ companies:
   sub_industry: Crypto Bank
   careers_url: https://jobs.lever.co/anchorage
   active: true
+  status: active
 - name: Anduin Transactions
   tier: 2
   priority: medium
@@ -347,6 +375,7 @@ companies:
   sub_industry: Private Markets Tech
   careers_url: https://anduintransact.com/careers
   active: true
+  status: active
 - name: Apex Fintech
   tier: 4
   priority: medium
@@ -359,6 +388,7 @@ companies:
   sub_industry: Brokerage Tech(
   careers_url: https://www.apexfintech.com/careers
   active: true
+  status: active
 - name: Apex Fintech Solutions
   tier: 1
   priority: high
@@ -371,6 +401,7 @@ companies:
   sub_industry: Brokerage / Clearing
   careers_url: https://apexfintechsolutions.com/about/culture-careers/
   active: true
+  status: active
 - name: Apiture
   tier: 2
   priority: medium
@@ -382,6 +413,7 @@ companies:
   sub_industry: Digital Banking
   careers_url: https://www.apiture.com/careers/
   active: true
+  status: active
 - name: AppFolio
   tier: 1
   priority: high
@@ -393,6 +425,7 @@ companies:
   sub_industry: PropTech
   careers_url: https://www.appfolio.com/company/careers
   active: true
+  status: active
 - name: Applied Systems
   tier: 2
   priority: medium
@@ -403,6 +436,7 @@ companies:
   sub_industry: InsureTech
   careers_url: https://www.appliedsystems.com/careers/
   active: true
+  status: active
 - name: Arcesium
   tier: 2
   priority: medium
@@ -419,6 +453,7 @@ companies:
   sub_industry: Capital Markets Data Ops
   careers_url: https://careers.arcesium.com/
   active: true
+  status: active
 - name: Arch
   tier: 2
   priority: medium
@@ -431,6 +466,7 @@ companies:
   sub_industry: WealthTech / Alts
   careers_url: https://jobs.ashbyhq.com/arch.co
   active: true
+  status: broken
 - name: Archer
   tier: 1
   priority: high
@@ -442,6 +478,7 @@ companies:
   sub_industry: WealthTech
   careers_url: https://jobs.lever.co/archer
   active: true
+  status: broken
 - name: Argyle
   tier: 4
   priority: medium
@@ -454,6 +491,7 @@ companies:
   sub_industry: Payroll Data APIs
   careers_url: https://www.argyle.com/careers
   active: true
+  status: active
 - name: Aria Systems
   tier: 2
   priority: medium
@@ -465,6 +503,7 @@ companies:
   sub_industry: Billing / RevTech
   careers_url: https://www.ariasystems.com/careers/
   active: true
+  status: active
 - name: Artisan Partners
   tier: 2
   priority: medium
@@ -475,6 +514,7 @@ companies:
   sub_industry: Asset Management
   careers_url: https://www.artisanpartners.com/content/artisanpartners/en_us/careers/our-people.html
   active: true
+  status: active
 - name: Ascent
   tier: 2
   priority: medium
@@ -486,6 +526,7 @@ companies:
   sub_industry: RegTech
   careers_url: https://careers.ascentregtech.com/auth/login
   active: true
+  status: active
 - name: AssetMark
   tier: 2
   priority: medium
@@ -497,6 +538,7 @@ companies:
   sub_industry: TAMP
   careers_url: https://www.assetmark.com/careers/
   active: true
+  status: active
 - name: Astra
   tier: 2
   priority: medium
@@ -508,6 +550,7 @@ companies:
   sub_industry: Payments API
   careers_url: https://astrafi.com/careers/
   active: true
+  status: active
 - name: Athene
   tier: 2
   priority: medium
@@ -519,6 +562,7 @@ companies:
   careers_url: https://athene.wd5.myworkdayjobs.com/athene_careers
   active: true
   adapter_key: athene.wd5.myworkdayjobs.com/athene_careers
+  status: active
 - name: AtoB
   tier: 2
   priority: medium
@@ -530,6 +574,7 @@ companies:
   sub_industry: Fleet Payments
   careers_url: https://jobs.ashbyhq.com/atob
   active: true
+  status: active
 - name: Atomic
   tier: 4
   priority: medium
@@ -542,6 +587,7 @@ companies:
   sub_industry: Payroll Data APIs
   careers_url: https://jobs.ashbyhq.com/atomic.financial
   active: true
+  status: broken
 - name: AuditBoard
   tier: 2
   priority: medium
@@ -553,6 +599,7 @@ companies:
   sub_industry: RegTech / GRC
   careers_url: https://optro.ai/careers
   active: true
+  status: active
 - name: Avant
   tier: 2
   priority: medium
@@ -565,6 +612,7 @@ companies:
   sub_industry: Digital Lending
   careers_url: https://avant.wd503.myworkdayjobs.com/External_Careers
   active: true
+  status: active
 - name: AvidXchange
   tier: 2
   priority: medium
@@ -576,6 +624,7 @@ companies:
   careers_url: https://job-boards.greenhouse.io/avidxchangeinc
   active: true
   adapter_key: avidxchangeinc
+  status: active
 - name: Baird
   tier: 1
   priority: high
@@ -586,6 +635,7 @@ companies:
   sub_industry: Broker-Dealer Tech
   careers_url: https://baird.wd1.myworkdayjobs.com/Baird
   active: true
+  status: broken
 - name: BambooHR
   tier: 2
   priority: medium
@@ -597,6 +647,7 @@ companies:
   sub_industry: HRIS / Payroll
   careers_url: https://boards.greenhouse.io/bamboohr
   active: true
+  status: broken
 - name: Bank of America
   tier: 1
   priority: high
@@ -609,6 +660,7 @@ companies:
   careers_url: https://ghr.wd1.myworkdayjobs.com/en-us/lateral-us/login
   active: true
   adapter_key: ghr.wd1.myworkdayjobs.com/en-us/lateral-us/login
+  status: active
 - name: Barchart
   tier: 4
   priority: medium
@@ -621,6 +673,7 @@ companies:
   sub_industry: Market Data
   careers_url: https://www.barchart.com/solutions/company/careers
   active: true
+  status: active
 - name: BECU
   tier: 1
   priority: high
@@ -632,6 +685,7 @@ companies:
   sub_industry: Credit Union Tech
   careers_url: https://becu.wd1.myworkdayjobs.com/External
   active: true
+  status: active
 - name: Bethpage Federal Credit Union
   tier: 2
   priority: medium
@@ -642,6 +696,7 @@ companies:
   sub_industry: Credit Union Tech
   careers_url: https://www.fourleaffcu.com/about-us/careers/
   active: true
+  status: active
 - name: Betterment
   tier: 4
   priority: medium
@@ -654,6 +709,7 @@ companies:
   sub_industry: Robo-Advising(
   careers_url: https://www.betterment.com/careers
   active: true
+  status: active
 - name: Bill.com
   tier: 1
   priority: high
@@ -669,17 +725,19 @@ companies:
   sub_industry: B2B Payments / Financial Ops
   careers_url: https://boards.greenhouse.io/billcom
   active: true
+  status: broken
 - name: BillingPlatform
   tier: 2
   priority: medium
-  adapter: lever
+  adapter: manual
   adapter_key: billingplatform
   domain: billingplatform.com
   industry: billing | revenue management | integration
   notes: Enterprise revenue management software deeply integrated with corporate ERPs.
   sub_industry: Billing / RevTech
-  careers_url: https://jobs.lever.co/billingplatform
+  careers_url: https://billingplatform.com/company/careers
   active: true
+  status: active
 - name: BitGo
   tier: 2
   priority: medium
@@ -691,6 +749,7 @@ companies:
   sub_industry: Crypto Custody
   careers_url: https://boards.greenhouse.io/bitgo
   active: true
+  status: active
 - name: BlackLine
   tier: 1
   priority: high
@@ -703,6 +762,7 @@ companies:
   sub_industry: FinTech / Accounting
   careers_url: https://careers.blackline.com/careers-home/
   active: true
+  status: active
 - name: BlackRock
   tier: 1
   priority: high
@@ -719,6 +779,7 @@ companies:
   sub_industry: Asset Management / Aladdin
   careers_url: https://blackrock.wd1.myworkdayjobs.com/BlackRock_Professional
   active: true
+  status: active
 - name: Blend
   tier: 2
   priority: medium
@@ -730,6 +791,7 @@ companies:
   sub_industry: Mortgage Tech
   careers_url: https://boards.greenhouse.io/blend
   active: true
+  status: active
 - name: Blockdaemon
   tier: 2
   priority: medium
@@ -741,6 +803,7 @@ companies:
   sub_industry: Web3 Infrastructure
   careers_url: https://www.blockdaemon.com/careers
   active: true
+  status: active
 - name: Bluevine
   tier: 4
   priority: medium
@@ -754,6 +817,7 @@ companies:
   sub_industry: SME Banking / Lending
   careers_url: https://www.bluevine.com/careers
   active: true
+  status: active
 - name: BMO U.S.
   tier: 1
   priority: high
@@ -765,6 +829,7 @@ companies:
   sub_industry: Banking
   careers_url: https://jobs.bmo.com/ca/en
   active: true
+  status: active
 - name: BNY Mellon
   tier: 4
   priority: medium
@@ -777,6 +842,7 @@ companies:
   sub_industry: Custody Bank
   careers_url: https://www.bny.com/corporate/global/en/about-us/careers/work-with-us.html
   active: true
+  status: active
 - name: BOK Financial
   tier: 2
   priority: medium
@@ -787,6 +853,7 @@ companies:
   sub_industry: Regional Banking / Wealth
   careers_url: https://bokfinancial.wd1.myworkdayjobs.com/BOKF
   active: true
+  status: broken
 - name: Boomi
   tier: 1
   priority: high
@@ -799,6 +866,7 @@ companies:
   sub_industry: Integration Platform
   careers_url: https://boomi.com/company/careers/
   active: true
+  status: active
 - name: Bottomline Technologies
   tier: 2
   priority: medium
@@ -809,6 +877,7 @@ companies:
   sub_industry: B2B Payments
   careers_url: https://bottomline.wd1.myworkdayjobs.com/Bottomline
   active: true
+  status: broken
 - name: Braintree (PayPal)
   tier: 4
   priority: medium
@@ -821,6 +890,7 @@ companies:
   sub_industry: Payments
   careers_url: https://paypal.wd1.myworkdayjobs.com/jobs
   active: true
+  status: active
 - name: Branch
   tier: 4
   priority: medium
@@ -833,6 +903,7 @@ companies:
   sub_industry: Earned Wage Access
   careers_url: https://boards.greenhouse.io/branch
   active: true
+  status: active
 - name: Bread Financial
   tier: 2
   priority: medium
@@ -843,6 +914,7 @@ companies:
   sub_industry: Consumer Finance
   careers_url: https://careers.breadfinancial.com/us/en
   active: true
+  status: active
 - name: Brex
   tier: 1
   priority: high
@@ -854,6 +926,7 @@ companies:
   sub_industry: Corporate Spend / Banking
   careers_url: https://www.brex.com/careers
   active: true
+  status: active
 - name: Broadridge Financial
   tier: 1
   priority: high
@@ -866,6 +939,7 @@ companies:
   careers_url: https://broadridge.wd5.myworkdayjobs.com/Careers
   active: true
   adapter_key: broadridge.wd5.myworkdayjobs.com/Careers
+  status: active
 - name: Built Technologies
   tier: 2
   priority: medium
@@ -877,6 +951,7 @@ companies:
   sub_industry: Real Estate FinTech
   careers_url: https://getbuilt.com/careers/
   active: true
+  status: active
 - name: C2FO
   tier: 2
   priority: medium
@@ -887,6 +962,7 @@ companies:
   sub_industry: Working Capital Tech
   careers_url: https://c2fo.com/careers/
   active: true
+  status: active
 - name: CAIS
   tier: 2
   priority: medium
@@ -902,6 +978,7 @@ companies:
   sub_industry: Alts Platform
   careers_url: https://boards.greenhouse.io/cais
   active: true
+  status: active
 - name: Canoe Intelligence
   tier: 1
   priority: high
@@ -913,6 +990,7 @@ companies:
   sub_industry: WealthTech / Alts
   careers_url: https://careers.canoeintelligence.com/
   active: true
+  status: active
 - name: Canvas (Franklin Templeton)
   tier: 4
   priority: medium
@@ -925,6 +1003,7 @@ companies:
   sub_industry: Custom Indexing
   careers_url: https://franklintempleton.wd1.myworkdayjobs.com/FranklinTempleton_Careers
   active: true
+  status: broken
 - name: Capco
   tier: 4
   priority: medium
@@ -937,6 +1016,7 @@ companies:
   sub_industry: FinServ Consulting
   careers_url: https://job-boards.greenhouse.io/capco
   active: true
+  status: active
 - name: CapIntel
   tier: 2
   priority: medium
@@ -948,6 +1028,7 @@ companies:
   sub_industry: WealthTech
   careers_url: https://job-boards.greenhouse.io/capintel
   active: true
+  status: active
 - name: Capital Group
   tier: 4
   priority: medium
@@ -960,6 +1041,7 @@ companies:
   sub_industry: Asset Management
   careers_url: https://capgroup.wd1.myworkdayjobs.com/capitalgroupcareers
   active: true
+  status: active
 - name: Capital One
   tier: 4
   priority: medium
@@ -972,6 +1054,7 @@ companies:
   sub_industry: Tech Bank
   careers_url: https://capitalone.wd1.myworkdayjobs.com/Capital_One
   active: true
+  status: broken
 - name: Carta
   tier: 1
   priority: high
@@ -984,6 +1067,7 @@ companies:
   sub_industry: Equity Management
   careers_url: https://boards.greenhouse.io/carta
   active: true
+  status: active
 - name: Carvana
   tier: 2
   priority: medium
@@ -996,6 +1080,7 @@ companies:
   sub_industry: Auto Finance / FinTech
   careers_url: https://boards.greenhouse.io/carvana
   active: true
+  status: broken
 - name: Catch
   tier: 2
   priority: medium
@@ -1007,6 +1092,7 @@ companies:
   sub_industry: FinTech / Benefits
   careers_url: https://www.catch.co/careers/
   active: true
+  status: active
 - name: CB Insights
   tier: 2
   priority: medium
@@ -1019,6 +1105,7 @@ companies:
   sub_industry: Financial Data
   careers_url: https://boards.greenhouse.io/cbinsights
   active: true
+  status: active
 - name: Cboe Global Markets
   tier: 1
   priority: high
@@ -1030,6 +1117,7 @@ companies:
   sub_industry: Exchange Tech
   careers_url: https://careers.cboe.com/us/en
   active: true
+  status: active
 - name: Cedar
   tier: 4
   priority: medium
@@ -1042,6 +1130,7 @@ companies:
   sub_industry: Health FinTech
   careers_url: https://www.cedar.com/careers
   active: true
+  status: active
 - name: Celigo
   tier: 2
   priority: medium
@@ -1053,6 +1142,7 @@ companies:
   sub_industry: Integration Platform
   careers_url: https://boards.greenhouse.io/celigo
   active: true
+  status: active
 - name: Celtic Bank
   tier: 2
   priority: medium
@@ -1063,6 +1153,7 @@ companies:
   sub_industry: BaaS / Tech Bank
   careers_url: https://www.celticbank.com/careers
   active: true
+  status: active
 - name: Census
   tier: 2
   priority: medium
@@ -1075,6 +1166,7 @@ companies:
   sub_industry: Data Infrastructure
   careers_url: https://www.fivetran.com/careers
   active: true
+  status: active
 - name: Cetera Financial Group
   tier: 1
   priority: high
@@ -1085,6 +1177,7 @@ companies:
   sub_industry: Broker-Dealer Tech
   careers_url: https://cetera.com/careers
   active: true
+  status: active
 - name: Chainalysis
   tier: 2
   priority: medium
@@ -1096,6 +1189,7 @@ companies:
   sub_industry: Blockchain Data
   careers_url: https://www.chainalysis.com/careers/
   active: true
+  status: active
 - name: Chargebee
   tier: 4
   priority: medium
@@ -1108,6 +1202,7 @@ companies:
   sub_industry: Subscription Billing
   careers_url: https://jobs.chargebee.com:443/
   active: true
+  status: active
 - name: Charles Schwab
   tier: 2
   priority: medium
@@ -1124,6 +1219,7 @@ companies:
   sub_industry: Brokerage
   careers_url: https://jobs.schwabjobs.com/
   active: true
+  status: active
 - name: Check
   tier: 2
   priority: medium
@@ -1135,6 +1231,7 @@ companies:
   sub_industry: Payroll APIs
   careers_url: https://job-boards.greenhouse.io/check
   active: true
+  status: active
 - name: Checkout.com
   tier: 2
   priority: medium
@@ -1151,6 +1248,7 @@ companies:
   sub_industry: Payments Infrastructure
   careers_url: https://careers.smartrecruiters.com/Checkoutcom1
   active: true
+  status: active
 - name: Cherre
   tier: 2
   priority: medium
@@ -1163,6 +1261,7 @@ companies:
   sub_industry: PropTech / Data
   careers_url: https://jobs.lever.co/cherre
   active: true
+  status: active
 - name: Chime
   tier: 2
   priority: medium
@@ -1174,6 +1273,7 @@ companies:
   sub_industry: Digital Banking
   careers_url: https://boards.greenhouse.io/chime
   active: true
+  status: broken
 - name: CI&T
   tier: 4
   priority: medium
@@ -1186,6 +1286,7 @@ companies:
   sub_industry: Tech Consulting
   careers_url: https://jobs.lever.co/ciandt
   active: true
+  status: active
 - name: Circle
   tier: 2
   priority: medium
@@ -1197,6 +1298,7 @@ companies:
   sub_industry: Payments / Web3
   careers_url: https://careers.circle.com/us/en
   active: true
+  status: active
 - name: Citadel Securities
   tier: 2
   priority: medium
@@ -1209,6 +1311,7 @@ companies:
   sub_industry: Prop Trading
   careers_url: https://boards.greenhouse.io/citadelsecurities
   active: true
+  status: broken
 - name: Citi
   tier: 4
   priority: medium
@@ -1222,17 +1325,19 @@ companies:
   sub_industry: Banking / Tech
   careers_url: https://jobs.citi.com
   active: true
+  status: active
 - name: Citizens Bank
   tier: 2
   priority: medium
-  adapter: workday
-  domain: citizensbank.com
+  adapter: manual
+  domain: jobs.citizensbank.com
   industry: commercial banking | api | wealthtech
   notes: Major US bank actively expanding its national digital footprint and wealth
     offerings.
   sub_industry: Commercial Banking
-  careers_url: https://citizensbank.wd1.myworkdayjobs.com/Citizens_Careers
+  careers_url: https://jobs.citizensbank.com/
   active: true
+  status: active
 - name: Clear Street
   tier: 1
   priority: high
@@ -1244,6 +1349,7 @@ companies:
   sub_industry: Prime Brokerage
   careers_url: https://boards.greenhouse.io/clearstreet
   active: true
+  status: active
 - name: Clearcover
   tier: 2
   priority: medium
@@ -1255,6 +1361,7 @@ companies:
   sub_industry: InsureTech
   careers_url: https://clearcover.com/careers/
   active: true
+  status: active
 - name: ClearList
   tier: 2
   priority: medium
@@ -1265,6 +1372,7 @@ companies:
   sub_industry: Private Markets
   careers_url: https://www.clearlist.com/careers
   active: true
+  status: broken
 - name: Clearwater Analytics
   tier: 1
   priority: high
@@ -1280,6 +1388,7 @@ companies:
   sub_industry: Investment Accounting
   careers_url: https://cwan.com/company/careers/
   active: true
+  status: active
 - name: Clover Health
   tier: 4
   priority: medium
@@ -1292,6 +1401,7 @@ companies:
   sub_industry: InsureTech
   careers_url: https://boards.greenhouse.io/cloverhealth
   active: true
+  status: active
 - name: CME Group
   tier: 1
   priority: high
@@ -1304,6 +1414,7 @@ companies:
   sub_industry: Exchange Tech
   careers_url: https://cmegroup.wd1.myworkdayjobs.com/en-US/cme_careers
   active: true
+  status: active
 - name: Coalition
   tier: 4
   priority: medium
@@ -1316,6 +1427,7 @@ companies:
   sub_industry: Cyber InsureTech
   careers_url: https://jobs.lever.co/coalitioninc
   active: true
+  status: broken
 - name: Coastal Community Bank
   tier: 2
   priority: medium
@@ -1326,6 +1438,7 @@ companies:
   sub_industry: BaaS / Tech Bank
   careers_url: https://www.coastalbank.com/about/careers.html
   active: true
+  status: active
 - name: CoBank
   tier: 2
   priority: medium
@@ -1336,6 +1449,7 @@ companies:
   sub_industry: Banking
   careers_url: https://careers.cobank.com/web/iam-portal/login?p_p_id=iam_login_mvc&p_p_lifecycle=0&_iam_login_mvc_redirect=%2F
   active: true
+  status: active
 - name: Cohen & Steers
   tier: 2
   priority: medium
@@ -1346,6 +1460,7 @@ companies:
   sub_industry: Asset Management / Alts
   careers_url: https://cohenandsteers.wd1.myworkdayjobs.com/Cohen_and_Steers
   active: true
+  status: broken
 - name: Coinbase
   tier: 4
   priority: medium
@@ -1358,6 +1473,7 @@ companies:
   sub_industry: Digital Assets
   careers_url: https://boards.greenhouse.io/coinbase
   active: true
+  status: broken
 - name: Collibra
   tier: 2
   priority: medium
@@ -1369,6 +1485,7 @@ companies:
   sub_industry: Data Intelligence
   careers_url: https://boards.greenhouse.io/collibra
   active: true
+  status: active
 - name: Column
   tier: 2
   priority: medium
@@ -1380,6 +1497,7 @@ companies:
   sub_industry: BaaS / Tech Bank
   careers_url: https://column.com/careers
   active: true
+  status: active
 - name: Comerica
   tier: 2
   priority: medium
@@ -1391,6 +1509,7 @@ companies:
   careers_url: https://fifththird.wd5.myworkdayjobs.com/53careers
   active: true
   adapter_key: fifththird.wd5.myworkdayjobs.com/53careers
+  status: active
 - name: Commonwealth Financial Network
   tier: 1
   priority: high
@@ -1402,6 +1521,7 @@ companies:
   sub_industry: Broker-Dealer Tech
   careers_url: https://www.commonwealth.com/careers
   active: true
+  status: active
 - name: Concur (SAP)
   tier: 4
   priority: medium
@@ -1414,6 +1534,7 @@ companies:
   sub_industry: Spend Management
   careers_url: https://jobs.sap.com/
   active: true
+  status: active
 - name: Confluent
   tier: 2
   priority: medium
@@ -1431,6 +1552,7 @@ companies:
   sub_industry: Data Streaming
   careers_url: https://boards.greenhouse.io/confluent
   active: true
+  status: broken
 - name: ConsenSys
   tier: 2
   priority: medium
@@ -1442,6 +1564,7 @@ companies:
   sub_industry: Web3 Infrastructure
   careers_url: https://consensys.io/careers
   active: true
+  status: active
 - name: Corcentric
   tier: 2
   priority: medium
@@ -1452,6 +1575,7 @@ companies:
   sub_industry: B2B Payments
   careers_url: https://corcentric.wd1.myworkdayjobs.com/Corcentric
   active: true
+  status: broken
 - name: Corebridge Financial
   tier: 2
   priority: medium
@@ -1463,6 +1587,7 @@ companies:
   careers_url: https://corebridgefinancial.wd1.myworkdayjobs.com/CorebridgeFinancial&#34;}}
   active: true
   adapter_key: corebridgefinancial.wd1.myworkdayjobs.com/CorebridgeFinancial&#34;}}
+  status: active
 - name: CoreCard
   tier: 2
   priority: medium
@@ -1474,6 +1599,7 @@ companies:
   sub_industry: Card Processing
   careers_url: https://www.corecard.com/careers
   active: true
+  status: active
 - name: Corelation
   tier: 4
   priority: medium
@@ -1486,6 +1612,7 @@ companies:
   sub_industry: Core Processing
   careers_url: https://corelationinc.com/careers
   active: true
+  status: active
 - name: Corpay
   tier: 2
   priority: medium
@@ -1496,6 +1623,7 @@ companies:
   sub_industry: B2B Payments
   careers_url: https://www.corpay.com/careers
   active: true
+  status: active
 - name: CoStar Group
   tier: 4
   priority: medium
@@ -1509,6 +1637,7 @@ companies:
   sub_industry: PropTech / Data
   careers_url: https://costar.wd1.myworkdayjobs.com/CoStarCareers
   active: true
+  status: active
 - name: Coupa
   tier: 1
   priority: high
@@ -1520,6 +1649,7 @@ companies:
   sub_industry: Business Spend
   careers_url: https://jobs.lever.co/coupa
   active: true
+  status: active
 - name: Creative Planning
   tier: 1
   priority: high
@@ -1530,6 +1660,7 @@ companies:
   sub_industry: WealthTech
   careers_url: https://creativeplanning.com/careers/
   active: true
+  status: active
 - name: Credit Karma
   tier: 2
   priority: medium
@@ -1541,6 +1672,7 @@ companies:
   sub_industry: Consumer Finance
   careers_url: https://boards.greenhouse.io/creditkarma
   active: true
+  status: active
 - name: Cross River
   tier: 2
   priority: medium
@@ -1552,6 +1684,7 @@ companies:
   sub_industry: BaaS / Tech Bank
   careers_url: https://www.crossriver.com/careers
   active: true
+  status: active
 - name: CrowdStrike
   tier: 4
   priority: medium
@@ -1565,6 +1698,7 @@ companies:
   sub_industry: Cybersecurity(Fintech adjacent)
   careers_url: https://crowdstrike.wd5.myworkdayjobs.com/crowdstrikecareers
   active: true
+  status: active
 - name: CU*Answers
   tier: 4
   priority: medium
@@ -1577,6 +1711,7 @@ companies:
   sub_industry: Credit Union CUSO
   careers_url: https://www.cuanswers.com/about/careers/
   active: true
+  status: active
 - name: Current
   tier: 2
   priority: medium
@@ -1588,6 +1723,7 @@ companies:
   sub_industry: Digital Banking
   careers_url: https://current.com/careers/
   active: true
+  status: active
 - name: DailyPay
   tier: 4
   priority: medium
@@ -1600,6 +1736,7 @@ companies:
   sub_industry: Earned Wage Access
   careers_url: https://www.dailypay.com/careers/
   active: true
+  status: active
 - name: Dataminr
   tier: 4
   priority: medium
@@ -1611,6 +1748,7 @@ companies:
   sub_industry: ''
   careers_url: https://www.dataminr.com/careers/
   active: true
+  status: active
 - name: DataRobot
   tier: 2
   priority: medium
@@ -1622,6 +1760,7 @@ companies:
   sub_industry: AI / Data
   careers_url: https://www.datarobot.com/careers/
   active: true
+  status: active
 - name: Dave
   tier: 2
   priority: medium
@@ -1633,6 +1772,7 @@ companies:
   sub_industry: Digital Banking
   careers_url: https://dave.com/careers
   active: true
+  status: active
 - name: dbt Labs
   tier: 1
   priority: high
@@ -1644,6 +1784,7 @@ companies:
   sub_industry: Data Transformation
   careers_url: https://job-boards.greenhouse.io/dbtlabsinc
   active: true
+  status: active
 - name: DealCloud (Intapp)
   tier: 4
   priority: medium
@@ -1657,6 +1798,7 @@ companies:
   sub_industry: CRM for Alts/PE
   careers_url: https://intapp.wd1.myworkdayjobs.com/Intapp
   active: true
+  status: active
 - name: Deel
   tier: 4
   priority: medium
@@ -1670,6 +1812,7 @@ companies:
   sub_industry: Global HR / Payroll
   careers_url: https://www.deel.com/careers/
   active: true
+  status: active
 - name: Denodo
   tier: 4
   priority: medium
@@ -1684,6 +1827,7 @@ companies:
     enterprise data dictionary
   careers_url: https://www.denodo.com/en/company/careers/list
   active: true
+  status: active
 - name: Devoted Health
   tier: 2
   priority: medium
@@ -1695,6 +1839,7 @@ companies:
   sub_industry: InsureTech / Health
   careers_url: https://devoted.wd1.myworkdayjobs.com/Devoted
   active: true
+  status: active
 - name: Digital Asset
   tier: 2
   priority: medium
@@ -1706,6 +1851,7 @@ companies:
   sub_industry: Enterprise Blockchain
   careers_url: https://www.digitalasset.com/careers
   active: true
+  status: active
 - name: Dimensional Fund Advisors
   tier: 2
   priority: medium
@@ -1716,6 +1862,7 @@ companies:
   sub_industry: Asset Management / Quant
   careers_url: https://careers.dimensional.com/
   active: true
+  status: active
 - name: Discover
   tier: 4
   priority: medium
@@ -1729,6 +1876,7 @@ companies:
   sub_industry: Payments / Banking
   careers_url: https://discover.wd5.myworkdayjobs.com/Discover
   active: true
+  status: active
 - name: DoubleLine Capital
   tier: 2
   priority: medium
@@ -1739,6 +1887,7 @@ companies:
   sub_industry: Asset Management / Fixed Income
   careers_url: https://www.paycomonline.net/v4/ats/web.php/portal/38CBF00EC5A30DD0F5859FC6251BFD31/career-page
   active: true
+  status: active
 - name: Dremio
   tier: 4
   priority: medium
@@ -1751,6 +1900,7 @@ companies:
   sub_industry: Data LakehouseEnterprise data platform accelerating BI and
   careers_url: https://www.dremio.com/careers/
   active: true
+  status: active
 - name: DriveTime
   tier: 2
   priority: medium
@@ -1761,6 +1911,7 @@ companies:
   sub_industry: Auto Finance
   careers_url: https://drivetime.wd1.myworkdayjobs.com/DriveTime
   active: true
+  status: active
 - name: DriveWealth
   tier: 4
   priority: medium
@@ -1774,6 +1925,7 @@ companies:
   sub_industry: Brokerage APIs(Adding secondary focus)
   careers_url: https://www.drivewealth.com/company/careers/
   active: true
+  status: active
 - name: DRW
   tier: 2
   priority: medium
@@ -1785,6 +1937,7 @@ companies:
   sub_industry: Prop Trading
   careers_url: https://boards.greenhouse.io/drw
   active: true
+  status: broken
 - name: EarnIn
   tier: 4
   priority: medium
@@ -1797,6 +1950,7 @@ companies:
   sub_industry: Earned Wage Access
   careers_url: https://boards.greenhouse.io/earnin
   active: true
+  status: active
 - name: East West Bank
   tier: 2
   priority: medium
@@ -1807,6 +1961,7 @@ companies:
   sub_industry: Commercial Banking
   careers_url: https://www.eastwestbank.com/en/careers
   active: true
+  status: active
 - name: Edelman Financial Engines
   tier: 1
   priority: high
@@ -1817,6 +1972,7 @@ companies:
   sub_industry: WealthTech
   careers_url: https://jobs.jobvite.com/edelmanfinancialengines
   active: true
+  status: active
 - name: Edward Jones
   tier: 1
   priority: high
@@ -1827,6 +1983,7 @@ companies:
   sub_industry: Broker-Dealer Tech
   careers_url: https://careers.edwardjones.com/
   active: true
+  status: active
 - name: Eightfold AI
   tier: 2
   priority: medium
@@ -1838,6 +1995,7 @@ companies:
   sub_industry: HR Tech / AI
   careers_url: https://eightfold.ai/company/careers/
   active: true
+  status: active
 - name: eMoney Advisor
   tier: 2
   priority: medium
@@ -1848,6 +2006,7 @@ companies:
   sub_industry: Financial Planning Tech
   careers_url: https://emoneyadvisor.com/about/careers/
   active: true
+  status: active
 - name: Enfusion
   tier: 4
   priority: medium
@@ -1860,6 +2019,7 @@ companies:
   sub_industry: Investment Management
   careers_url: https://cwan.com/company/careers/
   active: true
+  status: active
 - name: Enigma Technologies
   tier: 2
   priority: medium
@@ -1871,6 +2031,7 @@ companies:
   sub_industry: Financial Data
   careers_url: https://job-boards.greenhouse.io/enigmaio
   active: true
+  status: active
 - name: Enova
   tier: 2
   priority: medium
@@ -1882,6 +2043,7 @@ companies:
   sub_industry: Digital Lending
   careers_url: https://job-boards.greenhouse.io/enova
   active: true
+  status: active
 - name: Entrata
   tier: 2
   priority: medium
@@ -1893,6 +2055,7 @@ companies:
   sub_industry: PropTech
   careers_url: https://jobs.lever.co/entrata
   active: true
+  status: active
 - name: Envestnet
   tier: 1
   priority: high
@@ -1909,6 +2072,7 @@ companies:
   sub_industry: WealthTech
   careers_url: https://envestnet.wd5.myworkdayjobs.com/en-US/Envestnet_Careers
   active: true
+  status: broken
 - name: EPAM Systems
   tier: 4
   priority: medium
@@ -1921,6 +2085,7 @@ companies:
   sub_industry: Tech Consulting
   careers_url: https://careers.epam.com
   active: true
+  status: active
 - name: Equitable
   tier: 2
   priority: medium
@@ -1932,6 +2097,7 @@ companies:
   sub_industry: Wealth / Retirement
   careers_url: https://equitable.com/careers-at-equitable
   active: true
+  status: active
 - name: EquityZen
   tier: 2
   priority: medium
@@ -1943,6 +2109,7 @@ companies:
   sub_industry: Private Markets
   careers_url: https://job-boards.greenhouse.io/equityzen
   active: true
+  status: active
 - name: Ethic
   tier: 2
   priority: medium
@@ -1954,6 +2121,7 @@ companies:
   sub_industry: ESG WealthTech
   careers_url: https://www.ethic.com/careers
   active: true
+  status: active
 - name: Ethos Life
   tier: 2
   priority: medium
@@ -1965,6 +2133,7 @@ companies:
   sub_industry: InsureTech
   careers_url: https://job-boards.greenhouse.io/ethoslife
   active: true
+  status: active
 - name: Evolve Bank & Trust
   tier: 2
   priority: medium
@@ -1975,6 +2144,7 @@ companies:
   sub_industry: BaaS / Tech Bank
   careers_url: https://www.getevolved.com/about/careers/
   active: true
+  status: active
 - name: Expensify
   tier: 2
   priority: medium
@@ -1986,6 +2156,7 @@ companies:
   sub_industry: Spend Management
   careers_url: https://careers.expensify.com/
   active: true
+  status: active
 - name: Experian
   tier: 2
   priority: medium
@@ -1996,6 +2167,7 @@ companies:
   sub_industry: Credit Data Infrastructure
   careers_url: https://www.experian.com/careers/
   active: true
+  status: active
 - name: Facet Wealth
   tier: 1
   priority: high
@@ -2007,6 +2179,7 @@ companies:
   sub_industry: WealthTech
   careers_url: https://facet.com/careers/
   active: true
+  status: active
 - name: FactSet
   tier: 2
   priority: medium
@@ -2022,6 +2195,7 @@ companies:
   sub_industry: Financial Data
   careers_url: https://factset.wd108.myworkdayjobs.com/FactSetCareers
   active: true
+  status: active
 - name: FalconX
   tier: 4
   priority: medium
@@ -2034,6 +2208,7 @@ companies:
   sub_industry: Institutional Crypto
   careers_url: https://boards.greenhouse.io/falconx
   active: true
+  status: active
 - name: Farther
   tier: 1
   priority: high
@@ -2045,6 +2220,7 @@ companies:
   sub_industry: WealthTech
   careers_url: https://www.farther.com/careers
   active: true
+  status: active
 - name: Federated Hermes
   tier: 2
   priority: medium
@@ -2055,6 +2231,7 @@ companies:
   sub_industry: Asset Management
   careers_url: https://careers.federatedhermes.com/
   active: true
+  status: active
 - name: FICO
   tier: 2
   priority: medium
@@ -2066,6 +2243,7 @@ companies:
   careers_url: https://fico.wd1.myworkdayjobs.com/External
   active: true
   adapter_key: fico.wd1.myworkdayjobs.com/External
+  status: active
 - name: Fidelity Investments
   tier: 2
   priority: medium
@@ -2082,6 +2260,7 @@ companies:
   sub_industry: Brokerage / Clearing
   careers_url: https://jobs.fidelity.com/
   active: true
+  status: broken
 - name: Fifth Third Bank
   tier: 2
   priority: medium
@@ -2093,6 +2272,7 @@ companies:
   careers_url: https://fifththird.wd5.myworkdayjobs.com/53careers
   active: true
   adapter_key: fifththird.wd5.myworkdayjobs.com/53careers
+  status: active
 - name: Figure
   tier: 4
   priority: medium
@@ -2105,6 +2285,7 @@ companies:
   sub_industry: Blockchain Lending
   careers_url: https://boards.greenhouse.io/figure
   active: true
+  status: active
 - name: Finix
   tier: 2
   priority: medium
@@ -2116,6 +2297,7 @@ companies:
   sub_industry: Payments Infrastructure
   careers_url: https://jobs.lever.co/finix
   active: true
+  status: active
 - name: Fireblocks
   tier: 2
   priority: medium
@@ -2127,17 +2309,19 @@ companies:
   sub_industry: Digital Asset OS
   careers_url: https://boards.greenhouse.io/fireblocks
   active: true
+  status: active
 - name: First Citizens Bank
   tier: 2
   priority: medium
-  adapter: workday
-  domain: firstcitizens.com
+  adapter: manual
+  domain: jobs.firstcitizens.com
   industry: commercial banking | tech banking | integration
   notes: Acquired Silicon Valley Bank (SVB); massive ongoing enterprise platform integration
     needs.
   sub_industry: Commercial Banking
-  careers_url: https://firstcitizens.wd1.myworkdayjobs.com/FirstCitizens
+  careers_url: https://jobs.firstcitizens.com/
   active: true
+  status: active
 - name: First Horizon Bank
   tier: 2
   priority: medium
@@ -2148,6 +2332,7 @@ companies:
   sub_industry: Regional Banking
   careers_url: https://www.firsthorizon.com/careers
   active: true
+  status: active
 - name: First Tech Federal Credit Union
   tier: 2
   priority: medium
@@ -2158,6 +2343,7 @@ companies:
   sub_industry: Credit Union Tech
   careers_url: https://www.firsttechfed.com/discover/careers
   active: true
+  status: active
 - name: FIS
   tier: 1
   priority: high
@@ -2169,6 +2355,7 @@ companies:
   careers_url: https://fis.wd5.myworkdayjobs.com/en-US/SearchJobs/introduceYourself
   active: true
   adapter_key: fis.wd5.myworkdayjobs.com/en-US/SearchJobs/introduceYourself
+  status: active
 - name: Fiserv
   tier: 1
   priority: high
@@ -2179,6 +2366,7 @@ companies:
   sub_industry: Core Banking Tech
   careers_url: https://fiserv.wd5.myworkdayjobs.com/ext
   active: true
+  status: active
 - name: Fisher Investments
   tier: 1
   priority: high
@@ -2189,6 +2377,7 @@ companies:
   sub_industry: WealthTech
   careers_url: https://www.fisherinvestments.com/careers
   active: true
+  status: active
 - name: Fivetran
   tier: 1
   priority: high
@@ -2201,6 +2390,7 @@ companies:
   sub_industry: Data Integration
   careers_url: https://boards.greenhouse.io/fivetran
   active: true
+  status: active
 - name: FloQast
   tier: 2
   priority: medium
@@ -2213,6 +2403,7 @@ companies:
   sub_industry: FinTech / Accounting
   careers_url: https://jobs.lever.co/floqast
   active: true
+  status: active
 - name: Flywire
   tier: 2
   priority: medium
@@ -2224,6 +2415,7 @@ companies:
   sub_industry: B2B Payments
   careers_url: https://www.flywire.com/company/careers
   active: true
+  status: active
 - name: Forge Global
   tier: 2
   priority: medium
@@ -2235,6 +2427,7 @@ companies:
   sub_industry: Private Markets
   careers_url: https://boards.greenhouse.io/forgeglobal
   active: true
+  status: active
 - name: Forter
   tier: 2
   priority: medium
@@ -2246,6 +2439,7 @@ companies:
   sub_industry: Fraud / Payments
   careers_url: https://job-boards.greenhouse.io/forter
   active: true
+  status: active
 - name: ForUsAll
   tier: 2
   priority: medium
@@ -2257,6 +2451,7 @@ companies:
   sub_industry: Retirement Tech / Crypto
   careers_url: https://jobs.lever.co/forusall
   active: true
+  status: broken
 - name: Franklin Templeton
   tier: 1
   priority: high
@@ -2267,6 +2462,7 @@ companies:
   sub_industry: Asset Management
   careers_url: https://www.franklintempleton.com/careers
   active: true
+  status: active
 - name: Frost Bank
   tier: 2
   priority: medium
@@ -2278,6 +2474,7 @@ companies:
   careers_url: https://frostbank.wd5.myworkdayjobs.com/external/login
   active: true
   adapter_key: frostbank.wd5.myworkdayjobs.com/external/login
+  status: active
 - name: Funding Circle
   tier: 4
   priority: medium
@@ -2290,6 +2487,7 @@ companies:
   sub_industry: SME LendingGlobal small business lending
   careers_url: https://www.fundingcircle.com/uk/careers/
   active: true
+  status: active
 - name: Fundrise
   tier: 2
   priority: medium
@@ -2301,6 +2499,7 @@ companies:
   sub_industry: Consumer Alts
   careers_url: https://jobs.lever.co/fundrise
   active: true
+  status: active
 - name: Galaxy Digital
   tier: 4
   priority: medium
@@ -2313,6 +2512,7 @@ companies:
   sub_industry: Digital Assets
   careers_url: https://careers.galaxydigital.com/
   active: true
+  status: active
 - name: Galileo Financial
   tier: 2
   priority: medium
@@ -2323,6 +2523,7 @@ companies:
   sub_industry: FinTech Infrastructure
   careers_url: https://www.galileo-ft.com/careers/
   active: true
+  status: active
 - name: Gemini
   tier: 1
   priority: high
@@ -2334,6 +2535,7 @@ companies:
   sub_industry: Digital Assets
   careers_url: https://www.gemini.com/careers
   active: true
+  status: active
 - name: GeoWealth
   tier: 2
   priority: medium
@@ -2345,6 +2547,7 @@ companies:
   sub_industry: WealthTech (TAMP)
   careers_url: https://geowealth.com/careers/
   active: true
+  status: active
 - name: Gloat
   tier: 2
   priority: medium
@@ -2356,6 +2559,7 @@ companies:
   sub_industry: HR Tech / AI
   careers_url: https://gloat.com/careers/
   active: true
+  status: active
 - name: Golden 1 Credit Union
   tier: 2
   priority: medium
@@ -2366,6 +2570,7 @@ companies:
   sub_industry: Credit Union Tech
   careers_url: https://golden1.wd1.myworkdayjobs.com/Golden1Careers
   active: true
+  status: broken
 - name: Goldman Sachs (Marcus/TxB)
   tier: 4
   priority: medium
@@ -2379,6 +2584,7 @@ companies:
   sub_industry: Banking / Tech
   careers_url: https://goldmansachs.wd1.myworkdayjobs.com/Goldman_Sachs
   active: true
+  status: broken
 - name: Gotransverse
   tier: 2
   priority: medium
@@ -2390,6 +2596,7 @@ companies:
   sub_industry: Billing / RevTech
   careers_url: https://gotransverse.com/careers
   active: true
+  status: active
 - name: Green Dot
   tier: 2
   priority: medium
@@ -2401,6 +2608,7 @@ companies:
   careers_url: https://greendotcorp.wd1.myworkdayjobs.com/en-us/gdc
   active: true
   adapter_key: greendotcorp.wd1.myworkdayjobs.com/en-us/gdc
+  status: active
 - name: Greenlight
   tier: 2
   priority: medium
@@ -2412,6 +2620,7 @@ companies:
   sub_industry: Digital Banking
   careers_url: https://jobs.lever.co/greenlight
   active: true
+  status: active
 - name: Guaranteed Rate
   tier: 2
   priority: medium
@@ -2422,6 +2631,7 @@ companies:
   sub_industry: Mortgage Tech
   careers_url: https://www.rate.com/careers/loan-officers
   active: true
+  status: active
 - name: Guggenheim Partners
   tier: 1
   priority: high
@@ -2433,6 +2643,7 @@ companies:
   careers_url: https://guggenheim.wd1.myworkdayjobs.com/en-US/External_Careers_Site
   active: true
   adapter_key: guggenheim.wd1.myworkdayjobs.com/en-US/External_Careers_Site
+  status: active
 - name: Guideline
   tier: 2
   priority: medium
@@ -2444,6 +2655,7 @@ companies:
   sub_industry: Retirement Tech
   careers_url: https://boards.greenhouse.io/guideline
   active: true
+  status: broken
 - name: Gusto
   tier: 1
   priority: high
@@ -2460,6 +2672,7 @@ companies:
   sub_industry: Payroll / FinTech
   careers_url: https://boards.greenhouse.io/gusto
   active: true
+  status: active
 - name: Halo Investing
   tier: 4
   priority: medium
@@ -2473,6 +2686,7 @@ companies:
   sub_industry: WealthTech / Alts
   careers_url: https://haloinvesting.com/careers/
   active: true
+  status: active
 - name: Harding Loevner
   tier: 2
   priority: medium
@@ -2483,6 +2697,7 @@ companies:
   sub_industry: Asset Management
   careers_url: https://www.hardingloevner.com/careers/
   active: true
+  status: active
 - name: Hidden Road
   tier: 4
   priority: medium
@@ -2495,16 +2710,18 @@ companies:
   sub_industry: Prime Brokerage
   careers_url: https://job-boards.greenhouse.io/hiddenroad
   active: true
+  status: active
 - name: HighRadius
   tier: 2
   priority: medium
-  adapter: workday
-  domain: highradius.com
+  adapter: manual
+  domain: www.highradius.com
   industry: treasury | fintech | erp integration
   notes: AI-driven treasury software heavily reliant on complex multi-system ERP integrations.
   sub_industry: FinTech / Treasury
-  careers_url: https://highradius.wd1.myworkdayjobs.com/HighRadius
+  careers_url: https://www.highradius.com/about-old/careers/
   active: true
+  status: active
 - name: Hightouch
   tier: 2
   priority: medium
@@ -2516,6 +2733,7 @@ companies:
   sub_industry: Data Infrastructure
   careers_url: https://boards.greenhouse.io/hightouch
   active: true
+  status: active
 - name: Hippo Insurance
   tier: 4
   priority: medium
@@ -2528,6 +2746,7 @@ companies:
   sub_industry: InsureTech
   careers_url: https://jobs.lever.co/hippo
   active: true
+  status: broken
 - name: Hudson River Trading
   tier: 2
   priority: medium
@@ -2539,6 +2758,7 @@ companies:
   sub_industry: Quant Trading
   careers_url: https://careers.hudsonrivertrading.com/careers/
   active: true
+  status: active
 - name: Human Interest
   tier: 2
   priority: medium
@@ -2550,6 +2770,7 @@ companies:
   sub_industry: Retirement Tech
   careers_url: https://boards.greenhouse.io/humaninterest
   active: true
+  status: active
 - name: Hummingbird
   tier: 2
   priority: medium
@@ -2561,6 +2782,7 @@ companies:
   sub_industry: RegTech
   careers_url: https://www.hummingbird.co/careers
   active: true
+  status: active
 - name: Huntington National Bank
   tier: 1
   priority: high
@@ -2571,6 +2793,7 @@ companies:
   sub_industry: Banking / Wealth
   careers_url: https://huntington-careers.com/
   active: true
+  status: active
 - name: iCapital
   tier: 1
   priority: high
@@ -2586,6 +2809,7 @@ companies:
   sub_industry: Alts Platform
   careers_url: https://boards.greenhouse.io/icapitalnetwork
   active: true
+  status: active
 - name: ICE Mortgage Tech
   tier: 1
   priority: high
@@ -2596,6 +2820,7 @@ companies:
   sub_industry: Mortgage Tech
   careers_url: https://ice.wd1.myworkdayjobs.com/ICE
   active: true
+  status: broken
 - name: IEX Group
   tier: 4
   priority: medium
@@ -2608,6 +2833,7 @@ companies:
   sub_industry: Exchange Tech
   careers_url: https://boards.greenhouse.io/iex
   active: true
+  status: active
 - name: Informatica
   tier: 1
   priority: high
@@ -2619,6 +2845,7 @@ companies:
   sub_industry: Data Management
   careers_url: https://careers.salesforce.com/en/jobs/?search=informatica&pagesize=20#results
   active: true
+  status: active
 - name: Insperity
   tier: 2
   priority: medium
@@ -2629,6 +2856,7 @@ companies:
   sub_industry: HRIS / Payroll
   careers_url: https://careers.insperity.com/
   active: true
+  status: active
 - name: Interactive Brokers
   tier: 1
   priority: high
@@ -2640,6 +2868,7 @@ companies:
   sub_industry: Brokerage
   careers_url: https://www.interactivebrokers.com/en/general/about/careers-splash.php
   active: true
+  status: active
 - name: Intercontinental Exchange
   tier: 1
   priority: high
@@ -2652,6 +2881,7 @@ companies:
   sub_industry: Exchange Tech
   careers_url: https://careers.ice.com/jobs
   active: true
+  status: active
 - name: Intuit
   tier: 1
   priority: high
@@ -2662,6 +2892,7 @@ companies:
   sub_industry: Accounting Tech
   careers_url: https://www.intuit.com/careers/
   active: true
+  status: active
 - name: Invesco
   tier: 1
   priority: high
@@ -2674,6 +2905,7 @@ companies:
   careers_url: https://invesco.wd1.myworkdayjobs.com/IVZ
   active: true
   adapter_key: invesco.wd1.myworkdayjobs.com/IVZ
+  status: active
 - name: InvestCloud
   tier: 1
   priority: high
@@ -2685,6 +2917,7 @@ companies:
   sub_industry: WealthTech
   careers_url: https://jobs.lever.co/investcloud
   active: true
+  status: broken
 - name: Jack Henry & Associates
   tier: 1
   priority: high
@@ -2695,6 +2928,7 @@ companies:
   sub_industry: Core Banking Tech
   careers_url: https://careers.jackhenry.com/
   active: true
+  status: active
 - name: Jackson Financial
   tier: 2
   priority: medium
@@ -2706,6 +2940,7 @@ companies:
   careers_url: https://jackson.wd1.myworkdayjobs.com/Jackson_Careers
   active: true
   adapter_key: jackson.wd1.myworkdayjobs.com/Jackson_Careers
+  status: active
 - name: Jane Street
   tier: 2
   priority: medium
@@ -2717,6 +2952,7 @@ companies:
   sub_industry: Prop Trading
   careers_url: https://boards.greenhouse.io/janestreet
   active: true
+  status: active
 - name: Janus Henderson
   tier: 2
   priority: medium
@@ -2727,6 +2963,7 @@ companies:
   sub_industry: Asset Management
   careers_url: https://www.janushenderson.com/corporate/careers/
   active: true
+  status: active
 - name: Jefferies
   tier: 1
   priority: high
@@ -2737,16 +2974,19 @@ companies:
   sub_industry: Capital Markets Tech
   careers_url: https://www.jefferies.com/careers/
   active: true
+  status: active
 - name: John Hancock
   tier: 2
   priority: medium
   adapter: workday
-  domain: johnhancock.com
+  domain: manulife.wd3.myworkdayjobs.com
   industry: wealth management | retirement | data mapping
   notes: US division of Manulife; requires deep legacy-to-modern accounting migrations.
   sub_industry: Wealth / Retirement
-  careers_url: https://johnhancock.wd1.myworkdayjobs.com/John_Hancock
+  careers_url: https://manulife.wd3.myworkdayjobs.com/en-US/MFCJH_Jobs/login
   active: true
+  adapter_key: manulife.wd3.myworkdayjobs.com/en-US/MFCJH_Jobs/login
+  status: active
 - name: JPMorgan Chase
   tier: 4
   priority: medium
@@ -2760,6 +3000,7 @@ companies:
   sub_industry: Banking / Tech
   careers_url: https://www.jpmorganchase.com/careers
   active: true
+  status: active
 - name: Jumio
   tier: 2
   priority: medium
@@ -2771,6 +3012,7 @@ companies:
   careers_url: https://job-boards.greenhouse.io/jumio
   active: true
   adapter_key: jumio
+  status: active
 - name: Juniper Square
   tier: 2
   priority: medium
@@ -2783,6 +3025,7 @@ companies:
   sub_industry: PropTech / Alts
   careers_url: https://www.junipersquare.com/company/careers
   active: true
+  status: active
 - name: Justt
   tier: 2
   priority: medium
@@ -2794,6 +3037,7 @@ companies:
   sub_industry: Payments / Dispute Tech
   careers_url: https://justt.ai/careers/
   active: true
+  status: active
 - name: Justworks
   tier: 4
   priority: medium
@@ -2807,6 +3051,7 @@ companies:
   sub_industry: PEO / Payroll
   careers_url: https://job-boards.greenhouse.io/justworks
   active: true
+  status: broken
 - name: Keep Financial
   tier: 2
   priority: medium
@@ -2819,6 +3064,7 @@ companies:
   sub_industry: FinTech / Compensation
   careers_url: https://boards.greenhouse.io/keepfinancial
   active: true
+  status: broken
 - name: Kensho (S&P Global)
   tier: 4
   priority: medium
@@ -2832,6 +3078,7 @@ companies:
   sub_industry: AI / Finance Data
   careers_url: https://spglobal.wd5.myworkdayjobs.com/SPGlobalCareers
   active: true
+  status: broken
 - name: KeyBank
   tier: 2
   priority: medium
@@ -2842,6 +3089,7 @@ companies:
   sub_industry: Commercial Banking
   careers_url: https://keybank.wd5.myworkdayjobs.com/External_Career_Site
   active: true
+  status: active
 - name: Kin Insurance
   tier: 2
   priority: medium
@@ -2853,6 +3101,7 @@ companies:
   sub_industry: InsureTech
   careers_url: https://www.kin.com/careers/
   active: true
+  status: active
 - name: Koyfin
   tier: 2
   priority: medium
@@ -2868,6 +3117,7 @@ companies:
   sub_industry: WealthTech
   careers_url: https://www.koyfin.com/careers/
   active: true
+  status: active
 - name: Kraken
   tier: 4
   priority: medium
@@ -2880,6 +3130,7 @@ companies:
   sub_industry: Digital Assets
   careers_url: https://jobs.lever.co/kraken
   active: true
+  status: active
 - name: Lead Bank
   tier: 2
   priority: medium
@@ -2891,6 +3142,7 @@ companies:
   sub_industry: BaaS / Tech Bank
   careers_url: https://jobs.lever.co/leadbank
   active: true
+  status: broken
 - name: Lemonade
   tier: 2
   priority: medium
@@ -2902,6 +3154,7 @@ companies:
   sub_industry: InsureTech
   careers_url: https://boards.greenhouse.io/lemonade
   active: true
+  status: broken
 - name: LendingClub
   tier: 2
   priority: medium
@@ -2913,6 +3166,7 @@ companies:
   careers_url: https://lendingclub.wd1.myworkdayjobs.com/External
   active: true
   adapter_key: lendingclub.wd1.myworkdayjobs.com/External
+  status: active
 - name: LendingTree
   tier: 2
   priority: medium
@@ -2924,6 +3178,7 @@ companies:
   careers_url: https://job-boards.greenhouse.io/lendingtree
   active: true
   adapter_key: lendingtree
+  status: active
 - name: Liberty Mutual
   tier: 2
   priority: medium
@@ -2934,6 +3189,7 @@ companies:
   sub_industry: InsureTech
   careers_url: https://www.libertymutualgroup.com/about-lm/careers/overview
   active: true
+  status: active
 - name: Lili
   tier: 4
   priority: medium
@@ -2946,6 +3202,7 @@ companies:
   sub_industry: SME Banking
   careers_url: https://www.comeet.com/jobs/lili/A6.009
   active: true
+  status: active
 - name: Lincoln Financial Group
   tier: 2
   priority: medium
@@ -2956,6 +3213,7 @@ companies:
   sub_industry: Wealth / InsureTech
   careers_url: https://www.lincolnfinancial.com/public/aboutus/careers
   active: true
+  status: active
 - name: loanDepot
   tier: 2
   priority: medium
@@ -2966,6 +3224,7 @@ companies:
   sub_industry: Mortgage Tech
   careers_url: https://jobs.jobvite.com/loandepot
   active: true
+  status: active
 - name: LogicGate
   tier: 2
   priority: medium
@@ -2977,6 +3236,7 @@ companies:
   sub_industry: RegTech / GRC
   careers_url: https://boards.greenhouse.io/logicgate
   active: true
+  status: active
 - name: Lord Abbett
   tier: 2
   priority: medium
@@ -2987,6 +3247,7 @@ companies:
   sub_industry: Asset Management
   careers_url: https://lordabbett.wd1.myworkdayjobs.com/Lord_Abbett
   active: true
+  status: broken
 - name: LPL Financial
   tier: 1
   priority: high
@@ -2997,6 +3258,7 @@ companies:
   sub_industry: Broker-Dealer Tech
   careers_url: https://career.lpl.com/
   active: true
+  status: active
 - name: Lukka
   tier: 2
   priority: medium
@@ -3009,6 +3271,7 @@ companies:
   sub_industry: Crypto Data & Tax
   careers_url: https://lukka.tech/careers/
   active: true
+  status: active
 - name: M&T Bank
   tier: 2
   priority: medium
@@ -3020,6 +3283,7 @@ companies:
   careers_url: https://mtb.wd5.myworkdayjobs.com/MTB
   active: true
   adapter_key: mtb.wd5.myworkdayjobs.com/MTB
+  status: active
 - name: MANTL
   tier: 4
   priority: medium
@@ -3032,6 +3296,7 @@ companies:
   sub_industry: Account Opening
   careers_url: https://job-boards.greenhouse.io/mantl
   active: true
+  status: active
 - name: MarketAxess
   tier: 1
   priority: high
@@ -3043,6 +3308,7 @@ companies:
   sub_industry: Capital Markets
   careers_url: https://www.marketaxess.com/careers
   active: true
+  status: active
 - name: Marqeta
   tier: 1
   priority: high
@@ -3059,6 +3325,7 @@ companies:
   sub_industry: Card Issuing APIs
   careers_url: https://boards.greenhouse.io/marqeta
   active: true
+  status: active
 - name: MassMutual
   tier: 1
   priority: high
@@ -3069,6 +3336,7 @@ companies:
   sub_industry: Wealth / InsureTech
   careers_url: https://careers.massmutual.com/
   active: true
+  status: active
 - name: Mastercard
   tier: 4
   priority: medium
@@ -3081,6 +3349,7 @@ companies:
   sub_industry: Payments Network
   careers_url: https://mastercard.wd1.myworkdayjobs.com/CorporateCareers
   active: true
+  status: active
 - name: Matillion
   tier: 2
   priority: medium
@@ -3093,6 +3362,7 @@ companies:
   sub_industry: Data Integration
   careers_url: https://jobs.lever.co/matillion
   active: true
+  status: active
 - name: Maxio (Chargify/SaasOptics)
   tier: 4
   priority: medium
@@ -3105,6 +3375,7 @@ companies:
   sub_industry: B2B Billing
   careers_url: https://boards.greenhouse.io/maxio
   active: true
+  status: broken
 - name: Maxwell
   tier: 2
   priority: medium
@@ -3116,6 +3387,7 @@ companies:
   sub_industry: Mortgage Tech
   careers_url: https://job-boards.greenhouse.io/maxwell
   active: true
+  status: active
 - name: Melio
   tier: 2
   priority: medium
@@ -3132,6 +3404,7 @@ companies:
   sub_industry: B2B Payments
   careers_url: https://boards.greenhouse.io/melio
   active: true
+  status: active
 - name: Mercury
   tier: 2
   priority: medium
@@ -3143,6 +3416,7 @@ companies:
   sub_industry: Digital Banking / B2B
   careers_url: https://job-boards.greenhouse.io/mercury
   active: true
+  status: active
 - name: MeridianLink
   tier: 2
   priority: medium
@@ -3154,6 +3428,7 @@ companies:
   sub_industry: Lending Tech
   careers_url: https://www.meridianlink.com/careers/
   active: true
+  status: active
 - name: MetricStream
   tier: 2
   priority: medium
@@ -3166,6 +3441,7 @@ companies:
   sub_industry: GRC & Risk
   careers_url: https://www.metricstream.com/about-us/careers.htm
   active: true
+  status: active
 - name: MFS Investment Management
   tier: 2
   priority: medium
@@ -3177,6 +3453,7 @@ companies:
   careers_url: https://mfs.wd1.myworkdayjobs.com/MFS-Careers
   active: true
   adapter_key: mfs.wd1.myworkdayjobs.com/MFS-Careers
+  status: active
 - name: MoneyLion
   tier: 2
   priority: medium
@@ -3188,6 +3465,7 @@ companies:
   sub_industry: Consumer Finance
   careers_url: https://gen.wd1.myworkdayjobs.com/en-US/careers
   active: true
+  status: active
 - name: Monte Carlo
   tier: 2
   priority: medium
@@ -3199,6 +3477,7 @@ companies:
   sub_industry: Data Infrastructure
   careers_url: https://www.montecarlodata.com/careers-at-monte-carlo/
   active: true
+  status: active
 - name: Morgan Stanley
   tier: 1
   priority: high
@@ -3210,6 +3489,7 @@ companies:
   sub_industry: Capital Markets / Wealth
   careers_url: https://morganstanley.wd1.myworkdayjobs.com/morganstanley
   active: true
+  status: broken
 - name: Morningstar
   tier: 2
   priority: medium
@@ -3226,6 +3506,7 @@ companies:
   sub_industry: Financial Data
   careers_url: https://careers.morningstar.com/us/en
   active: true
+  status: active
 - name: Mountain America Credit Union
   tier: 2
   priority: medium
@@ -3236,6 +3517,7 @@ companies:
   sub_industry: Credit Union Tech
   careers_url: https://www.macu.com/careers/now-hiring
   active: true
+  status: active
 - name: MRI Software
   tier: 2
   priority: medium
@@ -3247,6 +3529,7 @@ companies:
   sub_industry: PropTech
   careers_url: https://www.mrisoftware.com//about/careers//
   active: true
+  status: active
 - name: MSCI
   tier: 2
   priority: medium
@@ -3258,6 +3541,7 @@ companies:
   sub_industry: Risk Analytics / Data
   careers_url: https://careers.msci.com/
   active: true
+  status: active
 - name: MuleSoft
   tier: 3
   priority: low
@@ -3273,6 +3557,7 @@ companies:
   sub_industry: API Management
   careers_url: https://www.salesforce.com/company/careers/?d=70130000000i80S&bc=OTH
   active: true
+  status: active
 - name: MyVest
   tier: 4
   priority: medium
@@ -3285,6 +3570,7 @@ companies:
   sub_industry: WealthTech
   careers_url: https://jobs.lever.co/myvest
   active: true
+  status: active
 - name: Nasdaq
   tier: 1
   priority: high
@@ -3297,6 +3583,7 @@ companies:
   sub_industry: Exchange Tech
   careers_url: https://nasdaq.wd1.myworkdayjobs.com/Global_External_Site
   active: true
+  status: active
 - name: Nationwide
   tier: 2
   priority: medium
@@ -3308,6 +3595,7 @@ companies:
   careers_url: https://nationwide.wd1.myworkdayjobs.com/Nationwide_Career/job/Ohio---Columbus-One-Nationwide-Plaza/AVP--Reinsurance-Placement---Alternative-Ventures---Specialty-Finance_097119
   active: true
   adapter_key: nationwide.wd1.myworkdayjobs.com/Nationwide_Career/job/Ohio---Columbus-One-Nationwide-Plaza/AVP--Reinsurance-Placement---Alternative-Ventures---Specialty-Finance_097119
+  status: active
 - name: Navan
   tier: 2
   priority: medium
@@ -3319,6 +3607,7 @@ companies:
   sub_industry: Corporate Spend
   careers_url: https://navan.com/careers
   active: true
+  status: active
 - name: Navient
   tier: 2
   priority: medium
@@ -3331,6 +3620,7 @@ companies:
   careers_url: https://navient.wd1.myworkdayjobs.com/Navient_Jobs
   active: true
   adapter_key: navient.wd1.myworkdayjobs.com/Navient_Jobs
+  status: active
 - name: Navy Federal Credit Union
   tier: 1
   priority: high
@@ -3342,6 +3632,7 @@ companies:
   sub_industry: Credit Union Tech
   careers_url: https://jobs.navyfederal.org/hcmUI/CandidateExperience/en/sites/nfcu
   active: true
+  status: active
 - name: nCino
   tier: 2
   priority: medium
@@ -3352,6 +3643,7 @@ companies:
   sub_industry: Cloud Banking / Lending
   careers_url: https://www.ncino.com/our-company/careers
   active: true
+  status: active
 - name: Nelnet
   tier: 2
   priority: medium
@@ -3362,16 +3654,19 @@ companies:
   sub_industry: Consumer Lending / Payments
   careers_url: https://nelnet.com/careers/
   active: true
+  status: active
 - name: Neuberger Berman
   tier: 2
   priority: medium
   adapter: workday
-  domain: nb.com
+  domain: nb.wd1.myworkdayjobs.com
   industry: asset management | alternative investments | data
   notes: Independent, employee-owned investment manager needing alts data architecture.
   sub_industry: Asset Management
-  careers_url: https://neubergerberman.wd1.myworkdayjobs.com/Neuberger_Berman_Careers
+  careers_url: https://nb.wd1.myworkdayjobs.com/NBCareers
   active: true
+  adapter_key: nb.wd1.myworkdayjobs.com/NBCareers
+  status: active
 - name: New York Life
   tier: 1
   priority: high
@@ -3383,6 +3678,7 @@ companies:
   sub_industry: Wealth / InsureTech
   careers_url: https://careers.newyorklife.com/careers
   active: true
+  status: active
 - name: Next Insurance
   tier: 2
   priority: medium
@@ -3394,6 +3690,7 @@ companies:
   sub_industry: InsureTech
   careers_url: https://www.nextinsurance.com/careers/
   active: true
+  status: active
 - name: NICE Actimize
   tier: 2
   priority: medium
@@ -3404,6 +3701,7 @@ companies:
   sub_industry: Fraud & AML
   careers_url: https://www.nice.com/careers
   active: true
+  status: active
 - name: NinjaTrader
   tier: 2
   priority: medium
@@ -3415,6 +3713,7 @@ companies:
   sub_industry: Brokerage
   careers_url: https://boards.greenhouse.io/ninjatrader
   active: true
+  status: active
 - name: Nitrogen (Riskalyze)
   tier: 2
   priority: medium
@@ -3426,6 +3725,7 @@ companies:
   sub_industry: WealthTech / Risk
   careers_url: https://nitrogenwealth.com/careers/
   active: true
+  status: active
 - name: Northern Trust
   tier: 4
   priority: medium
@@ -3439,6 +3739,7 @@ companies:
   sub_industry: Custody / Wealth
   careers_url: https://ntrs.wd1.myworkdayjobs.com/northerntrust
   active: true
+  status: active
 - name: Northwestern Mutual
   tier: 1
   priority: high
@@ -3449,6 +3750,7 @@ companies:
   sub_industry: Wealth / InsureTech
   careers_url: https://www.northwesternmutual.com/careers
   active: true
+  status: active
 - name: Novo
   tier: 4
   priority: medium
@@ -3461,6 +3763,7 @@ companies:
   sub_industry: SME Banking
   careers_url: https://boards.greenhouse.io/novo
   active: true
+  status: active
 - name: Numerated
   tier: 2
   priority: medium
@@ -3472,6 +3775,7 @@ companies:
   sub_industry: Lending Tech
   careers_url: https://jobs.lever.co/numerated
   active: true
+  status: broken
 - name: NYDIG
   tier: 4
   priority: medium
@@ -3484,6 +3788,7 @@ companies:
   sub_industry: Bitcoin for Institutions
   careers_url: https://boards.greenhouse.io/nydig
   active: true
+  status: broken
 - name: Nymbus
   tier: 4
   priority: medium
@@ -3496,6 +3801,7 @@ companies:
   sub_industry: Core Banking Tech
   careers_url: https://www.nymbus.com/careers/
   active: true
+  status: active
 - name: Oasis Pro
   tier: 2
   priority: medium
@@ -3506,6 +3812,7 @@ companies:
   sub_industry: Digital Assets / Tokenization
   careers_url: https://www.oasispro.com/careers
   active: true
+  status: active
 - name: Ondo Finance
   tier: 4
   priority: medium
@@ -3519,6 +3826,7 @@ companies:
   sub_industry: DeFi / TradFi Bridge
   careers_url: https://jobs.ashbyhq.com/ondo
   active: true
+  status: broken
 - name: OneMain Financial
   tier: 2
   priority: medium
@@ -3530,6 +3838,7 @@ companies:
   careers_url: https://myhrhome.wd1.myworkdayjobs.com/OneMainCareers/login
   active: true
   adapter_key: myhrhome.wd1.myworkdayjobs.com/OneMainCareers/login
+  status: active
 - name: OneStream Software
   tier: 2
   priority: medium
@@ -3541,6 +3850,7 @@ companies:
   sub_industry: Financial Reporting
   careers_url: https://www.onestream.com/careers/
   active: true
+  status: active
 - name: OpenDoor
   tier: 2
   priority: medium
@@ -3552,6 +3862,7 @@ companies:
   sub_industry: PropTech
   careers_url: https://www.opendoor.com/careers
   active: true
+  status: active
 - name: Openly
   tier: 2
   priority: medium
@@ -3563,6 +3874,7 @@ companies:
   sub_industry: InsureTech
   careers_url: https://boards.greenhouse.io/openly
   active: true
+  status: active
 - name: Oportun
   tier: 2
   priority: medium
@@ -3574,6 +3886,7 @@ companies:
   careers_url: https://job-boards.greenhouse.io/oportun
   active: true
   adapter_key: oportun
+  status: active
 - name: OppFi
   tier: 2
   priority: medium
@@ -3585,6 +3898,7 @@ companies:
   sub_industry: Digital Lending
   careers_url: https://www.oppfi.com/careers/
   active: true
+  status: active
 - name: Optiver
   tier: 2
   priority: medium
@@ -3596,6 +3910,7 @@ companies:
   sub_industry: Prop Trading
   careers_url: https://optiver.com/working-at-optiver/career-opportunities/
   active: true
+  status: active
 - name: Osaic
   tier: 1
   priority: high
@@ -3607,6 +3922,7 @@ companies:
   sub_industry: Broker-Dealer Tech
   careers_url: https://careers.osaic.com/
   active: true
+  status: active
 - name: Oscar Health
   tier: 2
   priority: medium
@@ -3618,6 +3934,7 @@ companies:
   sub_industry: InsureTech / Health
   careers_url: https://www.hioscar.com/careers
   active: true
+  status: active
 - name: Pacific Life
   tier: 2
   priority: medium
@@ -3629,6 +3946,7 @@ companies:
   careers_url: https://pacificlife.wd1.myworkdayjobs.com/PacificLifeCareers
   active: true
   adapter_key: pacificlife.wd1.myworkdayjobs.com/PacificLifeCareers
+  status: active
 - name: Pagos
   tier: 2
   priority: medium
@@ -3640,6 +3958,7 @@ companies:
   sub_industry: Payments Infrastructure
   careers_url: https://pagos.ai/careers
   active: true
+  status: active
 - name: Palo Alto Networks
   tier: 4
   priority: medium
@@ -3653,6 +3972,7 @@ companies:
   sub_industry: Cybersecurity(Fintech adjacent)
   careers_url: https://paloaltonetworks.wd5.myworkdayjobs.com/en-US/panwexternalcareers/introduceYourself
   active: true
+  status: active
 - name: Pathward
   tier: 2
   priority: medium
@@ -3664,6 +3984,7 @@ companies:
   careers_url: https://job-boards.greenhouse.io/pathward
   active: true
   adapter_key: pathward
+  status: active
 - name: Paxos
   tier: 2
   priority: medium
@@ -3675,6 +3996,7 @@ companies:
   sub_industry: Regulated Crypto
   careers_url: https://www.paxos.com/careers
   active: true
+  status: active
 - name: Payactiv
   tier: 4
   priority: medium
@@ -3687,6 +4009,7 @@ companies:
   sub_industry: Earned Wage Access
   careers_url: https://jobs.lever.co/payactiv
   active: true
+  status: active
 - name: Paychex
   tier: 1
   priority: high
@@ -3697,6 +4020,7 @@ companies:
   sub_industry: HRIS / Payroll
   careers_url: https://careers.paychex.com/
   active: true
+  status: active
 - name: Paycom
   tier: 4
   priority: medium
@@ -3710,6 +4034,7 @@ companies:
   sub_industry: HRIS / Payroll
   careers_url: https://www.paycom.com/careers/
   active: true
+  status: active
 - name: Paycor
   tier: 2
   priority: medium
@@ -3720,6 +4045,7 @@ companies:
   sub_industry: HRIS / Payroll
   careers_url: https://www.paycor.com/company/careers/
   active: true
+  status: active
 - name: Paylocity
   tier: 4
   priority: medium
@@ -3733,6 +4059,7 @@ companies:
   sub_industry: HRIS / Payroll
   careers_url: https://www.paylocity.com/company/careers/
   active: true
+  status: active
 - name: Paystand
   tier: 4
   priority: medium
@@ -3745,6 +4072,7 @@ companies:
   sub_industry: B2B Payments
   careers_url: https://careers.paystand.com/
   active: true
+  status: active
 - name: PenFed Credit Union
   tier: 2
   priority: medium
@@ -3755,6 +4083,7 @@ companies:
   sub_industry: Credit Union Tech
   careers_url: https://careers.penfed.org/
   active: true
+  status: active
 - name: PennyMac
   tier: 2
   priority: medium
@@ -3765,6 +4094,7 @@ companies:
   sub_industry: Mortgage Tech
   careers_url: https://careers.pennymac.com/
   active: true
+  status: active
 - name: Personal Capital / Empower
   tier: 4
   priority: medium
@@ -3777,6 +4107,7 @@ companies:
   sub_industry: WealthTech(
   careers_url: https://empower.wd1.myworkdayjobs.com/Empower_Careers
   active: true
+  status: broken
 - name: Pie Insurance
   tier: 2
   priority: medium
@@ -3788,6 +4119,7 @@ companies:
   sub_industry: InsureTech
   careers_url: https://boards.greenhouse.io/pieinsurance
   active: true
+  status: active
 - name: Piermont Bank
   tier: 2
   priority: medium
@@ -3799,6 +4131,7 @@ companies:
   careers_url: https://job-boards.greenhouse.io/piermontbank
   active: true
   adapter_key: piermontbank
+  status: active
 - name: PIMCO
   tier: 1
   priority: high
@@ -3810,6 +4143,7 @@ companies:
   sub_industry: Asset Management / Fixed Income
   careers_url: https://www.pimco.com/us/en
   active: true
+  status: active
 - name: Pinnacle Financial Partners
   tier: 2
   priority: medium
@@ -3820,6 +4154,7 @@ companies:
   sub_industry: Commercial Banking
   careers_url: https://pnfp.wd1.myworkdayjobs.com/PNFP_Careers
   active: true
+  status: broken
 - name: Pinwheel
   tier: 4
   priority: medium
@@ -3832,6 +4167,7 @@ companies:
   sub_industry: Payroll Data APIs
   careers_url: https://boards.greenhouse.io/pinwheel
   active: true
+  status: broken
 - name: Piper Sandler
   tier: 1
   priority: high
@@ -3842,6 +4178,7 @@ companies:
   sub_industry: Capital Markets Tech
   careers_url: https://www.pipersandler.com/careers
   active: true
+  status: active
 - name: Plaid
   tier: 1
   priority: high
@@ -3858,6 +4195,7 @@ companies:
   sub_industry: FinTech Infrastructure / Data APIs
   careers_url: https://jobs.lever.co/plaid
   active: true
+  status: active
 - name: Planful
   tier: 2
   priority: medium
@@ -3869,6 +4207,7 @@ companies:
   sub_industry: Enterprise FP&A
   careers_url: https://planful.com/jobs/
   active: true
+  status: active
 - name: Plastiq
   tier: 2
   priority: medium
@@ -3880,6 +4219,7 @@ companies:
   sub_industry: B2B Payments
   careers_url: https://jobs.lever.co/plastiq
   active: true
+  status: broken
 - name: PNC Financial Services
   tier: 2
   priority: medium
@@ -3890,6 +4230,7 @@ companies:
   sub_industry: Banking
   careers_url: https://careers.pnc.com/global/en
   active: true
+  status: active
 - name: Point
   tier: 4
   priority: medium
@@ -3903,6 +4244,7 @@ companies:
   sub_industry: PropTech / Home Equity
   careers_url: https://point.com/careers
   active: true
+  status: active
 - name: Pontera (FeeX)
   tier: 4
   priority: medium
@@ -3915,6 +4257,7 @@ companies:
   sub_industry: WealthTech
   careers_url: https://boards.greenhouse.io/pontera
   active: true
+  status: broken
 - name: Principal Financial Group
   tier: 2
   priority: medium
@@ -3925,6 +4268,7 @@ companies:
   sub_industry: Wealth / Asset Management
   careers_url: https://careers.principal.com/careers-home
   active: true
+  status: active
 - name: Procore
   tier: 4
   priority: medium
@@ -3937,6 +4281,7 @@ companies:
   sub_industry: Construction FinTech
   careers_url: https://careers.procore.com/
   active: true
+  status: active
 - name: Prometheum
   tier: 2
   priority: medium
@@ -3948,6 +4293,7 @@ companies:
   sub_industry: Digital Assets / Clearing
   careers_url: https://www.prometheum.com/careers
   active: true
+  status: active
 - name: Prosper
   tier: 2
   priority: medium
@@ -3959,6 +4305,7 @@ companies:
   sub_industry: Digital Lending
   careers_url: https://www.prosper.com:443/jobs
   active: true
+  status: active
 - name: Prove
   tier: 2
   priority: medium
@@ -3970,6 +4317,7 @@ companies:
   sub_industry: Identity Verification
   careers_url: https://boards.greenhouse.io/prove
   active: true
+  status: active
 - name: Public.com
   tier: 4
   priority: medium
@@ -3982,6 +4330,7 @@ companies:
   sub_industry: Investing App(
   careers_url: https://boards.greenhouse.io/public
   active: true
+  status: broken
 - name: Pulley
   tier: 2
   priority: medium
@@ -3994,6 +4343,7 @@ companies:
   sub_industry: Equity Management
   careers_url: https://job-boards.greenhouse.io/pulley
   active: true
+  status: active
 - name: Putnam Investments
   tier: 2
   priority: medium
@@ -4005,6 +4355,7 @@ companies:
   sub_industry: Asset Management
   careers_url: https://www.franklintempletoncareers.com/
   active: true
+  status: active
 - name: Q2
   tier: 2
   priority: medium
@@ -4016,6 +4367,7 @@ companies:
   sub_industry: Digital Banking Tech
   careers_url: https://www.q2.com/company/why-work-at-q2/careers
   active: true
+  status: active
 - name: Qualia
   tier: 2
   priority: medium
@@ -4028,6 +4380,7 @@ companies:
   sub_industry: Real Estate FinTech
   careers_url: https://boards.greenhouse.io/qualia
   active: true
+  status: active
 - name: Ramp
   tier: 1
   priority: high
@@ -4039,6 +4392,7 @@ companies:
   sub_industry: Corporate Spend / Banking
   careers_url: https://ramp.com/careers
   active: true
+  status: active
 - name: Raymond James
   tier: 1
   priority: high
@@ -4049,6 +4403,7 @@ companies:
   sub_industry: Broker-Dealer Tech
   careers_url: https://raymondjames.wd5.myworkdayjobs.com/RaymondJames
   active: true
+  status: broken
 - name: RBFCU
   tier: 2
   priority: medium
@@ -4060,6 +4415,7 @@ companies:
   careers_url: https://rbfcu.wd503.myworkdayjobs.com/RBFCUCareers
   active: true
   adapter_key: rbfcu.wd503.myworkdayjobs.com/RBFCUCareers
+  status: active
 - name: RealPage
   tier: 2
   priority: medium
@@ -4071,6 +4427,7 @@ companies:
   sub_industry: PropTech
   careers_url: https://www.realpage.com/careers/
   active: true
+  status: active
 - name: Recurly
   tier: 4
   priority: medium
@@ -4083,6 +4440,7 @@ companies:
   sub_industry: Subscription Billing
   careers_url: https://recurly.com/careers/
   active: true
+  status: active
 - name: Regions Bank
   tier: 2
   priority: medium
@@ -4094,6 +4452,7 @@ companies:
   sub_industry: Regional Banking
   careers_url: https://careers.regions.com/us/en
   active: true
+  status: active
 - name: Relay
   tier: 4
   priority: medium
@@ -4106,6 +4465,7 @@ companies:
   sub_industry: SME Banking
   careers_url: https://jobs.lever.co/relay
   active: true
+  status: active
 - name: Ridgeline
   tier: 2
   priority: medium
@@ -4121,6 +4481,7 @@ companies:
   sub_industry: WealthTech / Cloud
   careers_url: https://boards.greenhouse.io/ridgeline
   active: true
+  status: active
 - name: Ripple
   tier: 2
   priority: medium
@@ -4132,6 +4493,7 @@ companies:
   sub_industry: Blockchain / Payments
   careers_url: https://ripple.com/careers/
   active: true
+  status: active
 - name: River
   tier: 2
   priority: medium
@@ -4143,6 +4505,7 @@ companies:
   sub_industry: Digital Assets
   careers_url: https://jobs.lever.co/river
   active: true
+  status: broken
 - name: Robinhood
   tier: 4
   priority: medium
@@ -4155,6 +4518,7 @@ companies:
   sub_industry: Brokerage(
   careers_url: https://boards.greenhouse.io/robinhood
   active: true
+  status: active
 - name: Rocket Companies
   tier: 2
   priority: medium
@@ -4165,6 +4529,7 @@ companies:
   sub_industry: Mortgage Tech
   careers_url: https://www.rocketcompanies.com/our-team/careers/
   active: true
+  status: active
 - name: Roofstock
   tier: 2
   priority: medium
@@ -4176,6 +4541,7 @@ companies:
   sub_industry: PropTech / Alts
   careers_url: https://boards.greenhouse.io/roofstock
   active: true
+  status: active
 - name: Root Insurance
   tier: 2
   priority: medium
@@ -4187,6 +4553,7 @@ companies:
   sub_industry: InsureTech
   careers_url: https://boards.greenhouse.io/rootinsurance
   active: true
+  status: broken
 - name: Routable
   tier: 2
   priority: medium
@@ -4198,6 +4565,7 @@ companies:
   sub_industry: B2B Payments
   careers_url: https://www.routable.com/careers/
   active: true
+  status: active
 - name: Russell Investments
   tier: 2
   priority: medium
@@ -4210,6 +4578,7 @@ companies:
   careers_url: https://russell.wd5.myworkdayjobs.com/russellinvestments
   active: true
   adapter_key: russell.wd5.myworkdayjobs.com/russellinvestments
+  status: active
 - name: S&P Global
   tier: 2
   priority: medium
@@ -4225,6 +4594,7 @@ companies:
   sub_industry: Financial Data
   careers_url: https://spgi.wd5.myworkdayjobs.com/SPGI_Careers\
   active: true
+  status: active
 - name: Sallie Mae
   tier: 2
   priority: medium
@@ -4236,6 +4606,7 @@ companies:
   careers_url: https://sallie-mae.wd5.myworkdayjobs.com/Careers
   active: true
   adapter_key: sallie-mae.wd5.myworkdayjobs.com/Careers
+  status: active
 - name: Savvy Wealth
   tier: 1
   priority: high
@@ -4247,6 +4618,7 @@ companies:
   sub_industry: WealthTech
   careers_url: https://www.savvywealth.com/careers
   active: true
+  status: active
 - name: Securitize
   tier: 2
   priority: medium
@@ -4258,6 +4630,7 @@ companies:
   sub_industry: Tokenization
   careers_url: https://boards.greenhouse.io/securitize
   active: true
+  status: active
 - name: SEI Investments
   tier: 2
   priority: medium
@@ -4268,6 +4641,7 @@ companies:
   sub_industry: TAMP / WealthTech
   careers_url: https://careers.seic.com/global/en
   active: true
+  status: active
 - name: SentiLink
   tier: 2
   priority: medium
@@ -4279,6 +4653,7 @@ companies:
   sub_industry: Identity / Fraud
   careers_url: https://www.sentilink.com/careers
   active: true
+  status: active
 - name: Sezzle
   tier: 4
   priority: medium
@@ -4292,6 +4667,7 @@ companies:
   sub_industry: BNPL / Lending
   careers_url: https://job-boards.greenhouse.io/sezzle
   active: true
+  status: active
 - name: SigFig
   tier: 4
   priority: medium
@@ -4304,6 +4680,7 @@ companies:
   sub_industry: B2B WealthTech(
   careers_url: https://www.sigfig.com/careers
   active: true
+  status: broken
 - name: Signifyd
   tier: 2
   priority: medium
@@ -4316,6 +4693,7 @@ companies:
   sub_industry: Fraud / Payments
   careers_url: https://boards.greenhouse.io/signifyd
   active: true
+  status: broken
 - name: Sila
   tier: 2
   priority: medium
@@ -4327,6 +4705,7 @@ companies:
   sub_industry: Payments API
   careers_url: https://jobs.lever.co/sila
   active: true
+  status: active
 - name: Slalom
   tier: 4
   priority: medium
@@ -4339,6 +4718,7 @@ companies:
   sub_industry: Tech Consulting
   careers_url: https://jobs.slalom.com
   active: true
+  status: active
 - name: SmartAsset
   tier: 4
   priority: medium
@@ -4352,6 +4732,7 @@ companies:
     and data
   careers_url: https://boards.greenhouse.io/smartasset
   active: true
+  status: active
 - name: SmartX Advisory Solutions
   tier: 1
   priority: high
@@ -4363,6 +4744,7 @@ companies:
   sub_industry: WealthTech / TAMP
   careers_url: https://www.smartxadvisory.com/careers/
   active: true
+  status: active
 - name: Snapdocs
   tier: 2
   priority: medium
@@ -4374,6 +4756,7 @@ companies:
   sub_industry: Real Estate FinTech
   careers_url: https://careers.snapdocs.com/users/sign_in
   active: true
+  status: active
 - name: SnapLogic
   tier: 2
   priority: medium
@@ -4385,6 +4768,7 @@ companies:
   sub_industry: Integration Platform
   careers_url: https://jobs.lever.co/snaplogic
   active: true
+  status: active
 - name: Snowflake
   tier: 3
   priority: low
@@ -4400,6 +4784,7 @@ companies:
   sub_industry: Data Platform
   careers_url: https://careers.snowflake.com/us/en
   active: true
+  status: active
 - name: Socotra
   tier: 2
   priority: medium
@@ -4411,6 +4796,7 @@ companies:
   sub_industry: InsureTech Infrastructure
   careers_url: https://www.socotra.com/careers/
   active: true
+  status: active
 - name: Socure
   tier: 2
   priority: medium
@@ -4422,6 +4808,7 @@ companies:
   sub_industry: Identity / Risk APIs
   careers_url: https://www.socure.com/company/careers
   active: true
+  status: active
 - name: SoFi
   tier: 2
   priority: medium
@@ -4433,6 +4820,7 @@ companies:
   sub_industry: Digital Banking
   careers_url: https://www.sofi.com/careers/
   active: true
+  status: active
 - name: Solid
   tier: 4
   priority: medium
@@ -4445,6 +4833,7 @@ companies:
   sub_industry: BaaS
   careers_url: https://solid.com/careers/
   active: true
+  status: active
 - name: SouthState Bank
   tier: 2
   priority: medium
@@ -4456,6 +4845,7 @@ companies:
   sub_industry: Regional Banking
   careers_url: https://careers.southstatebank.com/us/en
   active: true
+  status: active
 - name: Spreedly
   tier: 2
   priority: medium
@@ -4467,6 +4857,7 @@ companies:
   sub_industry: Payments Infrastructure
   careers_url: https://jobs.lever.co/spreedly
   active: true
+  status: active
 - name: Starburst
   tier: 4
   priority: medium
@@ -4479,6 +4870,7 @@ companies:
   sub_industry: Data AnalyticsAnalytics engine for data mesh
   careers_url: https://boards.greenhouse.io/starburst
   active: true
+  status: active
 - name: Stash
   tier: 4
   priority: medium
@@ -4491,6 +4883,7 @@ companies:
   sub_industry: Consumer Wealth(
   careers_url: https://www.stash.com/careers
   active: true
+  status: active
 - name: State Employees' Credit Union
   tier: 2
   priority: medium
@@ -4502,6 +4895,7 @@ companies:
   careers_url: https://ncsecu.wd1.myworkdayjobs.com/SECU
   active: true
   adapter_key: ncsecu.wd1.myworkdayjobs.com/SECU
+  status: active
 - name: State Street
   tier: 4
   priority: medium
@@ -4514,6 +4908,7 @@ companies:
   sub_industry: Custody Bank
   careers_url: https://statestreet.wd1.myworkdayjobs.com/Global
   active: true
+  status: active
 - name: Step
   tier: 2
   priority: medium
@@ -4525,6 +4920,7 @@ companies:
   sub_industry: Digital Banking
   careers_url: https://step.com:443/careers
   active: true
+  status: active
 - name: Stifel
   tier: 1
   priority: high
@@ -4535,6 +4931,7 @@ companies:
   sub_industry: Broker-Dealer Tech
   careers_url: https://www.stifel.com/careers
   active: true
+  status: active
 - name: StoneX Group
   tier: 4
   priority: medium
@@ -4547,6 +4944,7 @@ companies:
   sub_industry: Institutional Brokerage
   careers_url: https://www.stonexgroup.com/careers
   active: true
+  status: active
 - name: Strike
   tier: 2
   priority: medium
@@ -4558,6 +4956,7 @@ companies:
   sub_industry: Payments / Digital Assets
   careers_url: https://job-boards.greenhouse.io/strike
   active: true
+  status: active
 - name: Swan Bitcoin
   tier: 2
   priority: medium
@@ -4569,6 +4968,7 @@ companies:
   sub_industry: Digital Assets / Wealth
   careers_url: https://job-boards.greenhouse.io/swanbitcoin
   active: true
+  status: active
 - name: Symetra
   tier: 2
   priority: medium
@@ -4579,6 +4979,7 @@ companies:
   sub_industry: Wealth / InsureTech
   careers_url: https://www.symetra.com/careers/symetra-careers
   active: true
+  status: active
 - name: Symphony
   tier: 2
   priority: medium
@@ -4590,6 +4991,7 @@ companies:
   sub_industry: Secure Comms / Data
   careers_url: https://boards.greenhouse.io/symphony
   active: true
+  status: active
 - name: Synchrony Financial
   tier: 2
   priority: medium
@@ -4600,6 +5002,7 @@ companies:
   sub_industry: Consumer Finance
   careers_url: https://synchrony.wd1.myworkdayjobs.com/Synchrony_Careers
   active: true
+  status: broken
 - name: Synctera
   tier: 2
   priority: medium
@@ -4612,6 +5015,7 @@ companies:
   sub_industry: Banking as a Service (BaaS)
   careers_url: https://www.synctera.com/careers
   active: true
+  status: active
 - name: Synovus
   tier: 2
   priority: medium
@@ -4622,6 +5026,7 @@ companies:
   sub_industry: Regional Banking
   careers_url: https://careers.synovus.com/us/en
   active: true
+  status: active
 - name: T. Rowe Price
   tier: 4
   priority: medium
@@ -4634,6 +5039,7 @@ companies:
   sub_industry: Asset Management
   careers_url: https://troweprice.wd1.myworkdayjobs.com/TRowePrice
   active: true
+  status: broken
 - name: Tala
   tier: 4
   priority: medium
@@ -4646,6 +5052,7 @@ companies:
   sub_industry: Emerging Market Lending
   careers_url: https://jobs.lever.co/tala
   active: true
+  status: active
 - name: Talend (Qlik)
   tier: 4
   priority: medium
@@ -4658,6 +5065,7 @@ companies:
   sub_industry: Data Integration
   careers_url: https://qlik.wd1.myworkdayjobs.com/Qlik
   active: true
+  status: broken
 - name: Talos
   tier: 4
   priority: medium
@@ -4670,6 +5078,7 @@ companies:
   sub_industry: Crypto Trading Tech
   careers_url: https://boards.greenhouse.io/talos
   active: true
+  status: broken
 - name: Tastytrade
   tier: 2
   priority: medium
@@ -4682,6 +5091,7 @@ companies:
   sub_industry: Brokerage
   careers_url: https://job-boards.greenhouse.io/tastytrade
   active: true
+  status: active
 - name: TCW Group
   tier: 2
   priority: medium
@@ -4693,6 +5103,7 @@ companies:
   sub_industry: Asset Management
   careers_url: https://www.tcw.com/careers
   active: true
+  status: active
 - name: The Bancorp
   tier: 2
   priority: medium
@@ -4703,6 +5114,7 @@ companies:
   sub_industry: BaaS / Tech Bank
   careers_url: https://careers.thebancorp.com/
   active: true
+  status: active
 - name: ThetaRay
   tier: 4
   priority: medium
@@ -4715,6 +5127,7 @@ companies:
   sub_industry: RegTech
   careers_url: https://thetaray.com/careers/
   active: true
+  status: active
 - name: Thought Machine
   tier: 2
   priority: medium
@@ -4727,6 +5140,7 @@ companies:
   sub_industry: Cloud Native Banking
   careers_url: https://jobs.lever.co/thoughtmachine
   active: true
+  status: broken
 - name: Thrivent
   tier: 2
   priority: medium
@@ -4738,6 +5152,7 @@ companies:
   sub_industry: Wealth / InsureTech
   careers_url: https://thrivent.wd1.myworkdayjobs.com/Thrivent_Careers
   active: true
+  status: broken
 - name: TIAA
   tier: 2
   priority: medium
@@ -4749,6 +5164,7 @@ companies:
   careers_url: https://tiaa.wd1.myworkdayjobs.com/en-US/Search/introduceYourself
   active: true
   adapter_key: tiaa.wd1.myworkdayjobs.com/en-US/Search/introduceYourself
+  status: active
 - name: Tilled
   tier: 2
   priority: medium
@@ -4760,6 +5176,7 @@ companies:
   sub_industry: Payments Infrastructure
   careers_url: https://ats.rippling.com/tilledcareers/jobs
   active: true
+  status: active
 - name: Tipalti
   tier: 4
   priority: medium
@@ -4772,6 +5189,7 @@ companies:
   sub_industry: Global Payables
   careers_url: https://tipalti.com/company/careers/
   active: true
+  status: active
 - name: Total Expert
   tier: 2
   priority: medium
@@ -4783,6 +5201,7 @@ companies:
   sub_industry: FinTech CRM
   careers_url: https://jobs.lever.co/totalexpert
   active: true
+  status: active
 - name: TradeDesk
   tier: 4
   priority: medium
@@ -4796,6 +5215,7 @@ companies:
   sub_industry: AdTech (Fin-adjacent)
   careers_url: https://thetradedesk.wd1.myworkdayjobs.com/TTD_Careers
   active: true
+  status: broken
 - name: TradePMR
   tier: 1
   priority: high
@@ -4807,6 +5227,7 @@ companies:
   sub_industry: Brokerage APIs
   careers_url: https://careers.robinhood.com/
   active: true
+  status: active
 - name: Tradeshift
   tier: 2
   priority: medium
@@ -4818,6 +5239,7 @@ companies:
   sub_industry: Supply Chain Finance
   careers_url: https://tradeshift.com/careers/
   active: true
+  status: active
 - name: TradeStation
   tier: 1
   priority: high
@@ -4828,6 +5250,7 @@ companies:
   sub_industry: Brokerage
   careers_url: https://careers.tradestation.com/
   active: true
+  status: active
 - name: Tradeweb
   tier: 1
   priority: high
@@ -4840,18 +5263,20 @@ companies:
   sub_industry: Capital Markets
   careers_url: https://boards.greenhouse.io/tradeweb
   active: true
+  status: broken
 - name: Tradier
   tier: 4
   priority: medium
-  adapter: lever
+  adapter: manual
   adapter_key: tradier
-  domain: jobs.lever.co
+  domain: tradier.com
   industry:
   - brokerage apis
   notes: Cloud-based financial services provider and brokerage
   sub_industry: Brokerage APIs
-  careers_url: https://jobs.lever.co/tradier
+  careers_url: https://tradier.com/company/careers
   active: true
+  status: active
 - name: TransUnion
   tier: 2
   priority: medium
@@ -4862,6 +5287,7 @@ companies:
   sub_industry: Credit Data Infrastructure
   careers_url: https://transunion.wd5.myworkdayjobs.com/TransUnion
   active: true
+  status: active
 - name: Treasury Prime
   tier: 2
   priority: medium
@@ -4873,6 +5299,7 @@ companies:
   sub_industry: Banking as a Service (BaaS)
   careers_url: https://boards.greenhouse.io/treasuryprime
   active: true
+  status: active
 - name: TriNet
   tier: 2
   priority: medium
@@ -4884,6 +5311,7 @@ companies:
   careers_url: https://jobs.lever.co/trinet
   active: true
   adapter_key: trinet
+  status: active
 - name: Trintech
   tier: 2
   priority: medium
@@ -4895,6 +5323,7 @@ companies:
   sub_industry: FinTech / Accounting
   careers_url: https://www.trintech.com/culture-and-careers/
   active: true
+  status: active
 - name: TRM Labs
   tier: 2
   priority: medium
@@ -4906,6 +5335,7 @@ companies:
   sub_industry: Crypto Compliance
   careers_url: https://www.trmlabs.com/careers
   active: true
+  status: active
 - name: Trovata
   tier: 2
   priority: medium
@@ -4917,6 +5347,7 @@ companies:
   sub_industry: Treasury APIs
   careers_url: https://trovata.io/company/#career
   active: true
+  status: active
 - name: TrueML
   tier: 2
   priority: medium
@@ -4928,6 +5359,7 @@ companies:
   sub_industry: FinTech
   careers_url: https://www.trueml.com/careers
   active: true
+  status: active
 - name: Truework
   tier: 2
   priority: medium
@@ -4939,6 +5371,7 @@ companies:
   sub_industry: FinTech / Identity
   careers_url: https://job-boards.greenhouse.io/truework
   active: true
+  status: active
 - name: Truist
   tier: 1
   priority: high
@@ -4950,6 +5383,7 @@ companies:
   sub_industry: Banking / Wealth
   careers_url: https://careers.truist.com/us/en
   active: true
+  status: active
 - name: TruStage
   tier: 2
   priority: medium
@@ -4960,6 +5394,7 @@ companies:
   sub_industry: InsureTech / B2B
   careers_url: https://trustage.wd1.myworkdayjobs.com/TruStage
   active: true
+  status: active
 - name: Trustly
   tier: 4
   priority: medium
@@ -4972,6 +5407,7 @@ companies:
   sub_industry: Open Banking Payments
   careers_url: https://jobs.lever.co/trustly
   active: true
+  status: active
 - name: Two Sigma
   tier: 2
   priority: medium
@@ -4984,6 +5420,7 @@ companies:
   sub_industry: Quant Trading
   careers_url: https://careers.twosigma.com/
   active: true
+  status: active
 - name: Tyfone
   tier: 4
   priority: medium
@@ -4996,6 +5433,7 @@ companies:
   sub_industry: Digital Banking
   careers_url: https://tyfone.com/careers/
   active: true
+  status: active
 - name: U.S. Bank
   tier: 1
   priority: high
@@ -5007,16 +5445,18 @@ companies:
   sub_industry: Banking / Custody
   careers_url: https://usbank.wd1.myworkdayjobs.com/US_Bank_Careers
   active: true
+  status: active
 - name: Umpqua Bank
   tier: 2
   priority: medium
-  adapter: workday
-  domain: umpquabank.com
+  adapter: manual
+  domain: columbiabank.dejobs.org
   industry: regional banking | tech banking | legacy modernization
   notes: West Coast regional powerhouse deeply embedded in enterprise tech modernization.
   sub_industry: Regional Banking
-  careers_url: https://umpquabank.wd1.myworkdayjobs.com/UmpquaBank_Careers
+  careers_url: https://columbiabank.dejobs.org/jobs/
   active: true
+  status: active
 - name: Unchained
   tier: 2
   priority: medium
@@ -5028,6 +5468,7 @@ companies:
   sub_industry: Digital Assets / Wealth
   careers_url: https://www.unchained.com/careers
   active: true
+  status: active
 - name: Unit
   tier: 2
   priority: medium
@@ -5039,6 +5480,7 @@ companies:
   sub_industry: Banking as a Service (BaaS)
   careers_url: https://www.unit.co/careers
   active: true
+  status: active
 - name: Unit21
   tier: 2
   priority: medium
@@ -5050,6 +5492,7 @@ companies:
   sub_industry: RegTech / Risk
   careers_url: https://boards.greenhouse.io/unit21
   active: true
+  status: broken
 - name: United Wholesale Mortgage (UWM)
   tier: 2
   priority: medium
@@ -5060,6 +5503,7 @@ companies:
   sub_industry: Mortgage Tech
   careers_url: https://uwmcareers.com/
   active: true
+  status: active
 - name: Upgrade
   tier: 2
   priority: medium
@@ -5071,6 +5515,7 @@ companies:
   sub_industry: Digital Banking / Lending
   careers_url: https://boards.greenhouse.io/upgrade
   active: true
+  status: active
 - name: Upstart
   tier: 2
   priority: medium
@@ -5082,6 +5527,7 @@ companies:
   sub_industry: Digital Lending
   careers_url: https://careers.upstart.com/home
   active: true
+  status: active
 - name: Vanguard
   tier: 4
   priority: medium
@@ -5094,6 +5540,7 @@ companies:
   sub_industry: Asset Management
   careers_url: https://www.vanguard.com/careers
   active: true
+  status: active
 - name: Vanilla
   tier: 2
   priority: medium
@@ -5105,6 +5552,7 @@ companies:
   sub_industry: WealthTech / Estate
   careers_url: https://www.justvanilla.com/careers
   active: true
+  status: active
 - name: Varo
   tier: 4
   priority: medium
@@ -5117,6 +5565,7 @@ companies:
   sub_industry: Digital Bank(
   careers_url: https://jobs.lever.co/varomoney
   active: true
+  status: active
 - name: Varo Bank
   tier: 2
   priority: medium
@@ -5128,6 +5577,7 @@ companies:
   sub_industry: Digital Banking
   careers_url: https://jobs.lever.co/varomoney
   active: true
+  status: active
 - name: Velocity Global
   tier: 4
   priority: medium
@@ -5141,6 +5591,7 @@ companies:
   sub_industry: Global HR / Payroll
   careers_url: https://jobs.lever.co/velocityglobal
   active: true
+  status: active
 - name: Verafin (Nasdaq)
   tier: 2
   priority: medium
@@ -5152,6 +5603,7 @@ companies:
   careers_url: https://nasdaq.wd1.myworkdayjobs.com/Global_External_Site
   active: true
   adapter_key: nasdaq.wd1.myworkdayjobs.com/Global_External_Site
+  status: active
 - name: Versapay
   tier: 4
   priority: medium
@@ -5165,6 +5617,7 @@ companies:
   sub_industry: B2B Payments / AR
   careers_url: https://jobs.lever.co/versapay
   active: true
+  status: active
 - name: Vertafore
   tier: 2
   priority: medium
@@ -5175,6 +5628,7 @@ companies:
   sub_industry: InsureTech
   careers_url: https://vertafore.wd1.myworkdayjobs.com/Vertafore_Careers
   active: true
+  status: broken
 - name: Vestmark
   tier: 2
   priority: medium
@@ -5186,6 +5640,7 @@ companies:
   sub_industry: WealthTech / TAMP
   careers_url: https://boards.greenhouse.io/vestmark
   active: true
+  status: active
 - name: Vestwell
   tier: 2
   priority: medium
@@ -5197,6 +5652,7 @@ companies:
   sub_industry: Retirement Tech
   careers_url: https://boards.greenhouse.io/vestwell
   active: true
+  status: active
 - name: Virtu Financial
   tier: 2
   priority: medium
@@ -5208,6 +5664,7 @@ companies:
   sub_industry: Prop Trading
   careers_url: https://www.virtu.com/careers/
   active: true
+  status: active
 - name: Virtus Investment Partners
   tier: 2
   priority: medium
@@ -5219,6 +5676,7 @@ companies:
   careers_url: https://virtus.wd5.myworkdayjobs.com/VirtusCareers
   active: true
   adapter_key: virtus.wd5.myworkdayjobs.com/VirtusCareers
+  status: active
 - name: Visa
   tier: 4
   priority: medium
@@ -5231,6 +5689,7 @@ companies:
   sub_industry: Payments Network
   careers_url: https://visa.wd5.myworkdayjobs.com/Visa
   active: true
+  status: active
 - name: Vise
   tier: 2
   priority: medium
@@ -5243,6 +5702,7 @@ companies:
   sub_industry: WealthTech / AI
   careers_url: https://vise.com/careers
   active: true
+  status: active
 - name: Vouch Insurance
   tier: 2
   priority: medium
@@ -5254,6 +5714,7 @@ companies:
   sub_industry: InsureTech
   careers_url: https://www.vouch.us/careers
   active: true
+  status: active
 - name: Voya Financial
   tier: 2
   priority: medium
@@ -5265,6 +5726,7 @@ companies:
   sub_industry: Wealth / Retirement
   careers_url: https://www.voya.com/
   active: true
+  status: active
 - name: VTS
   tier: 2
   priority: medium
@@ -5276,6 +5738,7 @@ companies:
   sub_industry: PropTech
   careers_url: https://boards.greenhouse.io/vts
   active: true
+  status: active
 - name: Waystar
   tier: 4
   priority: medium
@@ -5288,6 +5751,7 @@ companies:
   sub_industry: Health FinTech
   careers_url: https://waystar.wd1.myworkdayjobs.com/Waystar
   active: true
+  status: active
 - name: Wealthfront
   tier: 4
   priority: medium
@@ -5300,6 +5764,7 @@ companies:
   sub_industry: Robo-Advising(
   careers_url: https://jobs.lever.co/wealthfront
   active: true
+  status: active
 - name: Webster Bank
   tier: 2
   priority: medium
@@ -5311,6 +5776,7 @@ companies:
   careers_url: https://websteronline.wd12.myworkdayjobs.com/en-US/WebsterExternalCareerSite/introduceYourself
   active: true
   adapter_key: websteronline.wd12.myworkdayjobs.com/en-US/WebsterExternalCareerSite/introduceYourself
+  status: active
 - name: Webull
   tier: 4
   priority: medium
@@ -5323,6 +5789,7 @@ companies:
   sub_industry: Brokerage(
   careers_url: https://ats.rippling.com/webull/jobs
   active: true
+  status: active
 - name: Wellington Management
   tier: 1
   priority: high
@@ -5333,6 +5800,7 @@ companies:
   sub_industry: Asset Management
   careers_url: https://wellington.wd1.myworkdayjobs.com/Wellington
   active: true
+  status: broken
 - name: Wells Fargo
   tier: 1
   priority: high
@@ -5344,6 +5812,7 @@ companies:
   sub_industry: Banking / Wealth
   careers_url: https://www.wellsfargo.com/about/careers/?utm_medium=www-redirect&utm_source=careers
   active: true
+  status: active
 - name: Western Alliance Bank
   tier: 2
   priority: medium
@@ -5354,6 +5823,7 @@ companies:
   sub_industry: Commercial Banking
   careers_url: https://www.westernalliancebancorporation.com/
   active: true
+  status: active
 - name: Western Asset Management
   tier: 2
   priority: medium
@@ -5366,6 +5836,7 @@ companies:
   careers_url: https://franklintempleton.wd5.myworkdayjobs.com/en-US/Jobs-WAM/introduceYourself
   active: true
   adapter_key: franklintempleton.wd5.myworkdayjobs.com/en-US/Jobs-WAM/introduceYourself
+  status: active
 - name: WEX
   tier: 2
   priority: medium
@@ -5376,6 +5847,7 @@ companies:
   sub_industry: B2B Payments
   careers_url: https://careers.wexinc.com/us/en
   active: true
+  status: active
 - name: William Blair
   tier: 1
   priority: high
@@ -5386,6 +5858,7 @@ companies:
   sub_industry: Capital Markets Tech
   careers_url: https://www.williamblair.com/careers
   active: true
+  status: active
 - name: Wintrust Financial
   tier: 2
   priority: medium
@@ -5396,6 +5869,7 @@ companies:
   sub_industry: Regional Banking
   careers_url: https://wintrust.wd1.myworkdayjobs.com/Search
   active: true
+  status: active
 - name: Workato
   tier: 2
   priority: medium
@@ -5407,6 +5881,7 @@ companies:
   sub_industry: Enterprise Automation
   careers_url: https://boards.greenhouse.io/workato
   active: true
+  status: active
 - name: Workday
   tier: 1
   priority: high
@@ -5417,6 +5892,7 @@ companies:
   sub_industry: Financials / HRIS
   careers_url: https://workday.wd5.myworkdayjobs.com/Workday
   active: true
+  status: active
 - name: Workiva
   tier: 2
   priority: medium
@@ -5428,6 +5904,7 @@ companies:
   sub_industry: Financial Reporting
   careers_url: https://www.workiva.com/careers
   active: true
+  status: active
 - name: Yardi
   tier: 1
   priority: high
@@ -5440,6 +5917,7 @@ companies:
   sub_industry: PropTech
   careers_url: https://www.yardi.com/careers/
   active: true
+  status: active
 - name: Yieldstreet
   tier: 2
   priority: medium
@@ -5451,6 +5929,7 @@ companies:
   sub_industry: Alt Investment Tech
   careers_url: https://boards.greenhouse.io/yieldstreet
   active: true
+  status: broken
 - name: Zanbato
   tier: 2
   priority: medium
@@ -5462,6 +5941,7 @@ companies:
   sub_industry: Private Markets
   careers_url: https://www.zanbato.com/careers/
   active: true
+  status: active
 - name: Zelis
   tier: 4
   priority: medium
@@ -5474,6 +5954,7 @@ companies:
   sub_industry: Health FinTechHealthcare payments and pricing
   careers_url: https://zelis.wd1.myworkdayjobs.com/ZelisCareers
   active: true
+  status: active
 - name: Zest AI
   tier: 2
   priority: medium
@@ -5485,6 +5966,7 @@ companies:
   sub_industry: Lending Underwriting
   careers_url: https://boards.greenhouse.io/zestai
   active: true
+  status: active
 - name: Zinnia
   tier: 2
   priority: medium
@@ -5496,6 +5978,7 @@ companies:
   sub_industry: InsureTech
   careers_url: https://boards.greenhouse.io/zinnia
   active: true
+  status: active
 - name: Zions Bancorporation
   tier: 2
   priority: medium
@@ -5506,6 +5989,7 @@ companies:
   sub_industry: Regional Banking
   careers_url: https://careers.zionsbancorporation.com/
   active: true
+  status: active
 - name: Zoe Financial
   tier: 4
   priority: medium
@@ -5518,15 +6002,17 @@ companies:
   sub_industry: WealthTech
   careers_url: https://zoefinancial.com/careers
   active: true
+  status: active
 - name: Zuora
   tier: 4
   priority: medium
-  adapter: greenhouse
+  adapter: manual
   adapter_key: zuora
-  domain: boards.greenhouse.io
+  domain: www.zuora.com
   industry:
   - subscription billing
   notes: Enterprise billing platform; massive requirement for complex ERP
   sub_industry: Subscription Billing
-  careers_url: https://boards.greenhouse.io/zuora
+  careers_url: https://www.zuora.com/careers/
   active: true
+  status: active
