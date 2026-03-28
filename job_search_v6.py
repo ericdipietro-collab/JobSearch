@@ -24,9 +24,11 @@ import logging
 import re
 import shutil
 import subprocess
+import threading
 import time
 import warnings
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -106,6 +108,7 @@ ACTION_BUCKET_RULES = [
 BASE_DIR = Path(__file__).resolve().parent
 RESULTS_DIR = BASE_DIR / "results"
 RESULTS_DIR.mkdir(exist_ok=True)
+SCRAPE_WORKERS = 6  # parallel company threads; increase carefully (ATS rate limits)
 
 OUTPUT_XLSX = str(RESULTS_DIR / "job_search_v6_results.xlsx")
 OUTPUT_CSV = str(RESULTS_DIR / "job_search_v6_results.csv")
@@ -6615,68 +6618,65 @@ def main() -> None:
     print("=" * 68)
 
     try:
-        for company in companies:
-            rejected_before = len(all_rejected)
-            jobs = run_adapter(company, rejected_jobs=all_rejected)
-            all_evaluated_jobs.extend(jobs)
-            kept = filter_kept_jobs(company, jobs, all_rejected)
+        print_lock = threading.Lock()
+
+        def _scrape_company(company: "Company"):
+            local_rejected: List[RejectedJob] = []
+            jobs = run_adapter(company, rejected_jobs=local_rejected)
+            kept = filter_kept_jobs(company, jobs, local_rejected)
             kept = [j for j in kept if job_id(j.company, j.title, j.canonical_url) not in history]
             real_kept, manual_kept = partition_manual_jobs(kept)
-            all_jobs.extend(real_kept)
-            all_manual_targets.extend(manual_kept)
-
-            rejected_count = len(all_rejected) - rejected_before
+            rejected_count = len(local_rejected)
             evaluated_count = len(jobs) + rejected_count
-            raw_intake_total += evaluated_count
-            processed_company_count += 1
-
             status = company_status_label(company, jobs, real_kept, manual_kept)
             manual_str = f"  manual={len(manual_kept):3d}" if manual_kept else ""
-            print(
-                f"  {company.name:<28} tier={company.tier}  "
-                f"evaluated={evaluated_count:3d}  kept={len(real_kept):3d}{manual_str}  rejected={rejected_count:3d}  [{status}]"
-            )
-            logging.info(
-                "company=%s evaluated=%s kept=%s manual=%s rejected=%s",
-                company.name,
-                evaluated_count,
-                len(real_kept),
-                len(manual_kept),
-                rejected_count,
-            )
-            adapter_rows.append(
-                build_adapter_health_row(
-                    context_kind="company",
-                    name=company.name,
-                    tier=company.tier,
-                    adapter=company.adapter,
-                    status=status,
-                    evaluated_count=evaluated_count,
-                    kept_count=len(real_kept),
-                    manual_count=len(manual_kept),
-                    rejected_count=rejected_count,
-                    notes=company.notes,
+            with print_lock:
+                print(
+                    f"  {company.name:<28} tier={company.tier}  "
+                    f"evaluated={evaluated_count:3d}  kept={len(real_kept):3d}{manual_str}  rejected={rejected_count:3d}  [{status}]"
                 )
-            )
-
-            if args.debug_company and clean(company.name).lower() == clean(args.debug_company).lower():
-                company_rejected = [row for row in all_rejected if clean(row.company).lower() == clean(company.name).lower()]
-                print_debug_company_snapshot(company.name, company_rejected, limit=args.debug_rejections_limit)
-
-            if args.checkpoint_every and args.checkpoint_every > 0 and processed_company_count % args.checkpoint_every == 0:
-                label = f"checkpoint_{processed_company_count:03d}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-                prefix = write_checkpoint_snapshot(
-                    checkpoint_dir=checkpoint_dir,
-                    label=label,
-                    raw_intake_total=raw_intake_total,
-                    all_evaluated_jobs=all_evaluated_jobs,
-                    all_jobs=all_jobs,
-                    all_manual_targets=all_manual_targets,
-                    all_rejected=all_rejected,
-                    adapter_rows=adapter_rows,
+                logging.info(
+                    "company=%s evaluated=%s kept=%s manual=%s rejected=%s",
+                    company.name, evaluated_count, len(real_kept), len(manual_kept), rejected_count,
                 )
-                print(f"    checkpoint written: {prefix.with_name(prefix.name + '_summary.json')}")
-            time.sleep(0.3)
+            return {
+                "company": company,
+                "jobs": jobs,
+                "real_kept": real_kept,
+                "manual_kept": manual_kept,
+                "rejected": local_rejected,
+                "evaluated_count": evaluated_count,
+                "status": status,
+            }
+
+        with ThreadPoolExecutor(max_workers=SCRAPE_WORKERS) as pool:
+            futures = {pool.submit(_scrape_company, co): co for co in companies}
+            for future in as_completed(futures):
+                result = future.result()
+                company = result["company"]
+                all_evaluated_jobs.extend(result["jobs"])
+                all_jobs.extend(result["real_kept"])
+                all_manual_targets.extend(result["manual_kept"])
+                all_rejected.extend(result["rejected"])
+                raw_intake_total += result["evaluated_count"]
+                processed_company_count += 1
+                adapter_rows.append(
+                    build_adapter_health_row(
+                        context_kind="company",
+                        name=company.name,
+                        tier=company.tier,
+                        adapter=company.adapter,
+                        status=result["status"],
+                        evaluated_count=result["evaluated_count"],
+                        kept_count=len(result["real_kept"]),
+                        manual_count=len(result["manual_kept"]),
+                        rejected_count=len(result["rejected"]),
+                        notes=company.notes,
+                    )
+                )
+                if args.debug_company and clean(company.name).lower() == clean(args.debug_company).lower():
+                    company_rejected = [row for row in result["rejected"]]
+                    print_debug_company_snapshot(company.name, company_rejected, limit=args.debug_rejections_limit)
 
         if not args.skip_external_boards:
             for board in EXTERNAL_BOARD_REGISTRY:
