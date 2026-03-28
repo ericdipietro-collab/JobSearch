@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(claude doctor:*)"
+      "Bash(claude doctor:*)",
+      "Bash(python -c \"import ast, sys; ast.parse\\(open\\(''heal_ats_yaml.py''\\).read\\(\\)\\); print\\(''syntax OK''\\)\")"
     ]
   }
 }

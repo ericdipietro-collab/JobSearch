@@ -34,6 +34,7 @@ from functools import lru_cache
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urljoin, urlparse
 
+import builtins
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup, FeatureNotFound, XMLParsedAsHTMLWarning
@@ -59,7 +60,7 @@ def _early_cli_flag(flag_name: str) -> bool:
 CLI_COMPANIES_PATH_OVERRIDE = _early_cli_value(["--companies"])
 CLI_PREFERENCES_PATH_OVERRIDE = _early_cli_value(["--prefs", "--preferences"])
 if not CLI_COMPANIES_PATH_OVERRIDE and _early_cli_flag("--test-companies"):
-    CLI_COMPANIES_PATH_OVERRIDE = str((Path(__file__).resolve().parent / "job_search_companies_test.yaml"))
+    CLI_COMPANIES_PATH_OVERRIDE = str((Path(__file__).resolve().parent / "config" / "job_search_companies_test.yaml"))
 
 
 # ============================================================
@@ -102,17 +103,21 @@ ACTION_BUCKET_RULES = [
     {"label": "IGNORE", "when": {}},
 ]
 
-OUTPUT_XLSX = "job_search_v6_results.xlsx"
-OUTPUT_CSV = "job_search_v6_results.csv"
-OUTPUT_REJECTED_CSV = "job_search_v6_rejected.csv"
-OUTPUT_REJECTION_DETAIL_CSV = "job_search_v6_rejection_details.csv"
-OUTPUT_MANUAL_CSV = "job_search_v6_manual_targets.csv"
-OUTPUT_ADAPTER_HEALTH_CSV = "job_search_v6_adapter_health.csv"
-OUTPUT_REGISTRY_HEALTH_CSV = "job_search_registry_health_v6.csv"
-OUTPUT_ACTIVE_CONFIG_JSON = "job_search_v6_active_config.json"
-DEFAULT_CHECKPOINT_DIR = "job_search_v6_checkpoints"
-HISTORY_JSON = "job_search_history_v6.json"
-RUN_LOG = "job_search_v6.log"
+BASE_DIR = Path(__file__).resolve().parent
+RESULTS_DIR = BASE_DIR / "results"
+RESULTS_DIR.mkdir(exist_ok=True)
+
+OUTPUT_XLSX = str(RESULTS_DIR / "job_search_v6_results.xlsx")
+OUTPUT_CSV = str(RESULTS_DIR / "job_search_v6_results.csv")
+OUTPUT_REJECTED_CSV = str(RESULTS_DIR / "job_search_v6_rejected.csv")
+OUTPUT_REJECTION_DETAIL_CSV = str(RESULTS_DIR / "job_search_v6_rejection_details.csv")
+OUTPUT_MANUAL_CSV = str(RESULTS_DIR / "job_search_v6_manual_targets.csv")
+OUTPUT_ADAPTER_HEALTH_CSV = str(RESULTS_DIR / "job_search_v6_adapter_health.csv")
+OUTPUT_REGISTRY_HEALTH_CSV = str(RESULTS_DIR / "job_search_registry_health_v6.csv")
+OUTPUT_ACTIVE_CONFIG_JSON = str(RESULTS_DIR / "job_search_v6_active_config.json")
+DEFAULT_CHECKPOINT_DIR = str(RESULTS_DIR / "job_search_v6_checkpoints")
+HISTORY_JSON = str(RESULTS_DIR / "job_search_history_v6.json")
+RUN_LOG = str(RESULTS_DIR / "job_search_v6.log")
 
 HEADERS = {
     "User-Agent": (
@@ -260,8 +265,6 @@ def _early_sanitize_url(url: Optional[str]) -> str:
 
 
 
-BASE_DIR = Path(__file__).resolve().parent
-
 # Prioritize: 1. CLI Override, 2. Organized /config folder, 3. Legacy root files
 candidates = [
     Path(CLI_COMPANIES_PATH_OVERRIDE).expanduser().resolve() if CLI_COMPANIES_PATH_OVERRIDE else None,
@@ -273,8 +276,14 @@ candidates = [
 
 # Identify the first path that exists; default to the /config standard if none are found
 COMPANY_REGISTRY_PATH = next(
-    (p for p in candidates if p and p.exists()), 
+    (p for p in candidates if p and p.exists()),
     BASE_DIR / "config" / "job_search_companies.yaml"
+)
+
+# Allow the launcher to inject overrides via builtins; fall back to local candidates when run directly.
+COMPANY_REGISTRY_FILE_CANDIDATES: List[Path] = getattr(
+    builtins, "COMPANY_REGISTRY_FILE_CANDIDATES",
+    [p for p in candidates if p is not None],
 )
 
 
@@ -319,16 +328,23 @@ def _load_company_registry_from_yaml() -> Tuple[Optional[Path], Optional[List[Di
     return None, None
 
 
-# Apply the same logic for preferences
+# Apply the same logic for preferences (include CLI override at head of list)
 pref_candidates = [
+    Path(CLI_PREFERENCES_PATH_OVERRIDE).expanduser().resolve() if CLI_PREFERENCES_PATH_OVERRIDE else None,
     BASE_DIR / "config" / "job_search_preferences.yaml",
     BASE_DIR / "job_search_preferences.yaml",
     BASE_DIR / "config" / "preferences.yaml",
 ]
 
 YAML_PREFERENCES = next(
-    (p for p in pref_candidates if p.exists()), 
+    (p for p in pref_candidates if p and p.exists()),
     BASE_DIR / "config" / "job_search_preferences.yaml"
+)
+
+# Allow the launcher to inject overrides via builtins; fall back to local candidates when run directly.
+PREFERENCES_FILE_CANDIDATES: List[Path] = getattr(
+    builtins, "PREFERENCES_FILE_CANDIDATES",
+    [p for p in pref_candidates if p is not None],
 )
 
 
@@ -3948,8 +3964,9 @@ def evaluate_job(
                 reason_code=f"title_blacklist:{term}",
             )
 
+    is_remote, is_hybrid, is_non_us = location_flags(location)
     loc_reason = location_policy_reason(
-        *location_flags(location),
+        is_remote, is_hybrid, is_non_us,
         location=location,
         salary_low=salary_info["salary_low"],
         salary_high=salary_info["salary_high"],
@@ -6630,6 +6647,9 @@ def main() -> None:
     raw_intake_total = 0
     processed_company_count = 0
 
+    # Load history before scraping so already-seen jobs can be skipped.
+    history = load_history()
+
     print("=" * 68)
     print("Job Search v6 — Eric DiPietro")
     print(f"Run time: {iso_now()}")
@@ -6644,6 +6664,7 @@ def main() -> None:
             jobs = run_adapter(company, rejected_jobs=all_rejected)
             all_evaluated_jobs.extend(jobs)
             kept = filter_kept_jobs(company, jobs, all_rejected)
+            kept = [j for j in kept if job_id(j.company, j.title, j.canonical_url) not in history]
             real_kept, manual_kept = partition_manual_jobs(kept)
             all_jobs.extend(real_kept)
             all_manual_targets.extend(manual_kept)
@@ -6707,6 +6728,7 @@ def main() -> None:
                 jobs = run_external_board(board, rejected_jobs=all_rejected)
                 all_evaluated_jobs.extend(jobs)
                 kept = filter_kept_jobs(None, jobs, all_rejected)
+                kept = [j for j in kept if job_id(j.company, j.title, j.canonical_url) not in history]
                 real_kept, manual_kept = partition_manual_jobs(kept)
                 all_jobs.extend(real_kept)
                 all_manual_targets.extend(manual_kept)
@@ -6763,7 +6785,7 @@ def main() -> None:
     all_manual_targets = dedupe(all_manual_targets)
     unique_evaluated_total = len(all_evaluated_jobs)
 
-    history = load_history()
+    # history already loaded at top of main(); just apply timestamps to kept jobs.
     apply_history(all_jobs, history)
     apply_history(all_manual_targets, history)
 
