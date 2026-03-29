@@ -4,11 +4,44 @@ title Job Search Dashboard
 
 REM ── Locate Python 3.9+ ───────────────────────────────────────────────────────
 set "PYTHON="
-for %%P in (python python3 py) do (
+
+REM -- 1. Try PATH-based commands (py launcher is most reliable on Windows)
+for %%P in (py python python3) do (
     if not defined PYTHON (
         for /f "delims=" %%V in ('%%P --version 2^>^&1') do (
             echo %%V | findstr /r "Python 3\.[9-9]\. Python 3\.[1-9][0-9]\." >nul 2>&1
             if !errorlevel!==0 set "PYTHON=%%P"
+        )
+    )
+)
+
+REM -- 2. Fallback: search common per-user and system install locations directly.
+REM    Handles cases where Python was installed but PATH wasn't updated (e.g.
+REM    fresh install by the bundled installer before a reboot, or user skipped
+REM    "Add Python to PATH" during setup).
+if not defined PYTHON (
+    for %%D in (
+        "%LOCALAPPDATA%\Programs\Python\Python313\python.exe"
+        "%LOCALAPPDATA%\Programs\Python\Python312\python.exe"
+        "%LOCALAPPDATA%\Programs\Python\Python311\python.exe"
+        "%LOCALAPPDATA%\Programs\Python\Python310\python.exe"
+        "%LOCALAPPDATA%\Programs\Python\Python39\python.exe"
+        "C:\Python313\python.exe"
+        "C:\Python312\python.exe"
+        "C:\Python311\python.exe"
+        "C:\Python310\python.exe"
+        "C:\Python39\python.exe"
+        "%ProgramFiles%\Python313\python.exe"
+        "%ProgramFiles%\Python312\python.exe"
+        "%ProgramFiles%\Python311\python.exe"
+    ) do (
+        if not defined PYTHON (
+            if exist %%D (
+                for /f "delims=" %%V in ('%%~D --version 2^>^&1') do (
+                    echo %%V | findstr /r "Python 3\.[9-9]\. Python 3\.[1-9][0-9]\." >nul 2>&1
+                    if !errorlevel!==0 set "PYTHON=%%~D"
+                )
+            )
         )
     )
 )
@@ -18,12 +51,12 @@ if not defined PYTHON (
     echo  ============================================================
     echo   Python 3.9 or newer is required but was not found.
     echo.
-    echo   Download it free from:  https://www.python.org/downloads/
+    echo   If you installed using JobSearchSetup.exe, try rebooting
+    echo   once and launching again -- the PATH update takes effect
+    echo   after a restart.
     echo.
-    echo   During install, check the box:
-    echo     "Add Python to PATH"
-    echo.
-    echo   Then close and re-open this file.
+    echo   Or download Python free from:  https://www.python.org/downloads/
+    echo   During install, check "Add Python to PATH", then re-launch.
     echo  ============================================================
     echo.
     pause
