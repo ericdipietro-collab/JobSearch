@@ -22,6 +22,7 @@ DB_PATH   = _BASE_DIR / "results" / "job_applications.db"
 
 # ── Status vocabulary ──────────────────────────────────────────────────────────
 STATUSES = [
+    "exploring",    # network opportunity — active conversation, no formal application yet
     "considering",
     "applied",
     "screening",
@@ -33,6 +34,7 @@ STATUSES = [
 ]
 
 STATUS_COLORS = {
+    "exploring":    "#7c3aed",   # violet — opportunity in progress
     "considering":  "#6b7280",   # gray
     "applied":      "#3b82f6",   # blue
     "screening":    "#8b5cf6",   # purple
@@ -43,8 +45,12 @@ STATUS_COLORS = {
     "withdrawn":    "#9ca3af",   # light gray
 }
 
+ENTRY_TYPES = ["application", "opportunity"]
+
 EVENT_TYPES = [
     "applied",
+    "conversation",         # networking / informal call
+    "networking_call",      # scheduled call from network
     "recruiter_outreach",
     "screening_scheduled",
     "screening_complete",
@@ -62,8 +68,36 @@ EVENT_TYPES = [
 
 INTERVIEW_TYPES  = ["phone_screen", "video", "onsite", "panel", "take_home", "final"]
 INTERVIEW_FORMATS = ["behavioral", "technical", "case_study", "mixed", "other"]
-CONTACT_ROLES    = ["recruiter", "hiring_manager", "interviewer", "referral", "other"]
+CONTACT_ROLES    = ["recruiter", "hiring_manager", "interviewer", "referral", "network_contact", "other"]
 OUTCOME_OPTIONS  = ["pending", "passed", "failed"]
+
+# Human-readable labels for event types used in reports
+EVENT_LABELS = {
+    "applied":             "Submitted application",
+    "conversation":        "Networking conversation",
+    "networking_call":     "Networking call",
+    "recruiter_outreach":  "Recruiter contact",
+    "screening_scheduled": "Phone screen scheduled",
+    "screening_complete":  "Phone screen completed",
+    "interview_scheduled": "Interview scheduled",
+    "interview_complete":  "Interview completed",
+    "offer_received":      "Received offer",
+    "offer_negotiating":   "Negotiating offer",
+    "offer_accepted":      "Accepted offer",
+    "offer_declined":      "Declined offer",
+    "rejected":            "Received rejection",
+    "withdrawn":           "Withdrew application",
+    "follow_up_sent":      "Sent follow-up",
+    "note":                "Note",
+}
+
+# Which event types count as reportable job search activities for unemployment
+REPORTABLE_EVENT_TYPES = {
+    "applied", "conversation", "networking_call", "recruiter_outreach",
+    "screening_scheduled", "screening_complete",
+    "interview_scheduled", "interview_complete",
+    "follow_up_sent",
+}
 
 
 def _now() -> str:
@@ -118,6 +152,7 @@ def init_db(conn: sqlite3.Connection) -> None:
         follow_up_notes    TEXT,
         resume_version     TEXT,
         cover_letter_notes TEXT,
+        entry_type         TEXT NOT NULL DEFAULT 'application',
         created_at         TEXT NOT NULL,
         updated_at         TEXT NOT NULL
     );
@@ -168,6 +203,7 @@ def init_db(conn: sqlite3.Connection) -> None:
         "follow_up_notes":    "TEXT",
         "resume_version":     "TEXT",
         "cover_letter_notes": "TEXT",
+        "entry_type":         "TEXT NOT NULL DEFAULT 'application'",
     })
     conn.commit()
 
@@ -197,14 +233,22 @@ def get_application(conn: sqlite3.Connection, app_id: int) -> Optional[sqlite3.R
     return conn.execute("SELECT * FROM applications WHERE id = ?", (app_id,)).fetchone()
 
 
-def get_applications(conn: sqlite3.Connection, status: Optional[str] = None) -> List[sqlite3.Row]:
+def get_applications(
+    conn: sqlite3.Connection,
+    status: Optional[str] = None,
+    entry_type: Optional[str] = None,
+) -> List[sqlite3.Row]:
+    clauses, params = [], []
     if status:
-        return conn.execute(
-            "SELECT * FROM applications WHERE status = ? ORDER BY date_applied DESC, created_at DESC",
-            (status,),
-        ).fetchall()
+        clauses.append("status = ?")
+        params.append(status)
+    if entry_type:
+        clauses.append("entry_type = ?")
+        params.append(entry_type)
+    where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
     return conn.execute(
-        "SELECT * FROM applications ORDER BY date_applied DESC, created_at DESC"
+        f"SELECT * FROM applications {where} ORDER BY date_applied DESC, created_at DESC",
+        params,
     ).fetchall()
 
 
@@ -363,6 +407,44 @@ def upcoming_interviews(conn: sqlite3.Connection, limit: int = 5) -> List[sqlite
         LIMIT ?
         """,
         (limit,),
+    ).fetchall()
+
+
+def get_activity_report(
+    conn: sqlite3.Connection,
+    start_date: str,
+    end_date: str,
+) -> List[sqlite3.Row]:
+    """
+    Return all reportable events in the date range, joined with application/opportunity context.
+    Ordered by event_date descending.
+    """
+    placeholders = ",".join(f"'{t}'" for t in REPORTABLE_EVENT_TYPES)
+    return conn.execute(
+        f"""
+        SELECT
+            e.id            AS event_id,
+            e.event_date,
+            e.event_type,
+            e.title         AS event_title,
+            e.notes         AS event_notes,
+            a.id            AS app_id,
+            a.company,
+            a.role,
+            a.entry_type,
+            a.job_url,
+            a.status,
+            GROUP_CONCAT(c.name, ', ') AS contact_names
+        FROM events e
+        JOIN applications a ON a.id = e.application_id
+        LEFT JOIN contacts c ON c.application_id = a.id
+        WHERE e.event_date >= ?
+          AND e.event_date <= ?
+          AND e.event_type IN ({placeholders})
+        GROUP BY e.id
+        ORDER BY e.event_date DESC, a.company
+        """,
+        (start_date, end_date),
     ).fetchall()
 
 

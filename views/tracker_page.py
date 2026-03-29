@@ -53,6 +53,8 @@ def _days_until(iso: Optional[str]) -> Optional[int]:
 
 EVENT_ICONS = {
     "applied":             "📨",
+    "conversation":        "💬",
+    "networking_call":     "🤝",
     "recruiter_outreach":  "📞",
     "screening_scheduled": "📅",
     "screening_complete":  "✅",
@@ -87,16 +89,20 @@ def render_tracker(conn) -> None:
     st.divider()
 
     # ── Filters + Add button ──────────────────────────────────────────────────
-    fc1, fc2, fc3 = st.columns([3, 2, 2])
+    fc1, fc2, fc3, fc4 = st.columns([2, 2, 2, 2])
     with fc1:
-        status_opts = ["All"] + db.STATUSES
+        status_opts = ["All statuses"] + db.STATUSES
         sel_status  = st.selectbox("Status", status_opts, key="tracker_status_filter",
                                    label_visibility="collapsed")
     with fc2:
+        type_opts  = ["All types", "Applications", "Opportunities"]
+        sel_type   = st.selectbox("Type", type_opts, key="tracker_type_filter",
+                                  label_visibility="collapsed")
+    with fc3:
         search = st.text_input("Search", placeholder="company or role…",
                                key="tracker_search", label_visibility="collapsed")
-    with fc3:
-        if st.button("➕ Add Application", key="tracker_add_btn", use_container_width=True):
+    with fc4:
+        if st.button("➕ Add", key="tracker_add_btn", use_container_width=True):
             toggled = not st.session_state.get("tracker_show_add_form", False)
             st.session_state["tracker_show_add_form"] = toggled
             if toggled:
@@ -107,7 +113,14 @@ def render_tracker(conn) -> None:
         st.divider()
 
     # ── Load + filter ─────────────────────────────────────────────────────────
-    apps = db.get_applications(conn, status=None if sel_status == "All" else sel_status)
+    _entry_filter = None if sel_type == "All types" else (
+        "application" if sel_type == "Applications" else "opportunity"
+    )
+    apps = db.get_applications(
+        conn,
+        status=None if sel_status == "All statuses" else sel_status,
+        entry_type=_entry_filter,
+    )
     if search:
         q = search.lower()
         apps = [a for a in apps if q in a["company"].lower() or q in a["role"].lower()]
@@ -125,8 +138,10 @@ def render_tracker(conn) -> None:
             fu_label = f"⚠ {fu_date}"
         else:
             fu_label = fu_date
+        entry = a["entry_type"] if a["entry_type"] else "application"
         rows.append({
             "_id":       a["id"],
+            "Type":      "🤝 Opportunity" if entry == "opportunity" else "📋 Application",
             "Company":   a["company"],
             "Role":      a["role"],
             "Status":    a["status"].title(),
@@ -143,6 +158,7 @@ def render_tracker(conn) -> None:
         hide_index=True,
         use_container_width=True,
         column_config={
+            "Type":      st.column_config.TextColumn("Type",      width="small"),
             "Company":   st.column_config.TextColumn("Company",   width="medium"),
             "Role":      st.column_config.TextColumn("Role",      width="large"),
             "Status":    st.column_config.TextColumn("Status",    width="medium"),
@@ -252,28 +268,67 @@ def _render_summary_bar(conn) -> None:
 
 def _render_add_form(conn) -> None:
     with st.form("add_app_form", clear_on_submit=True):
-        st.markdown("**New Application**")
+        # Entry type toggle
+        ta1, ta2 = st.columns(2)
+        entry_type = ta1.radio(
+            "Type",
+            ["Application", "Opportunity"],
+            horizontal=True,
+            key="add_form_entry_type",
+            help="Application = formal job posting you applied to.  "
+                 "Opportunity = network contact / informal conversation about a possible role.",
+        )
+        is_opp = entry_type == "Opportunity"
+
+        st.markdown(f"**New {'Opportunity' if is_opp else 'Application'}**")
         r1c1, r1c2 = st.columns(2)
         company  = r1c1.text_input("Company *")
-        role     = r1c2.text_input("Role *")
+        role     = r1c2.text_input(
+            "Role / Description *",
+            placeholder="e.g. Product Lead" if is_opp else "e.g. Senior Product Manager",
+        )
         r2c1, r2c2, r2c3 = st.columns(3)
-        status   = r2c1.selectbox("Status", db.STATUSES, index=1)
+        # Opportunities default to "exploring"; applications default to "applied"
+        default_status_idx = db.STATUSES.index("exploring") if is_opp else db.STATUSES.index("applied")
+        status   = r2c1.selectbox("Status", db.STATUSES, index=default_status_idx)
         fit      = r2c2.selectbox("Fit", ["—", "1", "2", "3", "4", "5"])
-        date_app = r2c3.date_input("Date Applied", value=date.today())
-        job_url  = st.text_input("Job URL")
+        date_app = r2c3.date_input(
+            "Date of first contact" if is_opp else "Date Applied",
+            value=date.today(),
+        )
+
+        if not is_opp:
+            job_url = st.text_input("Job URL")
+        else:
+            job_url = ""
+
         sal_low, sal_high = st.columns(2)
         s_low  = sal_low.number_input("Salary Low ($)", value=0, step=5000)
         s_high = sal_high.number_input("Salary High ($)", value=0, step=5000)
-        referral  = st.text_input("Referral")
-        jd_summary = st.text_area("JD Summary", height=80)
-        notes     = st.text_area("Notes", height=60)
+        referral   = st.text_input(
+            "Referred by" if is_opp else "Referral",
+            placeholder="e.g. John Smith (former manager)" if is_opp else "",
+        )
+        jd_summary = st.text_area(
+            "Notes on the role" if is_opp else "JD Summary",
+            height=80,
+        )
+        notes = st.text_area("Notes", height=60)
+
         st.markdown("**Follow-up**")
         rf1, rf2 = st.columns(2)
         follow_up_date  = rf1.date_input("Follow-up date", value=None)
-        follow_up_notes = rf2.text_input("Who / what to say", placeholder="e.g. Email Sarah the recruiter")
-        st.markdown("**Documents**")
-        resume_version     = st.text_input("Resume version", placeholder="e.g. PM resume v3 – fintech tailored")
-        cover_letter_notes = st.text_input("Cover letter notes", placeholder="e.g. Tailored intro, emphasized API PM exp")
+        follow_up_notes = rf2.text_input(
+            "Who / what to say",
+            placeholder="e.g. Follow up with John after call",
+        )
+
+        if not is_opp:
+            st.markdown("**Documents**")
+            resume_version     = st.text_input("Resume version", placeholder="e.g. PM resume v3 – fintech tailored")
+            cover_letter_notes = st.text_input("Cover letter notes", placeholder="e.g. Tailored intro, emphasized API PM exp")
+        else:
+            resume_version = cover_letter_notes = ""
 
         if st.form_submit_button("Save", type="primary"):
             if not company.strip() or not role.strip():
@@ -285,6 +340,7 @@ def _render_add_form(conn) -> None:
                     role               = role.strip(),
                     job_url            = job_url.strip() or None,
                     source             = "manual",
+                    entry_type         = "opportunity" if is_opp else "application",
                     status             = status,
                     fit_stars          = int(fit) if fit != "—" else None,
                     salary_low         = s_low  or None,
@@ -299,8 +355,13 @@ def _render_add_form(conn) -> None:
                     resume_version     = resume_version.strip() or None,
                     cover_letter_notes = cover_letter_notes.strip() or None,
                 )
-                db.add_event(conn, app_id, "applied", date_app.isoformat(),
-                             title=f"Applied to {company.strip()}")
+                # First event: conversation for opportunity, applied for application
+                first_event = "conversation" if is_opp else "applied"
+                first_title = (
+                    f"Initial conversation — {company.strip()}"
+                    if is_opp else f"Applied to {company.strip()}"
+                )
+                db.add_event(conn, app_id, first_event, date_app.isoformat(), title=first_title)
                 st.session_state["tracker_selected_id"]  = app_id
                 st.session_state["tracker_show_add_form"] = False
                 st.rerun()
@@ -390,6 +451,7 @@ def _render_timeline(conn, app) -> None:
 def _maybe_advance_status(conn, app, event_type: str) -> None:
     """Automatically advance application status based on the event logged."""
     mapping = {
+        "applied":             "applied",
         "screening_scheduled": "screening",
         "screening_complete":  "screening",
         "interview_scheduled": "interviewing",
@@ -400,7 +462,6 @@ def _maybe_advance_status(conn, app, event_type: str) -> None:
         "offer_declined":      "withdrawn",
         "rejected":            "rejected",
         "withdrawn":           "withdrawn",
-        "applied":             "applied",
     }
     new_status = mapping.get(event_type)
     if new_status and new_status != app["status"]:
@@ -573,7 +634,18 @@ def _render_edit_form(conn, app) -> None:
         except Exception:
             pass
 
+    _current_entry_type = app["entry_type"] if app["entry_type"] else "application"
+
     with st.form(f"edit_app_{app['id']}"):
+        et1, et2 = st.columns(2)
+        entry_type_label = et1.radio(
+            "Type",
+            ["Application", "Opportunity"],
+            index=1 if _current_entry_type == "opportunity" else 0,
+            horizontal=True,
+            key=f"edit_entry_type_{app['id']}",
+        )
+
         ec1, ec2 = st.columns(2)
         company  = ec1.text_input("Company", value=app["company"] or "")
         role     = ec2.text_input("Role",    value=app["role"]    or "")
@@ -616,6 +688,7 @@ def _render_edit_form(conn, app) -> None:
     if saved:
         db.update_application(
             conn, app["id"],
+            entry_type         = "opportunity" if entry_type_label == "Opportunity" else "application",
             company            = company.strip(),
             role               = role.strip(),
             status             = status,
