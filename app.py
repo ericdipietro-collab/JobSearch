@@ -28,6 +28,13 @@ try:
 except ImportError:
     _ATS_AVAILABLE = False
 
+try:
+    from views.tracker_page import render_tracker
+    import ats_db
+    _TRACKER_AVAILABLE = True
+except ImportError:
+    _TRACKER_AVAILABLE = False
+
 # ── Paths ─────────────────────────────────────────────────────────────────────
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -300,7 +307,7 @@ def _apply_overrides(df: pd.DataFrame, overrides: dict) -> pd.DataFrame:
 
 st.sidebar.title("💼 Job Search")
 
-_nav_options = ["Results", "Pipeline", "Analytics", "Run Pipeline", "Preferences", "Companies"]
+_nav_options = ["Results", "Application Tracker", "Pipeline", "Analytics", "Run Pipeline", "Preferences", "Companies"]
 page = st.sidebar.radio(
     "Navigate",
     _nav_options,
@@ -480,6 +487,14 @@ if page == "Run Pipeline":
 # ════════════════════════════════════════════════════════════════════════════════
 # PAGE: RESULTS
 # ════════════════════════════════════════════════════════════════════════════════
+
+elif page == "Application Tracker":
+    st.title("Application Tracker")
+    if _TRACKER_AVAILABLE:
+        _tracker_conn = ats_db.get_connection()
+        render_tracker(_tracker_conn)
+    else:
+        st.error("Tracker modules not available — check that ats_db.py and views/tracker_page.py are present.")
 
 elif page == "Pipeline":
     if _ATS_AVAILABLE:
