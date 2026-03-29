@@ -90,6 +90,17 @@ The scraper visits each company's careers page and pulls open roles. Results app
 in **Job Matches** when it finishes. Your first run typically takes 5–15 minutes depending
 on how many companies you've added.
 
+> ⚠️ **Bot detection notice:** Although the scraper is designed to be respectful (it only
+> visits career pages, not production systems), some company ATS platforms may treat
+> automated requests as bot traffic and temporarily block your IP or return empty results
+> for that company. This is a known limitation of any web scraper. If a company stops
+> returning results, wait a day before trying again, or add that company's jobs manually
+> using the **Manual Job Entry** section on the Run Job Search page.
+
+**Don't want to use the scraper at all?** Use **Manual Job Entry** — download the CSV
+template, fill in jobs you find on your own (LinkedIn, Indeed, referrals), upload it,
+and click **Re-score** to have your preferences applied to those jobs.
+
 ### ④ Track your first application
 
 Go to **My Applications** → click **➕ Add** → fill in a company and role.

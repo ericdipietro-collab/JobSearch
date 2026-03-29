@@ -148,5 +148,8 @@ Right-click → Open → Open. You only need to do this once.
 **Companies showing as "broken"**
 Run the ATS Healer from the Target Companies page — it automatically finds and fixes most broken URLs.
 
+**A company's jobs stopped showing up after it was working before**
+Some ATS platforms detect automated requests and temporarily block them. Wait a day and try again, or add that company's jobs manually using **Manual Job Entry** on the Run Job Search page.
+
 **Something else is wrong**
 Check the Scraper Run Log in the Run Job Search page, or open an issue on GitHub.

@@ -63,9 +63,11 @@ Source: "..\config\job_search_preferences.example.yaml"; DestDir: "{app}\config"
 ; Installer icon (for uninstaller display)
 Source: "assets\app.ico";          DestDir: "{app}\installer\assets"; Flags: ignoreversion
 ; Optional modules present in the repo
-Source: "..\heal_ats_yaml.py";     DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
-Source: "..\run_job_search_v6.py"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
-Source: "..\job_search_v6.py";     DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "..\heal_ats_yaml.py";        DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "..\run_job_search_v6.py";    DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "..\job_search_v6.py";        DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "..\rescore_pipeline.py";     DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "..\config\manual_jobs_template.csv"; DestDir: "{app}\config"; Flags: ignoreversion
 Source: "..\db\*";                 DestDir: "{app}\db";       Flags: ignoreversion recursesubdirs skipifsourcedoesntexist
 Source: "..\services\*";           DestDir: "{app}\services"; Flags: ignoreversion recursesubdirs skipifsourcedoesntexist
 Source: "..\docs\*";               DestDir: "{app}\docs";     Flags: ignoreversion recursesubdirs skipifsourcedoesntexist
