@@ -24,9 +24,11 @@ import logging
 import re
 import shutil
 import subprocess
+import threading
 import time
 import warnings
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -34,6 +36,7 @@ from functools import lru_cache
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urljoin, urlparse
 
+import builtins
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup, FeatureNotFound, XMLParsedAsHTMLWarning
@@ -59,7 +62,7 @@ def _early_cli_flag(flag_name: str) -> bool:
 CLI_COMPANIES_PATH_OVERRIDE = _early_cli_value(["--companies"])
 CLI_PREFERENCES_PATH_OVERRIDE = _early_cli_value(["--prefs", "--preferences"])
 if not CLI_COMPANIES_PATH_OVERRIDE and _early_cli_flag("--test-companies"):
-    CLI_COMPANIES_PATH_OVERRIDE = str((Path(__file__).resolve().parent / "job_search_companies_test.yaml"))
+    CLI_COMPANIES_PATH_OVERRIDE = str((Path(__file__).resolve().parent / "config" / "job_search_companies_test.yaml"))
 
 
 # ============================================================
@@ -102,17 +105,22 @@ ACTION_BUCKET_RULES = [
     {"label": "IGNORE", "when": {}},
 ]
 
-OUTPUT_XLSX = "job_search_v6_results.xlsx"
-OUTPUT_CSV = "job_search_v6_results.csv"
-OUTPUT_REJECTED_CSV = "job_search_v6_rejected.csv"
-OUTPUT_REJECTION_DETAIL_CSV = "job_search_v6_rejection_details.csv"
-OUTPUT_MANUAL_CSV = "job_search_v6_manual_targets.csv"
-OUTPUT_ADAPTER_HEALTH_CSV = "job_search_v6_adapter_health.csv"
-OUTPUT_REGISTRY_HEALTH_CSV = "job_search_registry_health_v6.csv"
-OUTPUT_ACTIVE_CONFIG_JSON = "job_search_v6_active_config.json"
-DEFAULT_CHECKPOINT_DIR = "job_search_v6_checkpoints"
-HISTORY_JSON = "job_search_history_v6.json"
-RUN_LOG = "job_search_v6.log"
+BASE_DIR = Path(__file__).resolve().parent
+RESULTS_DIR = BASE_DIR / "results"
+RESULTS_DIR.mkdir(exist_ok=True)
+SCRAPE_WORKERS = 6  # parallel company threads; increase carefully (ATS rate limits)
+
+OUTPUT_XLSX = str(RESULTS_DIR / "job_search_v6_results.xlsx")
+OUTPUT_CSV = str(RESULTS_DIR / "job_search_v6_results.csv")
+OUTPUT_REJECTED_CSV = str(RESULTS_DIR / "job_search_v6_rejected.csv")
+OUTPUT_REJECTION_DETAIL_CSV = str(RESULTS_DIR / "job_search_v6_rejection_details.csv")
+OUTPUT_MANUAL_CSV = str(RESULTS_DIR / "job_search_v6_manual_targets.csv")
+OUTPUT_ADAPTER_HEALTH_CSV = str(RESULTS_DIR / "job_search_v6_adapter_health.csv")
+OUTPUT_REGISTRY_HEALTH_CSV = str(RESULTS_DIR / "job_search_registry_health_v6.csv")
+OUTPUT_ACTIVE_CONFIG_JSON = str(RESULTS_DIR / "job_search_v6_active_config.json")
+DEFAULT_CHECKPOINT_DIR = str(RESULTS_DIR / "job_search_v6_checkpoints")
+HISTORY_JSON = str(RESULTS_DIR / "job_search_history_v6.json")
+RUN_LOG = str(RESULTS_DIR / "job_search_v6.log")
 
 HEADERS = {
     "User-Agent": (
@@ -260,8 +268,6 @@ def _early_sanitize_url(url: Optional[str]) -> str:
 
 
 
-BASE_DIR = Path(__file__).resolve().parent
-
 # Prioritize: 1. CLI Override, 2. Organized /config folder, 3. Legacy root files
 candidates = [
     Path(CLI_COMPANIES_PATH_OVERRIDE).expanduser().resolve() if CLI_COMPANIES_PATH_OVERRIDE else None,
@@ -273,8 +279,14 @@ candidates = [
 
 # Identify the first path that exists; default to the /config standard if none are found
 COMPANY_REGISTRY_PATH = next(
-    (p for p in candidates if p and p.exists()), 
+    (p for p in candidates if p and p.exists()),
     BASE_DIR / "config" / "job_search_companies.yaml"
+)
+
+# Allow the launcher to inject overrides via builtins; fall back to local candidates when run directly.
+COMPANY_REGISTRY_FILE_CANDIDATES: List[Path] = getattr(
+    builtins, "COMPANY_REGISTRY_FILE_CANDIDATES",
+    [p for p in candidates if p is not None],
 )
 
 
@@ -319,16 +331,23 @@ def _load_company_registry_from_yaml() -> Tuple[Optional[Path], Optional[List[Di
     return None, None
 
 
-# Apply the same logic for preferences
+# Apply the same logic for preferences (include CLI override at head of list)
 pref_candidates = [
+    Path(CLI_PREFERENCES_PATH_OVERRIDE).expanduser().resolve() if CLI_PREFERENCES_PATH_OVERRIDE else None,
     BASE_DIR / "config" / "job_search_preferences.yaml",
     BASE_DIR / "job_search_preferences.yaml",
     BASE_DIR / "config" / "preferences.yaml",
 ]
 
 YAML_PREFERENCES = next(
-    (p for p in pref_candidates if p.exists()), 
+    (p for p in pref_candidates if p and p.exists()),
     BASE_DIR / "config" / "job_search_preferences.yaml"
+)
+
+# Allow the launcher to inject overrides via builtins; fall back to local candidates when run directly.
+PREFERENCES_FILE_CANDIDATES: List[Path] = getattr(
+    builtins, "PREFERENCES_FILE_CANDIDATES",
+    [p for p in pref_candidates if p is not None],
 )
 
 
@@ -3948,8 +3967,9 @@ def evaluate_job(
                 reason_code=f"title_blacklist:{term}",
             )
 
+    is_remote, is_hybrid, is_non_us = location_flags(location)
     loc_reason = location_policy_reason(
-        *location_flags(location),
+        is_remote, is_hybrid, is_non_us,
         location=location,
         salary_low=salary_info["salary_low"],
         salary_high=salary_info["salary_high"],
@@ -4474,51 +4494,7 @@ DISCOVERY_URLS_BY_COMPANY: Dict[str, List[str]] = {
     "MuleSoft": ["https://careers.salesforce.com/en/jobs/"],
 }
 
-EXTERNAL_BOARD_REGISTRY: List[Dict[str, Any]] = [
-    {
-        "name": "eFinancialCareers",
-        "adapter": "efinancialcareers",
-        "search_urls": [
-            "https://www.efinancialcareers.com/jobs",
-            "https://www.efinancialcareers.com/jobs/remote",
-            "https://www.efinancialcareers.com/jobs/capital-markets",
-        ],
-        "notes": "Finance-native board with capital markets and remote filters.",
-    },
-    {
-        "name": "Wellfound",
-        "adapter": "wellfound",
-        "search_urls": [
-            "https://wellfound.com/remote",
-            "https://wellfound.com/role/r/technical-product-manager",
-            "https://wellfound.com/jobs",
-            "https://wellfound.com/job-collections/remote-product-manager-jobs",
-        ],
-        "notes": "Startup/fintech recall booster with salary and remote metadata on many listings.",
-    },
-    {
-        "name": "Built In",
-        "adapter": "builtin",
-        "search_urls": [
-            "https://builtin.com/jobs/remote/fintech",
-            "https://builtin.com/jobs/remote/product/fintech",
-            "https://builtin.com/jobs/product/fintech",
-        ],
-        "notes": "Broad fintech board with useful salary and remote labels.",
-    },
-    {
-        "name": "Welcome to the Jungle",
-        "adapter": "welcometothejungle",
-        "search_urls": [
-            "https://app.welcometothejungle.com/companies/Plaid",
-            "https://app.welcometothejungle.com/companies/Ramp",
-            "https://app.welcometothejungle.com/companies/Lemfi",
-            "https://app.welcometothejungle.com/companies/Cardless",
-            "https://app.welcometothejungle.com/companies/Aleph",
-        ],
-        "notes": "Welcome to the Jungle company pages for fintech-heavy employers; job extraction happens from company pages and detail pages.",
-    },
-]
+EXTERNAL_BOARD_REGISTRY: List[Dict[str, Any]] = []
 
 EXTERNAL_BOARD_COMMON_DOMAIN_MARKERS = [
     "fintech", "financial services", "financial infrastructure", "capital markets",
@@ -5650,6 +5626,11 @@ def ashby(company: Company, rejected_jobs: Optional[List[RejectedJob]] = None) -
         for item in raw.get("secondaryLocations") or []:
             locations.append(clean(item.get("location")))
         location = " / ".join([x for x in unique_preserve(locations) if x])
+        # Honour Ashby's dedicated remote flags — a job can be remote even if the
+        # location field only lists an office city.
+        is_remote_flag = raw.get("isRemote") or (raw.get("workplaceType") or "").lower() == "remote"
+        if is_remote_flag and "remote" not in location.lower():
+            location = f"{location} / Remote" if location else "Remote"
         comp = raw.get("compensation") or {}
         desc = " ".join([
             clean(raw.get("descriptionHtml") or raw.get("descriptionPlain")),
@@ -5711,10 +5692,16 @@ def lever(company: Company, rejected_jobs: Optional[List[RejectedJob]] = None) -
     jobs: List[Job] = []
 
     for raw in data:
+        lever_location = (raw.get("categories") or {}).get("location", "")
+        # Lever's workplaceType field ("remote"/"hybrid"/"on-site") is more reliable
+        # than the location string for remote detection.
+        lever_workplace = (raw.get("workplaceType") or "").lower()
+        if lever_workplace == "remote" and "remote" not in lever_location.lower():
+            lever_location = f"{lever_location} / Remote" if lever_location else "Remote"
         job = make_job(
             company=company,
             title=raw.get("text", ""),
-            location=(raw.get("categories") or {}).get("location", ""),
+            location=lever_location,
             url=raw.get("hostedUrl", ""),
             source="Lever",
             description=raw.get("descriptionPlain", ""),
@@ -5834,6 +5821,159 @@ def manual_flag(company: Company, rejected_jobs: Optional[List[RejectedJob]] = N
     return [job] if job else []
 
 
+def smartrecruiters(company: Company, rejected_jobs: Optional[List[RejectedJob]] = None) -> List[Job]:
+    """SmartRecruiters public JSON API. adapter_key = company slug from careers.smartrecruiters.com URL."""
+    slug = company.adapter_key or company.name.lower().replace(" ", "")
+    url = f"https://api.smartrecruiters.com/v1/companies/{slug}/postings"
+    try:
+        data = fetch_json(url)
+    except Exception as e:
+        logging.warning("SmartRecruiters API failed company=%s err=%s", company.name, e)
+        return []
+    jobs: List[Job] = []
+    for raw in data.get("content", []):
+        loc_obj = raw.get("location") or {}
+        city    = loc_obj.get("city") or ""
+        country = loc_obj.get("country") or ""
+        remote  = loc_obj.get("remote") or False
+        location = "Remote" if remote else ", ".join(filter(None, [city, country]))
+        job = make_job(
+            company     = company,
+            title       = raw.get("name", ""),
+            location    = location,
+            url         = raw.get("ref", ""),
+            source      = "SmartRecruiters",
+            description = "",
+            posted_dt   = parse_date(raw.get("releasedDate")),
+            rejected_jobs = rejected_jobs,
+        )
+        if job:
+            jobs.append(job)
+    return jobs
+
+
+def icims(company: Company, rejected_jobs: Optional[List[RejectedJob]] = None) -> List[Job]:
+    """iCIMS HTML scraper. careers_url should be the company's iCIMS search page."""
+    base_url = company.careers_url or ""
+    if not base_url:
+        return []
+    # Try common iCIMS search URL patterns
+    search_urls = [base_url]
+    if "icims.com" in base_url and "search" not in base_url:
+        search_urls.append(base_url.rstrip("/") + "/jobs/search")
+    jobs: List[Job] = []
+    seen: set = set()
+    for search_url in search_urls[:2]:
+        try:
+            html = fetch_text(search_url, referer=search_url)
+        except Exception as e:
+            logging.warning("iCIMS listing failed company=%s url=%s err=%s", company.name, search_url, e)
+            continue
+        soup = make_soup(html)
+        for a in soup.find_all("a", href=True):
+            href = str(a["href"])
+            # iCIMS job detail links match /jobs/{id}/job
+            if re.search(r"/jobs/\d+/job", href):
+                full_url = urljoin(search_url, href)
+                if full_url in seen:
+                    continue
+                seen.add(full_url)
+                if len(seen) > MAX_DETAIL_LINKS:
+                    break
+                try:
+                    detail_html = fetch_text(full_url, referer=search_url)
+                except Exception as e:
+                    logging.warning("iCIMS detail failed url=%s err=%s", full_url, e)
+                    continue
+                detail_soup = make_soup(detail_html)
+                # Extract title — iCIMS job title is usually in h1 or .iCIMS_JobTitle
+                title_el = (detail_soup.find(class_=re.compile(r"iCIMS_JobTitle", re.I))
+                            or detail_soup.find("h1"))
+                title = clean(title_el.get_text(" ", strip=True)) if title_el else ""
+                if not title:
+                    continue
+                # Location
+                loc_el = detail_soup.find(class_=re.compile(r"iCIMS_JobHeaderField.*location|jobLocation", re.I))
+                location = clean(loc_el.get_text(" ", strip=True)) if loc_el else ""
+                # Description
+                desc_el = detail_soup.find(class_=re.compile(r"iCIMS_JobContent|iCIMS_Expandable_Text", re.I))
+                description = clean(desc_el.get_text(" ", strip=True)) if desc_el else ""
+                job = make_job(
+                    company     = company,
+                    title       = title,
+                    location    = location,
+                    url         = full_url,
+                    source      = "iCIMS",
+                    description = description,
+                    posted_dt   = None,
+                    rejected_jobs = rejected_jobs,
+                )
+                if job:
+                    jobs.append(job)
+        if jobs:
+            break  # Got results from first working URL
+    return dedupe(jobs)
+
+
+def indeed_search(company: Company, rejected_jobs: Optional[List[RejectedJob]] = None) -> List[Job]:
+    """
+    Searches Indeed for jobs at a specific company.
+    careers_url should be the Indeed company jobs page:
+      https://www.indeed.com/cmp/{slug}/jobs
+    If careers_url is missing, builds a URL from company.name.
+    """
+    if company.careers_url and "indeed.com" in company.careers_url:
+        search_url = company.careers_url
+    else:
+        slug = re.sub(r"[^a-z0-9-]", "-", company.name.lower()).strip("-")
+        search_url = f"https://www.indeed.com/cmp/{slug}/jobs"
+    try:
+        html = fetch_text(search_url, referer="https://www.indeed.com")
+    except Exception as e:
+        logging.warning("Indeed search failed company=%s url=%s err=%s", company.name, search_url, e)
+        return []
+    soup = make_soup(html)
+    jobs: List[Job] = []
+    seen: set = set()
+    # Indeed job links: /viewjob?jk=... or /rc/clk?jk=...
+    for a in soup.find_all("a", href=True):
+        href = str(a["href"])
+        if not re.search(r"/(viewjob|rc/clk)\?.*jk=", href) and "/jobs/view" not in href:
+            continue
+        full_url = urljoin("https://www.indeed.com", href)
+        # Normalise: strip tracking params, keep jk=
+        m_jk = re.search(r"jk=([a-f0-9]+)", full_url)
+        canonical = f"https://www.indeed.com/viewjob?jk={m_jk.group(1)}" if m_jk else full_url
+        if canonical in seen:
+            continue
+        seen.add(canonical)
+        if len(seen) > 40:
+            break
+        # Title from link text or data attribute
+        title = clean(a.get_text(" ", strip=True))
+        if not title or len(title) < 4:
+            parent = a.find_parent(class_=re.compile(r"jobCard|job_seen_beacon|tapItem", re.I))
+            if parent:
+                t_el = parent.find(class_=re.compile(r"jobTitle|title", re.I))
+                if t_el:
+                    title = clean(t_el.get_text(" ", strip=True))
+        if not title:
+            continue
+        job = make_job(
+            company     = company,
+            title       = title,
+            location    = "",
+            url         = canonical,
+            source      = "Indeed",
+            description = "",
+            posted_dt   = None,
+            rejected_jobs = rejected_jobs,
+        )
+        if job:
+            jobs.append(job)
+    return dedupe(jobs)
+
+
 def run_adapter(company: Company, rejected_jobs: Optional[List[RejectedJob]] = None) -> List[Job]:
     set_run_context("company", company.name, company.adapter, company.careers_url or "")
     try:
@@ -5875,6 +6015,27 @@ def run_adapter(company: Company, rejected_jobs: Optional[List[RejectedJob]] = N
             jobs = spglobal(company, rejected_jobs=rejected_jobs)
             RUNTIME_COMPANY_STATUS[company.name] = "custom scraper"
             return jobs
+        if company.adapter == "smartrecruiters":
+            jobs = smartrecruiters(company, rejected_jobs=rejected_jobs)
+            if jobs:
+                RUNTIME_COMPANY_STATUS[company.name] = "✓"
+                return jobs
+            RUNTIME_COMPANY_STATUS[company.name] = "manual fallback"
+            return manual_flag(company, rejected_jobs=rejected_jobs)
+        if company.adapter == "icims":
+            jobs = icims(company, rejected_jobs=rejected_jobs)
+            if jobs:
+                RUNTIME_COMPANY_STATUS[company.name] = "✓"
+                return jobs
+            RUNTIME_COMPANY_STATUS[company.name] = "manual fallback"
+            return manual_flag(company, rejected_jobs=rejected_jobs)
+        if company.adapter == "indeed_search":
+            jobs = indeed_search(company, rejected_jobs=rejected_jobs)
+            if jobs:
+                RUNTIME_COMPANY_STATUS[company.name] = "✓ (Indeed)"
+                return jobs
+            RUNTIME_COMPANY_STATUS[company.name] = "manual fallback"
+            return manual_flag(company, rejected_jobs=rejected_jobs)
         if company.adapter in ("workday_manual", "custom_manual"):
             jobs = auto_discover(company, rejected_jobs=rejected_jobs)
             if jobs:
@@ -6630,6 +6791,9 @@ def main() -> None:
     raw_intake_total = 0
     processed_company_count = 0
 
+    # Load history before scraping so already-seen jobs can be skipped.
+    history = load_history()
+
     print("=" * 68)
     print("Job Search v6 — Eric DiPietro")
     print(f"Run time: {iso_now()}")
@@ -6639,67 +6803,65 @@ def main() -> None:
     print("=" * 68)
 
     try:
-        for company in companies:
-            rejected_before = len(all_rejected)
-            jobs = run_adapter(company, rejected_jobs=all_rejected)
-            all_evaluated_jobs.extend(jobs)
-            kept = filter_kept_jobs(company, jobs, all_rejected)
+        print_lock = threading.Lock()
+
+        def _scrape_company(company: "Company"):
+            local_rejected: List[RejectedJob] = []
+            jobs = run_adapter(company, rejected_jobs=local_rejected)
+            kept = filter_kept_jobs(company, jobs, local_rejected)
+            kept = [j for j in kept if job_id(j.company, j.title, j.canonical_url) not in history]
             real_kept, manual_kept = partition_manual_jobs(kept)
-            all_jobs.extend(real_kept)
-            all_manual_targets.extend(manual_kept)
-
-            rejected_count = len(all_rejected) - rejected_before
+            rejected_count = len(local_rejected)
             evaluated_count = len(jobs) + rejected_count
-            raw_intake_total += evaluated_count
-            processed_company_count += 1
-
             status = company_status_label(company, jobs, real_kept, manual_kept)
             manual_str = f"  manual={len(manual_kept):3d}" if manual_kept else ""
-            print(
-                f"  {company.name:<28} tier={company.tier}  "
-                f"evaluated={evaluated_count:3d}  kept={len(real_kept):3d}{manual_str}  rejected={rejected_count:3d}  [{status}]"
-            )
-            logging.info(
-                "company=%s evaluated=%s kept=%s manual=%s rejected=%s",
-                company.name,
-                evaluated_count,
-                len(real_kept),
-                len(manual_kept),
-                rejected_count,
-            )
-            adapter_rows.append(
-                build_adapter_health_row(
-                    context_kind="company",
-                    name=company.name,
-                    tier=company.tier,
-                    adapter=company.adapter,
-                    status=status,
-                    evaluated_count=evaluated_count,
-                    kept_count=len(real_kept),
-                    manual_count=len(manual_kept),
-                    rejected_count=rejected_count,
-                    notes=company.notes,
+            with print_lock:
+                print(
+                    f"  {company.name:<28} tier={company.tier}  "
+                    f"evaluated={evaluated_count:3d}  kept={len(real_kept):3d}{manual_str}  rejected={rejected_count:3d}  [{status}]"
                 )
-            )
-
-            if args.debug_company and clean(company.name).lower() == clean(args.debug_company).lower():
-                company_rejected = [row for row in all_rejected if clean(row.company).lower() == clean(company.name).lower()]
-                print_debug_company_snapshot(company.name, company_rejected, limit=args.debug_rejections_limit)
-
-            if args.checkpoint_every and args.checkpoint_every > 0 and processed_company_count % args.checkpoint_every == 0:
-                label = f"checkpoint_{processed_company_count:03d}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-                prefix = write_checkpoint_snapshot(
-                    checkpoint_dir=checkpoint_dir,
-                    label=label,
-                    raw_intake_total=raw_intake_total,
-                    all_evaluated_jobs=all_evaluated_jobs,
-                    all_jobs=all_jobs,
-                    all_manual_targets=all_manual_targets,
-                    all_rejected=all_rejected,
-                    adapter_rows=adapter_rows,
+                logging.info(
+                    "company=%s evaluated=%s kept=%s manual=%s rejected=%s",
+                    company.name, evaluated_count, len(real_kept), len(manual_kept), rejected_count,
                 )
-                print(f"    checkpoint written: {prefix.with_name(prefix.name + '_summary.json')}")
-            time.sleep(0.3)
+            return {
+                "company": company,
+                "jobs": jobs,
+                "real_kept": real_kept,
+                "manual_kept": manual_kept,
+                "rejected": local_rejected,
+                "evaluated_count": evaluated_count,
+                "status": status,
+            }
+
+        with ThreadPoolExecutor(max_workers=SCRAPE_WORKERS) as pool:
+            futures = {pool.submit(_scrape_company, co): co for co in companies}
+            for future in as_completed(futures):
+                result = future.result()
+                company = result["company"]
+                all_evaluated_jobs.extend(result["jobs"])
+                all_jobs.extend(result["real_kept"])
+                all_manual_targets.extend(result["manual_kept"])
+                all_rejected.extend(result["rejected"])
+                raw_intake_total += result["evaluated_count"]
+                processed_company_count += 1
+                adapter_rows.append(
+                    build_adapter_health_row(
+                        context_kind="company",
+                        name=company.name,
+                        tier=company.tier,
+                        adapter=company.adapter,
+                        status=result["status"],
+                        evaluated_count=result["evaluated_count"],
+                        kept_count=len(result["real_kept"]),
+                        manual_count=len(result["manual_kept"]),
+                        rejected_count=len(result["rejected"]),
+                        notes=company.notes,
+                    )
+                )
+                if args.debug_company and clean(company.name).lower() == clean(args.debug_company).lower():
+                    company_rejected = [row for row in result["rejected"]]
+                    print_debug_company_snapshot(company.name, company_rejected, limit=args.debug_rejections_limit)
 
         if not args.skip_external_boards:
             for board in EXTERNAL_BOARD_REGISTRY:
@@ -6707,6 +6869,7 @@ def main() -> None:
                 jobs = run_external_board(board, rejected_jobs=all_rejected)
                 all_evaluated_jobs.extend(jobs)
                 kept = filter_kept_jobs(None, jobs, all_rejected)
+                kept = [j for j in kept if job_id(j.company, j.title, j.canonical_url) not in history]
                 real_kept, manual_kept = partition_manual_jobs(kept)
                 all_jobs.extend(real_kept)
                 all_manual_targets.extend(manual_kept)
@@ -6763,7 +6926,7 @@ def main() -> None:
     all_manual_targets = dedupe(all_manual_targets)
     unique_evaluated_total = len(all_evaluated_jobs)
 
-    history = load_history()
+    # history already loaded at top of main(); just apply timestamps to kept jobs.
     apply_history(all_jobs, history)
     apply_history(all_manual_targets, history)
 

@@ -1,7 +1,11 @@
+import argparse
 import csv
+import random
 import re
 import shutil
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -11,102 +15,41 @@ import requests
 import yaml
 from bs4 import BeautifulSoup
 
+# --- Configuration ---
 BASE_DIR = Path(__file__).resolve().parent
 YAML_FILE = BASE_DIR / "config" / "job_search_companies.yaml"
 BACKUP_FILE = BASE_DIR / "config" / "job_search_companies.yaml.bak"
 REPORT_FILE = BASE_DIR / "results" / "heal_ats_yaml_report.csv"
+REPORT_FILE.parent.mkdir(exist_ok=True)
 
-REQUEST_TIMEOUT = 12
-SLEEP_BETWEEN_COMPANIES = 0.35
-SLEEP_BETWEEN_REQUESTS = 0.20
-MAX_INTERNAL_LINKS_PER_PAGE = 12
+REQUEST_TIMEOUT = 7    # reduced: 12 → 7s (parallel workers tolerate tighter timeouts)
+MIN_SLEEP = 1.5        # minimum seconds between companies (sequential mode only)
+MAX_SLEEP = 4.0        # maximum seconds between companies (sequential mode only)
+RATE_LIMIT_SLEEP = 45  # sleep when we hit a 429/503
+MAX_WORKERS = 8        # parallel threads for discovery
 
+# Rotate User-Agents per company to reduce bot-detection fingerprinting.
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3 Safari/605.1.15",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+]
+
+# Base headers without User-Agent — UA is rotated per company in the main loop.
 HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/135.0.0.0 Safari/537.36"
-    ),
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
     "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
     "DNT": "1",
+    "Connection": "keep-alive",
     "Upgrade-Insecure-Requests": "1",
-}
-
-COMMON_CAREER_PATHS = [
-    "",
-    "/careers",
-    "/careers/",
-    "/career-opportunities",
-    "/career-opportunities/",
-    "/jobs",
-    "/jobs/",
-    "/about/careers",
-    "/about-us/careers",
-    "/about-us/careers/",
-    "/company/careers",
-    "/company/careers/",
-    "/careers/job-openings",
-    "/careers/open-positions",
-    "/join-us",
-    "/work-with-us",
-]
-
-COMMON_SUBDOMAINS = ["", "www", "careers", "jobs"]
-
-CAREER_LINK_HINTS = [
-    "career",
-    "careers",
-    "career opportunities",
-    "career-opportunities",
-    "job",
-    "jobs",
-    "open positions",
-    "openings",
-    "open roles",
-    "roles",
-    "all roles",
-    "join our team",
-    "join-us",
-    "work with us",
-    "work-with-us",
-]
-
-INVALID_PAGE_MARKERS = [
-    "page not found",
-    "the page you requested was not found",
-    "the job board you were viewing is no longer active",
-    "job board you were viewing is no longer active",
-    "job board is no longer active",
-    "this page doesn't exist",
-    "this page does not exist",
-    "the page you were looking for doesn't exist",
-    "the page you were looking for does not exist",
-    "requested page could not be found",
-]
-
-ATS_HOST_MARKERS = {
-    "greenhouse": ["greenhouse.io", "boards.greenhouse.io", "job-boards.greenhouse.io"],
-    "lever": ["jobs.lever.co", "lever.co"],
-    "ashby": ["jobs.ashbyhq.com", "ashbyhq.com"],
-    "workday": ["myworkdayjobs.com"],
-}
-
-ATS_PATTERNS = {
-    "greenhouse": [
-        re.compile(r"https?://(?:job-boards\\.)?greenhouse\\.io/([\\w.-]+)", re.I),
-        re.compile(r"https?://boards\\.greenhouse\\.io/([\\w.-]+)", re.I),
-    ],
-    "lever": [
-        re.compile(r"https?://jobs\\.lever\\.co/([\\w.-]+)", re.I),
-    ],
-    "ashby": [
-        re.compile(r"https?://jobs\\.ashbyhq\\.com/([\\w.-]+)", re.I),
-    ],
-    "workday": [
-        re.compile(r'https?://([\\w.-]+\\.myworkdayjobs\\.com/[^\\s"\\'<>]+)', re.I),
-        re.compile(r'https?://([\\w.-]+\\.wd\\d+\\.myworkdayjobs\\.com/[^\\s"\\'<>]+)', re.I),
-    ],
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
 }
 
 
@@ -115,7 +58,8 @@ class DiscoveryResult:
     adapter: Optional[str]
     adapter_key: Optional[str]
     careers_url: Optional[str]
-    domain: Optional[str]
+    # ATS host for reporting (e.g. "boards.greenhouse.io"); not written to YAML domain field.
+    ats_host: Optional[str]
     status: str
     detail: str
 
@@ -123,489 +67,341 @@ class DiscoveryResult:
 def make_session() -> requests.Session:
     session = requests.Session()
     session.headers.update(HEADERS)
-    adapter = requests.adapters.HTTPAdapter(pool_connections=2, pool_maxsize=2, max_retries=0)
-    session.mount("https://", adapter)
-    session.mount("http://", adapter)
+    session.headers["User-Agent"] = random.choice(USER_AGENTS)
+    # Force-close connections after each request to avoid sticky sessions that
+    # some bot-detection systems use to fingerprint clients.
+    http_adapter = requests.adapters.HTTPAdapter(pool_connections=1, pool_maxsize=1)
+    session.mount("https://", http_adapter)
+    session.mount("http://", http_adapter)
     return session
 
 
-def normalize_domain(domain: Optional[str]) -> str:
-    d = (domain or "").strip().lower()
-    d = re.sub(r"^https?://", "", d)
-    d = d.split("/")[0]
-    if d.startswith("www."):
-        d = d[4:]
-    return d
+def _jitter(min_s: float = MIN_SLEEP, max_s: float = MAX_SLEEP) -> None:
+    """Sleep a random duration to avoid predictable request patterns."""
+    time.sleep(random.uniform(min_s, max_s))
 
 
-def normalize_url(url: Optional[str]) -> Optional[str]:
-    if not url:
-        return None
-    u = url.strip()
-    if not u:
-        return None
-    if not re.match(r"^https?://", u, flags=re.I):
-        u = "https://" + u.lstrip("/")
-    return u
+ATS_PATTERNS = {
+    "greenhouse": [
+        re.compile(r"https?://(?:job-boards\.)?greenhouse\.io/([\w.-]+)", re.I),
+        re.compile(r"https?://boards\.greenhouse\.io/([\w.-]+)", re.I),
+    ],
+    "lever": [
+        re.compile(r"https?://jobs\.lever\.co/([\w.-]+)", re.I),
+    ],
+    "ashby": [
+        re.compile(r"https?://jobs\.ashbyhq\.com/([\w.-]+)", re.I),
+    ],
+    "workday": [
+        # Stop at &, \, {, } in addition to quotes/whitespace/angle-brackets so that
+        # HTML-encoded quotes (&#34;) and JSON remnants don't bleed into the captured path.
+        re.compile(r"https?://([\w.-]+\.myworkdayjobs\.com/[^\"'&\s<>\\{}]+)", re.I),
+    ],
+}
 
 
-def base_company_tokens(name: str) -> list[str]:
-    tokens = re.findall(r"[a-z0-9]+", (name or "").lower())
-    stop = {
-        "the", "inc", "llc", "ltd", "corp", "corporation", "company", "co", "group",
-        "financial", "bank", "holdings", "technologies",
-    }
-    out = [t for t in tokens if len(t) > 2 and t not in stop]
-    return out or [re.sub(r"[^a-z0-9]+", "", (name or "").lower())]
+_WORKDAY_AUTH_PATHS = re.compile(r"/(login|logout|auth|register|resetpassword)(/.*)?$", re.I)
+
+def extract_ats_key(text: str, url: str, adapter: str) -> Optional[str]:
+    patterns = ATS_PATTERNS.get(adapter, [])
+    for p in patterns:
+        for source in [url, text]:
+            m = p.search(source)
+            if m:
+                key = m.group(1).split("?")[0].strip("/\\ ")
+                if adapter == "workday":
+                    key = _WORKDAY_AUTH_PATHS.sub("", key).strip("/\\ ")
+                return key or None
+    return None
 
 
-def pause(seconds: float = SLEEP_BETWEEN_REQUESTS) -> None:
-    time.sleep(seconds)
-
-
-def get_page_text(soup: BeautifulSoup, limit: int = 4000) -> str:
-    return " ".join(" ".join(soup.stripped_strings).lower().split())[:limit]
-
-
-def page_has_invalid_markers(url: str, html: str) -> bool:
+def _is_ats_not_found(html: str) -> bool:
+    """Detect ATS false-200 'Page not found' responses (Greenhouse, Ashby, Lever, etc.)."""
     soup = BeautifulSoup(html, "html.parser")
-    title = (soup.title.string or "").strip().lower() if soup.title else ""
-    text = get_page_text(soup)
-    combined = f"{title} {text}".strip()
-    host = normalize_domain(urlparse(url).netloc)
-
-    if any(marker in combined for marker in INVALID_PAGE_MARKERS):
+    title = (soup.title.string or "").lower() if soup.title else ""
+    if "not found" in title or "page not found" in title:
         return True
-
-    if any(h in host for h in ATS_HOST_MARKERS["greenhouse"]):
-        if "greenhouse recruiting" in combined and "page not found" in combined:
-            return True
-        if "job board" in combined and "no longer active" in combined:
-            return True
-
-    if any(h in host for h in ATS_HOST_MARKERS["ashby"]):
-        if "powered by ashby" in combined and "page not found" in combined:
-            return True
-
+    h1 = soup.find("h1")
+    if h1 and "not found" in h1.get_text().lower():
+        return True
     return False
 
 
-def company_name_matches_page(company_name: str, url: str, html: str) -> bool:
+def _is_rate_limited(status_code: int) -> bool:
+    return status_code in (429, 503, 429)
+
+
+def verify_page_ownership(html: str, name: str) -> bool:
+    """Check if the company name appears in the page title or main headers."""
     soup = BeautifulSoup(html, "html.parser")
-    pieces = []
-
-    title = (soup.title.string or "") if soup.title else ""
-    pieces.append(title)
-
-    for tag_name in ["h1", "h2"]:
-        tag = soup.find(tag_name)
-        if tag:
-            pieces.append(tag.get_text(" ", strip=True))
-
-    for key in ["og:site_name", "application-name", "twitter:title"]:
-        node = soup.find("meta", attrs={"property": key}) or soup.find("meta", attrs={"name": key})
-        if node and node.get("content"):
-            pieces.append(node["content"])
-
-    combined = " ".join(pieces).lower()
-    host = normalize_domain(urlparse(url).netloc)
-    tokens = base_company_tokens(company_name)
-
-    if len(tokens) == 1:
-        tok = tokens[0]
-        return tok in combined or tok in host
-
-    full_norm = " ".join(tokens)
-    if full_norm in combined:
+    page_title = (soup.title.string or "").lower() if soup.title else ""
+    clean_name = name.lower()
+    if clean_name in page_title:
         return True
-
-    matched = sum(1 for tok in tokens if tok in combined or tok in host)
-    return matched >= max(1, len(tokens) - 1)
-
-
-def page_has_career_hints(url: str, html: str) -> bool:
-    soup = BeautifulSoup(html, "html.parser")
-    title = (soup.title.string or "").lower() if soup.title else ""
-    text = get_page_text(soup)
-    combined = f"{title} {url.lower()} {text}"
-    return any(hint in combined for hint in CAREER_LINK_HINTS)
+    h1 = soup.find("h1")
+    if h1 and clean_name in h1.get_text().lower():
+        return True
+    return False
 
 
-def extract_ats_from_source(source: str) -> Optional[tuple[str, Optional[str], str]]:
-    for adapter, patterns in ATS_PATTERNS.items():
-        for pattern in patterns:
-            match = pattern.search(source or "")
-            if not match:
-                continue
-            if adapter == "workday":
-                full_url = "https://" + match.group(1).rstrip("/")
-                return adapter, None, full_url
-            key = match.group(1).split("?")[0].strip("/")
-            if adapter == "greenhouse":
-                careers_url = f"https://job-boards.greenhouse.io/{key}"
-            elif adapter == "lever":
-                careers_url = f"https://jobs.lever.co/{key}"
-            else:
-                careers_url = f"https://jobs.ashbyhq.com/{key}"
-            return adapter, key, careers_url
-    return None
-
-
-def detect_embedded_ats(url: str, html: str) -> Optional[tuple[str, Optional[str], str]]:
-    direct = extract_ats_from_source(url) or extract_ats_from_source(html)
-    if direct:
-        return direct
-
-    soup = BeautifulSoup(html, "html.parser")
-
-    for tag_name, attr in [("a", "href"), ("iframe", "src"), ("script", "src")]:
-        for tag in soup.find_all(tag_name):
-            raw = (tag.get(attr) or "").strip()
-            if not raw:
-                continue
-            absolute = urljoin(url, raw)
-            found = extract_ats_from_source(absolute)
-            if found:
-                return found
-
-    for script in soup.find_all("script"):
-        script_text = script.get_text(" ", strip=True)
-        found = extract_ats_from_source(script_text)
-        if found:
-            return found
-
-    return None
-
-
-def fetch(session: requests.Session, url: str) -> Optional[requests.Response]:
+def _validate_existing_url(session: requests.Session, url: str, company_name: str, adapter: str) -> bool:
+    """
+    Returns True if the existing careers_url is still live and valid.
+    For known ATS adapters (greenhouse/ashby/lever), also verifies company ownership
+    to guard against false-200 'Page not found' responses.
+    """
+    if not url:
+        return False
     try:
         resp = session.get(url, timeout=REQUEST_TIMEOUT, allow_redirects=True)
-        pause()
-        return resp
-    except requests.RequestException:
-        return None
-
-
-def validate_candidate_page(company: dict, response: requests.Response) -> tuple[bool, str]:
-    if response.status_code >= 400:
-        return False, f"http_{response.status_code}"
-
-    final_url = response.url
-    html = response.text or ""
-    if page_has_invalid_markers(final_url, html):
-        return False, "soft_404"
-
-    host = normalize_domain(urlparse(final_url).netloc)
-    embedded = detect_embedded_ats(final_url, html)
-    company_name = company.get("name", "")
-
-    if any(marker in host for markers in ATS_HOST_MARKERS.values() for marker in markers):
-        if company_name_matches_page(company_name, final_url, html):
-            return True, "valid_ats"
-        return False, "ats_wrong_company"
-
-    if company_name_matches_page(company_name, final_url, html) or page_has_career_hints(final_url, html):
-        return True, "valid_career_page"
-
-    if embedded:
-        return True, "embedded_ats"
-
-    return False, "not_career_related"
-
-
-def company_site_candidates(company: dict) -> list[str]:
-    domains = []
-    raw_domain = normalize_domain(company.get("domain"))
-    current_url = normalize_url(company.get("careers_url"))
-    current_host = normalize_domain(urlparse(current_url).netloc) if current_url else ""
-
-    for d in [raw_domain, current_host]:
-        if not d:
-            continue
-        if any(marker in d for markers in ATS_HOST_MARKERS.values() for marker in markers):
-            continue
-        if d not in domains:
-            domains.append(d)
-
-    urls = []
-    for domain in domains:
-        for sub in COMMON_SUBDOMAINS:
-            host = f"{sub}.{domain}" if sub else domain
-            base = f"https://{host}"
-            if base not in urls:
-                urls.append(base)
-    return urls
-
-
-def career_links_from_page(base_url: str, html: str) -> list[str]:
-    soup = BeautifulSoup(html, "html.parser")
-    found = []
-
-    for a in soup.find_all("a", href=True):
-        href = (a.get("href") or "").strip()
-        if not href or href.startswith("mailto:") or href.startswith("tel:"):
-            continue
-        label = " ".join(a.get_text(" ", strip=True).lower().split())
-        href_l = href.lower()
-        if any(hint in href_l for hint in CAREER_LINK_HINTS) or any(hint in label for hint in CAREER_LINK_HINTS):
-            found.append(urljoin(base_url, href))
-
-    deduped = []
-    seen = set()
-    for link in found:
-        if link not in seen:
-            seen.add(link)
-            deduped.append(link)
-    return deduped[:MAX_INTERNAL_LINKS_PER_PAGE]
-
-
-def try_current_careers_url(session: requests.Session, company: dict) -> Optional[DiscoveryResult]:
-    current_url = normalize_url(company.get("careers_url"))
-    if not current_url:
-        return None
-
-    response = fetch(session, current_url)
-    if response is None:
-        return None
-
-    valid, reason = validate_candidate_page(company, response)
-    if not valid:
-        return None
-
-    final_url = response.url
-    html = response.text or ""
-    embedded = detect_embedded_ats(final_url, html)
-
-    if embedded:
-        adapter, adapter_key, ats_url = embedded
-        return DiscoveryResult(
-            adapter=adapter,
-            adapter_key=adapter_key,
-            careers_url=ats_url,
-            domain=normalize_domain(urlparse(ats_url).netloc),
-            status="CURRENT_VALID",
-            detail=f"current url validated and exposes {adapter}",
-        )
-
-    for link in career_links_from_page(final_url, html):
-        sub_resp = fetch(session, link)
-        if sub_resp is None:
-            continue
-        sub_valid, _ = validate_candidate_page(company, sub_resp)
-        if not sub_valid:
-            continue
-        sub_url = sub_resp.url
-        sub_html = sub_resp.text or ""
-        embedded = detect_embedded_ats(sub_url, sub_html)
-        if embedded:
-            adapter, adapter_key, ats_url = embedded
-            return DiscoveryResult(
-                adapter=adapter,
-                adapter_key=adapter_key,
-                careers_url=ats_url,
-                domain=normalize_domain(urlparse(ats_url).netloc),
-                status="CURRENT_UPGRADED",
-                detail=f"current url validated and linked page exposes {adapter}",
-            )
-
-    adapter = company.get("adapter")
-    adapter_key = company.get("adapter_key")
-    if adapter in {"greenhouse", "lever", "ashby", "workday"}:
-        return DiscoveryResult(
-            adapter=adapter,
-            adapter_key=adapter_key,
-            careers_url=final_url,
-            domain=normalize_domain(urlparse(final_url).netloc),
-            status="CURRENT_VALID",
-            detail=f"current careers_url validated ({reason})",
-        )
-
-    return DiscoveryResult(
-        adapter="manual",
-        adapter_key=None,
-        careers_url=final_url,
-        domain=normalize_domain(urlparse(final_url).netloc),
-        status="CURRENT_VALID",
-        detail=f"current career page validated ({reason})",
-    )
-
-
-def search_company_site(session: requests.Session, company: dict) -> Optional[DiscoveryResult]:
-    fallback_url = None
-
-    for base in company_site_candidates(company):
-        for path in COMMON_CAREER_PATHS:
-            candidate = urljoin(base, path)
-            response = fetch(session, candidate)
-            if response is None:
-                continue
-
-            valid, reason = validate_candidate_page(company, response)
-            if not valid:
-                continue
-
-            final_url = response.url
-            html = response.text or ""
-            embedded = detect_embedded_ats(final_url, html)
-            if embedded:
-                adapter, adapter_key, ats_url = embedded
-                return DiscoveryResult(
-                    adapter=adapter,
-                    adapter_key=adapter_key,
-                    careers_url=ats_url,
-                    domain=normalize_domain(urlparse(ats_url).netloc),
-                    status="FOUND",
-                    detail=f"embedded {adapter} found from {candidate}",
-                )
-
-            if fallback_url is None and page_has_career_hints(final_url, html):
-                fallback_url = final_url
-
-            for link in career_links_from_page(final_url, html):
-                sub_resp = fetch(session, link)
-                if sub_resp is None:
-                    continue
-                sub_valid, _ = validate_candidate_page(company, sub_resp)
-                if not sub_valid:
-                    continue
-                sub_url = sub_resp.url
-                sub_html = sub_resp.text or ""
-
-                embedded = detect_embedded_ats(sub_url, sub_html)
-                if embedded:
-                    adapter, adapter_key, ats_url = embedded
-                    return DiscoveryResult(
-                        adapter=adapter,
-                        adapter_key=adapter_key,
-                        careers_url=ats_url,
-                        domain=normalize_domain(urlparse(ats_url).netloc),
-                        status="FOUND",
-                        detail=f"embedded {adapter} found via {link}",
-                    )
-
-                if fallback_url is None and page_has_career_hints(sub_url, sub_html):
-                    fallback_url = sub_url
-
-    if fallback_url:
-        return DiscoveryResult(
-            adapter="manual",
-            adapter_key=None,
-            careers_url=fallback_url,
-            domain=normalize_domain(urlparse(fallback_url).netloc),
-            status="FALLBACK",
-            detail="validated company career page",
-        )
-
-    return None
-
-
-def slug_candidates(company: dict) -> list[str]:
-    name = company.get("name", "")
-    base_slug = re.sub(r"[^a-zA-Z0-9]", "", name).lower()
-    adapter_key = re.sub(r"[^a-zA-Z0-9]", "", str(company.get("adapter_key") or "")).lower()
-    candidates = [c for c in [adapter_key, base_slug, f"{base_slug}inc", f"{base_slug}1"] if c]
-    out = []
-    seen = set()
-    for c in candidates:
-        if c not in seen:
-            seen.add(c)
-            out.append(c)
-    return out
-
-
-def direct_ats_guess(session: requests.Session, company: dict) -> Optional[DiscoveryResult]:
-    company_name = company.get("name", "")
-    for slug in slug_candidates(company):
-        for adapter, template in [
-            ("greenhouse", "https://job-boards.greenhouse.io/{slug}"),
-            ("greenhouse", "https://boards.greenhouse.io/{slug}"),
-            ("lever", "https://jobs.lever.co/{slug}"),
-            ("ashby", "https://jobs.ashbyhq.com/{slug}"),
-        ]:
-            url = template.format(slug=slug)
-            response = fetch(session, url)
-            if response is None:
-                continue
-            final_url = response.url
-            html = response.text or ""
-            if response.status_code >= 400 or page_has_invalid_markers(final_url, html):
-                continue
-            if not company_name_matches_page(company_name, final_url, html):
-                continue
-
-            detected = detect_embedded_ats(final_url, html) or extract_ats_from_source(final_url)
-            if detected:
-                det_adapter, adapter_key, ats_url = detected
-                return DiscoveryResult(
-                    adapter=det_adapter,
-                    adapter_key=adapter_key,
-                    careers_url=ats_url,
-                    domain=normalize_domain(urlparse(ats_url).netloc),
-                    status="FOUND",
-                    detail=f"direct {det_adapter} guess validated",
-                )
-
-            return DiscoveryResult(
-                adapter=adapter,
-                adapter_key=slug if adapter != "workday" else None,
-                careers_url=final_url,
-                domain=normalize_domain(urlparse(final_url).netloc),
-                status="FOUND",
-                detail=f"direct {adapter} guess validated",
-            )
-    return None
+        if resp.status_code != 200:
+            return False
+        if _is_ats_not_found(resp.text):
+            return False
+        if adapter in ("greenhouse", "ashby", "lever"):
+            return verify_page_ownership(resp.text, company_name)
+        return True
+    except Exception:
+        return False
 
 
 def discover_for_company(session: requests.Session, company: dict) -> DiscoveryResult:
-    current = try_current_careers_url(session, company)
-    if current:
-        return current
+    name = company.get("name", "Unknown")
+    slug = re.sub(r"[^a-zA-Z0-9]", "", name).lower()
+    existing_url = company.get("careers_url", "")
+    existing_adapter = company.get("adapter", "")
 
-    site_result = search_company_site(session, company)
-    if site_result:
-        return site_result
+    # --- MANUAL OVERRIDE: heal_skip=true means full trust — no network check ---
+    # The user has manually verified this entry; skip all discovery phases.
+    if company.get("heal_skip"):
+        return DiscoveryResult(None, None, existing_url, None, "VALID", "User-verified (heal_skip)")
 
-    ats_result = direct_ats_guess(session, company)
-    if ats_result:
-        return ats_result
+    # --- PRE-CHECK: if the existing URL is still live, skip full discovery ---
+    if _validate_existing_url(session, existing_url, name, existing_adapter):
+        return DiscoveryResult(None, None, existing_url, None, "VALID", "Existing URL confirmed")
 
-    return DiscoveryResult(
-        adapter=None,
-        adapter_key=None,
-        careers_url=normalize_url(company.get("careers_url")),
-        domain=normalize_domain(company.get("domain")),
-        status="NOT_FOUND",
-        detail="no validated ATS or career page found",
-    )
+    # Derive a fallback company domain for the waterfall phase.
+    # If domain is currently an ATS hostname, reconstruct from name.
+    comp_domain = company.get("domain", "").strip().lower()
+    if any(x in comp_domain for x in ["greenhouse.io", "ashbyhq.com", "lever.co", "workdayjobs.com"]):
+        comp_domain = re.sub(r"[^a-zA-Z0-9.]", "", name).lower() + ".com"
+
+    slug_candidates = [slug, f"{slug}1", f"{slug}inc"]
+    best_fallback_url = None
+
+    # --- PHASE 1: GREENHOUSE (Direct Probe) ---
+    for s in slug_candidates:
+        url = f"https://boards.greenhouse.io/{s}"
+        try:
+            resp = session.get(url, timeout=8, allow_redirects=True)
+            if resp.status_code == 406:
+                print(f"  !!! BLOCKED by Greenhouse (406) — sleeping {RATE_LIMIT_SLEEP}s")
+                time.sleep(2)  # brief back-off; parallel workers don't need the full 45s stall
+                return DiscoveryResult(None, None, None, None, "BLOCKED", "Greenhouse WAF 406")
+            if _is_rate_limited(resp.status_code):
+                print(f"  Rate limited ({resp.status_code}) on Greenhouse — sleeping {RATE_LIMIT_SLEEP}s")
+                time.sleep(2)  # brief back-off; parallel workers don't need the full 45s stall
+                return DiscoveryResult(None, None, None, None, "RATE_LIMITED", f"Greenhouse HTTP {resp.status_code}")
+            if resp.status_code == 200 and "greenhouse.io" in resp.url.lower():
+                if not _is_ats_not_found(resp.text) and verify_page_ownership(resp.text, name):
+                    return DiscoveryResult("greenhouse", s, resp.url, "boards.greenhouse.io", "FOUND", "Greenhouse Verified")
+        except Exception:
+            pass
+        _jitter(0.4, 1.0)  # delay between slug probes on the same ATS host
+
+    # --- PHASE 2: ASHBY (Direct Probe with false-200 guard) ---
+    for s in slug_candidates:
+        url = f"https://jobs.ashbyhq.com/{s}"
+        try:
+            resp = session.get(url, timeout=8, allow_redirects=True)
+            if _is_rate_limited(resp.status_code):
+                print(f"  Rate limited ({resp.status_code}) on Ashby — sleeping {RATE_LIMIT_SLEEP}s")
+                time.sleep(2)  # brief back-off; parallel workers don't need the full 45s stall
+                return DiscoveryResult(None, None, None, None, "RATE_LIMITED", f"Ashby HTTP {resp.status_code}")
+            if resp.status_code == 200 and "ashbyhq.com" in resp.url.lower():
+                if not _is_ats_not_found(resp.text) and verify_page_ownership(resp.text, name):
+                    return DiscoveryResult("ashby", s, resp.url, "jobs.ashbyhq.com", "FOUND", "Ashby Verified")
+        except Exception:
+            pass
+        _jitter(0.4, 1.0)
+
+    # --- PHASE 3: LEVER (Direct Probe) ---
+    for s in slug_candidates:
+        url = f"https://jobs.lever.co/{s}"
+        try:
+            resp = session.get(url, timeout=8, allow_redirects=True)
+            if _is_rate_limited(resp.status_code):
+                print(f"  Rate limited ({resp.status_code}) on Lever — sleeping {RATE_LIMIT_SLEEP}s")
+                time.sleep(2)  # brief back-off; parallel workers don't need the full 45s stall
+                return DiscoveryResult(None, None, None, None, "RATE_LIMITED", f"Lever HTTP {resp.status_code}")
+            if resp.status_code == 200 and "lever.co" in resp.url.lower():
+                if not _is_ats_not_found(resp.text) and verify_page_ownership(resp.text, name):
+                    return DiscoveryResult("lever", s, resp.url, "jobs.lever.co", "FOUND", "Lever Verified")
+        except Exception:
+            pass
+        _jitter(0.4, 1.0)
+
+    # --- PHASE 3.5: WORKDAY (probe wd1..wd25 when company is known to use Workday) ---
+    # Triggered when the existing adapter is "workday" or the existing URL is a
+    # myworkdayjobs.com URL that failed validation.  We extract the tenant slug from
+    # the existing URL (most reliable) or fall back to the name-derived slug.
+    workday_slug: Optional[str] = None
+    if "myworkdayjobs.com" in (existing_url or "").lower():
+        m = re.match(r"https?://([\w-]+)\.wd\d+\.myworkdayjobs\.com", existing_url or "", re.I)
+        if m:
+            workday_slug = m.group(1)
+    if workday_slug is None and existing_adapter == "workday":
+        workday_slug = slug
+
+    if workday_slug:
+        for wd_n in range(1, 26):
+            wd_url = f"https://{workday_slug}.wd{wd_n}.myworkdayjobs.com"
+            try:
+                resp = session.get(wd_url, timeout=7, allow_redirects=True)
+                if _is_rate_limited(resp.status_code):
+                    print(f"  Rate limited ({resp.status_code}) on Workday wd{wd_n} — sleeping {RATE_LIMIT_SLEEP}s")
+                    time.sleep(2)  # brief back-off; parallel workers don't need the full 45s stall
+                    return DiscoveryResult(None, None, None, None, "RATE_LIMITED", f"Workday HTTP {resp.status_code}")
+                if resp.status_code == 200 and not _is_ats_not_found(resp.text):
+                    final_url = resp.url
+                    wd_key = extract_ats_key(resp.text, final_url, "workday")
+                    ats_url = f"https://{wd_key}" if wd_key else final_url
+                    return DiscoveryResult(
+                        "workday", wd_key,
+                        ats_url, urlparse(ats_url).netloc,
+                        "FOUND", f"Workday wd{wd_n} probe",
+                    )
+            except Exception:
+                pass
+            _jitter(0.3, 0.7)
+
+    # --- PHASE 4: WATERFALL (company careers page — scan for embedded ATS links) ---
+    # Ordered by likelihood: dedicated careers/jobs subdomains first, then www, then root.
+    search_bases = [
+        f"https://careers.{comp_domain}",
+        f"https://jobs.{comp_domain}",
+        f"https://hiring.{comp_domain}",
+        f"https://www.{comp_domain}",
+        f"https://{comp_domain}",
+    ]
+    for base in search_bases:
+        for path in ["", "/careers", "/jobs", "/en/jobs", "/about-us/careers.html", "/company/careers"]:
+            try:
+                url = urljoin(base, path)
+                resp = session.get(url, timeout=REQUEST_TIMEOUT, allow_redirects=True)
+                if _is_rate_limited(resp.status_code):
+                    print(f"  Rate limited ({resp.status_code}) on {base} — sleeping {RATE_LIMIT_SLEEP}s")
+                    time.sleep(2)  # brief back-off; parallel workers don't need the full 45s stall
+                    break
+                if resp.status_code != 200:
+                    continue
+
+                f_url = resp.url.lower()
+                content = resp.text.lower()
+
+                # Detect redirect straight to a known ATS/HR platform
+                _known_hr = ("salesforce.com", "myworkdayjobs.com", "icims.com",
+                             "taleo.net", "successfactors.com", "smartrecruiters.com",
+                             "jobvite.com", "brassring.com")
+                if any(h in f_url for h in _known_hr):
+                    return DiscoveryResult("custom_manual", None, resp.url, urlparse(f_url).netloc, "FOUND", f"Redirected to {urlparse(f_url).netloc}")
+
+                # Reject stale or aggregator URLs as fallback candidates.
+                _stale_markers = ("/old/", "/archive/", "/legacy/", "/deprecated/")
+                _aggregator_domains = ("dejobs.org", "jobs2careers.com", "jora.com", "neuvoo.com")
+                url_is_stale = any(m in f_url for m in _stale_markers)
+                url_is_aggregator = any(d in f_url for d in _aggregator_domains)
+
+                if not best_fallback_url and not url_is_stale and not url_is_aggregator and any(x in f_url for x in ["career", "job", "opening"]):
+                    best_fallback_url = resp.url
+
+                # Content-based ATS link detection — extract adapter key when possible
+                for ats, marker in [("lever", "lever.co"), ("workday", "myworkdayjobs.com")]:
+                    if marker in content or marker in f_url:
+                        key = extract_ats_key(resp.text, resp.url, ats)
+                        if ats == "lever" and key:
+                            ats_url = f"https://jobs.lever.co/{key}"
+                        elif ats == "workday" and key:
+                            ats_url = f"https://{key}"
+                        else:
+                            ats_url = resp.url
+                        return DiscoveryResult(ats, key, ats_url, marker, "FOUND", f"{ats} detected in content")
+
+                _jitter(0.5, 1.2)
+            except Exception:
+                continue
+
+    # --- PHASE 5: FALLBACK ---
+    if best_fallback_url:
+        return DiscoveryResult("custom_manual", None, best_fallback_url, None, "FALLBACK", "Generic Career Page")
+
+    return DiscoveryResult(None, None, None, None, "NOT_FOUND", "No board detected")
 
 
 def update_company_record(company: dict, result: DiscoveryResult) -> bool:
+    """
+    Apply discovered values back to the company dict.
+    domain is synced to the careers_url hostname when it is currently empty,
+    mirroring the auto-derive logic in job_search_v6.py (_normalize_company_record).
+    """
     changed = False
 
-    if result.careers_url and company.get("careers_url") != result.careers_url:
+    # If the existing URL was confirmed valid, just mark active and fill missing domain.
+    if result.status == "VALID":
+        if result.careers_url and not company.get("domain"):
+            new_domain = urlparse(result.careers_url).netloc.lower()
+            if new_domain:
+                company["domain"] = new_domain
+                changed = True
+        if company.get("status") != "active":
+            company["status"] = "active"
+            changed = True
+        return changed
+
+    # Non-actionable outcomes: don't touch URL/adapter, but mark broken on NOT_FOUND.
+    if result.status == "NOT_FOUND":
+        if company.get("status") != "broken":
+            company["status"] = "broken"
+            return True
+        return False
+    if result.status in ("BLOCKED", "RATE_LIMITED"):
+        return False
+
+    # Update careers_url
+    url_changed = result.careers_url and company.get("careers_url") != result.careers_url
+    if url_changed:
         company["careers_url"] = result.careers_url
         changed = True
 
-    if result.adapter is not None and company.get("adapter") != result.adapter:
+    # Sync domain whenever careers_url changes (e.g. company switches from Greenhouse
+    # to Ashby) or when domain is simply missing.  This keeps the domain aligned with
+    # the actual ATS host so job_search_v6.py's source_trust_profile and
+    # allowed-hosts logic see the correct hostname.
+    if result.careers_url and (url_changed or not company.get("domain")):
+        new_domain = urlparse(result.careers_url).netloc.lower()
+        if new_domain and company.get("domain") != new_domain:
+            company["domain"] = new_domain
+            changed = True
+
+    # Update adapter
+    if result.adapter and company.get("adapter") != result.adapter:
         company["adapter"] = result.adapter
         changed = True
 
-    if result.adapter_key is not None:
-        if company.get("adapter_key") != result.adapter_key:
-            company["adapter_key"] = result.adapter_key
-            changed = True
-    elif result.adapter in {"manual", None} and company.get("adapter_key") not in (None, ""):
-        company["adapter_key"] = None
+    # Update adapter_key
+    if result.adapter_key is not None and company.get("adapter_key") != result.adapter_key:
+        company["adapter_key"] = result.adapter_key
         changed = True
 
-    if result.domain and company.get("domain") != result.domain:
-        company["domain"] = result.domain
+    # Mark confirmed/discovered entries as active.
+    if company.get("status") != "active":
+        company["status"] = "active"
         changed = True
 
     return changed
 
 
-def heal_registry() -> None:
+def heal_registry(heal_all: bool = False) -> None:
     if not YAML_FILE.exists():
         print(f"Error: {YAML_FILE} not found.")
         return
@@ -614,74 +410,99 @@ def heal_registry() -> None:
         data = yaml.safe_load(f) or {}
 
     companies = data.get("companies", [])
-    print(f"Scanning {len(companies)} companies...")
+
+    # Determine which companies need healing.
+    # heal_skip=true entries are always excluded — user has manually verified them.
+    # "active" companies are skipped unless --all is passed.
+    NEEDS_HEAL = {"new", "changed", "broken", "", None}
+    skipped_trust = [c for c in companies if c.get("heal_skip")]
+    eligible = [c for c in companies if not c.get("heal_skip") and c.get("active") is not False]
+    to_heal = [c for c in eligible if heal_all or c.get("status") in NEEDS_HEAL]
+    skipped = len(companies) - len(to_heal)
+
+    mode = "all active" if heal_all else "new / changed / broken"
+    print(f"Scanning {len(to_heal)} companies ({mode}) — skipping {skipped} (active/inactive) + {len(skipped_trust)} user-verified (heal_skip).")
+    if not to_heal:
+        print("Nothing to heal.")
+        return
+
     shutil.copy2(YAML_FILE, BACKUP_FILE)
+    updated_count, report_rows = 0, []
+    print_lock = threading.Lock()
 
-    session = make_session()
-    updated_count = 0
-    report_rows = []
-
-    for idx, company in enumerate(companies, start=1):
+    def _heal_one(idx: int, company: dict):
+        """Worker: create its own session, discover, update in-place, return report row."""
+        session = make_session()
         name = company.get("name", "<unknown>")
-        if company.get("active") is False:
-            continue
-
         old_adapter = company.get("adapter", "")
         old_url = company.get("careers_url", "")
-        old_domain = company.get("domain", "")
 
         result = discover_for_company(session, company)
         changed = update_company_record(company, result)
-        if changed:
-            updated_count += 1
 
-        report_rows.append(
-            {
-                "name": name,
-                "status": result.status,
-                "detail": result.detail,
-                "old_adapter": old_adapter,
-                "new_adapter": company.get("adapter", ""),
-                "old_domain": old_domain,
-                "new_domain": company.get("domain", ""),
-                "old_url": old_url,
-                "new_url": company.get("careers_url", ""),
-            }
-        )
-
+        row = {
+            "idx": idx,
+            "name": name,
+            "heal_status": result.status,
+            "detail": result.detail,
+            "company_status": company.get("status", ""),
+            "old_adapter": old_adapter,
+            "new_adapter": company.get("adapter", ""),
+            "old_url": old_url,
+            "new_url": company.get("careers_url", ""),
+            "changed": changed,
+        }
         marker = "UPDATED" if changed else "OK"
-        print(
-            f"[{idx:>4}/{len(companies)}] {marker:<7} "
-            f"{name:<35} {result.status:<12} {result.detail}"
-        )
-        time.sleep(SLEEP_BETWEEN_COMPANIES)
+        with print_lock:
+            print(f"[{idx:>4}/{len(to_heal)}] {marker:<7} {name:<35} {result.status} → status:{company.get('status','?')}")
+        return row
+
+    # Worker timeout: max seconds we'll wait for a single company before giving up.
+    # Covers stuck TCP connections and rate-limit sleeps that outlast everything else.
+    WORKER_TIMEOUT = 120
+
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
+        futures = {
+            pool.submit(_heal_one, idx, company): (idx, company.get("name", "?"))
+            for idx, company in enumerate(to_heal, start=1)
+        }
+        for future in as_completed(futures):
+            idx, name = futures[future]
+            try:
+                row = future.result(timeout=WORKER_TIMEOUT)
+                if row["changed"]:
+                    updated_count += 1
+                report_rows.append(row)
+            except TimeoutError:
+                with print_lock:
+                    print(f"[{idx:>4}/{len(to_heal)}] TIMEOUT  {name:<35} worker exceeded {WORKER_TIMEOUT}s — skipped")
+            except Exception as exc:
+                with print_lock:
+                    print(f"[{idx:>4}/{len(to_heal)}] ERROR    {name:<35} {exc}")
+
+    # Sort report by original order for the CSV
+    report_rows.sort(key=lambda r: r["idx"])
 
     with YAML_FILE.open("w", encoding="utf-8") as f:
         yaml.safe_dump(data, f, sort_keys=False, allow_unicode=True)
 
     REPORT_FILE.parent.mkdir(parents=True, exist_ok=True)
     with REPORT_FILE.open("w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(
-            f,
-            fieldnames=[
-                "name",
-                "status",
-                "detail",
-                "old_adapter",
-                "new_adapter",
-                "old_domain",
-                "new_domain",
-                "old_url",
-                "new_url",
-            ],
-        )
+        csv_fields = ["name", "heal_status", "detail", "company_status", "old_adapter", "new_adapter", "old_url", "new_url"]
+        writer = csv.DictWriter(f, fieldnames=csv_fields, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(report_rows)
 
-    print(f"\nDone. Updated {updated_count} companies.")
-    print(f"Backup written to: {BACKUP_FILE}")
-    print(f"Report written to: {REPORT_FILE}")
+    print(f"\nDone. Updated {updated_count} of {len(to_heal)} companies scanned.")
 
 
 if __name__ == "__main__":
-    heal_registry()
+    parser = argparse.ArgumentParser(description="Heal and verify ATS URLs in the company registry.")
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        dest="heal_all",
+        help="Scan all active companies, not just those flagged new/changed/broken.",
+    )
+    args = parser.parse_args()
+    heal_registry(heal_all=args.heal_all)
