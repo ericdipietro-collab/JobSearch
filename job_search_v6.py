@@ -168,7 +168,7 @@ BLOCKED_URL_PATH_MARKERS = [
     "robots.txt",
 ]
 
-LOCATION_POLICY = "remote_only"   # remote_only | remote_or_hybrid | any
+LOCATION_POLICY = "remote_only"   # remote_only | remote_or_hybrid | in_office | any
 ENFORCE_MIN_SALARY = True
 MIN_SALARY_USD = 170000
 ALLOW_MISSING_SALARY = True
@@ -3069,7 +3069,16 @@ def location_policy_reason(
             return ""
         return "not_remote_or_hybrid"
 
-    return ""
+    if mode == "in_office":
+        if is_remote:
+            return "not_in_office"
+        if is_hybrid:
+            if not local_commute:
+                return "in_office_outside_commute"
+            return ""
+        return ""   # fully in-office jobs pass
+
+    return ""  # mode == "any" — no location filtering
 
 
 def location_is_eligible(

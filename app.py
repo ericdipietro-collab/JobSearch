@@ -1064,31 +1064,106 @@ elif page == "Search Settings":
 
     # ── Compensation & Location ───────────────────────────────────────────────
     with tab_comp:
+        loc_prefs   = search.get("location_preferences", {})
+        remote_cfg  = loc_prefs.get("remote_us", {})
+        hybrid_cfg  = loc_prefs.get("local_hybrid", {})
+
         st.subheader("Compensation")
         fc1, fc2, fc3 = st.columns(3)
         with fc1:
             f_min_sal = st.number_input(
                 "Min Salary (USD)", value=int(comp.get("min_salary_usd", 170000)), step=5000,
+                help="Jobs with salary below this floor are filtered out (subject to Enforce Min Salary).",
             )
         with fc2:
-            f_enforce = st.checkbox("Enforce Min Salary", value=bool(comp.get("enforce_min_salary", True)))
-            f_allow_missing = st.checkbox("Allow Missing Salary", value=bool(comp.get("allow_missing_salary", True)))
+            f_enforce = st.checkbox("Enforce Min Salary", value=bool(comp.get("enforce_min_salary", True)),
+                                    help="Uncheck to score all jobs regardless of salary.")
+            f_allow_missing = st.checkbox("Allow Missing Salary", value=bool(comp.get("allow_missing_salary", True)),
+                                          help="Include jobs that don't list a salary range.")
         with fc3:
             basis_opts = ["midpoint", "low_end", "high_end"]
             f_basis = st.selectbox(
                 "Salary Floor Basis", basis_opts,
                 index=basis_opts.index(comp.get("salary_floor_basis", "midpoint")),
+                help="Which part of a posted range to compare against your floor.",
             )
 
-        st.subheader("Location")
-        loc_opts = ["remote_only", "remote_or_hybrid", "any"]
+        st.divider()
+        st.subheader("Location Policy")
+        loc_opts        = ["remote_only", "remote_or_hybrid", "in_office", "any"]
+        loc_opt_labels  = {
+            "remote_only":      "Remote only (hybrid allowed if local + high salary)",
+            "remote_or_hybrid": "Remote or Hybrid (must be within commute range)",
+            "in_office":        "In-office (remote excluded; hybrid allowed if local)",
+            "any":              "Any (no location filtering)",
+        }
+        current_policy = search.get("location_policy", "remote_only")
+        if current_policy not in loc_opts:
+            current_policy = "remote_only"
         f_loc_policy = st.selectbox(
-            "Location Policy", loc_opts,
-            index=loc_opts.index(search.get("location_policy", "remote_only")),
+            "Location Policy",
+            loc_opts,
+            index=loc_opts.index(current_policy),
+            format_func=lambda x: loc_opt_labels[x],
+            help="Controls which work-arrangement types are kept vs. filtered out.",
+        )
+
+        # ── Remote settings ───────────────────────────────────────────────────
+        st.markdown("**Remote**")
+        rc1, rc2 = st.columns(2)
+        f_remote_enabled = rc1.checkbox(
+            "Include remote jobs", value=bool(remote_cfg.get("enabled", True)),
+            help="Uncheck to exclude remote roles entirely.",
+        )
+        f_remote_bonus = rc2.number_input(
+            "Remote score bonus (pts)", value=int(remote_cfg.get("bonus", 14)),
+            min_value=0, max_value=30, step=1,
+            help="Extra score points added to confirmed-remote roles.",
+        )
+
+        # ── Hybrid / Local settings ───────────────────────────────────────────
+        st.markdown("**Hybrid & Local (commute range)**")
+        hc1, hc2 = st.columns(2)
+        f_hybrid_enabled = hc1.checkbox(
+            "Include hybrid jobs", value=bool(hybrid_cfg.get("enabled", True)),
+            help="Uncheck to exclude hybrid roles entirely.",
+        )
+        f_hybrid_bonus = hc2.number_input(
+            "Hybrid score bonus (pts)", value=int(hybrid_cfg.get("bonus", 4)),
+            min_value=0, max_value=30, step=1,
+            help="Extra score points added to local-hybrid roles.",
+        )
+
+        lc1, lc2, lc3 = st.columns(3)
+        f_zip = lc1.text_input(
+            "Primary ZIP code", value=str(hybrid_cfg.get("primary_zip", "")),
+            placeholder="e.g. 80504",
+            help="Your ZIP code — used to calculate whether a hybrid role is within commute range.",
+        )
+        f_radius = lc2.number_input(
+            "Radius (miles)", value=int(hybrid_cfg.get("radius_miles", 30)),
+            min_value=5, max_value=150, step=5,
+            help="How far you're willing to commute each way.",
+        )
+        f_hybrid_min_sal = lc3.number_input(
+            "Min salary for hybrid ($)", value=int(hybrid_cfg.get("allow_if_salary_at_least_usd", 0)),
+            min_value=0, step=5000,
+            help="Hybrid roles are only kept if their salary meets this floor (0 = no extra floor).",
+        )
+
+        st.caption("Location markers — city/town names that appear in job listings near you (one per line):")
+        current_markers = hybrid_cfg.get("markers", [])
+        f_markers = st.text_area(
+            "markers", label_visibility="collapsed",
+            value="\n".join(str(m) for m in current_markers),
+            height=160,
+            placeholder="firestone\nfrederick\nlongmont\nboulder\n...",
+            help="If any of these strings appear in the job location field, the role is treated as commutable.",
         )
 
         if st.button("Save Compensation & Location", type="primary", key="save_comp"):
             try:
+                parsed_markers = [ln.strip() for ln in f_markers.splitlines() if ln.strip()]
                 prefs.setdefault("search", {}).setdefault("compensation", {}).update({
                     "min_salary_usd": f_min_sal,
                     "target_salary_usd": f_min_sal,
@@ -1098,6 +1173,20 @@ elif page == "Search Settings":
                     "salary_floor_basis": f_basis,
                 })
                 prefs["search"]["location_policy"] = f_loc_policy
+                prefs["search"].setdefault("location_preferences", {}).update({
+                    "remote_us": {
+                        "enabled": f_remote_enabled,
+                        "bonus":   f_remote_bonus,
+                    },
+                    "local_hybrid": {
+                        "enabled":                    f_hybrid_enabled,
+                        "primary_zip":                f_zip.strip() or hybrid_cfg.get("primary_zip", ""),
+                        "radius_miles":               f_radius,
+                        "markers":                    parsed_markers,
+                        "bonus":                      f_hybrid_bonus,
+                        "allow_if_salary_at_least_usd": f_hybrid_min_sal,
+                    },
+                })
                 save_yaml_file(PREFS_YAML, prefs)
                 st.success("Saved.")
             except Exception as exc:
