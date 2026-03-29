@@ -1316,6 +1316,9 @@ REMOTE_MARKER_PATTERNS = [
     r"\banywhere in (?:the )?u\.?s\.?\b",
     r"\bus remote\b",
     r"\bremote us\b",
+    # "United States" (and variants) as the sole location = remote-anywhere
+    r"^united states$",
+    r"^u\.?s\.?a?\.?$",
 ]
 HYBRID_MARKERS = ["hybrid", "in-office", "in office", "onsite", "on-site"]
 
@@ -3039,6 +3042,12 @@ def location_policy_reason(
     mode = LOCATION_POLICY.lower().strip()
     salary_basis = salary_basis_value(salary_low, salary_high, salary_period)
     local_commute = is_local_commute_location(location)
+
+    # Blank location = ATS didn't populate the field; pass through to scoring
+    # rather than auto-rejecting. Score will be lower (no remote bonus) but
+    # the job stays visible for the user to judge.
+    if not location.strip() and mode != "any":
+        return ""
 
     if mode == "remote_only":
         if is_remote:
