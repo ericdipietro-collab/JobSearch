@@ -25,7 +25,7 @@ Everything you need to go from download to running dashboard in about 5 minutes.
 
 **Option B: Clone with Git**
 ```
-git clone https://github.com/YOUR_USERNAME/JobSearch.git
+git clone https://github.com/ericdipietro-collab/JobSearch.git
 ```
 
 ---
@@ -171,4 +171,4 @@ If something goes wrong after a launch, the terminal window shows the full error
 
 You can also check the scraper log: **Run Job Search** → scroll down → **Scraper Run Log** expander.
 
-If you're stuck, open an issue at [github.com/YOUR_USERNAME/JobSearch/issues](https://github.com/YOUR_USERNAME/JobSearch/issues).
+If you're stuck, open an issue at [github.com/ericdipietro-collab/JobSearch/issues](https://github.com/ericdipietro-collab/JobSearch/issues).

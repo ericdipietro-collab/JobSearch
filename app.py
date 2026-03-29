@@ -412,6 +412,8 @@ def _apply_overrides(df: pd.DataFrame, overrides: dict) -> pd.DataFrame:
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 
+APP_VERSION = "1.3-beta"
+
 st.sidebar.title("💼 Job Search")
 
 _nav_options = ["Home", "Job Matches", "My Applications", "Journal", "Contacts", "Company Profiles", "Training", "Question Bank", "Weekly Report", "Templates", "Pipeline", "Analytics", "Run Job Search", "Search Settings", "Target Companies"]
@@ -463,6 +465,12 @@ if _TRACKER_AVAILABLE:
                 )
     except Exception:
         pass
+
+st.sidebar.divider()
+st.sidebar.caption(
+    f"v{APP_VERSION} · "
+    "[Report a bug](https://github.com/ericdipietro-collab/JobSearch/issues/new)"
+)
 
 
 # ════════════════════════════════════════════════════════════════════════════════
