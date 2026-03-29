@@ -34,9 +34,21 @@ def _fmt_dt(iso: Optional[str]) -> str:
         return "—"
     try:
         dt = datetime.fromisoformat(iso)
-        return dt.strftime("%-m/%-d/%y %I:%M %p").lstrip("0") if "T" in iso else dt.strftime("%-m/%-d/%y")
+        if "T" in iso:
+            return dt.strftime("%m/%d/%y %I:%M %p").lstrip("0")
+        return dt.strftime("%m/%d/%y").lstrip("0")
     except Exception:
         return iso[:10]
+
+
+def _days_until(iso: Optional[str]) -> Optional[int]:
+    if not iso:
+        return None
+    try:
+        target = date.fromisoformat(iso[:10])
+        return (target - date.today()).days
+    except Exception:
+        return None
 
 
 EVENT_ICONS = {
@@ -70,6 +82,7 @@ def render_tracker(conn) -> None:
             st.toast(f"Imported {n} applications from ApplicationTracker.csv", icon="📂")
         st.session_state["tracker_csv_seeded"] = True
 
+    _render_followup_banner(conn)
     _render_summary_bar(conn)
     st.divider()
 
@@ -86,6 +99,51 @@ def render_tracker(conn) -> None:
                 "← Select an application to view its timeline</div>",
                 unsafe_allow_html=True,
             )
+
+
+# ── Follow-up banner ──────────────────────────────────────────────────────────
+
+def _render_followup_banner(conn) -> None:
+    overdue  = db.follow_up_due(conn)
+    upcoming = db.follow_up_upcoming(conn, days=3)
+
+    if not overdue and not upcoming:
+        return
+
+    if overdue:
+        with st.container():
+            st.error(f"**{len(overdue)} follow-up{'s' if len(overdue)>1 else ''} overdue**", icon="🔔")
+            for app in overdue:
+                days_ago = abs(_days_until(app["follow_up_date"]) or 0)
+                label = f"**{app['company']}** — {app['role']}"
+                note  = app["follow_up_notes"] or ""
+                contacts = app["contact_summary"] or ""
+                col1, col2 = st.columns([5, 1])
+                col1.markdown(
+                    f"{label}  \n"
+                    f"<span style='color:#f87171'>Due {app['follow_up_date']}"
+                    f" ({days_ago} day{'s' if days_ago!=1 else ''} ago)</span>"
+                    + (f"  \n👤 {contacts}" if contacts else "")
+                    + (f"  \n_{note}_" if note else ""),
+                    unsafe_allow_html=True,
+                )
+                if col2.button("View", key=f"fu_view_{app['id']}"):
+                    st.session_state["tracker_selected_id"] = app["id"]
+                    st.session_state["tracker_show_add_form"] = False
+                    st.rerun()
+
+    if upcoming:
+        with st.expander(f"🗓 {len(upcoming)} follow-up{'s' if len(upcoming)>1 else ''} due in the next 3 days"):
+            for app in upcoming:
+                days_left = _days_until(app["follow_up_date"]) or 0
+                contacts  = app["contact_summary"] or ""
+                st.markdown(
+                    f"**{app['company']}** — {app['role']}  \n"
+                    f"<span style='color:#fbbf24'>Due {app['follow_up_date']}"
+                    f" (in {days_left} day{'s' if days_left!=1 else ''})</span>"
+                    + (f"  \n👤 {contacts}" if contacts else ""),
+                    unsafe_allow_html=True,
+                )
 
 
 # ── Summary bar ────────────────────────────────────────────────────────────────
@@ -201,6 +259,13 @@ def _render_add_form(conn) -> None:
         referral  = st.text_input("Referral")
         jd_summary = st.text_area("JD Summary", height=80)
         notes     = st.text_area("Notes", height=60)
+        st.markdown("**Follow-up**")
+        rf1, rf2 = st.columns(2)
+        follow_up_date  = rf1.date_input("Follow-up date", value=None)
+        follow_up_notes = rf2.text_input("Who / what to say", placeholder="e.g. Email Sarah the recruiter")
+        st.markdown("**Documents**")
+        resume_version     = st.text_input("Resume version", placeholder="e.g. PM resume v3 – fintech tailored")
+        cover_letter_notes = st.text_input("Cover letter notes", placeholder="e.g. Tailored intro, emphasized API PM exp")
 
         if st.form_submit_button("Save", type="primary"):
             if not company.strip() or not role.strip():
@@ -208,19 +273,23 @@ def _render_add_form(conn) -> None:
             else:
                 app_id = db.add_application(
                     conn,
-                    company      = company.strip(),
-                    role         = role.strip(),
-                    job_url      = job_url.strip() or None,
-                    source       = "manual",
-                    status       = status,
-                    fit_stars    = int(fit) if fit != "—" else None,
-                    salary_low   = s_low  or None,
-                    salary_high  = s_high or None,
-                    salary_range = f"${s_low:,}–${s_high:,}" if s_low and s_high else None,
-                    referral     = referral.strip() or None,
-                    jd_summary   = jd_summary.strip() or None,
-                    notes        = notes.strip() or None,
-                    date_applied = date_app.isoformat(),
+                    company            = company.strip(),
+                    role               = role.strip(),
+                    job_url            = job_url.strip() or None,
+                    source             = "manual",
+                    status             = status,
+                    fit_stars          = int(fit) if fit != "—" else None,
+                    salary_low         = s_low  or None,
+                    salary_high        = s_high or None,
+                    salary_range       = f"${s_low:,}–${s_high:,}" if s_low and s_high else None,
+                    referral           = referral.strip() or None,
+                    jd_summary         = jd_summary.strip() or None,
+                    notes              = notes.strip() or None,
+                    date_applied       = date_app.isoformat(),
+                    follow_up_date     = follow_up_date.isoformat() if follow_up_date else None,
+                    follow_up_notes    = follow_up_notes.strip() or None,
+                    resume_version     = resume_version.strip() or None,
+                    cover_letter_notes = cover_letter_notes.strip() or None,
                 )
                 db.add_event(conn, app_id, "applied", date_app.isoformat(),
                              title=f"Applied to {company.strip()}")
@@ -488,6 +557,14 @@ def _render_contacts(conn, app) -> None:
 # ── Edit form ──────────────────────────────────────────────────────────────────
 
 def _render_edit_form(conn, app) -> None:
+    # Parse stored follow_up_date ISO string → date object for date_input
+    _fu_date = None
+    if app["follow_up_date"]:
+        try:
+            _fu_date = date.fromisoformat(app["follow_up_date"][:10])
+        except Exception:
+            pass
+
     with st.form(f"edit_app_{app['id']}"):
         ec1, ec2 = st.columns(2)
         company  = ec1.text_input("Company", value=app["company"] or "")
@@ -505,9 +582,24 @@ def _render_edit_form(conn, app) -> None:
         sal_low  = eb1.number_input("Salary Low ($)",  value=int(app["salary_low"]  or 0), step=5000)
         sal_high = eb2.number_input("Salary High ($)", value=int(app["salary_high"] or 0), step=5000)
 
-        referral  = st.text_input("Referral", value=app["referral"] or "")
+        referral   = st.text_input("Referral", value=app["referral"] or "")
         jd_summary = st.text_area("JD Summary", value=app["jd_summary"] or "", height=100)
-        notes     = st.text_area("Notes", value=app["notes"] or "", height=80)
+        notes      = st.text_area("Notes", value=app["notes"] or "", height=80)
+
+        st.markdown("**Follow-up**")
+        rf1, rf2 = st.columns(2)
+        follow_up_date  = rf1.date_input("Follow-up date", value=_fu_date)
+        follow_up_notes = rf2.text_input("Who / what to say",
+                                         value=app["follow_up_notes"] or "",
+                                         placeholder="e.g. Email Sarah the recruiter")
+
+        st.markdown("**Documents**")
+        resume_version     = st.text_input("Resume version",
+                                            value=app["resume_version"] or "",
+                                            placeholder="e.g. PM resume v3 – fintech tailored")
+        cover_letter_notes = st.text_input("Cover letter notes",
+                                            value=app["cover_letter_notes"] or "",
+                                            placeholder="e.g. Tailored intro, emphasized API PM exp")
 
         sc1, sc2 = st.columns([2, 1])
         saved   = sc1.form_submit_button("💾 Save", type="primary")
@@ -516,17 +608,21 @@ def _render_edit_form(conn, app) -> None:
     if saved:
         db.update_application(
             conn, app["id"],
-            company      = company.strip(),
-            role         = role.strip(),
-            status       = status,
-            fit_stars    = int(fit) if fit != "—" else None,
-            job_url      = job_url.strip() or None,
-            salary_low   = sal_low  or None,
-            salary_high  = sal_high or None,
-            salary_range = f"${sal_low:,}–${sal_high:,}" if sal_low and sal_high else None,
-            referral     = referral.strip() or None,
-            jd_summary   = jd_summary.strip() or None,
-            notes        = notes.strip() or None,
+            company            = company.strip(),
+            role               = role.strip(),
+            status             = status,
+            fit_stars          = int(fit) if fit != "—" else None,
+            job_url            = job_url.strip() or None,
+            salary_low         = sal_low  or None,
+            salary_high        = sal_high or None,
+            salary_range       = f"${sal_low:,}–${sal_high:,}" if sal_low and sal_high else None,
+            referral           = referral.strip() or None,
+            jd_summary         = jd_summary.strip() or None,
+            notes              = notes.strip() or None,
+            follow_up_date     = follow_up_date.isoformat() if follow_up_date else None,
+            follow_up_notes    = follow_up_notes.strip() or None,
+            resume_version     = resume_version.strip() or None,
+            cover_letter_notes = cover_letter_notes.strip() or None,
         )
         st.success("Saved.")
         st.rerun()

@@ -262,6 +262,83 @@ def save_yaml_file(path: Path, data: dict) -> None:
         yaml.safe_dump(data, fh, sort_keys=False, allow_unicode=True)
 
 
+def _render_apply_now_cards(bucket_df, overrides: dict, store: dict) -> None:
+    """Quick-action cards for the Apply Now bucket: open job link + one-click Apply & Track."""
+    if bucket_df.empty:
+        return
+    for _, row in bucket_df.iterrows():
+        key     = row["_key"]
+        company = str(row.get("company") or "")
+        title   = str(row.get("title")   or "")
+        score   = row.get("score")
+        url     = str(row.get("url") or row.get("canonical_url") or "")
+
+        c1, c2, c3 = st.columns([5, 2, 2])
+        score_html = (
+            f' <span style="color:#9ca3af;font-size:.8rem">score {score:.0f}</span>'
+            if score and str(score) not in ("nan", "None") else ""
+        )
+        c1.markdown(f"**{company}** — {title}{score_html}", unsafe_allow_html=True)
+        if url:
+            c2.markdown(
+                f'<a href="{url}" target="_blank" style="text-decoration:none">🔗 Open Job</a>',
+                unsafe_allow_html=True,
+            )
+        if c3.button("✅ Apply & Track", key=f"apply_track_{key}"):
+            # Save Applied override
+            entry = dict(overrides.get(key, {}))
+            entry["user_status"] = "Applied"
+            if not entry.get("applied_at"):
+                entry["applied_at"] = _now_iso()
+            save_status_overrides({**overrides, key: entry})
+
+            # Bridge to Application Tracker
+            if _TRACKER_AVAILABLE:
+                try:
+                    _tc = ats_db.get_connection()
+                    ats_db.init_db(_tc)
+                    _job = store.get(key, {})
+                    _company = str(_job.get("company") or company)
+                    _role    = str(_job.get("title")   or title)
+                    if _company and _role:
+                        _exists = _tc.execute(
+                            "SELECT id FROM applications "
+                            "WHERE lower(company)=lower(?) AND lower(role)=lower(?)",
+                            (_company, _role),
+                        ).fetchone()
+                        if not _exists:
+                            _sal_low  = _job.get("salary_low")
+                            _sal_high = _job.get("salary_high")
+                            _sal_rng  = _job.get("salary_range") or (
+                                f"${int(_sal_low):,}–${int(_sal_high):,}"
+                                if _sal_low and _sal_high else None
+                            )
+                            _applied_at = entry["applied_at"][:10]
+                            _app_id = ats_db.add_application(
+                                _tc,
+                                company      = _company,
+                                role         = _role,
+                                job_url      = str(_job.get("url") or _job.get("canonical_url") or url or ""),
+                                source       = "scraper",
+                                scraper_key  = key,
+                                status       = "applied",
+                                salary_low   = int(_sal_low)  if _sal_low  else None,
+                                salary_high  = int(_sal_high) if _sal_high else None,
+                                salary_range = _sal_rng,
+                                jd_summary   = str(_job.get("description_excerpt") or "")[:500] or None,
+                                date_applied = _applied_at,
+                            )
+                            ats_db.add_event(_tc, _app_id, "applied", _applied_at,
+                                             title=f"Applied to {_company}")
+                except Exception as _exc:
+                    st.toast(f"Tracker sync warning: {_exc}", icon="⚠️")
+
+            st.toast(f"Marked '{company}' as Applied!", icon="✅")
+            st.rerun()
+        st.markdown('<hr style="margin:2px 0;border-color:#374151">', unsafe_allow_html=True)
+    st.divider()
+
+
 def _scroll_hint(n_cols: int = 0, threshold: int = 6) -> None:
     """Render a right-scroll indicator when a table has many columns."""
     if n_cols < threshold:
@@ -336,6 +413,26 @@ if not _df_sidebar.empty:
     st.sidebar.metric("Applied", _applied)
 else:
     st.sidebar.caption("No results yet.")
+
+# Follow-up reminders counter
+if _TRACKER_AVAILABLE:
+    try:
+        _sb_tc = ats_db.get_connection()
+        ats_db.init_db(_sb_tc)
+        _fu_overdue  = len(ats_db.follow_up_due(_sb_tc))
+        _fu_upcoming = len(ats_db.follow_up_upcoming(_sb_tc, days=3))
+        if _fu_overdue or _fu_upcoming:
+            st.sidebar.divider()
+            if _fu_overdue:
+                st.sidebar.error(
+                    f"🔔 {_fu_overdue} follow-up{'s' if _fu_overdue != 1 else ''} overdue"
+                )
+            if _fu_upcoming:
+                st.sidebar.info(
+                    f"🗓 {_fu_upcoming} follow-up{'s' if _fu_upcoming != 1 else ''} due soon"
+                )
+    except Exception:
+        pass
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -576,6 +673,11 @@ elif page == "Results":
             if bucket_df.empty:
                 st.info("No jobs in this bucket.")
                 continue
+
+            # Apply Now: show per-row quick-action cards above the data editor
+            if bucket_name == "APPLY NOW":
+                _store_at = _load_store()
+                _render_apply_now_cards(bucket_df, overrides, _store_at)
 
             vis_cols = [c for c in DISPLAY_COLS if c in bucket_df.columns]
             display_df = bucket_df[vis_cols + ["user_status", "_key"]].copy()

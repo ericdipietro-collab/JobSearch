@@ -82,28 +82,44 @@ def get_connection() -> sqlite3.Connection:
 
 # ── Schema ─────────────────────────────────────────────────────────────────────
 
+def _add_columns_if_missing(conn: sqlite3.Connection, table: str, columns: Dict[str, str]) -> None:
+    """Add columns that don't yet exist — safe to call on every startup."""
+    existing = {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+    for col, typedef in columns.items():
+        if col not in existing:
+            try:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {typedef}")
+            except Exception:
+                pass
+    conn.commit()
+
+
 def init_db(conn: sqlite3.Connection) -> None:
     conn.executescript("""
     CREATE TABLE IF NOT EXISTS applications (
-        id           INTEGER PRIMARY KEY AUTOINCREMENT,
-        company      TEXT    NOT NULL,
-        role         TEXT    NOT NULL,
-        job_url      TEXT,
-        source       TEXT,           -- scraper | linkedin | referral | manual | other
-        scraper_key  TEXT,           -- key from job_search_store.json, if any
-        status       TEXT    NOT NULL DEFAULT 'considering',
-        fit_stars    INTEGER,        -- 1-5
-        salary_range TEXT,           -- display string e.g. "$170K–$190K"
-        salary_low   INTEGER,
-        salary_high  INTEGER,
-        referral     TEXT,
-        jd_summary   TEXT,
-        notes        TEXT,
-        date_added   TEXT,           -- ISO date
-        date_applied TEXT,           -- ISO date
-        date_closed  TEXT,           -- ISO date
-        created_at   TEXT NOT NULL,
-        updated_at   TEXT NOT NULL
+        id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+        company            TEXT    NOT NULL,
+        role               TEXT    NOT NULL,
+        job_url            TEXT,
+        source             TEXT,
+        scraper_key        TEXT,
+        status             TEXT    NOT NULL DEFAULT 'considering',
+        fit_stars          INTEGER,
+        salary_range       TEXT,
+        salary_low         INTEGER,
+        salary_high        INTEGER,
+        referral           TEXT,
+        jd_summary         TEXT,
+        notes              TEXT,
+        date_added         TEXT,
+        date_applied       TEXT,
+        date_closed        TEXT,
+        follow_up_date     TEXT,
+        follow_up_notes    TEXT,
+        resume_version     TEXT,
+        cover_letter_notes TEXT,
+        created_at         TEXT NOT NULL,
+        updated_at         TEXT NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS events (
@@ -146,6 +162,13 @@ def init_db(conn: sqlite3.Connection) -> None:
         updated_at        TEXT NOT NULL
     );
     """)
+    # Migrate existing DB — add any columns introduced after initial release
+    _add_columns_if_missing(conn, "applications", {
+        "follow_up_date":     "TEXT",
+        "follow_up_notes":    "TEXT",
+        "resume_version":     "TEXT",
+        "cover_letter_notes": "TEXT",
+    })
     conn.commit()
 
 
@@ -286,6 +309,46 @@ def status_counts(conn: sqlite3.Connection) -> Dict[str, int]:
         "SELECT status, COUNT(*) AS n FROM applications GROUP BY status"
     ).fetchall()
     return {r["status"]: r["n"] for r in rows}
+
+
+def follow_up_due(conn: sqlite3.Connection) -> List[sqlite3.Row]:
+    """Applications whose follow_up_date is today or overdue, still active."""
+    today = datetime.now().date().isoformat()
+    return conn.execute(
+        """
+        SELECT a.*, GROUP_CONCAT(c.name || ' (' || COALESCE(c.role_in_process,'') || ')', ', ') AS contact_summary
+        FROM applications a
+        LEFT JOIN contacts c ON c.application_id = a.id
+        WHERE a.follow_up_date IS NOT NULL
+          AND a.follow_up_date <= ?
+          AND a.status NOT IN ('rejected', 'withdrawn', 'accepted')
+        GROUP BY a.id
+        ORDER BY a.follow_up_date ASC
+        """,
+        (today,),
+    ).fetchall()
+
+
+def follow_up_upcoming(conn: sqlite3.Connection, days: int = 3) -> List[sqlite3.Row]:
+    """Applications with a follow-up due within the next N days."""
+    from datetime import timedelta
+    today = datetime.now().date()
+    cutoff = (today + timedelta(days=days)).isoformat()
+    today_str = today.isoformat()
+    return conn.execute(
+        """
+        SELECT a.*, GROUP_CONCAT(c.name || ' (' || COALESCE(c.role_in_process,'') || ')', ', ') AS contact_summary
+        FROM applications a
+        LEFT JOIN contacts c ON c.application_id = a.id
+        WHERE a.follow_up_date IS NOT NULL
+          AND a.follow_up_date > ?
+          AND a.follow_up_date <= ?
+          AND a.status NOT IN ('rejected', 'withdrawn', 'accepted')
+        GROUP BY a.id
+        ORDER BY a.follow_up_date ASC
+        """,
+        (today_str, cutoff),
+    ).fetchall()
 
 
 def upcoming_interviews(conn: sqlite3.Connection, limit: int = 5) -> List[sqlite3.Row]:
