@@ -86,19 +86,88 @@ def render_tracker(conn) -> None:
     _render_summary_bar(conn)
     st.divider()
 
-    left, right = st.columns([5, 7], gap="large")
-    with left:
-        _render_application_list(conn)
-    with right:
-        sel_id = st.session_state.get("tracker_selected_id")
-        if sel_id:
-            _render_detail(conn, sel_id)
+    # ── Filters + Add button ──────────────────────────────────────────────────
+    fc1, fc2, fc3 = st.columns([3, 2, 2])
+    with fc1:
+        status_opts = ["All"] + db.STATUSES
+        sel_status  = st.selectbox("Status", status_opts, key="tracker_status_filter",
+                                   label_visibility="collapsed")
+    with fc2:
+        search = st.text_input("Search", placeholder="company or role…",
+                               key="tracker_search", label_visibility="collapsed")
+    with fc3:
+        if st.button("➕ Add Application", key="tracker_add_btn", use_container_width=True):
+            toggled = not st.session_state.get("tracker_show_add_form", False)
+            st.session_state["tracker_show_add_form"] = toggled
+            if toggled:
+                st.session_state["tracker_selected_id"] = None
+
+    if st.session_state.get("tracker_show_add_form"):
+        _render_add_form(conn)
+        st.divider()
+
+    # ── Load + filter ─────────────────────────────────────────────────────────
+    apps = db.get_applications(conn, status=None if sel_status == "All" else sel_status)
+    if search:
+        q = search.lower()
+        apps = [a for a in apps if q in a["company"].lower() or q in a["role"].lower()]
+
+    if not apps:
+        st.info("No applications match the current filter.")
+        return
+
+    # ── Sortable table ────────────────────────────────────────────────────────
+    rows = []
+    for a in apps:
+        fu_date   = a["follow_up_date"] or ""
+        days_left = _days_until(fu_date) if fu_date else None
+        if fu_date and days_left is not None and days_left < 0:
+            fu_label = f"⚠ {fu_date}"
         else:
-            st.markdown(
-                "<div style='margin-top:60px;text-align:center;color:#6b7280;font-size:1rem'>"
-                "← Select an application to view its timeline</div>",
-                unsafe_allow_html=True,
-            )
+            fu_label = fu_date
+        rows.append({
+            "_id":       a["id"],
+            "Company":   a["company"],
+            "Role":      a["role"],
+            "Status":    a["status"].title(),
+            "Applied":   a["date_applied"] or "",
+            "Fit":       "⭐" * int(a["fit_stars"]) if a["fit_stars"] else "—",
+            "Follow-up": fu_label,
+        })
+    df_tbl = pd.DataFrame(rows)
+
+    event = st.dataframe(
+        df_tbl.drop(columns=["_id"]),
+        on_select="rerun",
+        selection_mode="single-row",
+        hide_index=True,
+        use_container_width=True,
+        column_config={
+            "Company":   st.column_config.TextColumn("Company",   width="medium"),
+            "Role":      st.column_config.TextColumn("Role",      width="large"),
+            "Status":    st.column_config.TextColumn("Status",    width="medium"),
+            "Applied":   st.column_config.TextColumn("Applied",   width="small"),
+            "Fit":       st.column_config.TextColumn("Fit",       width="small"),
+            "Follow-up": st.column_config.TextColumn("Follow-up", width="medium"),
+        },
+    )
+
+    # Sync table row click → session state
+    if event.selection.rows:
+        sel_id = int(df_tbl.iloc[event.selection.rows[0]]["_id"])
+        st.session_state["tracker_selected_id"] = sel_id
+        st.session_state["tracker_show_add_form"] = False
+
+    # ── Inline detail panel ───────────────────────────────────────────────────
+    sel_id = st.session_state.get("tracker_selected_id")
+    if sel_id:
+        st.divider()
+        hdr1, hdr2 = st.columns([10, 1])
+        hdr1.subheader("Application Detail", anchor=False)
+        if hdr2.button("✕ Close", key="close_detail"):
+            st.session_state["tracker_selected_id"] = None
+            st.rerun()
+        _render_detail(conn, sel_id)
 
 
 # ── Follow-up banner ──────────────────────────────────────────────────────────
@@ -177,67 +246,6 @@ def _render_summary_bar(conn) -> None:
             )
 
 
-# ── Application list ───────────────────────────────────────────────────────────
-
-def _render_application_list(conn) -> None:
-    st.subheader("Applications", anchor=False)
-
-    # Filters
-    fc1, fc2 = st.columns([3, 2])
-    with fc1:
-        status_opts = ["All"] + db.STATUSES
-        sel_status  = st.selectbox("Status", status_opts, key="tracker_status_filter",
-                                   label_visibility="collapsed")
-    with fc2:
-        search = st.text_input("Search", placeholder="company or role…",
-                               key="tracker_search", label_visibility="collapsed")
-
-    apps = db.get_applications(conn, status=None if sel_status == "All" else sel_status)
-    if search:
-        q = search.lower()
-        apps = [a for a in apps if q in a["company"].lower() or q in a["role"].lower()]
-
-    if st.button("➕ Add Application", key="tracker_add_btn"):
-        st.session_state["tracker_selected_id"]  = None
-        st.session_state["tracker_show_add_form"] = True
-
-    if st.session_state.get("tracker_show_add_form"):
-        _render_add_form(conn)
-        st.divider()
-
-    if not apps:
-        st.info("No applications match the current filter.")
-        return
-
-    sel_id = st.session_state.get("tracker_selected_id")
-    for app in apps:
-        _app_row(app, selected=(app["id"] == sel_id))
-
-
-def _app_row(app, selected: bool) -> None:
-    color  = db.STATUS_COLORS.get(app["status"], "#6b7280")
-    border = f"3px solid {color}" if selected else f"1px solid #374151"
-    bg     = "#1e1b4b" if selected else "#1a1a2e"
-
-    with st.container():
-        st.markdown(
-            f'<div style="border-left:{border};background:{bg};'
-            f'padding:8px 12px;border-radius:6px;margin-bottom:4px;cursor:pointer">',
-            unsafe_allow_html=True,
-        )
-        c1, c2, c3 = st.columns([4, 2, 1])
-        c1.markdown(f"**{app['company']}**  \n{app['role']}", unsafe_allow_html=False)
-        c2.markdown(
-            _status_badge(app["status"]) +
-            (f"<br><small>{app['date_applied'] or ''}</small>" if app["date_applied"] else ""),
-            unsafe_allow_html=True,
-        )
-        with c3:
-            if st.button("View", key=f"sel_{app['id']}", use_container_width=True):
-                st.session_state["tracker_selected_id"]  = app["id"]
-                st.session_state["tracker_show_add_form"] = False
-                st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
 
 
 # ── Add application form ───────────────────────────────────────────────────────

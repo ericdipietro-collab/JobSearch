@@ -384,7 +384,7 @@ def _apply_overrides(df: pd.DataFrame, overrides: dict) -> pd.DataFrame:
 
 st.sidebar.title("💼 Job Search")
 
-_nav_options = ["Results", "Application Tracker", "Pipeline", "Analytics", "Run Pipeline", "Preferences", "Companies"]
+_nav_options = ["Job Matches", "My Applications", "Pipeline", "Analytics", "Run Job Search", "Search Settings", "Target Companies"]
 page = st.sidebar.radio(
     "Navigate",
     _nav_options,
@@ -439,9 +439,9 @@ if _TRACKER_AVAILABLE:
 # PAGE: RUN PIPELINE
 # ════════════════════════════════════════════════════════════════════════════════
 
-if page == "Run Pipeline":
-    st.title("Run Job Search Pipeline")
-    st.markdown("Runs `run_job_search_v6.py` and refreshes results when complete.")
+if page == "Run Job Search":
+    st.title("Run Job Search")
+    st.markdown("Runs the job search pipeline and refreshes results when complete.")
 
     col_a, col_b = st.columns([3, 1])
     with col_a:
@@ -585,8 +585,8 @@ if page == "Run Pipeline":
 # PAGE: RESULTS
 # ════════════════════════════════════════════════════════════════════════════════
 
-elif page == "Application Tracker":
-    st.title("Application Tracker")
+elif page == "My Applications":
+    st.title("My Applications")
     if _TRACKER_AVAILABLE:
         _tracker_conn = ats_db.get_connection()
         render_tracker(_tracker_conn)
@@ -607,8 +607,8 @@ elif page == "Analytics":
     else:
         st.error("ATS database modules not available.")
 
-elif page == "Results":
-    st.title("Job Search Results")
+elif page == "Job Matches":
+    st.title("Job Matches")
 
     if not XLSX_PATH.exists():
         st.info("No results file found. Run the pipeline first.")
@@ -860,8 +860,8 @@ elif page == "Results":
 # PAGE: PREFERENCES
 # ════════════════════════════════════════════════════════════════════════════════
 
-elif page == "Preferences":
-    st.title("Job Search Preferences")
+elif page == "Search Settings":
+    st.title("Search Settings")
 
     prefs = load_yaml_file(PREFS_YAML)
     raw_yaml = PREFS_YAML.read_text(encoding="utf-8") if PREFS_YAML.exists() else ""
@@ -1131,8 +1131,8 @@ elif page == "Preferences":
 # PAGE: COMPANIES
 # ════════════════════════════════════════════════════════════════════════════════
 
-elif page == "Companies":
-    st.title("Company Registry")
+elif page == "Target Companies":
+    st.title("Target Companies")
 
     data = load_yaml_file(COMPANIES_YAML)
     companies: list = data.get("companies", [])
