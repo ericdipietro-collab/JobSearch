@@ -46,8 +46,8 @@ VersionInfoDescription={#AppName} Setup
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-Name: "desktopicon";  Description: "Create a &Desktop shortcut";     GroupDescription: "Shortcuts:"; Flags: checked
-Name: "startmenuicon"; Description: "Create a &Start Menu shortcut"; GroupDescription: "Shortcuts:"; Flags: checked
+Name: "desktopicon";  Description: "Create a &Desktop shortcut";     GroupDescription: "Shortcuts:"
+Name: "startmenuicon"; Description: "Create a &Start Menu shortcut"; GroupDescription: "Shortcuts:"
 
 [Files]
 ; ── App source (exclude dev/runtime artifacts) ────────────────────────────────
