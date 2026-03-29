@@ -74,8 +74,9 @@ XLSX_PATH      = RESULTS_DIR / "job_search_v6_results.xlsx"
 REJECTED_CSV   = RESULTS_DIR / "job_search_v6_rejected.csv"
 STATUS_JSON    = RESULTS_DIR / "job_status.json"
 STORE_JSON     = RESULTS_DIR / "job_search_store.json"   # cumulative job store
-PREFS_YAML     = CONFIG_DIR  / "job_search_preferences.yaml"
-COMPANIES_YAML = CONFIG_DIR  / "job_search_companies.yaml"
+PREFS_YAML         = CONFIG_DIR  / "job_search_preferences.yaml"
+EXAMPLE_PREFS_YAML = CONFIG_DIR  / "job_search_preferences.example.yaml"
+COMPANIES_YAML     = CONFIG_DIR  / "job_search_companies.yaml"
 COMPANIES_BAK  = CONFIG_DIR  / "job_search_companies.yaml.bak"
 DB_PATH        = RESULTS_DIR / "jobsearch.db"
 TRACKER_CSV    = RESULTS_DIR / "ApplicationTracker.csv"
@@ -609,6 +610,114 @@ if page == "Run Job Search":
                     _tr = import_tracker_csv(get_db(), TRACKER_CSV)
                 st.success(f"{_tr['inserted']} inserted · {_tr['updated']} updated · {_tr['errors']} errors")
 
+    # ── Re-score with current preferences ─────────────────────────────────────
+    st.divider()
+    st.markdown("### Re-score Pipeline")
+    st.caption(
+        "Apply your current keyword weights and scoring settings to jobs already in the library, "
+        "without re-running the scraper. Use this after updating preferences."
+    )
+    if st.button("♻ Re-score with Current Preferences", key="rescore_btn"):
+        _rescore_script = BASE_DIR / "rescore_pipeline.py"
+        if not _rescore_script.exists():
+            st.error("rescore_pipeline.py not found — make sure the file is in the repo root.")
+        else:
+            _rs_log = st.empty()
+            _rs_status = st.empty()
+            try:
+                _rs_proc = subprocess.Popen(
+                    [sys.executable, "-u", str(_rescore_script)],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    encoding="utf-8",
+                    errors="replace",
+                    cwd=str(BASE_DIR),
+                )
+                _rs_lines: list[str] = []
+                for _rs_raw in iter(_rs_proc.stdout.readline, ""):
+                    _rs_lines.append(_rs_raw.rstrip())
+                    _rs_log.code("\n".join(_rs_lines[-20:]), language=None)
+                _rs_proc.wait()
+                if _rs_proc.returncode == 0:
+                    _invalidate_data_cache()
+                    _rs_status.success("Re-score complete. Job Matches now reflects your updated preferences.")
+                else:
+                    _rs_status.error(f"Re-score exited with code {_rs_proc.returncode}.")
+            except Exception as _rs_exc:
+                st.error(f"Could not start re-scorer: {_rs_exc}")
+
+    # ── Manual job entry ───────────────────────────────────────────────────────
+    st.divider()
+    st.markdown("### Manual Job Entry")
+    st.caption(
+        "Add jobs you found elsewhere (LinkedIn, Indeed, company website, referral) "
+        "without using the scraper. They'll be scored against your current preferences "
+        "and appear in Job Matches."
+    )
+
+    _template_path = CONFIG_DIR / "manual_jobs_template.csv"
+    if _template_path.exists():
+        st.download_button(
+            "⬇ Download CSV Template",
+            data=_template_path.read_bytes(),
+            file_name="manual_jobs_template.csv",
+            mime="text/csv",
+            key="dl_manual_template",
+        )
+
+    _manual_upload = st.file_uploader(
+        "Upload filled-in CSV",
+        type=["csv"],
+        key="manual_jobs_upload",
+        help="Fill in the template and upload it here. Required columns: company, title, location, url.",
+    )
+
+    if _manual_upload is not None:
+        try:
+            _manual_df = pd.read_csv(_manual_upload, dtype=str).fillna("")
+            _required_cols = {"company", "title", "location", "url"}
+            _missing = _required_cols - set(_manual_df.columns.str.lower())
+            if _missing:
+                st.error(f"CSV is missing required columns: {', '.join(sorted(_missing))}")
+            else:
+                _manual_df.columns = _manual_df.columns.str.lower()
+                _manual_jobs_added = 0
+                _store = _load_store()
+                for _, _mrow in _manual_df.iterrows():
+                    _mkey = _job_key(
+                        str(_mrow.get("company") or ""),
+                        str(_mrow.get("title") or ""),
+                        str(_mrow.get("url") or ""),
+                    )
+                    if _mkey not in _store:
+                        _store[_mkey] = {
+                            "company":             str(_mrow.get("company") or ""),
+                            "title":               str(_mrow.get("title") or ""),
+                            "location":            str(_mrow.get("location") or ""),
+                            "url":                 str(_mrow.get("url") or ""),
+                            "salary_range":        str(_mrow.get("salary_range") or ""),
+                            "description_excerpt": str(_mrow.get("description") or "")[:600],
+                            "tier":                2,
+                            "score":               0,
+                            "fit_band":            "?",
+                            "action_bucket":       "MANUAL REVIEW",
+                            "source":              "manual_upload",
+                            "is_new":              True,
+                            "seen_first_at":       _now_iso(),
+                            "seen_last_at":        _now_iso(),
+                        }
+                        _manual_jobs_added += 1
+                _save_store(_store)
+                _invalidate_data_cache()
+                st.success(
+                    f"Added {_manual_jobs_added} job(s) to your library. "
+                    "Click **Re-score with Current Preferences** above to score them now."
+                )
+                if _manual_df.shape[0] - _manual_jobs_added > 0:
+                    st.caption(f"{_manual_df.shape[0] - _manual_jobs_added} duplicate(s) skipped (already in library).")
+        except Exception as _mex:
+            st.error(f"Could not process CSV: {_mex}")
+
     # ── Scraper run log ────────────────────────────────────────────────────────
     _log_path = RESULTS_DIR / "job_search_v6.log"
     if _log_path.exists():
@@ -1010,12 +1119,29 @@ elif page == "Job Matches":
 elif page == "Search Settings":
     st.title("Search Settings")
 
+    # Auto-initialize from example on first install if the file is missing
+    if not PREFS_YAML.exists() and EXAMPLE_PREFS_YAML.exists():
+        shutil.copy(EXAMPLE_PREFS_YAML, PREFS_YAML)
+
     prefs = load_yaml_file(PREFS_YAML)
     raw_yaml = PREFS_YAML.read_text(encoding="utf-8") if PREFS_YAML.exists() else ""
 
     if not prefs:
-        st.warning("No preferences file found at config/job_search_preferences.yaml")
+        st.error(
+            "Preferences file could not be loaded. "
+            "If `config/job_search_preferences.yaml` is missing, re-run the installer or "
+            "copy `config/job_search_preferences.example.yaml` to that name manually."
+        )
         st.stop()
+
+    # Banner when placeholder values are still present
+    _pref_placeholders = ["YOUR_ZIP", "YOUR_CITY", "NEARBY_CITY"]
+    if any(ph in raw_yaml for ph in _pref_placeholders):
+        st.info(
+            "👋 **Welcome!** Your preferences were auto-initialized from the template. "
+            "Fill in your **salary floor** and **location** details below, then click **Save**.",
+            icon=None,
+        )
 
     comp     = prefs.get("search", {}).get("compensation", {})
     search   = prefs.get("search", {})

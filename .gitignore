@@ -35,6 +35,8 @@ config/*.yaml.bak
 *.csv
 *.xlsx
 *.log
+# Exception: the manual-upload template is a committed config file, not run output
+!config/manual_jobs_template.csv
 
 # ── Python ────────────────────────────────────────────────────────────────────
 __pycache__/
