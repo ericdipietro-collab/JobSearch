@@ -6,9 +6,21 @@ Built for anyone actively job searching. No subscriptions, no data sold to recru
 
 ---
 
-## Quick start
+## Installation
 
-**→ [GETTING_STARTED.md](GETTING_STARTED.md) — step-by-step setup guide for non-technical users**
+### Option A — Windows Installer (easiest, recommended)
+
+1. Go to the [Releases page](https://github.com/ericdipietro-collab/JobSearch/releases)
+2. Download **`JobSearchSetup.exe`** from the latest release
+3. Run it — if Python is not already installed, the installer handles it automatically (no admin rights needed)
+4. Launch from the Desktop or Start Menu shortcut that gets created
+5. Follow the setup checklist on the Home page
+
+---
+
+### Option B — Manual / Developer install
+
+**→ [GETTING_STARTED.md](GETTING_STARTED.md) — full step-by-step guide**
 
 Short version:
 1. Install [Python 3.9+](https://www.python.org/downloads/) — check "Add Python to PATH"
@@ -90,9 +102,9 @@ Each entry looks like:
 
 Each person runs their own local copy. Your salary, location, and application data never leave your computer.
 
-1. Download as ZIP from GitHub and unzip
-2. Double-click the launcher for your OS
-3. The setup checklist guides you through the rest
+**Easiest way to share:** send the link to the [Releases page](https://github.com/ericdipietro-collab/JobSearch/releases) — they download `JobSearchSetup.exe` and run it.
+
+**Manual install:** download as ZIP from GitHub and unzip, then double-click the launcher for your OS.
 
 **What gets shared (in the repo):**
 - The app code and `config/job_search_preferences.example.yaml`
@@ -114,7 +126,8 @@ Everything runs locally. Your database is `results/jobsearch.db` — a single SQ
 
 ## Requirements
 
-- Python 3.9+
+- **Windows Installer:** no prerequisites — Python is bundled if needed
+- **Manual install:** Python 3.9+ (check "Add Python to PATH" during install)
 - All package dependencies are in `requirements.txt` and installed automatically by the launcher
 
 Key packages: `streamlit`, `requests`, `PyYAML`, `beautifulsoup4`, `pandas`, `openpyxl`
