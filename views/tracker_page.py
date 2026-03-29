@@ -95,7 +95,7 @@ def render_tracker(conn) -> None:
         sel_status  = st.selectbox("Status", status_opts, key="tracker_status_filter",
                                    label_visibility="collapsed")
     with fc2:
-        type_opts  = ["All types", "Applications", "Opportunities"]
+        type_opts  = ["All types", "Applications", "Opportunities", "Job Fairs"]
         sel_type   = st.selectbox("Type", type_opts, key="tracker_type_filter",
                                   label_visibility="collapsed")
     with fc3:
@@ -113,9 +113,11 @@ def render_tracker(conn) -> None:
         st.divider()
 
     # ── Load + filter ─────────────────────────────────────────────────────────
-    _entry_filter = None if sel_type == "All types" else (
-        "application" if sel_type == "Applications" else "opportunity"
-    )
+    _entry_filter = {
+        "Applications": "application",
+        "Opportunities": "opportunity",
+        "Job Fairs": "job_fair",
+    }.get(sel_type)
     apps = db.get_applications(
         conn,
         status=None if sel_status == "All statuses" else sel_status,
@@ -139,9 +141,12 @@ def render_tracker(conn) -> None:
         else:
             fu_label = fu_date
         entry = a["entry_type"] if a["entry_type"] else "application"
+        type_label = {"application": "📋 Application",
+                      "opportunity": "🤝 Opportunity",
+                      "job_fair":    "🎪 Job Fair"}.get(entry, "📋 Application")
         rows.append({
             "_id":       a["id"],
-            "Type":      "🤝 Opportunity" if entry == "opportunity" else "📋 Application",
+            "Type":      type_label,
             "Company":   a["company"],
             "Role":      a["role"],
             "Status":    a["status"].title(),
@@ -272,15 +277,17 @@ def _render_add_form(conn) -> None:
         ta1, ta2 = st.columns(2)
         entry_type = ta1.radio(
             "Type",
-            ["Application", "Opportunity"],
+            ["Application", "Opportunity", "Job Fair"],
             horizontal=True,
             key="add_form_entry_type",
-            help="Application = formal job posting you applied to.  "
-                 "Opportunity = network contact / informal conversation about a possible role.",
+            help="Application = formal job posting.  "
+                 "Opportunity = network contact / informal conversation.  "
+                 "Job Fair = attended a job fair or recruiting event.",
         )
-        is_opp = entry_type == "Opportunity"
+        is_opp      = entry_type == "Opportunity"
+        is_job_fair = entry_type == "Job Fair"
 
-        st.markdown(f"**New {'Opportunity' if is_opp else 'Application'}**")
+        st.markdown(f"**New {entry_type}**")
         r1c1, r1c2 = st.columns(2)
         company  = r1c1.text_input("Company *")
         role     = r1c2.text_input(
@@ -288,16 +295,19 @@ def _render_add_form(conn) -> None:
             placeholder="e.g. Product Lead" if is_opp else "e.g. Senior Product Manager",
         )
         r2c1, r2c2, r2c3 = st.columns(3)
-        # Opportunities default to "exploring"; applications default to "applied"
-        default_status_idx = db.STATUSES.index("exploring") if is_opp else db.STATUSES.index("applied")
+        # Status defaults: application→applied, opportunity/job_fair→exploring
+        default_status_idx = (
+            db.STATUSES.index("applied") if not is_opp and not is_job_fair
+            else db.STATUSES.index("exploring")
+        )
         status   = r2c1.selectbox("Status", db.STATUSES, index=default_status_idx)
         fit      = r2c2.selectbox("Fit", ["—", "1", "2", "3", "4", "5"])
         date_app = r2c3.date_input(
-            "Date of first contact" if is_opp else "Date Applied",
+            "Event Date" if is_job_fair else ("Date of first contact" if is_opp else "Date Applied"),
             value=date.today(),
         )
 
-        if not is_opp:
+        if not is_opp and not is_job_fair:
             job_url = st.text_input("Job URL")
         else:
             job_url = ""
@@ -306,12 +316,14 @@ def _render_add_form(conn) -> None:
         s_low  = sal_low.number_input("Salary Low ($)", value=0, step=5000)
         s_high = sal_high.number_input("Salary High ($)", value=0, step=5000)
         referral   = st.text_input(
-            "Referred by" if is_opp else "Referral",
-            placeholder="e.g. John Smith (former manager)" if is_opp else "",
+            "Referred by" if (is_opp or is_job_fair) else "Referral",
+            placeholder="e.g. John Smith (former manager)" if is_opp else
+                        "e.g. Hired by Design networking event" if is_job_fair else "",
         )
         jd_summary = st.text_area(
-            "Notes on the role" if is_opp else "JD Summary",
+            "Event / Role Description" if is_job_fair else ("Notes on the role" if is_opp else "JD Summary"),
             height=80,
+            placeholder="e.g. Denver Tech Job Fair — talked to Acme Corp, TechCo, StartupX" if is_job_fair else "",
         )
         notes = st.text_area("Notes", height=60)
 
@@ -323,7 +335,7 @@ def _render_add_form(conn) -> None:
             placeholder="e.g. Follow up with John after call",
         )
 
-        if not is_opp:
+        if not is_opp and not is_job_fair:
             st.markdown("**Documents**")
             resume_version     = st.text_input("Resume version", placeholder="e.g. PM resume v3 – fintech tailored")
             cover_letter_notes = st.text_input("Cover letter notes", placeholder="e.g. Tailored intro, emphasized API PM exp")
@@ -340,7 +352,7 @@ def _render_add_form(conn) -> None:
                     role               = role.strip(),
                     job_url            = job_url.strip() or None,
                     source             = "manual",
-                    entry_type         = "opportunity" if is_opp else "application",
+                    entry_type         = "job_fair" if is_job_fair else ("opportunity" if is_opp else "application"),
                     status             = status,
                     fit_stars          = int(fit) if fit != "—" else None,
                     salary_low         = s_low  or None,
@@ -355,12 +367,16 @@ def _render_add_form(conn) -> None:
                     resume_version     = resume_version.strip() or None,
                     cover_letter_notes = cover_letter_notes.strip() or None,
                 )
-                # First event: conversation for opportunity, applied for application
-                first_event = "conversation" if is_opp else "applied"
-                first_title = (
-                    f"Initial conversation — {company.strip()}"
-                    if is_opp else f"Applied to {company.strip()}"
-                )
+                # First event based on type
+                if is_job_fair:
+                    first_event = "conversation"
+                    first_title = f"Attended job fair — {company.strip()}"
+                elif is_opp:
+                    first_event = "conversation"
+                    first_title = f"Initial conversation — {company.strip()}"
+                else:
+                    first_event = "applied"
+                    first_title = f"Applied to {company.strip()}"
                 db.add_event(conn, app_id, first_event, date_app.isoformat(), title=first_title)
                 st.session_state["tracker_selected_id"]  = app_id
                 st.session_state["tracker_show_add_form"] = False
@@ -638,10 +654,12 @@ def _render_edit_form(conn, app) -> None:
 
     with st.form(f"edit_app_{app['id']}"):
         et1, et2 = st.columns(2)
+        _type_options = ["Application", "Opportunity", "Job Fair"]
+        _type_idx     = {"application": 0, "opportunity": 1, "job_fair": 2}.get(_current_entry_type, 0)
         entry_type_label = et1.radio(
             "Type",
-            ["Application", "Opportunity"],
-            index=1 if _current_entry_type == "opportunity" else 0,
+            _type_options,
+            index=_type_idx,
             horizontal=True,
             key=f"edit_entry_type_{app['id']}",
         )
@@ -688,7 +706,7 @@ def _render_edit_form(conn, app) -> None:
     if saved:
         db.update_application(
             conn, app["id"],
-            entry_type         = "opportunity" if entry_type_label == "Opportunity" else "application",
+            entry_type         = {"Opportunity": "opportunity", "Job Fair": "job_fair"}.get(entry_type_label, "application"),
             company            = company.strip(),
             role               = role.strip(),
             status             = status,
