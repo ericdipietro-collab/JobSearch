@@ -75,6 +75,12 @@ REM ── Ensure results and config dirs exist ──────────�
 if not exist "results" mkdir results
 if not exist "config"  mkdir config
 
+REM ── Setup-only mode (called by installer to pre-warm the venv) ───────────────
+if /i "%~1"=="--setup-only" (
+    echo  Setup complete. Launch Job Search Dashboard to start the app.
+    exit /b 0
+)
+
 REM ── Launch dashboard ──────────────────────────────────────────────────────────
 echo.
 echo  Starting Job Search Dashboard ...

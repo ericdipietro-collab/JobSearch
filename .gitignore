@@ -60,3 +60,6 @@ Thumbs.db
 .claude/
 .vscode/
 .idea/
+
+# ── Installer build artifacts ─────────────────────────────────────────────────
+installer/downloads/
