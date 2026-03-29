@@ -81,7 +81,7 @@ Name: "{app}\config";  Flags: uninsneveruninstall
 [Icons]
 Name: "{group}\{#AppName}";            Filename: "{app}\launch.bat"; WorkingDir: "{app}"; IconFilename: "{app}\installer\assets\app.ico"; Tasks: startmenuicon
 Name: "{group}\Uninstall {#AppName}";  Filename: "{uninstallexe}"; Tasks: startmenuicon
-Name: "{commondesktop}\{#AppName}";    Filename: "{app}\launch.bat"; WorkingDir: "{app}"; IconFilename: "{app}\installer\assets\app.ico"; Tasks: desktopicon
+Name: "{userdesktop}\{#AppName}";      Filename: "{app}\launch.bat"; WorkingDir: "{app}"; IconFilename: "{app}\installer\assets\app.ico"; Tasks: desktopicon
 
 [Run]
 ; ── Install Python if missing ─────────────────────────────────────────────────
