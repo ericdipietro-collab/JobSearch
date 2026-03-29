@@ -18,12 +18,14 @@ _RESULTS_CSV   = _RESULTS_DIR / "job_search_v6_results.csv"
 
 
 def _check_prefs_customized() -> tuple[bool, str]:
-    """True if the preferences YAML exists and has been edited."""
+    """True if the preferences YAML exists and has been filled in (no placeholder values)."""
     if not _PREFS_YAML.exists():
-        return False, "No preferences file found at `config/job_search_preferences.yaml`."
+        return False, "No preferences file found — run the launcher to auto-create it."
     text = _PREFS_YAML.read_text(encoding="utf-8", errors="ignore")
-    if "example.yaml" in text or len(text.strip()) < 100:
-        return False, "Preferences file looks like it hasn't been customised yet."
+    if len(text.strip()) < 100:
+        return False, "Preferences file is empty — copy config/job_search_preferences.example.yaml."
+    if "YOUR_ZIP" in text or "YOUR_CITY" in text or "150000" in text:
+        return False, "Preferences still have placeholder values — open Search Settings to customise salary and location."
     return True, "Salary, location, and keyword preferences configured."
 
 
