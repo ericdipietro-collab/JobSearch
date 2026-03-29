@@ -47,6 +47,39 @@ def _week_bounds(offset_weeks: int = 0):
     return monday, sunday
 
 
+_MIN_ACTIVITIES_DEFAULT = 3   # Colorado requires 3/week; adjust for your state
+
+
+def _activity_minimum_banner(n_activities: int, n_training: int, period_is_single_week: bool) -> None:
+    """Show a compliance indicator when viewing a single-week period."""
+    if not period_is_single_week:
+        return
+    total = n_activities + (1 if n_training else 0)   # training counts as 1 activity
+    minimum = _MIN_ACTIVITIES_DEFAULT
+    if total >= minimum:
+        st.success(
+            f"✅ **{total} / {minimum} required activities** this week — "
+            f"you meet the minimum for your weekly certification.",
+            icon=None,
+        )
+    elif total == minimum - 1:
+        st.warning(
+            f"⚠️ **{total} / {minimum} required activities** — "
+            f"you need {minimum - total} more to meet the weekly minimum.",
+            icon=None,
+        )
+    else:
+        st.error(
+            f"🔴 **{total} / {minimum} required activities** — "
+            f"you need {minimum - total} more before submitting your weekly certification.",
+            icon=None,
+        )
+    st.caption(
+        f"Minimum of {minimum} activities/week is the Colorado requirement. "
+        "Check your state's rules — it may differ."
+    )
+
+
 def render_activity_report(conn) -> None:
     db.init_db(conn)
 
@@ -98,7 +131,15 @@ def render_activity_report(conn) -> None:
     # Also fetch training active this period
     training_rows = db.get_training_for_report(conn, start_str, end_str)
 
+    # Is this a single-calendar-week view? (Mon–Sun, exactly 7 days)
+    _is_single_week = (
+        (end_d - start_d).days == 6
+        and start_d.weekday() == 0   # Monday
+        and preset in ("This week", "Last week")
+    )
+
     if not rows and not training_rows:
+        _activity_minimum_banner(0, 0, _is_single_week)
         st.info(f"No reportable activity between {start_d.strftime('%b %d')} and {end_d.strftime('%b %d, %Y')}.")
         return
 
@@ -124,6 +165,10 @@ def render_activity_report(conn) -> None:
     m5.metric("Screenings",    screens)
     m6.metric("Interviews",    interviews)
     m7.metric("Training",      training_count)
+
+    # Weekly minimum compliance banner (single-week views only)
+    _n_job_activities = len(rows)
+    _activity_minimum_banner(_n_job_activities, training_count, _is_single_week)
 
     # ── Activity table ────────────────────────────────────────────────────────
     st.subheader("Activity Log", anchor=False)
