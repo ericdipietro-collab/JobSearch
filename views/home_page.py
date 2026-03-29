@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta
 
+import altair as alt
 import pandas as pd
 import streamlit as st
 
@@ -140,20 +141,43 @@ def render_home(conn) -> None:
         st.caption("Applications submitted — last 8 weeks")
         weekly_data = db.applications_by_week(conn, weeks=8)
         if weekly_data:
-            wdf = pd.DataFrame(weekly_data).set_index("week")
-            st.bar_chart(wdf["count"])
+            wdf = pd.DataFrame(weekly_data)
+            chart = (
+                alt.Chart(wdf)
+                .mark_bar(color="#4f46e5")
+                .encode(
+                    x=alt.X("week:N", sort=None, axis=alt.Axis(labelAngle=-45, title=None)),
+                    y=alt.Y("count:Q", axis=alt.Axis(title="Applications", tickMinStep=1)),
+                    tooltip=["week", "count"],
+                )
+                .properties(height=220)
+            )
+            st.altair_chart(chart, use_container_width=True)
         else:
             st.caption("No application events logged yet.")
 
     with ch2:
         st.caption("Pipeline by status")
         funnel_statuses = ["applied", "screening", "interviewing", "offer", "accepted"]
-        funnel_data = {s: snapshot.get(s, 0) for s in funnel_statuses}
-        fdf = pd.DataFrame(
-            {"status": list(funnel_data.keys()), "count": list(funnel_data.values())}
-        ).set_index("status")
+        funnel_data = {"status": funnel_statuses, "count": [snapshot.get(s, 0) for s in funnel_statuses]}
+        fdf = pd.DataFrame(funnel_data)
         if fdf["count"].sum() > 0:
-            st.bar_chart(fdf["count"])
+            status_colors = {s: db.STATUS_COLORS.get(s, "#6b7280") for s in funnel_statuses}
+            chart = (
+                alt.Chart(fdf)
+                .mark_bar()
+                .encode(
+                    x=alt.X("status:N", sort=funnel_statuses, axis=alt.Axis(labelAngle=0, title=None)),
+                    y=alt.Y("count:Q", axis=alt.Axis(title="Count", tickMinStep=1)),
+                    color=alt.Color("status:N", scale=alt.Scale(
+                        domain=funnel_statuses,
+                        range=[status_colors[s] for s in funnel_statuses],
+                    ), legend=None),
+                    tooltip=["status", "count"],
+                )
+                .properties(height=220)
+            )
+            st.altair_chart(chart, use_container_width=True)
         else:
             st.caption("No active applications yet.")
 

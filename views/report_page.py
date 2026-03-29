@@ -93,7 +93,6 @@ def render_activity_report(conn) -> None:
             "Quick select",
             ["This week", "Last week", "Last 2 weeks", "Last 30 days", "Custom"],
             key="report_preset",
-            label_visibility="collapsed",
         )
 
     if preset == "This week":

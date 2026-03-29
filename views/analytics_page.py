@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 
+import altair as alt
 import pandas as pd
 import streamlit as st
 
@@ -68,10 +69,13 @@ def _render_funnel_overview(conn: sqlite3.Connection) -> None:
         return
 
     # Bar chart of stage counts
-    st.bar_chart(
-        df.set_index("stage")["count"],
+    st.altair_chart(
+        alt.Chart(df).mark_bar(color="#2196F3").encode(
+            x=alt.X("stage:N", sort=None, axis=alt.Axis(labelAngle=-30, title=None)),
+            y=alt.Y("count:Q", axis=alt.Axis(tickMinStep=1, title="Count")),
+            tooltip=["stage", "count"],
+        ).properties(height=240),
         use_container_width=True,
-        color="#2196F3",
     )
 
     # Raw table toggle
@@ -101,10 +105,13 @@ def _render_score_analysis(conn: sqlite3.Connection) -> None:
         )
     with col_chart:
         if not df.empty:
-            st.bar_chart(
-                df.set_index("stage")["avg_score"],
+            st.altair_chart(
+                alt.Chart(df).mark_bar(color="#FF9800").encode(
+                    x=alt.X("stage:N", sort=None, axis=alt.Axis(labelAngle=-30, title=None)),
+                    y=alt.Y("avg_score:Q", axis=alt.Axis(title="Avg Score")),
+                    tooltip=["stage", alt.Tooltip("avg_score:Q", format=".1f")],
+                ).properties(height=240),
                 use_container_width=True,
-                color="#FF9800",
             )
 
 
@@ -198,10 +205,13 @@ def _render_score_vs_outcome(conn: sqlite3.Connection) -> None:
             },
         )
     with col_chart:
-        st.bar_chart(
-            df.set_index("stage")["avg_score"],
+        st.altair_chart(
+            alt.Chart(df).mark_bar(color="#9C27B0").encode(
+                x=alt.X("stage:N", sort=None, axis=alt.Axis(labelAngle=-30, title=None)),
+                y=alt.Y("avg_score:Q", axis=alt.Axis(title="Avg Score")),
+                tooltip=["stage", alt.Tooltip("avg_score:Q", format=".1f")],
+            ).properties(height=240),
             use_container_width=True,
-            color="#9C27B0",
         )
 
 
