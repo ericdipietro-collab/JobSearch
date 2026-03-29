@@ -5821,6 +5821,159 @@ def manual_flag(company: Company, rejected_jobs: Optional[List[RejectedJob]] = N
     return [job] if job else []
 
 
+def smartrecruiters(company: Company, rejected_jobs: Optional[List[RejectedJob]] = None) -> List[Job]:
+    """SmartRecruiters public JSON API. adapter_key = company slug from careers.smartrecruiters.com URL."""
+    slug = company.adapter_key or company.name.lower().replace(" ", "")
+    url = f"https://api.smartrecruiters.com/v1/companies/{slug}/postings"
+    try:
+        data = fetch_json(url)
+    except Exception as e:
+        logging.warning("SmartRecruiters API failed company=%s err=%s", company.name, e)
+        return []
+    jobs: List[Job] = []
+    for raw in data.get("content", []):
+        loc_obj = raw.get("location") or {}
+        city    = loc_obj.get("city") or ""
+        country = loc_obj.get("country") or ""
+        remote  = loc_obj.get("remote") or False
+        location = "Remote" if remote else ", ".join(filter(None, [city, country]))
+        job = make_job(
+            company     = company,
+            title       = raw.get("name", ""),
+            location    = location,
+            url         = raw.get("ref", ""),
+            source      = "SmartRecruiters",
+            description = "",
+            posted_dt   = parse_date(raw.get("releasedDate")),
+            rejected_jobs = rejected_jobs,
+        )
+        if job:
+            jobs.append(job)
+    return jobs
+
+
+def icims(company: Company, rejected_jobs: Optional[List[RejectedJob]] = None) -> List[Job]:
+    """iCIMS HTML scraper. careers_url should be the company's iCIMS search page."""
+    base_url = company.careers_url or ""
+    if not base_url:
+        return []
+    # Try common iCIMS search URL patterns
+    search_urls = [base_url]
+    if "icims.com" in base_url and "search" not in base_url:
+        search_urls.append(base_url.rstrip("/") + "/jobs/search")
+    jobs: List[Job] = []
+    seen: set = set()
+    for search_url in search_urls[:2]:
+        try:
+            html = fetch_text(search_url, referer=search_url)
+        except Exception as e:
+            logging.warning("iCIMS listing failed company=%s url=%s err=%s", company.name, search_url, e)
+            continue
+        soup = make_soup(html)
+        for a in soup.find_all("a", href=True):
+            href = str(a["href"])
+            # iCIMS job detail links match /jobs/{id}/job
+            if re.search(r"/jobs/\d+/job", href):
+                full_url = urljoin(search_url, href)
+                if full_url in seen:
+                    continue
+                seen.add(full_url)
+                if len(seen) > MAX_DETAIL_LINKS:
+                    break
+                try:
+                    detail_html = fetch_text(full_url, referer=search_url)
+                except Exception as e:
+                    logging.warning("iCIMS detail failed url=%s err=%s", full_url, e)
+                    continue
+                detail_soup = make_soup(detail_html)
+                # Extract title — iCIMS job title is usually in h1 or .iCIMS_JobTitle
+                title_el = (detail_soup.find(class_=re.compile(r"iCIMS_JobTitle", re.I))
+                            or detail_soup.find("h1"))
+                title = clean(title_el.get_text(" ", strip=True)) if title_el else ""
+                if not title:
+                    continue
+                # Location
+                loc_el = detail_soup.find(class_=re.compile(r"iCIMS_JobHeaderField.*location|jobLocation", re.I))
+                location = clean(loc_el.get_text(" ", strip=True)) if loc_el else ""
+                # Description
+                desc_el = detail_soup.find(class_=re.compile(r"iCIMS_JobContent|iCIMS_Expandable_Text", re.I))
+                description = clean(desc_el.get_text(" ", strip=True)) if desc_el else ""
+                job = make_job(
+                    company     = company,
+                    title       = title,
+                    location    = location,
+                    url         = full_url,
+                    source      = "iCIMS",
+                    description = description,
+                    posted_dt   = None,
+                    rejected_jobs = rejected_jobs,
+                )
+                if job:
+                    jobs.append(job)
+        if jobs:
+            break  # Got results from first working URL
+    return dedupe(jobs)
+
+
+def indeed_search(company: Company, rejected_jobs: Optional[List[RejectedJob]] = None) -> List[Job]:
+    """
+    Searches Indeed for jobs at a specific company.
+    careers_url should be the Indeed company jobs page:
+      https://www.indeed.com/cmp/{slug}/jobs
+    If careers_url is missing, builds a URL from company.name.
+    """
+    if company.careers_url and "indeed.com" in company.careers_url:
+        search_url = company.careers_url
+    else:
+        slug = re.sub(r"[^a-z0-9-]", "-", company.name.lower()).strip("-")
+        search_url = f"https://www.indeed.com/cmp/{slug}/jobs"
+    try:
+        html = fetch_text(search_url, referer="https://www.indeed.com")
+    except Exception as e:
+        logging.warning("Indeed search failed company=%s url=%s err=%s", company.name, search_url, e)
+        return []
+    soup = make_soup(html)
+    jobs: List[Job] = []
+    seen: set = set()
+    # Indeed job links: /viewjob?jk=... or /rc/clk?jk=...
+    for a in soup.find_all("a", href=True):
+        href = str(a["href"])
+        if not re.search(r"/(viewjob|rc/clk)\?.*jk=", href) and "/jobs/view" not in href:
+            continue
+        full_url = urljoin("https://www.indeed.com", href)
+        # Normalise: strip tracking params, keep jk=
+        m_jk = re.search(r"jk=([a-f0-9]+)", full_url)
+        canonical = f"https://www.indeed.com/viewjob?jk={m_jk.group(1)}" if m_jk else full_url
+        if canonical in seen:
+            continue
+        seen.add(canonical)
+        if len(seen) > 40:
+            break
+        # Title from link text or data attribute
+        title = clean(a.get_text(" ", strip=True))
+        if not title or len(title) < 4:
+            parent = a.find_parent(class_=re.compile(r"jobCard|job_seen_beacon|tapItem", re.I))
+            if parent:
+                t_el = parent.find(class_=re.compile(r"jobTitle|title", re.I))
+                if t_el:
+                    title = clean(t_el.get_text(" ", strip=True))
+        if not title:
+            continue
+        job = make_job(
+            company     = company,
+            title       = title,
+            location    = "",
+            url         = canonical,
+            source      = "Indeed",
+            description = "",
+            posted_dt   = None,
+            rejected_jobs = rejected_jobs,
+        )
+        if job:
+            jobs.append(job)
+    return dedupe(jobs)
+
+
 def run_adapter(company: Company, rejected_jobs: Optional[List[RejectedJob]] = None) -> List[Job]:
     set_run_context("company", company.name, company.adapter, company.careers_url or "")
     try:
@@ -5862,6 +6015,27 @@ def run_adapter(company: Company, rejected_jobs: Optional[List[RejectedJob]] = N
             jobs = spglobal(company, rejected_jobs=rejected_jobs)
             RUNTIME_COMPANY_STATUS[company.name] = "custom scraper"
             return jobs
+        if company.adapter == "smartrecruiters":
+            jobs = smartrecruiters(company, rejected_jobs=rejected_jobs)
+            if jobs:
+                RUNTIME_COMPANY_STATUS[company.name] = "✓"
+                return jobs
+            RUNTIME_COMPANY_STATUS[company.name] = "manual fallback"
+            return manual_flag(company, rejected_jobs=rejected_jobs)
+        if company.adapter == "icims":
+            jobs = icims(company, rejected_jobs=rejected_jobs)
+            if jobs:
+                RUNTIME_COMPANY_STATUS[company.name] = "✓"
+                return jobs
+            RUNTIME_COMPANY_STATUS[company.name] = "manual fallback"
+            return manual_flag(company, rejected_jobs=rejected_jobs)
+        if company.adapter == "indeed_search":
+            jobs = indeed_search(company, rejected_jobs=rejected_jobs)
+            if jobs:
+                RUNTIME_COMPANY_STATUS[company.name] = "✓ (Indeed)"
+                return jobs
+            RUNTIME_COMPANY_STATUS[company.name] = "manual fallback"
+            return manual_flag(company, rejected_jobs=rejected_jobs)
         if company.adapter in ("workday_manual", "custom_manual"):
             jobs = auto_discover(company, rejected_jobs=rejected_jobs)
             if jobs:
