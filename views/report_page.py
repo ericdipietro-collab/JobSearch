@@ -95,7 +95,10 @@ def render_activity_report(conn) -> None:
     # ── Fetch data ────────────────────────────────────────────────────────────
     rows = db.get_activity_report(conn, start_str, end_str)
 
-    if not rows:
+    # Also fetch training active this period
+    training_rows = db.get_training_for_report(conn, start_str, end_str)
+
+    if not rows and not training_rows:
         st.info(f"No reportable activity between {start_d.strftime('%b %d')} and {end_d.strftime('%b %d, %Y')}.")
         return
 
@@ -105,19 +108,22 @@ def render_activity_report(conn) -> None:
     type_counts = Counter(r["event_type"] for r in rows)
 
     apps_submitted   = type_counts.get("applied", 0)
-    networking       = type_counts.get("conversation", 0) + type_counts.get("networking_call", 0)
+    job_fairs        = sum(1 for r in rows if r["entry_type"] == "job_fair")
+    networking       = type_counts.get("conversation", 0) + type_counts.get("networking_call", 0) - job_fairs
     recruiter_calls  = type_counts.get("recruiter_outreach", 0)
     screens          = type_counts.get("screening_complete", 0) + type_counts.get("screening_scheduled", 0)
     interviews       = type_counts.get("interview_complete", 0) + type_counts.get("interview_scheduled", 0)
     follow_ups       = type_counts.get("follow_up_sent", 0)
+    training_count   = len(training_rows)
 
-    m1, m2, m3, m4, m5, m6 = st.columns(6)
+    m1, m2, m3, m4, m5, m6, m7 = st.columns(7)
     m1.metric("Applications",  apps_submitted)
-    m2.metric("Networking",    networking)
-    m3.metric("Recruiter",     recruiter_calls)
-    m4.metric("Screenings",    screens)
-    m5.metric("Interviews",    interviews)
-    m6.metric("Follow-ups",    follow_ups)
+    m2.metric("Job Fairs",     job_fairs)
+    m3.metric("Networking",    max(networking, 0))
+    m4.metric("Recruiter",     recruiter_calls)
+    m5.metric("Screenings",    screens)
+    m6.metric("Interviews",    interviews)
+    m7.metric("Training",      training_count)
 
     # ── Activity table ────────────────────────────────────────────────────────
     st.subheader("Activity Log", anchor=False)
@@ -134,14 +140,31 @@ def render_activity_report(conn) -> None:
         if r["event_notes"]:
             detail = (detail + " — " + r["event_notes"]).strip(" —")
         contacts = r["contact_names"] or ""
+        etype = r["entry_type"] or "application"
+        type_label = {"application": "📋 Application",
+                      "opportunity": "🤝 Opportunity",
+                      "job_fair":    "🎪 Job Fair"}.get(etype, "📋 Application")
         table_rows.append({
             "Date":     d_fmt,
             "Company":  r["company"],
             "Role":     r["role"] or "—",
-            "Type":     "🤝 Opportunity" if r["entry_type"] == "opportunity" else "📋 Application",
+            "Type":     type_label,
             "Activity": label,
             "Contact":  contacts,
             "Detail":   detail,
+        })
+
+    for t in training_rows:
+        status_label = "In Progress" if t["status"] == "in_progress" else "Completed"
+        comp_str = f" (completed {t['completion_date'][:10]})" if t["completion_date"] else ""
+        table_rows.append({
+            "Date":     start_d.strftime("%b %d") + "–" + end_d.strftime("%b %d"),
+            "Company":  t["provider"] or "—",
+            "Role":     t["name"],
+            "Type":     "📚 Training",
+            "Activity": f"Job skills training — {status_label}",
+            "Contact":  "",
+            "Detail":   f"{t['category'] or ''}{comp_str}".strip(),
         })
 
     df_act = pd.DataFrame(table_rows)
@@ -172,15 +195,23 @@ def render_activity_report(conn) -> None:
         f"Job Search Activity — {start_d.strftime('%B %d')} to {end_d.strftime('%B %d, %Y')}"
     )
     lines.append("=" * 60)
-    lines.append(
-        f"Applications submitted: {apps_submitted}  |  "
-        f"Networking calls: {networking}  |  "
-        f"Interviews/screens: {screens + interviews}  |  "
-        f"Follow-ups: {follow_ups}"
-    )
+    summary_parts = [f"Applications submitted: {apps_submitted}"]
+    if job_fairs:
+        summary_parts.append(f"Job fairs attended: {job_fairs}")
+    if max(networking, 0):
+        summary_parts.append(f"Networking calls: {max(networking, 0)}")
+    if recruiter_calls:
+        summary_parts.append(f"Recruiter contacts: {recruiter_calls}")
+    if screens + interviews:
+        summary_parts.append(f"Interviews/screens: {screens + interviews}")
+    if follow_ups:
+        summary_parts.append(f"Follow-ups sent: {follow_ups}")
+    if training_count:
+        summary_parts.append(f"Training courses active: {training_count}")
+    lines.append("  |  ".join(summary_parts))
     lines.append("")
 
-    # Group by date
+    # Group job/opportunity activity by date
     by_date: dict = {}
     for r in rows:
         d_key = r["event_date"][:10] if r["event_date"] else "unknown"
@@ -194,8 +225,13 @@ def render_activity_report(conn) -> None:
         lines.append(d_label)
         lines.append("-" * 40)
         for r in by_date[d_key]:
-            method  = _METHOD.get(r["event_type"], "Online / email")
-            result  = _RESULT.get(r["event_type"], db.EVENT_LABELS.get(r["event_type"], r["event_type"]))
+            etype = r["entry_type"] or "application"
+            if etype == "job_fair":
+                method = "In person / job fair"
+                result = "Attended job fair"
+            else:
+                method = _METHOD.get(r["event_type"], "Online / email")
+                result = _RESULT.get(r["event_type"], db.EVENT_LABELS.get(r["event_type"], r["event_type"]))
             contact = f" (contact: {r['contact_names']})" if r["contact_names"] else ""
             note    = f" — {r['event_title']}" if r["event_title"] else ""
             lines.append(
@@ -204,6 +240,19 @@ def render_activity_report(conn) -> None:
             )
             lines.append(f"  Method: {method}  |  Result: {result}{contact}{note}")
             lines.append("")
+        lines.append("")
+
+    # Training section
+    if training_rows:
+        lines.append("Job Skills Training")
+        lines.append("-" * 40)
+        for t in training_rows:
+            status_str = "Completed" if t["status"] == "completed" else "In Progress"
+            comp_note  = f" — completed {t['completion_date'][:10]}" if t["completion_date"] else ""
+            lines.append(
+                f"  Course: {t['name']}  |  Provider: {t['provider'] or 'N/A'}"
+                f"  |  Category: {t['category'] or 'N/A'}  |  Status: {status_str}{comp_note}"
+            )
         lines.append("")
 
     report_text = "\n".join(lines)

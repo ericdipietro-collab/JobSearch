@@ -29,8 +29,9 @@ except ImportError:
     _ATS_AVAILABLE = False
 
 try:
-    from views.tracker_page import render_tracker
-    from views.report_page  import render_activity_report
+    from views.tracker_page  import render_tracker
+    from views.report_page   import render_activity_report
+    from views.training_page import render_training
     import ats_db
     _TRACKER_AVAILABLE = True
 except ImportError:
@@ -385,7 +386,7 @@ def _apply_overrides(df: pd.DataFrame, overrides: dict) -> pd.DataFrame:
 
 st.sidebar.title("💼 Job Search")
 
-_nav_options = ["Job Matches", "My Applications", "Weekly Report", "Pipeline", "Analytics", "Run Job Search", "Search Settings", "Target Companies"]
+_nav_options = ["Job Matches", "My Applications", "Training", "Weekly Report", "Pipeline", "Analytics", "Run Job Search", "Search Settings", "Target Companies"]
 page = st.sidebar.radio(
     "Navigate",
     _nav_options,
@@ -593,6 +594,14 @@ elif page == "My Applications":
         render_tracker(_tracker_conn)
     else:
         st.error("Tracker modules not available — check that ats_db.py and views/tracker_page.py are present.")
+
+elif page == "Training":
+    st.title("Skills Training")
+    if _TRACKER_AVAILABLE:
+        _training_conn = ats_db.get_connection()
+        render_training(_training_conn)
+    else:
+        st.error("Tracker modules not available — check that ats_db.py is present.")
 
 elif page == "Weekly Report":
     st.title("Weekly Activity Report")

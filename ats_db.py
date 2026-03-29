@@ -45,7 +45,17 @@ STATUS_COLORS = {
     "withdrawn":    "#9ca3af",   # light gray
 }
 
-ENTRY_TYPES = ["application", "opportunity"]
+ENTRY_TYPES = ["application", "opportunity", "job_fair"]
+
+TRAINING_STATUSES    = ["planned", "in_progress", "completed", "paused"]
+TRAINING_CATEGORIES  = ["AI / ML", "Cloud", "Data & Analytics", "Programming", "Certification Prep", "Business / Leadership", "Other"]
+TRAINING_PROVIDERS   = ["AWS", "Snowflake", "Google", "Microsoft", "Coursera", "Udemy", "LinkedIn Learning", "freeCodeCamp", "Pluralsight", "Other"]
+TRAINING_STATUS_COLORS = {
+    "planned":     "#6b7280",
+    "in_progress": "#f59e0b",
+    "completed":   "#10b981",
+    "paused":      "#9ca3af",
+}
 
 EVENT_TYPES = [
     "applied",
@@ -178,6 +188,24 @@ def init_db(conn: sqlite3.Connection) -> None:
         role_in_process TEXT,   -- recruiter | hiring_manager | interviewer | referral | other
         notes           TEXT,
         created_at      TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS training (
+        id                INTEGER PRIMARY KEY AUTOINCREMENT,
+        name              TEXT NOT NULL,
+        provider          TEXT,
+        category          TEXT,
+        status            TEXT NOT NULL DEFAULT 'planned',
+        url               TEXT,
+        start_date        TEXT,
+        target_date       TEXT,
+        completion_date   TEXT,
+        certificate_url   TEXT,
+        estimated_hours   INTEGER,
+        weekly_hours      INTEGER,
+        notes             TEXT,
+        created_at        TEXT NOT NULL,
+        updated_at        TEXT NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS interviews (
@@ -346,6 +374,56 @@ def delete_interview(conn: sqlite3.Connection, interview_id: int) -> None:
     conn.commit()
 
 
+# ── Training ────────────────────────────────────────────────────────────────────
+
+def add_training(conn: sqlite3.Connection, **kwargs) -> int:
+    now = _now()
+    kwargs.setdefault("status",     "planned")
+    kwargs.setdefault("created_at", now)
+    kwargs.setdefault("updated_at", now)
+    cols   = ", ".join(kwargs.keys())
+    places = ", ".join("?" for _ in kwargs)
+    cur = conn.execute(f"INSERT INTO training ({cols}) VALUES ({places})", list(kwargs.values()))
+    conn.commit()
+    return cur.lastrowid
+
+
+def update_training(conn: sqlite3.Connection, training_id: int, **kwargs) -> None:
+    kwargs["updated_at"] = _now()
+    sets = ", ".join(f"{k} = ?" for k in kwargs)
+    conn.execute(f"UPDATE training SET {sets} WHERE id = ?", [*kwargs.values(), training_id])
+    conn.commit()
+
+
+def get_training(conn: sqlite3.Connection, training_id: int) -> Optional[sqlite3.Row]:
+    return conn.execute("SELECT * FROM training WHERE id = ?", (training_id,)).fetchone()
+
+
+def get_all_training(conn: sqlite3.Connection, status: Optional[str] = None) -> List[sqlite3.Row]:
+    if status:
+        return conn.execute(
+            "SELECT * FROM training WHERE status = ? ORDER BY status, name",
+            (status,),
+        ).fetchall()
+    return conn.execute(
+        "SELECT * FROM training ORDER BY "
+        "CASE status WHEN 'in_progress' THEN 0 WHEN 'planned' THEN 1 "
+        "WHEN 'paused' THEN 2 ELSE 3 END, name"
+    ).fetchall()
+
+
+def delete_training(conn: sqlite3.Connection, training_id: int) -> None:
+    conn.execute("DELETE FROM training WHERE id = ?", (training_id,))
+    conn.commit()
+
+
+def training_status_counts(conn: sqlite3.Connection) -> Dict[str, int]:
+    rows = conn.execute(
+        "SELECT status, COUNT(*) AS n FROM training GROUP BY status"
+    ).fetchall()
+    return {r["status"]: r["n"] for r in rows}
+
+
 # ── Summary stats ──────────────────────────────────────────────────────────────
 
 def status_counts(conn: sqlite3.Connection) -> Dict[str, int]:
@@ -407,6 +485,33 @@ def upcoming_interviews(conn: sqlite3.Connection, limit: int = 5) -> List[sqlite
         LIMIT ?
         """,
         (limit,),
+    ).fetchall()
+
+
+def get_training_for_report(
+    conn: sqlite3.Connection,
+    start_date: str,
+    end_date: str,
+) -> List[sqlite3.Row]:
+    """
+    Return training rows that were active during the date range:
+    - in_progress courses that started on or before end_date
+    - completed courses whose completion_date falls within the range
+    """
+    return conn.execute(
+        """
+        SELECT * FROM training
+        WHERE (
+            status = 'in_progress'
+            AND (start_date IS NULL OR start_date <= ?)
+        ) OR (
+            status = 'completed'
+            AND completion_date >= ?
+            AND completion_date <= ?
+        )
+        ORDER BY status DESC, name
+        """,
+        (end_date, start_date, end_date),
     ).fetchall()
 
 
