@@ -30,6 +30,16 @@ git clone https://github.com/ericdipietro-collab/JobSearch.git
 
 ---
 
+## Step 1b — If you used the Windows Installer
+
+> **SmartScreen warning:** When you run `JobSearchSetup.exe`, Windows may show a
+> **"Windows protected your PC"** screen. This happens because the installer isn't
+> code-signed (common for indie/free software). Click **"More info"** → **"Run anyway"**
+> to proceed. After install, launch from the Desktop or Start Menu shortcut — no terminal
+> window will appear.
+
+---
+
 ## Step 2 — Launch the app
 
 Open the folder you just unzipped/cloned and double-click the launcher for your operating system:

@@ -8,7 +8,7 @@
 #define AppName      "Job Search Dashboard"
 #define AppVersion   "1.3"
 #define AppPublisher "Job Search Tools"
-#define AppExeName   "launch.bat"
+#define AppExeName   "launch.vbs"
 #define PythonVer    "3.11.9"
 #define PythonExe    "python-3.11.9-amd64.exe"
 
@@ -54,9 +54,10 @@ Name: "startmenuicon"; Description: "Create a &Start Menu shortcut"; GroupDescri
 Source: "..\app.py";               DestDir: "{app}"; Flags: ignoreversion
 Source: "..\ats_db.py";            DestDir: "{app}"; Flags: ignoreversion
 Source: "..\launch.bat";           DestDir: "{app}"; Flags: ignoreversion
+Source: "..\launch.vbs";           DestDir: "{app}"; Flags: ignoreversion
 Source: "..\requirements.txt";     DestDir: "{app}"; Flags: ignoreversion
 Source: "..\views\*";              DestDir: "{app}\views"; Flags: ignoreversion recursesubdirs
-Source: "..\config\job_search_companies.yaml";         DestDir: "{app}\config"; Flags: ignoreversion
+Source: "..\config\job_search_companies.yaml";         DestDir: "{app}\config"; Flags: ignoreversion onlyifdoesntexist
 Source: "..\config\job_search_preferences.example.yaml"; DestDir: "{app}\config"; Flags: ignoreversion
 ; Preferences only copied if not already present (preserves user edits on reinstall)
 Source: "..\config\job_search_preferences.example.yaml"; DestDir: "{app}\config"; DestName: "job_search_preferences.yaml"; Flags: onlyifdoesntexist
@@ -79,9 +80,9 @@ Name: "{app}\results"; Flags: uninsneveruninstall
 Name: "{app}\config";  Flags: uninsneveruninstall
 
 [Icons]
-Name: "{group}\{#AppName}";            Filename: "{app}\launch.bat"; WorkingDir: "{app}"; IconFilename: "{app}\installer\assets\app.ico"; Tasks: startmenuicon
+Name: "{group}\{#AppName}";            Filename: "wscript.exe"; Parameters: """{app}\launch.vbs"""; WorkingDir: "{app}"; IconFilename: "{app}\installer\assets\app.ico"; Tasks: startmenuicon
 Name: "{group}\Uninstall {#AppName}";  Filename: "{uninstallexe}"; Tasks: startmenuicon
-Name: "{userdesktop}\{#AppName}";      Filename: "{app}\launch.bat"; WorkingDir: "{app}"; IconFilename: "{app}\installer\assets\app.ico"; Tasks: desktopicon
+Name: "{userdesktop}\{#AppName}";      Filename: "wscript.exe"; Parameters: """{app}\launch.vbs"""; WorkingDir: "{app}"; IconFilename: "{app}\installer\assets\app.ico"; Tasks: desktopicon
 
 [Run]
 ; ── Install Python if missing ─────────────────────────────────────────────────
@@ -101,8 +102,8 @@ Filename: "cmd.exe"; \
   Flags: waituntilterminated runhidden
 
 ; ── Offer to launch immediately after install ─────────────────────────────────
-Filename: "{app}\launch.bat"; \
-  Parameters: ""; \
+Filename: "wscript.exe"; \
+  Parameters: """{app}\launch.vbs"""; \
   WorkingDir: "{app}"; \
   Description: "Launch {#AppName} now"; \
   Flags: nowait postinstall skipifsilent unchecked

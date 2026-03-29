@@ -12,9 +12,10 @@ Built for anyone actively job searching. No subscriptions, no data sold to recru
 
 1. Go to the [Releases page](https://github.com/ericdipietro-collab/JobSearch/releases)
 2. Download **`JobSearchSetup.exe`** from the latest release
-3. Run it — if Python is not already installed, the installer handles it automatically (no admin rights needed)
-4. Launch from the Desktop or Start Menu shortcut that gets created
-5. Follow the setup checklist on the Home page
+3. Run it — Windows may show a **"Windows protected your PC"** SmartScreen warning because the installer isn't code-signed. Click **"More info"** → **"Run anyway"** to proceed. This is normal for indie software.
+4. If Python is not already installed, the installer handles it automatically (no admin rights needed)
+5. Launch from the Desktop or Start Menu shortcut that gets created
+6. Follow the setup checklist on the Home page
 
 ---
 
