@@ -29,13 +29,40 @@ except ImportError:
     _ATS_AVAILABLE = False
 
 try:
-    from views.tracker_page  import render_tracker
-    from views.report_page   import render_activity_report
-    from views.training_page import render_training
+    from views.tracker_page           import render_tracker
+    from views.report_page            import render_activity_report
+    from views.training_page          import render_training
+    from views.home_page              import render_home
+    from views.templates_page         import render_templates
+    from views.journal_page           import render_journal
+    from views.contacts_page          import render_contacts
+    from views.question_bank_page     import render_question_bank
+    from views.company_profiles_page  import render_company_profiles
     import ats_db
     _TRACKER_AVAILABLE = True
 except ImportError:
     _TRACKER_AVAILABLE = False
+
+def _safe_render(fn, *args, page_name: str = "", **kwargs):
+    """Wrap a render function so a crash shows a friendly error instead of breaking the app.
+    Streamlit's internal RerunException / StopException are always re-raised so that
+    st.rerun() and st.stop() still work correctly inside rendered pages.
+    """
+    try:
+        fn(*args, **kwargs)
+    except Exception as _render_exc:
+        # Re-raise Streamlit control-flow exceptions — swallowing them breaks reruns/stops.
+        _exc_name = type(_render_exc).__name__
+        if "Rerun" in _exc_name or "Stop" in _exc_name:
+            raise
+        import traceback
+        st.error(f"An error occurred rendering this page: **{_render_exc}**")
+        with st.expander("Show traceback"):
+            st.code(traceback.format_exc(), language="python")
+        st.caption(
+            "If this keeps happening, check the log at `results/job_search_v6.log` "
+            "or restart the app."
+        )
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 
@@ -386,7 +413,7 @@ def _apply_overrides(df: pd.DataFrame, overrides: dict) -> pd.DataFrame:
 
 st.sidebar.title("💼 Job Search")
 
-_nav_options = ["Job Matches", "My Applications", "Training", "Weekly Report", "Pipeline", "Analytics", "Run Job Search", "Search Settings", "Target Companies"]
+_nav_options = ["Home", "Job Matches", "My Applications", "Journal", "Contacts", "Company Profiles", "Training", "Question Bank", "Weekly Report", "Templates", "Pipeline", "Analytics", "Run Job Search", "Search Settings", "Target Companies"]
 page = st.sidebar.radio(
     "Navigate",
     _nav_options,
@@ -582,6 +609,34 @@ if page == "Run Job Search":
                     _tr = import_tracker_csv(get_db(), TRACKER_CSV)
                 st.success(f"{_tr['inserted']} inserted · {_tr['updated']} updated · {_tr['errors']} errors")
 
+    # ── Scraper run log ────────────────────────────────────────────────────────
+    _log_path = RESULTS_DIR / "job_search_v6.log"
+    if _log_path.exists():
+        st.divider()
+        with st.expander("📋 Scraper Run Log", expanded=False):
+            _log_lines = _log_path.read_text(encoding="utf-8", errors="replace").splitlines()
+            # Show last 300 lines — full log can be thousands of lines
+            _log_tail = "\n".join(_log_lines[-300:])
+            lc1, lc2 = st.columns([4, 1])
+            lc1.caption(f"Showing last {min(300, len(_log_lines))} of {len(_log_lines)} lines · `{_log_path}`")
+            if lc2.button("Clear Log", key="clear_scraper_log"):
+                _log_path.write_text("", encoding="utf-8")
+                st.success("Log cleared.")
+                st.rerun()
+            st.code(_log_tail, language=None)
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# PAGE: HOME
+# ════════════════════════════════════════════════════════════════════════════════
+
+elif page == "Home":
+    st.title("Job Search Dashboard")
+    if _TRACKER_AVAILABLE:
+        _home_conn = ats_db.get_connection()
+        _safe_render(render_home, _home_conn, page_name="Home")
+    else:
+        st.error("Tracker modules not available — check that ats_db.py is present.")
 
 # ════════════════════════════════════════════════════════════════════════════════
 # PAGE: RESULTS
@@ -591,7 +646,7 @@ elif page == "My Applications":
     st.title("My Applications")
     if _TRACKER_AVAILABLE:
         _tracker_conn = ats_db.get_connection()
-        render_tracker(_tracker_conn)
+        _safe_render(render_tracker, _tracker_conn, page_name="My Applications")
     else:
         st.error("Tracker modules not available — check that ats_db.py and views/tracker_page.py are present.")
 
@@ -599,7 +654,7 @@ elif page == "Training":
     st.title("Skills Training")
     if _TRACKER_AVAILABLE:
         _training_conn = ats_db.get_connection()
-        render_training(_training_conn)
+        _safe_render(render_training, _training_conn, page_name="Training")
     else:
         st.error("Tracker modules not available — check that ats_db.py is present.")
 
@@ -607,21 +662,61 @@ elif page == "Weekly Report":
     st.title("Weekly Activity Report")
     if _TRACKER_AVAILABLE:
         _report_conn = ats_db.get_connection()
-        render_activity_report(_report_conn)
+        _safe_render(render_activity_report, _report_conn, page_name="Weekly Report")
     else:
         st.error("Tracker modules not available — check that ats_db.py is present.")
+
+elif page == "Templates":
+    st.title("Email Templates")
+    if _TRACKER_AVAILABLE:
+        _tmpl_conn = ats_db.get_connection()
+        _safe_render(render_templates, _tmpl_conn, page_name="Templates")
+    else:
+        st.error("Tracker modules not available — check that ats_db.py is present.")
+
+elif page == "Journal":
+    st.title("Job Search Journal")
+    if _TRACKER_AVAILABLE:
+        _journal_conn = ats_db.get_connection()
+        _safe_render(render_journal, _journal_conn, page_name="Journal")
+    else:
+        st.error("Tracker modules not available.")
+
+elif page == "Contacts":
+    st.title("Networking Contacts")
+    if _TRACKER_AVAILABLE:
+        _contacts_conn = ats_db.get_connection()
+        _safe_render(render_contacts, _contacts_conn, page_name="Contacts")
+    else:
+        st.error("Tracker modules not available.")
+
+elif page == "Question Bank":
+    st.title("Interview Question Bank")
+    if _TRACKER_AVAILABLE:
+        _qb_conn = ats_db.get_connection()
+        _safe_render(render_question_bank, _qb_conn, page_name="Question Bank")
+    else:
+        st.error("Tracker modules not available.")
+
+elif page == "Company Profiles":
+    st.title("Company Research Profiles")
+    if _TRACKER_AVAILABLE:
+        _cp_conn = ats_db.get_connection()
+        _safe_render(render_company_profiles, _cp_conn, page_name="Company Profiles")
+    else:
+        st.error("Tracker modules not available.")
 
 elif page == "Pipeline":
     if _ATS_AVAILABLE:
         conn = get_db()
-        render_pipeline(conn)
+        _safe_render(render_pipeline, conn, page_name="Pipeline")
     else:
         st.error("ATS database modules not available. Check that db/ and services/ packages are installed.")
 
 elif page == "Analytics":
     if _ATS_AVAILABLE:
         conn = get_db()
-        render_analytics(conn)
+        _safe_render(render_analytics, conn, page_name="Analytics")
     else:
         st.error("ATS database modules not available.")
 
@@ -634,6 +729,14 @@ elif page == "Job Matches":
 
     df_all = _load_jobs()
     overrides = load_status_overrides()
+
+    # Load annotations from DB
+    _ann_dict: dict = {}
+    if _TRACKER_AVAILABLE:
+        _ann_conn = ats_db.get_connection()
+        ats_db.init_db(_ann_conn)
+        _ann_dict = {r["job_key"]: {"note": r["note"] or "", "tag": r["tag"] or ""}
+                     for r in ats_db.get_all_annotations(_ann_conn)}
 
     if df_all.empty:
         st.info(
@@ -700,9 +803,16 @@ elif page == "Job Matches":
             vis_cols = [c for c in DISPLAY_COLS if c in bucket_df.columns]
             display_df = bucket_df[vis_cols + ["user_status", "_key"]].copy()
             display_df["user_status"] = display_df["user_status"].fillna("")
+            # Merge in annotations
+            display_df["Note"] = display_df["_key"].map(
+                lambda k: _ann_dict.get(k, {}).get("note", "")
+            )
+            display_df["Tag"] = display_df["_key"].map(
+                lambda k: _ann_dict.get(k, {}).get("tag", "")
+            )
 
             st.caption(f"{len(bucket_df)} job(s)")
-            _scroll_hint(len(vis_cols) + 1)  # +1 for Move To column
+            _scroll_hint(len(vis_cols) + 3)  # +Move To +Note +Tag
 
             edited_df = st.data_editor(
                 display_df.drop(columns=["_key"]),
@@ -721,6 +831,13 @@ elif page == "Job Matches":
                     "title": st.column_config.TextColumn("Title", width="large"),
                     "decision_reason": st.column_config.TextColumn("Reason", width="large"),
                     "is_new": st.column_config.CheckboxColumn("New", width="small"),
+                    "Note": st.column_config.TextColumn("Note", width="medium"),
+                    "Tag": st.column_config.SelectboxColumn(
+                        "Tag",
+                        options=["", "skip", "watch", "research needed", "need referral", "applied elsewhere"],
+                        required=False,
+                        width="small",
+                    ),
                 },
                 disabled=[c for c in vis_cols if c != "user_status"],
                 hide_index=True,
@@ -728,10 +845,11 @@ elif page == "Job Matches":
                 key=f"editor_{bucket_name}",
             )
 
-            # Detect changed rows by comparing user_status against stored overrides
+            # Detect changed rows — status overrides + annotations
             for i, row in edited_df.iterrows():
-                new_status = str(row.get("user_status") or "").strip()
                 key = display_df.iloc[list(display_df.index).index(i)]["_key"]
+
+                new_status = str(row.get("user_status") or "").strip()
                 original_status = overrides.get(key, {}).get("user_status", "")
                 if new_status and new_status != original_status:
                     entry = dict(overrides.get(key, {}))
@@ -739,6 +857,17 @@ elif page == "Job Matches":
                     if new_status == "Applied" and not entry.get("applied_at"):
                         entry["applied_at"] = _now_iso()
                     all_changed_overrides[key] = entry
+
+                # Annotations
+                if _TRACKER_AVAILABLE:
+                    new_note = str(row.get("Note") or "").strip()
+                    new_tag  = str(row.get("Tag")  or "").strip()
+                    old_note = _ann_dict.get(key, {}).get("note", "")
+                    old_tag  = _ann_dict.get(key, {}).get("tag", "")
+                    if new_note != old_note or new_tag != old_tag:
+                        ats_db.upsert_annotation(_ann_conn, key,
+                                                  note=new_note or None,
+                                                  tag=new_tag or None)
 
     # Filtered Out tab — scraper rejects, read-only
     with tabs[6]:
@@ -923,12 +1052,14 @@ elif page == "Search Settings":
                     pass
         return result
 
-    tab_comp, tab_title, tab_jd, tab_scoring, tab_raw = st.tabs([
+    tab_comp, tab_title, tab_jd, tab_scoring, tab_raw, tab_app, tab_backup = st.tabs([
         "Compensation & Location",
         "Title Keywords",
         "JD Keywords",
         "Scoring",
         "Full YAML Editor",
+        "App Settings",
+        "Backup & Restore",
     ])
 
     # ── Compensation & Location ───────────────────────────────────────────────
@@ -1143,6 +1274,142 @@ elif page == "Search Settings":
                     st.success("Preferences saved.")
             except yaml.YAMLError as exc:
                 st.error(f"YAML parse error: {exc}")
+
+    with tab_app:
+        st.subheader("App Settings", anchor=False)
+        st.caption("These settings apply to the dashboard and activity tracking.")
+
+        if _TRACKER_AVAILABLE:
+            _settings_conn = ats_db.get_connection()
+            ats_db.init_db(_settings_conn)
+
+            current_goal = int(ats_db.get_setting(_settings_conn, "weekly_activity_goal", default="3"))
+            new_goal = st.number_input(
+                "Weekly activity goal",
+                min_value=1,
+                max_value=20,
+                value=current_goal,
+                step=1,
+                help=(
+                    "The number of job search activities you aim to complete each week. "
+                    "Shown as a progress bar on the Home page and in the Weekly Report. "
+                    "Set this to match your state's unemployment requirements, or your own personal target."
+                ),
+            )
+
+            st.markdown("**Theme**")
+            _STREAMLIT_CONFIG = BASE_DIR / ".streamlit" / "config.toml"
+
+            def _read_current_theme() -> str:
+                if not _STREAMLIT_CONFIG.exists():
+                    return "light"
+                content = _STREAMLIT_CONFIG.read_text(encoding="utf-8")
+                if 'base = "dark"' in content:
+                    return "dark"
+                return "light"
+
+            current_theme = _read_current_theme()
+            theme_choice  = st.radio(
+                "Color theme",
+                ["light", "dark"],
+                index=0 if current_theme == "light" else 1,
+                horizontal=True,
+            )
+
+            if st.button("Save App Settings", type="primary", key="save_app_settings"):
+                ats_db.set_setting(_settings_conn, "weekly_activity_goal", str(new_goal))
+                st.success(f"Weekly activity goal set to {new_goal}.")
+
+                # Write theme to .streamlit/config.toml
+                _STREAMLIT_CONFIG.parent.mkdir(exist_ok=True)
+                _STREAMLIT_CONFIG.write_text(
+                    f'[theme]\nbase = "{theme_choice}"\n', encoding="utf-8"
+                )
+                if theme_choice != current_theme:
+                    st.info("Theme change saved. Reload the page (F5) to apply the new theme.")
+        else:
+            st.error("Tracker modules not available.")
+
+    # ── Backup & Restore ──────────────────────────────────────────────────────
+    with tab_backup:
+        import zipfile
+        import tempfile
+
+        st.subheader("Backup", anchor=False)
+        st.caption(
+            "Creates a ZIP archive containing your database and config files. "
+            "Store it somewhere safe — it captures everything needed to restore your job search."
+        )
+
+        _BACKUP_FILES = [
+            RESULTS_DIR / "jobsearch.db",
+            RESULTS_DIR / "job_applications.db",
+            RESULTS_DIR / "job_search_store.json",
+            RESULTS_DIR / "job_status.json",
+            CONFIG_DIR  / "job_search_preferences.yaml",
+            CONFIG_DIR  / "job_search_companies.yaml",
+        ]
+
+        if st.button("📦 Create Backup", type="primary", key="create_backup"):
+            try:
+                _tmp = tempfile.NamedTemporaryFile(suffix=".zip", delete=False)
+                _tmp.close()
+                _zip_path = Path(_tmp.name)
+                with zipfile.ZipFile(_zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+                    for _fp in _BACKUP_FILES:
+                        if _fp.exists():
+                            zf.write(_fp, arcname=_fp.name)
+                _zip_bytes = _zip_path.read_bytes()
+                _zip_path.unlink(missing_ok=True)
+                from datetime import datetime as _dt
+                _fname = f"jobsearch_backup_{_dt.now().strftime('%Y%m%d_%H%M%S')}.zip"
+                st.download_button(
+                    label=f"⬇ Download {_fname}",
+                    data=_zip_bytes,
+                    file_name=_fname,
+                    mime="application/zip",
+                    key="download_backup_zip",
+                )
+                st.success(f"Backup ready — click the button above to download.")
+            except Exception as _bup_exc:
+                st.error(f"Backup failed: {_bup_exc}")
+
+        st.divider()
+        st.subheader("Restore", anchor=False)
+        st.caption(
+            "Upload a backup ZIP to restore your files. "
+            "Existing files with the same names will be **overwritten**."
+        )
+        _restore_file = st.file_uploader(
+            "Upload backup ZIP", type=["zip"], key="restore_zip_upload",
+            label_visibility="collapsed",
+        )
+        if _restore_file is not None:
+            _restore_names = []
+            try:
+                with zipfile.ZipFile(_restore_file) as _zf:
+                    _restore_names = _zf.namelist()
+                st.info(f"Archive contains: {', '.join(_restore_names)}")
+            except Exception as _re:
+                st.error(f"Could not read ZIP: {_re}")
+                _restore_names = []
+
+            if _restore_names and st.button("♻ Restore Files", type="primary", key="do_restore"):
+                try:
+                    _restore_file.seek(0)
+                    with zipfile.ZipFile(_restore_file) as _zf:
+                        for _name in _restore_names:
+                            _dest = None
+                            if (RESULTS_DIR / _name).parent == RESULTS_DIR or _name.endswith(".db") or _name.endswith(".json"):
+                                _dest = RESULTS_DIR / _name
+                            elif _name.endswith(".yaml"):
+                                _dest = CONFIG_DIR / _name
+                            if _dest:
+                                _dest.parent.mkdir(exist_ok=True)
+                                _dest.write_bytes(_zf.read(_name))
+                    st.success(f"Restored {len(_restore_names)} file(s). Reload the page (F5) to see updated data.")
+                except Exception as _re2:
+                    st.error(f"Restore failed: {_re2}")
 
 
 # ════════════════════════════════════════════════════════════════════════════════

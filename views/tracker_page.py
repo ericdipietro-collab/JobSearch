@@ -71,6 +71,118 @@ EVENT_ICONS = {
 }
 
 
+# ── LinkedIn CSV import ─────────────────────────────────────────────────────────
+
+_LI_COLUMN_MAP = {
+    # LinkedIn "Applied Jobs" export column names → our field names
+    "Company Name":   "company",
+    "Company":        "company",
+    "Job Title":      "role",
+    "Title":          "role",
+    "Position":       "role",
+    "Job URL":        "job_url",
+    "URL":            "job_url",
+    "Applied At":     "date_applied",
+    "Date Applied":   "date_applied",
+    "Application Date": "date_applied",
+    "Status":         "li_status",
+}
+
+
+def _render_linkedin_import(conn) -> None:
+    with st.expander("📥 Import from LinkedIn CSV", expanded=False):
+        st.caption(
+            "Export your Applied Jobs from LinkedIn: go to **My Jobs → Applied** → "
+            "click the export/download icon. Upload the CSV here."
+        )
+        uploaded = st.file_uploader("Choose LinkedIn CSV", type="csv",
+                                     key="li_import_uploader", label_visibility="collapsed")
+        if not uploaded:
+            return
+
+        try:
+            li_df = pd.read_csv(uploaded, dtype=str).fillna("")
+        except Exception as e:
+            st.error(f"Could not read CSV: {e}")
+            return
+
+        # Map column names
+        col_rename = {}
+        for orig, mapped in _LI_COLUMN_MAP.items():
+            if orig in li_df.columns:
+                col_rename[orig] = mapped
+        li_df = li_df.rename(columns=col_rename)
+
+        if "company" not in li_df.columns or "role" not in li_df.columns:
+            st.error(
+                "Could not find Company and Job Title columns. "
+                f"Found columns: {list(li_df.columns)}"
+            )
+            return
+
+        # Deduplicate against existing applications
+        existing = {
+            (r["company"].lower(), r["role"].lower())
+            for r in conn.execute("SELECT company, role FROM applications").fetchall()
+        }
+
+        new_rows = []
+        for _, row in li_df.iterrows():
+            co = str(row.get("company") or "").strip()
+            ro = str(row.get("role") or "").strip()
+            if co and ro and (co.lower(), ro.lower()) not in existing:
+                new_rows.append(row)
+
+        if not new_rows:
+            st.info("All entries in this CSV are already in your tracker.")
+            return
+
+        preview_df = pd.DataFrame(new_rows)[
+            [c for c in ["company", "role", "date_applied", "job_url", "li_status"]
+             if c in pd.DataFrame(new_rows).columns]
+        ]
+        st.markdown(f"**{len(new_rows)} new application(s) to import:**")
+        st.dataframe(preview_df, hide_index=True, use_container_width=True)
+
+        if st.button(f"Import {len(new_rows)} application(s)", type="primary",
+                     key="li_import_confirm"):
+            imported = 0
+            for row in new_rows:
+                co = str(row.get("company") or "").strip()
+                ro = str(row.get("role") or "").strip()
+                url = str(row.get("job_url") or "").strip() or None
+                raw_date = str(row.get("date_applied") or "").strip()
+
+                # Best-effort date parse — strip any time component first
+                app_date = None
+                from datetime import datetime as _dt
+                _d = raw_date.split("T")[0].strip() if "T" in raw_date else raw_date.strip()
+                for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%B %d, %Y", "%b %d, %Y"):
+                    try:
+                        app_date = _dt.strptime(_d, fmt).date().isoformat()
+                        break
+                    except Exception:
+                        continue
+
+                app_id = db.add_application(
+                    conn,
+                    company      = co,
+                    role         = ro,
+                    job_url      = url,
+                    source       = "linkedin_import",
+                    status       = "applied",
+                    entry_type   = "application",
+                    date_applied = app_date,
+                )
+                if app_date:
+                    db.add_event(conn, app_id, "applied", app_date,
+                                 title=f"Applied to {co} (LinkedIn import)")
+                imported += 1
+
+            st.success(f"Imported {imported} application(s) from LinkedIn.")
+            st.rerun()
+
+
 # ── Main entry point ───────────────────────────────────────────────────────────
 
 def render_tracker(conn) -> None:
@@ -86,10 +198,17 @@ def render_tracker(conn) -> None:
 
     _render_followup_banner(conn)
     _render_summary_bar(conn)
+    _render_linkedin_import(conn)
+
+    offer_apps = db.get_applications_with_offers(conn)
+    if len(offer_apps) >= 2:
+        with st.expander(f"⚖️ Compare {len(offer_apps)} Offers", expanded=False):
+            _render_offer_comparison(offer_apps)
+
     st.divider()
 
     # ── Filters + Add button ──────────────────────────────────────────────────
-    fc1, fc2, fc3, fc4 = st.columns([2, 2, 2, 2])
+    fc1, fc2, fc3, fc4, fc5 = st.columns([2, 2, 2, 1, 1])
     with fc1:
         status_opts = ["All statuses"] + db.STATUSES
         sel_status  = st.selectbox("Status", status_opts, key="tracker_status_filter",
@@ -107,6 +226,11 @@ def render_tracker(conn) -> None:
             st.session_state["tracker_show_add_form"] = toggled
             if toggled:
                 st.session_state["tracker_selected_id"] = None
+    with fc5:
+        bulk_mode = st.toggle("Bulk", key="tracker_bulk_mode",
+                               help="Switch to multi-select mode for bulk status changes or deletes")
+        if not bulk_mode:
+            st.session_state["tracker_bulk_selected_ids"] = []
 
     if st.session_state.get("tracker_show_add_form"):
         _render_add_form(conn)
@@ -131,7 +255,7 @@ def render_tracker(conn) -> None:
         st.info("No applications match the current filter.")
         return
 
-    # ── Sortable table ────────────────────────────────────────────────────────
+    # ── Build table DataFrame ─────────────────────────────────────────────────
     rows = []
     for a in apps:
         fu_date   = a["follow_up_date"] or ""
@@ -156,30 +280,71 @@ def render_tracker(conn) -> None:
         })
     df_tbl = pd.DataFrame(rows)
 
-    event = st.dataframe(
-        df_tbl.drop(columns=["_id"]),
-        on_select="rerun",
-        selection_mode="single-row",
-        hide_index=True,
-        use_container_width=True,
-        column_config={
-            "Type":      st.column_config.TextColumn("Type",      width="small"),
-            "Company":   st.column_config.TextColumn("Company",   width="medium"),
-            "Role":      st.column_config.TextColumn("Role",      width="large"),
-            "Status":    st.column_config.TextColumn("Status",    width="medium"),
-            "Applied":   st.column_config.TextColumn("Applied",   width="small"),
-            "Fit":       st.column_config.TextColumn("Fit",       width="small"),
-            "Follow-up": st.column_config.TextColumn("Follow-up", width="medium"),
-        },
+    # Export CSV (always visible, reflects current filter)
+    csv_bytes = df_tbl.drop(columns=["_id"]).to_csv(index=False).encode("utf-8")
+    st.download_button(
+        label="⬇️ Export CSV",
+        data=csv_bytes,
+        file_name=f"applications_{date.today().isoformat()}.csv",
+        mime="text/csv",
+        key="export_csv_btn",
     )
 
-    # Sync table row click → session state
-    if event.selection.rows:
-        sel_id = int(df_tbl.iloc[event.selection.rows[0]]["_id"])
-        st.session_state["tracker_selected_id"] = sel_id
-        st.session_state["tracker_show_add_form"] = False
+    _col_config = {
+        "Type":      st.column_config.TextColumn("Type",      width="small"),
+        "Company":   st.column_config.TextColumn("Company",   width="medium"),
+        "Role":      st.column_config.TextColumn("Role",      width="large"),
+        "Status":    st.column_config.TextColumn("Status",    width="medium"),
+        "Applied":   st.column_config.TextColumn("Applied",   width="small"),
+        "Fit":       st.column_config.TextColumn("Fit",       width="small"),
+        "Follow-up": st.column_config.TextColumn("Follow-up", width="medium"),
+    }
 
-    # ── Inline detail panel ───────────────────────────────────────────────────
+    bulk_mode = st.session_state.get("tracker_bulk_mode", False)
+
+    if bulk_mode:
+        # ── Multi-row bulk select ─────────────────────────────────────────────
+        event = st.dataframe(
+            df_tbl.drop(columns=["_id"]),
+            on_select="rerun",
+            selection_mode="multi-row",
+            hide_index=True,
+            use_container_width=True,
+            column_config=_col_config,
+        )
+        selected_ids = [int(df_tbl.iloc[i]["_id"]) for i in event.selection.rows]
+        st.session_state["tracker_bulk_selected_ids"] = selected_ids
+
+        if selected_ids:
+            st.caption(f"{len(selected_ids)} row{'s' if len(selected_ids) != 1 else ''} selected")
+            ba1, ba2, ba3, _ = st.columns([3, 2, 2, 3])
+            new_status = ba1.selectbox("Change status to", db.STATUSES,
+                                        key="bulk_status_pick", label_visibility="collapsed")
+            if ba2.button(f"Update {len(selected_ids)}", type="primary", key="bulk_update_btn"):
+                db.bulk_update_status(conn, selected_ids, new_status)
+                st.toast(f"Updated {len(selected_ids)} application(s) to '{new_status}'")
+                st.rerun()
+            if ba3.button("🗑 Delete selected", key="bulk_delete_btn"):
+                db.bulk_delete_applications(conn, selected_ids)
+                st.session_state["tracker_bulk_selected_ids"] = []
+                st.toast(f"Deleted {len(selected_ids)} application(s)", icon="🗑️")
+                st.rerun()
+    else:
+        # ── Single-row click → detail ─────────────────────────────────────────
+        event = st.dataframe(
+            df_tbl.drop(columns=["_id"]),
+            on_select="rerun",
+            selection_mode="single-row",
+            hide_index=True,
+            use_container_width=True,
+            column_config=_col_config,
+        )
+        if event.selection.rows:
+            sel_id = int(df_tbl.iloc[event.selection.rows[0]]["_id"])
+            st.session_state["tracker_selected_id"] = sel_id
+            st.session_state["tracker_show_add_form"] = False
+
+    # ── Inline detail panel (single-row mode only) ────────────────────────────
     sel_id = st.session_state.get("tracker_selected_id")
     if sel_id:
         st.divider()
@@ -192,6 +357,18 @@ def render_tracker(conn) -> None:
 
 
 # ── Follow-up banner ──────────────────────────────────────────────────────────
+
+def _contact_action_links(app) -> str:
+    """Return HTML links for email and LinkedIn from the first contact on an app row."""
+    parts = []
+    email = app["first_contact_email"] if "first_contact_email" in app.keys() else None
+    linkedin = app["first_contact_linkedin"] if "first_contact_linkedin" in app.keys() else None
+    if email:
+        parts.append(f'<a href="mailto:{email}">✉️ Email</a>')
+    if linkedin:
+        parts.append(f'<a href="{linkedin}" target="_blank">🔗 LinkedIn</a>')
+    return "  |  ".join(parts)
+
 
 def _render_followup_banner(conn) -> None:
     overdue  = db.follow_up_due(conn)
@@ -208,12 +385,14 @@ def _render_followup_banner(conn) -> None:
                 label = f"**{app['company']}** — {app['role']}"
                 note  = app["follow_up_notes"] or ""
                 contacts = app["contact_summary"] or ""
+                contact_links = _contact_action_links(app)
                 col1, col2 = st.columns([5, 1])
                 col1.markdown(
                     f"{label}  \n"
                     f"<span style='color:#f87171'>Due {app['follow_up_date']}"
                     f" ({days_ago} day{'s' if days_ago!=1 else ''} ago)</span>"
                     + (f"  \n👤 {contacts}" if contacts else "")
+                    + (f"  \n{contact_links}" if contact_links else "")
                     + (f"  \n_{note}_" if note else ""),
                     unsafe_allow_html=True,
                 )
@@ -227,11 +406,13 @@ def _render_followup_banner(conn) -> None:
             for app in upcoming:
                 days_left = _days_until(app["follow_up_date"]) or 0
                 contacts  = app["contact_summary"] or ""
+                contact_links = _contact_action_links(app)
                 st.markdown(
                     f"**{app['company']}** — {app['role']}  \n"
                     f"<span style='color:#fbbf24'>Due {app['follow_up_date']}"
                     f" (in {days_left} day{'s' if days_left!=1 else ''})</span>"
-                    + (f"  \n👤 {contacts}" if contacts else ""),
+                    + (f"  \n👤 {contacts}" if contacts else "")
+                    + (f"  \n{contact_links}" if contact_links else ""),
                     unsafe_allow_html=True,
                 )
 
@@ -300,8 +481,14 @@ def _render_add_form(conn) -> None:
             db.STATUSES.index("applied") if not is_opp and not is_job_fair
             else db.STATUSES.index("exploring")
         )
-        status   = r2c1.selectbox("Status", db.STATUSES, index=default_status_idx)
-        fit      = r2c2.selectbox("Fit", ["—", "1", "2", "3", "4", "5"])
+        status   = r2c1.selectbox(
+            "Status", db.STATUSES, index=default_status_idx,
+            help="Pipeline stage: exploring → applied → screening → interviewing → offer → accepted/rejected/withdrawn",
+        )
+        fit      = r2c2.selectbox(
+            "Fit", ["—", "1", "2", "3", "4", "5"],
+            help="Your personal excitement/fit score: 1 = low interest, 5 = dream role",
+        )
         date_app = r2c3.date_input(
             "Event Date" if is_job_fair else ("Date of first contact" if is_opp else "Date Applied"),
             value=date.today(),
@@ -313,8 +500,10 @@ def _render_add_form(conn) -> None:
             job_url = ""
 
         sal_low, sal_high = st.columns(2)
-        s_low  = sal_low.number_input("Salary Low ($)", value=0, step=5000)
-        s_high = sal_high.number_input("Salary High ($)", value=0, step=5000)
+        s_low  = sal_low.number_input("Salary Low ($)", value=0, step=5000,
+                                       help="Bottom of the posted salary range (0 = not posted)")
+        s_high = sal_high.number_input("Salary High ($)", value=0, step=5000,
+                                        help="Top of the posted salary range (0 = not posted)")
         referral   = st.text_input(
             "Referred by" if (is_opp or is_job_fair) else "Referral",
             placeholder="e.g. John Smith (former manager)" if is_opp else
@@ -339,8 +528,12 @@ def _render_add_form(conn) -> None:
             st.markdown("**Documents**")
             resume_version     = st.text_input("Resume version", placeholder="e.g. PM resume v3 – fintech tailored")
             cover_letter_notes = st.text_input("Cover letter notes", placeholder="e.g. Tailored intro, emphasized API PM exp")
+            da1, da2 = st.columns(2)
+            resume_url       = da1.text_input("Resume URL", placeholder="e.g. link to Google Doc")
+            cover_letter_url = da2.text_input("Cover Letter URL", placeholder="e.g. link to Google Doc")
         else:
             resume_version = cover_letter_notes = ""
+            resume_url = cover_letter_url = ""
 
         if st.form_submit_button("Save", type="primary"):
             if not company.strip() or not role.strip():
@@ -366,6 +559,8 @@ def _render_add_form(conn) -> None:
                     follow_up_notes    = follow_up_notes.strip() or None,
                     resume_version     = resume_version.strip() or None,
                     cover_letter_notes = cover_letter_notes.strip() or None,
+                    resume_url         = resume_url.strip() or None,
+                    cover_letter_url   = cover_letter_url.strip() or None,
                 )
                 # First event based on type
                 if is_job_fair:
@@ -402,10 +597,24 @@ def _render_detail(conn, app_id: int) -> None:
     hc2.caption(f"Applied {app['date_applied'] or '—'}")
     hc3.caption(f"Fit {_stars(app['fit_stars'])}")
     hc4.caption(f"💰 {app['salary_range'] or '—'}")
+    # Quick links row
+    link_parts = []
     if app["job_url"]:
-        st.markdown(f"[Job Posting ↗]({app['job_url']})")
+        link_parts.append(f"[Job Posting ↗]({app['job_url']})")
+    if app["resume_url"]:
+        link_parts.append(f"[Resume ↗]({app['resume_url']})")
+    if app["cover_letter_url"]:
+        link_parts.append(f"[Cover Letter ↗]({app['cover_letter_url']})")
+    if link_parts:
+        st.markdown("  |  ".join(link_parts))
 
-    tab_tl, tab_iv, tab_co, tab_ed = st.tabs(["Timeline", "Interviews", "Contacts", "Edit"])
+    if app["job_description"]:
+        with st.expander("📄 Full Job Description"):
+            st.markdown(app["job_description"])
+
+    tab_tl, tab_iv, tab_co, tab_pr, tab_ng, tab_ed = st.tabs(
+        ["Timeline", "Interviews", "Contacts", "Prep", "Negotiate", "Edit"]
+    )
 
     with tab_tl:
         _render_timeline(conn, app)
@@ -416,8 +625,17 @@ def _render_detail(conn, app_id: int) -> None:
     with tab_co:
         _render_contacts(conn, app)
 
+    with tab_pr:
+        _render_prep_tab(conn, app)
+
+    with tab_ng:
+        _render_negotiate_tab(conn, app)
+
     with tab_ed:
         _render_edit_form(conn, app)
+
+    # ── Company profile (below tabs) ──────────────────────────────────────────
+    _render_inline_company_profile(conn, app["company"])
 
 
 # ── Timeline tab ───────────────────────────────────────────────────────────────
@@ -639,6 +857,131 @@ def _render_contacts(conn, app) -> None:
         st.markdown('<hr style="margin:4px 0;border-color:#374151">', unsafe_allow_html=True)
 
 
+# ── Prep tab ───────────────────────────────────────────────────────────────────
+
+def _render_prep_tab(conn, app) -> None:
+    st.caption("Use this tab to prep for interviews. Notes are saved per application.")
+    with st.form(f"prep_form_{app['id']}"):
+        prep_company = st.text_area(
+            "Company Research",
+            value=app["prep_company"] or "",
+            height=100,
+            placeholder="Products, business model, recent news, competitors, culture signals…",
+        )
+        prep_why = st.text_area(
+            "Why This Role / Why This Company",
+            value=app["prep_why"] or "",
+            height=80,
+            placeholder="What excites you about this role specifically?",
+        )
+        prep_tyabt = st.text_area(
+            "Tell Me About Yourself (TMAY)",
+            value=app["prep_tyabt"] or "",
+            height=100,
+            placeholder="Your tailored 90-second pitch for this role…",
+        )
+        prep_questions = st.text_area(
+            "Questions to Ask",
+            value=app["prep_questions"] or "",
+            height=80,
+            placeholder="What does success look like in 90 days?\nWhat's the biggest challenge the team is facing?",
+        )
+        prep_notes = st.text_area(
+            "Other Prep Notes",
+            value=app["prep_notes"] or "",
+            height=80,
+            placeholder="STAR stories, key talking points, things to avoid…",
+        )
+        if st.form_submit_button("💾 Save Prep Notes", type="primary"):
+            db.update_application(
+                conn, app["id"],
+                prep_company   = prep_company.strip() or None,
+                prep_why       = prep_why.strip() or None,
+                prep_tyabt     = prep_tyabt.strip() or None,
+                prep_questions = prep_questions.strip() or None,
+                prep_notes     = prep_notes.strip() or None,
+            )
+            st.success("Prep notes saved.")
+            st.rerun()
+
+
+# ── Negotiate tab ──────────────────────────────────────────────────────────────
+
+def _render_negotiate_tab(conn, app) -> None:
+    offer_base = app["offer_base"] or 0
+    st.caption("Use this worksheet to plan your counter-offer before negotiating.")
+
+    with st.form(f"nego_form_{app['id']}"):
+        nc1, nc2 = st.columns(2)
+        target_base   = nc1.number_input("Your Target Base ($)", step=5000,
+                                          value=int(app["nego_target_base"] or 0),
+                                          help="The salary you'll ask for")
+        walkaway_base = nc2.number_input("Walk-Away Base ($)", step=5000,
+                                          value=int(app["nego_walkaway_base"] or 0),
+                                          help="The lowest you'll accept")
+        nm1, nm2 = st.columns(2)
+        market_low  = nm1.number_input("Market Low ($)",  step=5000,
+                                        value=int(app["nego_market_low"] or 0),
+                                        help="From Levels.fyi, Glassdoor, LinkedIn Salary, etc.")
+        market_high = nm2.number_input("Market High ($)", step=5000,
+                                        value=int(app["nego_market_high"] or 0))
+        nego_notes  = st.text_area("Talking Points / Notes",
+                                    value=app["nego_notes"] or "", height=100,
+                                    placeholder="BATNA, competing offers, reasons you deserve more…")
+        if st.form_submit_button("💾 Save Worksheet", type="primary"):
+            db.update_application(
+                conn, app["id"],
+                nego_target_base   = target_base or None,
+                nego_walkaway_base = walkaway_base or None,
+                nego_market_low    = market_low or None,
+                nego_market_high   = market_high or None,
+                nego_notes         = nego_notes.strip() or None,
+            )
+            st.success("Saved.")
+            st.rerun()
+
+    # ── Live calculation ──────────────────────────────────────────────────────
+    if offer_base or target_base:
+        st.divider()
+        st.markdown("**Quick math**")
+        rows = []
+        if offer_base:
+            rows.append(("Current offer", f"${offer_base:,}"))
+        if target_base and offer_base:
+            diff = target_base - offer_base
+            pct  = diff / offer_base * 100
+            rows.append(("Counter-offer ask", f"${target_base:,}  (+${diff:,} / +{pct:.1f}%)"))
+        if walkaway_base and offer_base:
+            diff = walkaway_base - offer_base
+            pct  = diff / offer_base * 100
+            sign = "+" if diff >= 0 else ""
+            rows.append(("Walk-away floor", f"${walkaway_base:,}  ({sign}${diff:,} / {sign}{pct:.1f}%)"))
+        if market_low and market_high:
+            rows.append(("Market range", f"${market_low:,} – ${market_high:,}"))
+        if offer_base and market_low and market_high:
+            mid = (market_low + market_high) // 2
+            vs_mid = offer_base - mid
+            sign = "+" if vs_mid >= 0 else ""
+            rows.append(("Offer vs market midpoint", f"{sign}${vs_mid:,}"))
+        for label, val in rows:
+            c1, c2 = st.columns([2, 3])
+            c1.caption(label)
+            c2.markdown(val)
+
+
+# ── Inline company profile ──────────────────────────────────────────────────────
+
+def _render_inline_company_profile(conn, company_name: str) -> None:
+    """Show a collapsible company profile panel below the application detail tabs."""
+    profile = db.get_company_profile(conn, company_name)
+    label   = f"🏢 {company_name} — Company Profile" + (" ✏️" if profile else " (no profile yet)")
+    with st.expander(label, expanded=False):
+        from views.company_profiles_page import _render_profile_form
+        _render_profile_form(conn, profile=profile if profile else None)
+        if not profile:
+            st.caption(f"This will create a new profile for **{company_name}** shared across all applications to this company.")
+
+
 # ── Edit form ──────────────────────────────────────────────────────────────────
 
 def _render_edit_form(conn, app) -> None:
@@ -698,6 +1041,48 @@ def _render_edit_form(conn, app) -> None:
         cover_letter_notes = st.text_input("Cover letter notes",
                                             value=app["cover_letter_notes"] or "",
                                             placeholder="e.g. Tailored intro, emphasized API PM exp")
+        du1, du2 = st.columns(2)
+        resume_url       = du1.text_input("Resume URL",
+                                          value=app["resume_url"] or "",
+                                          placeholder="e.g. link to Google Doc or Dropbox")
+        cover_letter_url = du2.text_input("Cover Letter URL",
+                                          value=app["cover_letter_url"] or "",
+                                          placeholder="e.g. link to Google Doc")
+        job_description  = st.text_area("Full Job Description",
+                                         value=app["job_description"] or "",
+                                         height=120,
+                                         placeholder="Paste the full JD here for reference and future search")
+
+        st.markdown("**Offer Details**")
+        of1, of2, of3 = st.columns(3)
+        offer_base      = of1.number_input("Base Salary ($)", value=int(app["offer_base"] or 0), step=5000)
+        offer_bonus_pct = of2.number_input("Bonus (%)", value=int(app["offer_bonus_pct"] or 0), step=5)
+        offer_signing   = of3.number_input("Signing Bonus ($)", value=int(app["offer_signing"] or 0), step=1000)
+        of4, of5, of6 = st.columns(3)
+        offer_pto_days    = of4.number_input("PTO Days", value=int(app["offer_pto_days"] or 0), step=1)
+        offer_k401_match  = of5.text_input("401k Match", value=app["offer_k401_match"] or "", placeholder="e.g. 4% match")
+        offer_equity      = of6.text_input("Equity", value=app["offer_equity"] or "", placeholder="e.g. $50k RSU over 4yr")
+        remote_opts = ["", "Remote", "Hybrid", "Onsite"]
+        remote_idx  = remote_opts.index(app["offer_remote_policy"]) if app["offer_remote_policy"] in remote_opts else 0
+        offer_remote_policy = st.selectbox("Remote Policy", remote_opts, index=remote_idx)
+
+        _offer_start_date  = None
+        _offer_expiry_date = None
+        if app["offer_start_date"]:
+            try:
+                _offer_start_date = date.fromisoformat(app["offer_start_date"][:10])
+            except Exception:
+                pass
+        if app["offer_expiry_date"]:
+            try:
+                _offer_expiry_date = date.fromisoformat(app["offer_expiry_date"][:10])
+            except Exception:
+                pass
+        od1, od2 = st.columns(2)
+        offer_start_date  = od1.date_input("Start Date",  value=_offer_start_date)
+        offer_expiry_date = od2.date_input("Offer Expires", value=_offer_expiry_date)
+        offer_notes = st.text_area("Offer Notes", value=app["offer_notes"] or "", height=60,
+                                   placeholder="Benefits details, equity vesting schedule, negotiation notes…")
 
         sc1, sc2 = st.columns([2, 1])
         saved   = sc1.form_submit_button("💾 Save", type="primary")
@@ -722,6 +1107,19 @@ def _render_edit_form(conn, app) -> None:
             follow_up_notes    = follow_up_notes.strip() or None,
             resume_version     = resume_version.strip() or None,
             cover_letter_notes = cover_letter_notes.strip() or None,
+            resume_url         = resume_url.strip() or None,
+            cover_letter_url   = cover_letter_url.strip() or None,
+            job_description    = job_description.strip() or None,
+            offer_base         = offer_base or None,
+            offer_bonus_pct    = offer_bonus_pct or None,
+            offer_signing      = offer_signing or None,
+            offer_pto_days     = offer_pto_days or None,
+            offer_k401_match   = offer_k401_match.strip() or None,
+            offer_equity       = offer_equity.strip() or None,
+            offer_remote_policy = offer_remote_policy or None,
+            offer_start_date   = offer_start_date.isoformat() if offer_start_date else None,
+            offer_expiry_date  = offer_expiry_date.isoformat() if offer_expiry_date else None,
+            offer_notes        = offer_notes.strip() or None,
         )
         st.success("Saved.")
         st.rerun()
@@ -730,3 +1128,35 @@ def _render_edit_form(conn, app) -> None:
         db.delete_application(conn, app["id"])
         st.session_state["tracker_selected_id"] = None
         st.rerun()
+
+
+# ── Offer comparison ────────────────────────────────────────────────────────────
+
+def _render_offer_comparison(offer_apps) -> None:
+    """Side-by-side comparison of offers."""
+    if len(offer_apps) < 2:
+        return
+
+    rows = []
+    for a in offer_apps:
+        base = a["offer_base"] or a["salary_low"] or 0
+        bonus = a["offer_bonus_pct"] or 0
+        total = int(base * (1 + bonus / 100)) if base else 0
+        rows.append({
+            "Company":        a["company"],
+            "Role":           a["role"],
+            "Base ($)":       f"${base:,}" if base else "—",
+            "Bonus":          f"{bonus}%" if bonus else "—",
+            "Total ($)":      f"${total:,}" if total else "—",
+            "Signing ($)":    f"${a['offer_signing']:,}" if a["offer_signing"] else "—",
+            "Equity":         a["offer_equity"] or "—",
+            "PTO Days":       str(a["offer_pto_days"]) if a["offer_pto_days"] else "—",
+            "401k":           a["offer_k401_match"] or "—",
+            "Remote Policy":  a["offer_remote_policy"] or "—",
+            "Start Date":     a["offer_start_date"] or "—",
+            "Expires":        a["offer_expiry_date"] or "—",
+            "Notes":          a["offer_notes"] or "",
+        })
+
+    df = pd.DataFrame(rows).set_index("Company")
+    st.dataframe(df.T, use_container_width=True)
