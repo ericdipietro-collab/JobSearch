@@ -1,0 +1,217 @@
+"""
+Weekly Activity Report — generates a job-search activity log for any date range.
+Designed to make filling out unemployment benefit forms straightforward.
+"""
+from __future__ import annotations
+
+from datetime import date, timedelta
+from typing import List
+
+import pandas as pd
+import streamlit as st
+
+import ats_db as db
+
+# ── Human-friendly method labels ───────────────────────────────────────────────
+
+_METHOD = {
+    "applied":             "Applied online",
+    "conversation":        "Phone / video call",
+    "networking_call":     "Phone / video call",
+    "recruiter_outreach":  "Phone / email",
+    "screening_scheduled": "Phone / video call",
+    "screening_complete":  "Phone / video call",
+    "interview_scheduled": "In-person / video interview",
+    "interview_complete":  "In-person / video interview",
+    "follow_up_sent":      "Email follow-up",
+}
+
+_RESULT = {
+    "applied":             "Submitted application",
+    "conversation":        "Networking conversation",
+    "networking_call":     "Networking call",
+    "recruiter_outreach":  "Recruiter reached out",
+    "screening_scheduled": "Phone screen scheduled",
+    "screening_complete":  "Phone screen completed",
+    "interview_scheduled": "Interview scheduled",
+    "interview_complete":  "Interview completed",
+    "follow_up_sent":      "Follow-up sent",
+}
+
+
+def _week_bounds(offset_weeks: int = 0):
+    """Return (monday, sunday) for a given week offset (0 = current week)."""
+    today = date.today()
+    monday = today - timedelta(days=today.weekday()) - timedelta(weeks=offset_weeks)
+    sunday = monday + timedelta(days=6)
+    return monday, sunday
+
+
+def render_activity_report(conn) -> None:
+    db.init_db(conn)
+
+    st.markdown(
+        "Use this page to review your job search activity and copy it into your "
+        "unemployment weekly certification form."
+    )
+
+    # ── Date range controls ───────────────────────────────────────────────────
+    st.subheader("Date Range", anchor=False)
+    rc1, rc2, rc3 = st.columns([2, 2, 3])
+
+    with rc3:
+        preset = st.selectbox(
+            "Quick select",
+            ["This week", "Last week", "Last 2 weeks", "Last 30 days", "Custom"],
+            key="report_preset",
+            label_visibility="collapsed",
+        )
+
+    if preset == "This week":
+        default_start, default_end = _week_bounds(0)
+    elif preset == "Last week":
+        default_start, default_end = _week_bounds(1)
+    elif preset == "Last 2 weeks":
+        default_start, _ = _week_bounds(1)
+        _, default_end   = _week_bounds(0)
+    elif preset == "Last 30 days":
+        default_end   = date.today()
+        default_start = default_end - timedelta(days=30)
+    else:
+        default_start, default_end = _week_bounds(1)  # last week as sane default
+
+    with rc1:
+        start_d = st.date_input("From", value=default_start, key="report_start")
+    with rc2:
+        end_d   = st.date_input("To",   value=default_end,   key="report_end")
+
+    if start_d > end_d:
+        st.error("Start date must be before end date.")
+        return
+
+    start_str = start_d.isoformat()
+    end_str   = end_d.isoformat()
+
+    # ── Fetch data ────────────────────────────────────────────────────────────
+    rows = db.get_activity_report(conn, start_str, end_str)
+
+    if not rows:
+        st.info(f"No reportable activity between {start_d.strftime('%b %d')} and {end_d.strftime('%b %d, %Y')}.")
+        return
+
+    # ── Summary metrics ───────────────────────────────────────────────────────
+    st.divider()
+    from collections import Counter
+    type_counts = Counter(r["event_type"] for r in rows)
+
+    apps_submitted   = type_counts.get("applied", 0)
+    networking       = type_counts.get("conversation", 0) + type_counts.get("networking_call", 0)
+    recruiter_calls  = type_counts.get("recruiter_outreach", 0)
+    screens          = type_counts.get("screening_complete", 0) + type_counts.get("screening_scheduled", 0)
+    interviews       = type_counts.get("interview_complete", 0) + type_counts.get("interview_scheduled", 0)
+    follow_ups       = type_counts.get("follow_up_sent", 0)
+
+    m1, m2, m3, m4, m5, m6 = st.columns(6)
+    m1.metric("Applications",  apps_submitted)
+    m2.metric("Networking",    networking)
+    m3.metric("Recruiter",     recruiter_calls)
+    m4.metric("Screenings",    screens)
+    m5.metric("Interviews",    interviews)
+    m6.metric("Follow-ups",    follow_ups)
+
+    # ── Activity table ────────────────────────────────────────────────────────
+    st.subheader("Activity Log", anchor=False)
+
+    table_rows = []
+    for r in rows:
+        d_str = r["event_date"][:10] if r["event_date"] else ""
+        try:
+            d_fmt = date.fromisoformat(d_str).strftime("%b %d")
+        except Exception:
+            d_fmt = d_str
+        label  = db.EVENT_LABELS.get(r["event_type"], r["event_type"].replace("_", " ").title())
+        detail = r["event_title"] or ""
+        if r["event_notes"]:
+            detail = (detail + " — " + r["event_notes"]).strip(" —")
+        contacts = r["contact_names"] or ""
+        table_rows.append({
+            "Date":     d_fmt,
+            "Company":  r["company"],
+            "Role":     r["role"] or "—",
+            "Type":     "🤝 Opportunity" if r["entry_type"] == "opportunity" else "📋 Application",
+            "Activity": label,
+            "Contact":  contacts,
+            "Detail":   detail,
+        })
+
+    df_act = pd.DataFrame(table_rows)
+    st.dataframe(
+        df_act,
+        hide_index=True,
+        use_container_width=True,
+        column_config={
+            "Date":     st.column_config.TextColumn("Date",     width="small"),
+            "Company":  st.column_config.TextColumn("Company",  width="medium"),
+            "Role":     st.column_config.TextColumn("Role",     width="large"),
+            "Type":     st.column_config.TextColumn("Type",     width="medium"),
+            "Activity": st.column_config.TextColumn("Activity", width="medium"),
+            "Contact":  st.column_config.TextColumn("Contact",  width="medium"),
+            "Detail":   st.column_config.TextColumn("Detail",   width="large"),
+        },
+    )
+
+    # ── Copyable unemployment report ──────────────────────────────────────────
+    st.subheader("Unemployment Certification Report", anchor=False)
+    st.caption(
+        "Copy the text below and paste it into your weekly certification form "
+        "(Colorado MyUI+ or similar). Each line is one activity entry."
+    )
+
+    lines: List[str] = []
+    lines.append(
+        f"Job Search Activity — {start_d.strftime('%B %d')} to {end_d.strftime('%B %d, %Y')}"
+    )
+    lines.append("=" * 60)
+    lines.append(
+        f"Applications submitted: {apps_submitted}  |  "
+        f"Networking calls: {networking}  |  "
+        f"Interviews/screens: {screens + interviews}  |  "
+        f"Follow-ups: {follow_ups}"
+    )
+    lines.append("")
+
+    # Group by date
+    by_date: dict = {}
+    for r in rows:
+        d_key = r["event_date"][:10] if r["event_date"] else "unknown"
+        by_date.setdefault(d_key, []).append(r)
+
+    for d_key in sorted(by_date.keys(), reverse=True):
+        try:
+            d_label = date.fromisoformat(d_key).strftime("%A, %B %d")
+        except Exception:
+            d_label = d_key
+        lines.append(d_label)
+        lines.append("-" * 40)
+        for r in by_date[d_key]:
+            method  = _METHOD.get(r["event_type"], "Online / email")
+            result  = _RESULT.get(r["event_type"], db.EVENT_LABELS.get(r["event_type"], r["event_type"]))
+            contact = f" (contact: {r['contact_names']})" if r["contact_names"] else ""
+            note    = f" — {r['event_title']}" if r["event_title"] else ""
+            lines.append(
+                f"  Employer: {r['company']}"
+                + (f"  |  Position: {r['role']}" if r["role"] else "")
+            )
+            lines.append(f"  Method: {method}  |  Result: {result}{contact}{note}")
+            lines.append("")
+        lines.append("")
+
+    report_text = "\n".join(lines)
+    st.text_area(
+        "Report text",
+        value=report_text,
+        height=400,
+        label_visibility="collapsed",
+        key="report_text_area",
+    )
+    st.caption("Select all (Ctrl+A) and copy, or use the icon in the top-right corner of the text box.")
