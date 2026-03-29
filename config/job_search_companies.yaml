@@ -2068,7 +2068,7 @@ companies:
   - financial data
   - integration
   - platform
-  notes: Advisor tech ecosystem — knows every platform Eric integrates with
+  notes: Advisor tech ecosystem — major platform integrations across wealth management
   sub_industry: WealthTech
   careers_url: https://envestnet.wd5.myworkdayjobs.com/en-US/Envestnet_Careers
   active: true
@@ -4115,7 +4115,7 @@ companies:
   adapter_key: pieinsurance
   domain: pieinsurance.com
   industry: insuretech | commercial insurance | data pipelines
-  notes: US commercial insurance tech; headquartered in his home state of Colorado.
+  notes: US commercial insurance tech; Colorado-headquartered with strong engineering culture.
   sub_industry: InsureTech
   careers_url: https://boards.greenhouse.io/pieinsurance
   active: true

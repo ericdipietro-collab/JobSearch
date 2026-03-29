@@ -81,7 +81,7 @@ def score_job(title: str, description: str, preferences: Dict) -> Dict[str, Any]
     
     # Gating Check: 5% Salary Buffer
     # (Simplified logic for brevity; assumes preferences loaded)
-    salary_floor = preferences.get('min_salary_usd', 170000) * 0.95 
+    salary_floor = preferences.get('min_salary_usd', 100000) * 0.95
     
     # Title Fast-Track (Base 50)
     fast_track_triggered = False

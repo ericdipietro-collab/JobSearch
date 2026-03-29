@@ -1,7 +1,7 @@
 """
 job_search_v6.py
 
-Automated job search pipeline for Eric DiPietro.
+Automated job search pipeline.
 
 v6 goals:
 - domain gating based directly on APPLY / SKIP rules
@@ -170,18 +170,18 @@ BLOCKED_URL_PATH_MARKERS = [
 
 LOCATION_POLICY = "remote_only"   # remote_only | remote_or_hybrid | in_office | any
 ENFORCE_MIN_SALARY = True
-MIN_SALARY_USD = 170000
+MIN_SALARY_USD = 100000
 ALLOW_MISSING_SALARY = True
 SALARY_FLOOR_BASIS = "midpoint"      # low_end | midpoint | high_end
 ENFORCE_JOB_AGE = True
 US_ONLY = True
 REQUIRE_REMOTE = LOCATION_POLICY == "remote_only"
 
-PRIMARY_SEARCH_ZIP = "80504"
+PRIMARY_SEARCH_ZIP = "00000"
 LOCAL_HYBRID_RADIUS_MILES = 30
 ALLOW_LOCAL_HYBRID_HIGH_COMP = True
-LOCAL_HYBRID_MIN_SALARY_USD = 170000
-PREFERRED_REMOTE_MIN_SALARY_USD = 170000
+LOCAL_HYBRID_MIN_SALARY_USD = 100000
+PREFERRED_REMOTE_MIN_SALARY_USD = 100000
 MISSING_SALARY_SCORE_PENALTY = 6
 SALARY_ABOVE_TARGET_BONUS = 6
 LOCAL_HYBRID_SCORE_BONUS = 4
@@ -492,7 +492,7 @@ DEFAULT_COMPANY_REGISTRY: List[Dict[str, Any]] = [
         "careers_url": "https://careers.envestnet.com/search/jobs",
         "domain": "envestnet.com",
         "industry": ["wealth management", "advisor technology", "financial data", "integration", "platform"],
-        "notes": "Advisor tech ecosystem — knows every platform Eric integrates with",
+        "notes": "Advisor tech ecosystem — major platform integrations across wealth management",
     },
     {
         "name": "Affirm", "tier": 1, "priority": "high",
@@ -1319,11 +1319,10 @@ REMOTE_MARKER_PATTERNS = [
 ]
 HYBRID_MARKERS = ["hybrid", "in-office", "in office", "onsite", "on-site"]
 
-# Editable local-commute markers for hybrid roles near 80504 (Longmont / Firestone area).
+# Local-commute markers — overridden by config/job_search_preferences.yaml at runtime.
+# Replace these with city/town names within commuting distance of your location.
 LOCAL_COMMUTE_MARKERS = [
-    "80504", "firestone", "frederick", "dacono", "mead", "longmont", "erie",
-    "lafayette", "louisville", "boulder", "broomfield", "westminster",
-    "thornton", "northglenn", "johnstown", "loveland",
+    "YOUR_CITY", "NEARBY_CITY_1", "NEARBY_CITY_2",
 ]
 
 # ============================================================
@@ -6804,7 +6803,7 @@ def main() -> None:
     history = load_history()
 
     print("=" * 68)
-    print("Job Search v6 — Eric DiPietro")
+    print("Job Search v6")
     print(f"Run time: {iso_now()}")
     print(f"Preferences: {PREFERENCES_PATH if PREFERENCES_PATH else 'in-script defaults'}")
     print(f"Company registry: {COMPANY_REGISTRY_PATH if COMPANY_REGISTRY_PATH else 'in-script defaults'}")
