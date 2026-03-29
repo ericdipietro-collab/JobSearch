@@ -166,16 +166,18 @@ Output ONLY the YAML file with no additional explanation. Ensure the output is v
 
 ---
 
-## Prompt 2 — Build your company target list
+## Prompt 2 — Add companies for your field
 
-Use this to generate `config/job_search_companies.yaml`. Companies are the source of your job listings — the more you have, the more results you'll see.
+The repo already includes ~485 companies weighted toward **FinTech, FinServ, wealth management, payments, data platforms, and enterprise SaaS**. If that matches your background, you can run the scraper without touching the company list.
+
+Use this prompt to **add companies for a different field**, or to supplement the existing list with companies specific to your city, niche, or industry. Paste the output into `config/job_search_companies.yaml` (append to the existing list) or add companies one at a time from the **Target Companies** dashboard page.
 
 **How to use:**
 1. Copy the prompt below
 2. Fill in your role and industry
 3. Optionally add companies you already know you want to target
 4. Paste into Claude, ChatGPT, or Gemini
-5. Add the output to `config/job_search_companies.yaml`
+5. Add the output to `config/job_search_companies.yaml` (you can append it to what's already there)
 
 ---
 

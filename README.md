@@ -154,7 +154,11 @@ Key sections:
 
 ### `job_search_companies.yaml` — where to look
 
-A list of companies and their careers page details. Each entry:
+**A starter list of ~485 companies is already included.** It's weighted toward FinTech, FinServ, and adjacent tech — wealth management, payments, data platforms, insurtech, banking software, and enterprise SaaS. If that overlaps with your background, you may be able to run the scraper on day one with no changes.
+
+Customize it from the **Target Companies** page in the dashboard — add, edit, or remove companies without touching the YAML file directly. The ATS Healer can automatically fix any broken career page URLs.
+
+Each entry in the file looks like:
 
 ```yaml
 - name: Acme Corp
@@ -166,7 +170,7 @@ A list of companies and their careers page details. Each entry:
   status: active
 ```
 
-**The fastest way to build your company list:** use the AI prompts in [docs/AI_SETUP_PROMPTS.md](docs/AI_SETUP_PROMPTS.md).
+**Need companies for a different field?** Use Prompt 2 in [docs/AI_SETUP_PROMPTS.md](docs/AI_SETUP_PROMPTS.md) to generate a targeted list for any industry.
 
 ---
 
@@ -177,11 +181,12 @@ Each person runs their own local copy. Your salary, location, and application da
 **Setup checklist:**
 1. Clone the repo and install dependencies (see Quick Start above)
 2. Copy `config/job_search_preferences.example.yaml` → `config/job_search_preferences.yaml`
-3. Fill in your zip code, salary floor, and target job titles — or use the AI prompts in `docs/AI_SETUP_PROMPTS.md` to generate the whole file from your resume
-4. Add companies to `config/job_search_companies.yaml` — or use the AI prompts to build a starter list for your field
-5. Open the dashboard (`streamlit run app.py`) and go to **Target Companies** to add more via the UI
-6. Run **Run Job Search** to get your first results
-7. Go to **My Applications** and log any applications you've already submitted
+3. Fill in your zip code, salary floor, and target job titles — or use the AI prompts in `docs/AI_SETUP_PROMPTS.md` to generate the whole file from your resume in minutes
+4. **The company list is already populated** (~485 companies, mostly FinTech/FinServ/tech). Add, remove, or adjust priorities from the **Target Companies** page in the dashboard
+5. Run **Run Job Search** to get your first results
+6. Go to **My Applications** and log any applications you've already submitted
+
+If you're in a different field (healthcare, marketing, ops, etc.), use Prompt 2 in [docs/AI_SETUP_PROMPTS.md](docs/AI_SETUP_PROMPTS.md) to generate a company list for your industry — and remove the FinTech companies that aren't relevant to you.
 
 **What gets shared (in the repo):**
 - The tool code
