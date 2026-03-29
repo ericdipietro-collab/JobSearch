@@ -700,6 +700,56 @@ elif page == "Results":
     if all_changed_overrides:
         merged = {**overrides, **all_changed_overrides}
         save_status_overrides(merged)
+
+        # Bridge: newly-Applied jobs → Application Tracker
+        if _TRACKER_AVAILABLE:
+            try:
+                _tc = ats_db.get_connection()
+                ats_db.init_db(_tc)
+                store = _load_store()
+                for _key, _entry in all_changed_overrides.items():
+                    if _entry.get("user_status") != "Applied":
+                        continue
+                    _job = store.get(_key, {})
+                    if not _job:
+                        continue
+                    _company = str(_job.get("company") or "")
+                    _role    = str(_job.get("title")   or "")
+                    if not _company or not _role:
+                        continue
+                    # Skip if already tracked (matched on company + role)
+                    _exists = _tc.execute(
+                        "SELECT id FROM applications WHERE lower(company)=lower(?) AND lower(role)=lower(?)",
+                        (_company, _role),
+                    ).fetchone()
+                    if _exists:
+                        continue
+                    _sal_low  = _job.get("salary_low")
+                    _sal_high = _job.get("salary_high")
+                    _sal_rng  = _job.get("salary_range") or (
+                        f"${int(_sal_low):,}–${int(_sal_high):,}"
+                        if _sal_low and _sal_high else None
+                    )
+                    _applied_at = (_entry.get("applied_at") or _now_iso())[:10]
+                    _app_id = ats_db.add_application(
+                        _tc,
+                        company      = _company,
+                        role         = _role,
+                        job_url      = str(_job.get("url") or _job.get("canonical_url") or ""),
+                        source       = "scraper",
+                        scraper_key  = _key,
+                        status       = "applied",
+                        salary_low   = int(_sal_low)  if _sal_low  else None,
+                        salary_high  = int(_sal_high) if _sal_high else None,
+                        salary_range = _sal_rng,
+                        jd_summary   = str(_job.get("description_excerpt") or "")[:500] or None,
+                        date_applied = _applied_at,
+                    )
+                    ats_db.add_event(_tc, _app_id, "applied", _applied_at,
+                                     title=f"Applied to {_company}")
+            except Exception as _exc:
+                st.toast(f"Tracker sync warning: {_exc}", icon="⚠️")
+
         st.toast(f"Saved {len(all_changed_overrides)} status update(s).", icon="✅")
         st.rerun()
 
