@@ -156,13 +156,13 @@ begin
     // The file check is done by Inno's Check: directive; this is belt-and-suspenders.
     if not FileExists(PyExe) then begin
       MsgBox(
-        'Python is not installed, and the bundled Python installer was not found.'#13#10 +
-        #13#10 +
-        'Please either:'#13#10 +
-        '  1. Install Python 3.9+ from https://python.org/downloads'#13#10 +
-        '     (check "Add Python to PATH"), then re-run this installer'#13#10 +
-        '  2. Re-build the installer using build_installer.bat'#13#10 +
-        '     (it downloads the Python installer automatically)',
+        'Python is not installed, and the bundled Python installer was not found.' + #13#10
+        + #13#10
+        + 'Please either:' + #13#10
+        + '  1. Install Python 3.9+ from https://python.org/downloads' + #13#10
+        + '     (check "Add Python to PATH"), then re-run this installer' + #13#10
+        + '  2. Re-build the installer using build_installer.bat' + #13#10
+        + '     (it downloads the Python installer automatically)',
         mbError, MB_OK);
       Result := False;
     end;
