@@ -73,6 +73,7 @@ def _prepare_builtins() -> None:
             BASE_DIR / "job_search_preferences.yaml",
             BASE_DIR / "config" / "preferences.yaml",
             BASE_DIR / "preferences.yaml",
+            BASE_DIR / "config" / "job_search_preferences.example.yaml",
         ]
         if p is not None
     ]
@@ -85,16 +86,7 @@ def _replace_once(source: str, target: str, replacement: str) -> str:
 
 
 def _patch_source(source: str) -> str:
-    source = _replace_once(
-        source,
-        '    CLI_COMPANIES_PATH_OVERRIDE = str((Path(__file__).resolve().parent / "job_search_companies_test.yaml"))\n',
-        '    CLI_COMPANIES_PATH_OVERRIDE = str((Path(__file__).resolve().parent / "config" / "job_search_companies_test.yaml"))\n',
-    )
-    source = _replace_once(
-        source,
-        "    role_family = classify_role_family(norm_title)\n    salary_info = extract_salary_info(desc)\n",
-        "    role_family = classify_role_family(norm_title)\n    is_remote, is_hybrid, is_non_us = location_flags(location)\n    salary_info = extract_salary_info(desc)\n",
-    )
+    # Note: test-companies path and is_hybrid unpacking are now fixed in source; patches removed.
     source = _replace_once(
         source,
         "def _decision_reason_parts(\n    title_fast_track_hits: List[Tuple[str, int]],\n    title_weight_hits: List[Tuple[str, int]],\n    jd_positive_hits: List[Tuple[str, int]],\n    jd_negative_hits: List[Tuple[str, int]],\n    *,\n    title_points: float,\n    jd_positive_points: float,\n    jd_negative_points: float,\n    jd_positive_multiplier: float,\n    location_label: str = \"\",\n    extra_parts: Optional[List[str]] = None,\n) -> str:\n",
@@ -125,6 +117,13 @@ def _patch_source(source: str) -> str:
 
 
 def main() -> None:
+    # Force UTF-8 I/O so Unicode characters (e.g. ✓) don't crash on Windows
+    # consoles that default to cp1252.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
     _prepare_builtins()
     script_path = BASE_DIR / "job_search_v6.py"
     source = script_path.read_text(encoding="utf-8")
