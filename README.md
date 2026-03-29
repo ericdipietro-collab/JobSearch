@@ -6,6 +6,10 @@ Built for anyone actively job searching. No subscriptions, no data sold to recru
 
 ---
 
+![Home Dashboard](docs/Screenshots/Homepage.png)
+
+---
+
 ## Installation
 
 ### Option A — Windows Installer (easiest, recommended)
@@ -53,6 +57,21 @@ The launcher creates a virtual environment, installs all dependencies, and copie
 | **Target Companies manager** | Add, edit, and bulk-update the list of companies being scraped — ATS Healer auto-fixes broken URLs |
 | **Search Settings** | Edit salary floor, location, keyword weights, and scoring thresholds in the UI — no YAML editing required |
 | **Backup & Restore** | One-click ZIP backup of your database and config; restore from backup on a new machine |
+
+---
+
+## Screenshots
+
+<table>
+  <tr>
+    <td><strong>Job Matches</strong> — scored and bucketed automatically<br><img src="docs/Screenshots/jobmatches.png" alt="Job Matches"/></td>
+    <td><strong>My Applications</strong> — full pipeline CRM<br><img src="docs/Screenshots/myapplications.png" alt="My Applications"/></td>
+  </tr>
+  <tr>
+    <td><strong>Search Settings</strong> — keyword scoring editor<br><img src="docs/Screenshots/searchprefscoring.png" alt="Search Settings"/></td>
+    <td><strong>Weekly Activity Report</strong> — built-in unemployment certification export<br><img src="docs/Screenshots/weeklyactivity.png" alt="Weekly Activity Report"/></td>
+  </tr>
+</table>
 
 ---
 
