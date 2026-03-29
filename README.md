@@ -1,217 +1,242 @@
 # Job Search Automation Platform
 
-A high-precision job search automation tool that scrapes company career pages, scores opportunities using a tiered keyword funnel, and tracks your pipeline through a full Streamlit dashboard.
+A personal job search tool that automatically finds open roles at companies you care about, scores them against your preferences, and helps you track everything from first contact through offer — including the weekly activity log required for unemployment benefits.
 
-Designed for professionals in **Financial Services**, **FinTech**, and adjacent technical domains — but fully configurable for any field.
+Built for anyone actively job searching after a layoff. No subscriptions, no data sold to recruiters — everything runs locally on your own computer.
 
 ---
 
-## Features
+## What it does
 
-- **Multi-stage funnel scoring** — hard gating (location, salary) → title gate → JD keyword scoring → action bucket assignment
-- **Weighted keyword engine** — positive/negative scores for title keywords and JD body, with a fast-track tier for high-signal titles
-- **Company registry with ATS adapters** — supports Greenhouse, Lever, Ashby, Workday, and manual/custom fallback
-- **Automatic ATS healing** — probes for correct Workday subdomain (`wd1–wd25`), discovers Greenhouse/Lever/Ashby URLs
-- **Full Streamlit UI** — results dashboard, pipeline tracker, company manager, preferences editor, run controls
-- **Personal ATS** — SQLite-backed opportunity tracking with stage machine (New → Applied → Offer/Rejected), activity log, and analytics
-- **History deduplication** — jobs seen in prior runs are skipped automatically
+| Feature | What you get |
+|---|---|
+| **Automated job scraping** | Checks career pages at companies you choose, pulls open roles, filters by your salary floor and location |
+| **Smart scoring** | Ranks jobs by how well they match your background using keyword weights you define |
+| **Job Matches dashboard** | Three buckets: Apply Now, Review Today, Watch — with one-click status updates |
+| **My Applications** | Track every application and network conversation with a full timeline, interview log, and contact list |
+| **Opportunities** | Log networking conversations (like a call with a former manager) that aren't formal applications yet |
+| **Job Fairs** | Track job fair attendance as a reportable activity |
+| **Training tracker** | Plan and track courses/certifications (AWS, Snowflake, AI, etc.) with status and progress |
+| **Weekly Activity Report** | Shows all job search activities for any date range, tells you if you've hit your state's weekly minimum, and generates copy-paste text for your unemployment certification |
+| **Target Companies manager** | Add, edit, and bulk-update the list of companies being scraped |
+| **Search Settings** | Edit your salary floor, location, and keyword weights directly in the UI — no YAML editing required |
 
 ---
 
 ## Quick Start
 
-### 1. Clone and install
+### Prerequisites
+
+- Python 3.9 or higher ([download here](https://www.python.org/downloads/))
+- Git ([download here](https://git-scm.com/downloads))
+
+### 1. Clone the repository
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/ericdipietro-collab/JobSearch.git
 cd JobSearch
+```
+
+### 2. Install dependencies
+
+```bash
 pip install -r requirements.txt
 ```
 
-### 2. Configure preferences
+> **Having trouble?** Try `pip3 install -r requirements.txt` or `python -m pip install -r requirements.txt`
+
+### 3. Set up your configuration
 
 ```bash
 cp config/job_search_preferences.example.yaml config/job_search_preferences.yaml
 ```
 
-Open `config/job_search_preferences.yaml` and fill in:
-- `search.location_preferences.local_hybrid.primary_zip` — your zip code
-- `search.location_preferences.local_hybrid.markers` — nearby city names that appear in job listings
-- `search.compensation.target_salary_usd` / `min_salary_usd` — your salary floor
-
-The keywords and scoring weights are pre-configured for a FinTech/FinServ product/architect role family. Edit `keywords.body_positive`, `keywords.body_negative`, and `titles.*` sections to match your own target profile.
-
-### 3. Add target companies
-
-Edit `config/job_search_companies.yaml` to add or remove companies. Each entry looks like:
+Open `config/job_search_preferences.yaml` in any text editor and update these three things:
 
 ```yaml
-- name: Acme Corp
-  domain: acmecorp.com
-  adapter: greenhouse           # greenhouse | lever | ashby | workday | custom_manual
-  adapter_key: acmecorp         # ATS tenant slug
-  careers_url: https://boards.greenhouse.io/acmecorp
-  tier: 1                       # 1 = top priority, 2 = standard, 3 = opportunistic
-  industry: [fintech]
-  status: new                   # new | active | changed | broken
+search:
+  location_preferences:
+    local_hybrid:
+      primary_zip: '80504'        # ← your zip code
+      markers: [Firestone, Denver, Boulder]  # ← cities near you
+
+  compensation:
+    min_salary_usd: 120000        # ← your minimum acceptable salary
 ```
 
-### 4. Run the scraper
+> **Not sure what keywords to use?** See [docs/AI_SETUP_PROMPTS.md](docs/AI_SETUP_PROMPTS.md) for prompts you can paste into ChatGPT or Claude to generate your entire config from your resume.
 
-```bash
-python run_job_search_v6.py
-```
-
-Results land in `results/job_search_results.xlsx` with three sheets: **All Jobs**, **Kept**, and **Rejected**.
-
-### 5. Open the dashboard
+### 4. Open the dashboard
 
 ```bash
 streamlit run app.py
 ```
 
----
+Your browser will open automatically at `http://localhost:8501`.
 
-## Command-line options
-
-```
-python run_job_search_v6.py [options]
-
-  --prefs PATH         Override preferences file path
-  --companies PATH     Override companies registry path
-  --test-companies     Use config/job_search_companies_test.yaml (small test set)
-```
+From the dashboard, go to **Target Companies** to add companies you want to track, then **Run Job Search** to fetch your first batch of results.
 
 ---
 
-## Project structure
+## Dashboard pages
 
-```
-JobSearch/
-├── run_job_search_v6.py          # Single entrypoint (launcher + source patcher)
-├── job_search_v6.py              # Core scraper engine
-├── app.py                        # Streamlit dashboard
-├── heal_ats_yaml.py              # ATS URL repair tool
-│
-├── config/
-│   ├── job_search_companies.yaml         # Company registry (edit this)
-│   ├── job_search_companies_test.yaml    # Small test set for --test-companies
-│   ├── job_search_preferences.yaml       # Your preferences (gitignored)
-│   └── job_search_preferences.example.yaml  # Template — copy and fill in
-│
-├── db/
-│   ├── connection.py     # SQLite connection + Streamlit cache
-│   ├── models.py         # Opportunity, StageHistory, Activity dataclasses
-│   └── schema.py         # DDL + init_db()
-│
-├── services/
-│   ├── opportunity_service.py    # Upsert, sync from Excel, list/filter
-│   ├── pipeline_service.py       # Stage machine + transitions
-│   ├── analytics_service.py      # Funnel metrics, score analysis
-│   └── importer.py               # Import from external tracker CSV
-│
-├── pages/
-│   ├── pipeline_page.py          # Pipeline Kanban/list view
-│   └── analytics_page.py         # Analytics dashboard tabs
-│
-└── results/                      # Runtime outputs (gitignored)
-    ├── job_search_results.xlsx
-    ├── jobsearch.db
-    └── *.log
-```
+### Job Matches
+Your scraper results organized into three buckets:
+- **⚡ Apply Now** — high-scoring roles with a one-click Apply & Track button that opens the job and logs it in your tracker simultaneously
+- **📋 Review Today** — worth a closer look
+- **👁 Watch** — lower match, keep an eye on
+- **✅ Applied / ❌ Rejected** — your history
 
----
+### My Applications
+Full CRM for tracking your job search pipeline. Add any application (or network conversation, or job fair) and log the complete timeline:
+- Status progression from considering → applied → screening → interviewing → offer
+- Interview scheduling with round tracking and outcome recording
+- Contact log (recruiter, hiring manager, referral, network contact)
+- Follow-up reminders — get notified when a follow-up is overdue
+- Resume version and cover letter notes per application
+- Filter by status (Applied, Interviewing, etc.) or type (Applications / Opportunities / Job Fairs)
 
-## Scoring system
+**Opportunities** — for networking conversations that might lead to a role. A call with a former manager about a potential position is an Opportunity. Log the conversation, track the follow-up, and convert to a formal Application if it materializes.
 
-### Hard gates (jobs are dropped before scoring if they fail)
+**Job Fairs** — log job fair attendance with the companies you spoke to. Shows up as a separate activity in your weekly report.
 
-| Gate | Config key | Behavior |
-|---|---|---|
-| Location | `search.location_policy` | `remote_only`, `remote_or_hybrid`, or `any` |
-| Salary floor | `search.compensation.min_salary_usd` | 5% negotiation buffer applied |
-| Job age | `search.recency.max_job_age_days` | Default 21 days |
+### Training
+Plan and track courses and certifications:
+- Set status: Planned → In Progress → Completed (or Paused)
+- Track provider (AWS, Snowflake, Coursera, etc.), category, and target completion date
+- Hours/week estimate for planning
+- Certificate URL once you earn it
+- Active and completed training flows into your Weekly Activity Report automatically
 
-### Title gate
+### Weekly Report
+Generates your job search activity log for any date range.
 
-- Title must contain at least one keyword from `titles.positive_keywords`
-- Title is immediately rejected if it matches any `titles.negative_disqualifiers`
-- High-weight titles (weight ≥ `fast_track_min_weight`) start with `fast_track_base_score` (default 50) and receive JD keyword scores at **0.5×**
+- Defaults to the current week (Mon–Sun)
+- Shows a **compliance indicator**: "✅ 3/3 required activities" or "⚠️ 2/3 — need 1 more"
+- Covers: applications submitted, job fairs, networking calls, recruiter contacts, phone screens, interviews, follow-ups, and training
+- Bottom of the page: copyable plain-text report formatted for unemployment certification forms
 
-### JD keyword scoring
+> The 3-activity minimum is Colorado's requirement. Check your state's rules — the number may differ where you are.
 
-- `keywords.body_positive` — each match adds points (capped at `positive_keyword_cap`)
-- `keywords.body_negative` — each match subtracts points (capped at `negative_keyword_cap`)
-- Only unique matches count by default (`count_unique_matches_only: true`)
+### Target Companies
+Add and manage the companies being scraped. Key fields:
+- **Adapter**: the type of careers system they use (Greenhouse, Lever, Ashby, Workday, or custom)
+- **Tier**: 1 = top priority, 2 = standard, 3 = opportunistic
+- **Bulk URL Fix tab**: quickly paste in corrected URLs for companies with broken links
 
-### Action buckets
+Run the ATS Healer from this page to automatically find and fix broken career page URLs.
 
-Jobs that pass all gates and meet `minimum_score_to_keep` are assigned a bucket:
+### Search Settings
+Edit your preferences without touching YAML files: salary floors, location policy, keyword weights, scoring thresholds.
 
-| Bucket | Meaning |
-|---|---|
-| APPLY NOW | High score + strong title + known salary |
-| REVIEW TODAY | High score or strong tier |
-| WATCH | Moderate score |
-| MANUAL REVIEW | Flagged for manual inspection |
-| IGNORE | Below score threshold |
+### Run Job Search
+Runs the scraper and refreshes results. A full run typically takes 5–15 minutes depending on how many companies you have.
 
 ---
 
-## ATS adapters
+## Configuring your search
 
-The scraper supports these ATS types out of the box:
+The tool uses two config files in the `config/` folder. Both are gitignored so your personal salary and location data are never uploaded to GitHub.
 
-| Adapter | Description |
-|---|---|
-| `greenhouse` | `boards.greenhouse.io/{key}` |
-| `lever` | `jobs.lever.co/{key}` |
-| `ashby` | `jobs.ashbyhq.com/{key}` |
-| `workday` | `{key}.wd{N}.myworkdayjobs.com` — N is discovered automatically |
-| `custom_manual` | Fetches `careers_url` directly; falls back to domain search |
+### `job_search_preferences.yaml` — what to look for
 
-### Healing the registry
+Controls salary floors, location preferences, and the keyword scoring engine that ranks jobs.
 
-Run the ATS healer to validate and fix URLs for companies marked `new`, `changed`, or `broken`:
+**The fastest way to configure this:** use the AI prompts in [docs/AI_SETUP_PROMPTS.md](docs/AI_SETUP_PROMPTS.md) to generate a customized version from your resume.
 
-```bash
-python heal_ats_yaml.py          # Only processes new/changed/broken entries
-python heal_ats_yaml.py --all    # Re-validates all entries
+Key sections:
+- `search.compensation.min_salary_usd` — your minimum acceptable salary
+- `search.location_policy` — `remote_only`, `remote_or_hybrid`, or `any`
+- `titles.positive_keywords` — job titles you're targeting
+- `titles.negative_disqualifiers` — titles to always skip
+- `keywords.body_positive` — JD keywords that signal a good fit (with weights)
+- `keywords.body_negative` — JD keywords that signal a bad fit (with penalty scores)
+
+### `job_search_companies.yaml` — where to look
+
+A list of companies and their careers page details. Each entry:
+
+```yaml
+- name: Acme Corp
+  domain: acmecorp.com
+  adapter: greenhouse           # greenhouse | lever | ashby | workday | custom_manual
+  adapter_key: acmecorp         # the slug used by their ATS
+  careers_url: https://boards.greenhouse.io/acmecorp
+  tier: 1                       # 1=top priority, 2=standard, 3=opportunistic
+  status: active
 ```
 
-The healer can also be triggered from the **Companies** tab in the Streamlit UI.
+**The fastest way to build your company list:** use the AI prompts in [docs/AI_SETUP_PROMPTS.md](docs/AI_SETUP_PROMPTS.md).
 
 ---
 
-## Personal ATS (pipeline tracking)
+## For co-workers sharing this tool
 
-After a scraper run, the UI syncs results into a local SQLite database (`results/jobsearch.db`). From the **Pipeline** page you can:
+Each person runs their own local copy. Your salary, location, and application data never leave your computer.
 
-- Move opportunities through stages: New → Scored → Shortlisted → Applied → Recruiter Screen → Hiring Manager → Panel → Final Round → Offer / Rejected / Archived
-- Log activities (calls, interviews, emails) against each opportunity
-- Add notes and set priority flags
-- Bulk-transition multiple opportunities at once
+**Setup checklist:**
+1. Clone the repo and install dependencies (see Quick Start above)
+2. Copy `config/job_search_preferences.example.yaml` → `config/job_search_preferences.yaml`
+3. Fill in your zip code, salary floor, and target job titles — or use the AI prompts in `docs/AI_SETUP_PROMPTS.md` to generate the whole file from your resume
+4. Add companies to `config/job_search_companies.yaml` — or use the AI prompts to build a starter list for your field
+5. Open the dashboard (`streamlit run app.py`) and go to **Target Companies** to add more via the UI
+6. Run **Run Job Search** to get your first results
+7. Go to **My Applications** and log any applications you've already submitted
 
-The **Analytics** page shows funnel metrics, conversion rates, score distributions, and time-in-stage analysis.
+**What gets shared (in the repo):**
+- The tool code
+- `config/job_search_preferences.example.yaml` — a template showing the structure
+- `config/job_search_companies.yaml` — a starter company list (you'll customize this)
+
+**What stays private (gitignored, never uploaded):**
+- Your actual preferences file (`config/job_search_preferences.yaml`)
+- Your results folder (all scraped jobs, your applications database)
+- Any local state files
+
+---
+
+## Troubleshooting
+
+**"No results" after running the scraper**
+- Check that `config/job_search_preferences.yaml` exists (not just the `.example.yaml`)
+- Your salary floor might be filtering everything out — try lowering `min_salary_usd` temporarily
+- Go to **Target Companies** and make sure you have active companies with valid URLs
+
+**Dashboard won't load**
+- Make sure you ran `pip install -r requirements.txt`
+- Try `streamlit run app.py` from the `JobSearch/` folder
+
+**Companies showing as "broken"**
+- Run the ATS Healer from the **Target Companies** page — it automatically finds and fixes most broken URLs
+
+**YAML syntax errors**
+- YAML is whitespace-sensitive. Use 2-space indentation, not tabs. Paste your YAML into [yamllint.com](https://www.yamllint.com/) to check it.
 
 ---
 
 ## Privacy
 
-The following are gitignored and never committed:
+The following are gitignored and never committed to GitHub:
 
-- `config/job_search_preferences.yaml` — contains your salary targets and location
-- `results/` — all run outputs, Excel files, and the SQLite ATS database
-- `*.db`, `*.db-shm`, `*.db-wal` — SQLite files anywhere in the repo
-- `*_active_config.json`, `*_history_v6.json` — runtime state files
-
-Only `config/job_search_preferences.example.yaml` (this template) is tracked by git.
+- `config/job_search_preferences.yaml` — your salary targets and location
+- `results/` — all scraped jobs, Excel files, and your SQLite applications database
+- Any `*.db` files and runtime state files
 
 ---
 
 ## Requirements
 
 - Python 3.9+
-- See `requirements.txt` for package versions
+- See `requirements.txt` for all package versions
 
 Key dependencies: `requests`, `PyYAML`, `beautifulsoup4`, `pandas`, `openpyxl`, `streamlit`
+
+---
+
+## Roadmap / known gaps
+
+- **Interview prep notes** — dedicated space for company research and question prep per application
+- **Offer comparison** — side-by-side of salary, equity, benefits across multiple offers
+- **Email templates** — thank-you notes, follow-up templates tied to application events
+- **Benefit week tracker** — "Week 14 of 26" benefit countdown
+- **LinkedIn import** — import existing application history from LinkedIn
