@@ -412,7 +412,7 @@ def _apply_overrides(df: pd.DataFrame, overrides: dict) -> pd.DataFrame:
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 
-APP_VERSION = "1.4"
+APP_VERSION = "1.5"
 
 st.sidebar.title("💼 Job Search")
 
