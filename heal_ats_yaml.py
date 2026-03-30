@@ -286,11 +286,19 @@ def verify_page_ownership(html: str, name: str) -> bool:
     return False
 
 
+_CAREER_PAGE_SIGNALS = [
+    "apply", "job", "career", "position", "opening", "opportunity",
+    "hiring", "vacancy", "vacancies", "requisition",
+]
+
 def _validate_existing_url(session: requests.Session, url: str, company_name: str, adapter: str) -> bool:
     """
     Returns True if the existing careers_url is still live and valid.
-    For known ATS adapters (greenhouse/ashby/lever), also verifies company ownership
-    to guard against false-200 'Page not found' responses.
+
+    Validation strictness scales with adapter type:
+    - greenhouse / ashby / lever : HTTP 200 + not-found check + ownership verification
+    - workday                    : HTTP 200 + final URL must remain on myworkdayjobs.com
+    - custom_manual / others     : HTTP 200 + final URL or page content must have career signals
     """
     if not url:
         return False
@@ -303,9 +311,29 @@ def _validate_existing_url(session: requests.Session, url: str, company_name: st
             return False
         if _is_ats_not_found(resp.text):
             return False
+
         if adapter in ("greenhouse", "ashby", "lever"):
             return verify_page_ownership(resp.text, company_name)
-        return True
+
+        if adapter == "workday":
+            # If the URL redirected away from Workday entirely, the tenant is gone.
+            return "myworkdayjobs.com" in resp.url.lower()
+
+        # custom_manual / workday_manual / smartrecruiters / icims / etc.
+        # Verify the final URL or page content looks like a careers/jobs page,
+        # not a homepage or product page that happened to return 200.
+        f_url = resp.url.lower()
+        content = resp.text.lower()
+        # Final URL contains a career/job path segment
+        if any(x in f_url for x in ["career", "job", "opening", "hiring", "talent", "work-with-us", "join-us"]):
+            return True
+        # Page embeds a known ATS (may have migrated since last heal run)
+        if any(m in content for m in ["greenhouse.io", "ashbyhq.com", "lever.co", "myworkdayjobs.com"]):
+            return True
+        # Page has enough career-vocabulary to be a jobs page
+        hits = sum(1 for s in _CAREER_PAGE_SIGNALS if s in content)
+        return hits >= 3
+
     except Exception:
         return False
 
