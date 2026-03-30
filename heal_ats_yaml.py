@@ -288,13 +288,28 @@ def discover_for_company(session: requests.Session, company: dict) -> DiscoveryR
         workday_slug = slug
 
     if workday_slug:
+        # Extract the site name (careers portal slug) from the existing URL so we probe
+        # the full path rather than the bare hostname.  Bare Workday hostnames return 406
+        # regardless of whether the wd number is correct; the site path returns 200 on the
+        # right number and 500 on the wrong one, making it a reliable discriminator.
+        # e.g. "https://capitalone.wd1.myworkdayjobs.com/Capital_One" → site_name = "Capital_One"
+        workday_site: Optional[str] = None
+        if existing_url:
+            _parsed_wd = urlparse(existing_url)
+            _path_parts = [p for p in _parsed_wd.path.split("/") if p and p.lower() not in ("en-us", "en_us")]
+            if _path_parts:
+                workday_site = _path_parts[0]
+
         for wd_n in range(1, 26):
-            wd_url = f"https://{workday_slug}.wd{wd_n}.myworkdayjobs.com"
+            if workday_site:
+                wd_url = f"https://{workday_slug}.wd{wd_n}.myworkdayjobs.com/{workday_site}"
+            else:
+                wd_url = f"https://{workday_slug}.wd{wd_n}.myworkdayjobs.com"
             try:
                 resp = session.get(wd_url, timeout=7, allow_redirects=True)
                 if _is_rate_limited(resp.status_code):
                     print(f"  Rate limited ({resp.status_code}) on Workday wd{wd_n} — sleeping {RATE_LIMIT_SLEEP}s")
-                    time.sleep(2)  # brief back-off; parallel workers don't need the full 45s stall
+                    time.sleep(2)
                     return DiscoveryResult(None, None, None, None, "RATE_LIMITED", f"Workday HTTP {resp.status_code}")
                 if resp.status_code == 200 and not _is_ats_not_found(resp.text):
                     final_url = resp.url
