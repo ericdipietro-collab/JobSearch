@@ -184,6 +184,35 @@ def _homepage_career_links(session: requests.Session, domain: str) -> List[str]:
     return [url for url, _ in ranked[:5]]
 
 
+# Matches individual job-listing URL path segments — these get a high base score
+# because a sitemap containing /jobs/senior-pm-1234 is strong evidence of a real
+# job board at that URL, even without fetching the page.
+_JOB_DETAIL_URL_RE = re.compile(
+    r"/(job|jobs|careers?|openings?|vacanc(?:y|ies)|req(?:uisition)?|"
+    r"position(?:s)?|posting(?:s)?)/[^/\s?#]",
+    re.I,
+)
+
+
+def _score_sitemap_loc(url: str) -> int:
+    """
+    Score a sitemap <loc> URL for career relevance.
+
+    Job detail URLs (containing /jobs/slug, /careers/title-id, /req/1234, etc.)
+    score highest because they confirm an active job board.  General career
+    landing pages score via the existing career-keyword scorer.  Everything
+    else scores 0 and is ignored.
+    """
+    if _JOB_DETAIL_URL_RE.search(url):
+        # Extra bump if the URL also contains a known ATS domain
+        ats_bonus = 5 if any(
+            m in url.lower() for m in ("greenhouse.io", "ashbyhq.com", "lever.co", "myworkdayjobs.com")
+        ) else 0
+        return 15 + ats_bonus
+    # Fall back to the general career-link scorer for landing pages
+    return score_career_link(url, "")
+
+
 def _sitemap_career_urls(session: requests.Session, domain: str) -> List[str]:
     """
     Fetch the company sitemap and return URLs that look like careers/jobs pages.
@@ -266,7 +295,7 @@ def _sitemap_career_urls(session: requests.Session, domain: str) -> List[str]:
                         continue
 
             for loc in locs:
-                sc = score_career_link(loc, "")
+                sc = _score_sitemap_loc(loc)
                 if sc > 0:
                     career_candidates.append((sc, loc))
         except Exception:
@@ -698,9 +727,46 @@ def discover_for_company(session: requests.Session, company: dict) -> DiscoveryR
     # Parse the company's XML sitemap(s) for career/job URLs, then run the
     # standard ATS content scan on each candidate.  Sitemaps are static XML
     # so this works on JS-heavy sites that resist HTML scraping.
+    #
+    # Two URL types come back from _sitemap_career_urls:
+    #  - Job detail URLs  (/jobs/title-id, /req/1234)  — confirmed job board;
+    #    derive the base careers URL and scan it for ATS markers rather than
+    #    fetching the individual listing (which may be JS-rendered).
+    #  - Career landing pages (/careers, /jobs) — fetch and scan normally.
     for sitemap_url in _sitemap_career_urls(session, comp_domain):
         try:
-            resp = session.get(sitemap_url, timeout=REQUEST_TIMEOUT, allow_redirects=True)
+            is_detail = bool(_JOB_DETAIL_URL_RE.search(sitemap_url))
+
+            # For job detail URLs: check if the URL itself reveals the ATS,
+            # then derive and fetch the careers base URL instead of the listing.
+            if is_detail:
+                for ats, marker in [("greenhouse", "greenhouse.io"), ("ashby", "ashbyhq.com"),
+                                     ("lever", "lever.co"), ("workday", "myworkdayjobs.com")]:
+                    if marker in sitemap_url.lower():
+                        key = extract_ats_key("", sitemap_url, ats)
+                        if ats == "greenhouse" and key:
+                            ats_url = f"https://job-boards.greenhouse.io/{key}"
+                        elif ats == "ashby" and key:
+                            ats_url = f"https://jobs.ashbyhq.com/{key}"
+                        elif ats == "lever" and key:
+                            ats_url = f"https://jobs.lever.co/{key}"
+                        elif ats == "workday" and key:
+                            ats_url = f"https://{key}"
+                        else:
+                            ats_url = sitemap_url
+                        return DiscoveryResult(ats, key, ats_url, marker, "FOUND", f"Sitemap job URL → {ats}")
+                # No ATS in the URL itself — derive base careers URL by stripping
+                # everything from the job-detail path segment onward.
+                m = _JOB_DETAIL_URL_RE.search(sitemap_url)
+                base_careers = sitemap_url[:m.start()] if m else sitemap_url
+                if not best_fallback_url and base_careers:
+                    best_fallback_url = base_careers
+                # Fall through to fetch the base URL below
+                fetch_url = base_careers or sitemap_url
+            else:
+                fetch_url = sitemap_url
+
+            resp = session.get(fetch_url, timeout=REQUEST_TIMEOUT, allow_redirects=True)
             if resp.status_code != 200:
                 continue
             f_url = resp.url.lower()
@@ -720,7 +786,7 @@ def discover_for_company(session: requests.Session, company: dict) -> DiscoveryR
                     else:
                         ats_url = resp.url
                     return DiscoveryResult(ats, key, ats_url, marker, "FOUND", f"Sitemap → {ats}")
-            # No ATS in content — store as fallback if URL looks like a careers page
+            # No ATS found — store as fallback if URL looks like a careers page
             if not best_fallback_url and any(x in f_url for x in ["career", "job", "opening"]):
                 best_fallback_url = resp.url
         except Exception:
