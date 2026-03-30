@@ -310,43 +310,111 @@ def _sitemap_career_urls(session: requests.Session, domain: str) -> List[str]:
     return [url for url, _ in ranked[:10]]
 
 
-def _ddg_career_search(session: requests.Session, name: str, domain: str) -> Optional[str]:
+def _web_career_search(session: requests.Session, name: str, domain: str) -> Optional[str]:
     """
-    Search DuckDuckGo Lite for '{company} careers site:{domain}' and return the first
-    result URL that looks like a careers page, or None.  Uses lite.duckduckgo.com which
-    requires no API key and returns plain HTML.
+    Search for '{company} careers' using Yahoo search (returns static HTML, no JS required)
+    and a few other engine fallbacks.  Returns the first result URL that looks like a
+    careers page, or None.  No API key required.
     """
+    from urllib.parse import parse_qs, urlparse as _up
+
     query = f"{name} careers site:{domain}"
-    try:
-        resp = session.get(
-            "https://lite.duckduckgo.com/lite/",
-            params={"q": query},
-            timeout=REQUEST_TIMEOUT,
-            allow_redirects=True,
-        )
-        if resp.status_code != 200:
-            return None
-        soup = BeautifulSoup(resp.text, "html.parser")
+    query_open = f"{name} careers jobs"  # broader fallback without site: restriction
+
+    def _extract_yahoo_links(html: str, target_domain: str) -> List[str]:
+        """Extract external result links from Yahoo search HTML."""
+        soup = BeautifulSoup(html, "html.parser")
+        results: List[str] = []
+        # Yahoo wraps results in <a> with class containing "ac-algo" or rel="noopener"
+        # and the real URL is in href directly (not behind a redirect param).
         for a in soup.find_all("a", href=True):
             href = a["href"].strip()
-            # DDG Lite wraps result URLs in a redirect; extract the real URL from uddg= param
-            if "uddg=" in href:
-                from urllib.parse import parse_qs, urlparse as _up
+            # Skip Yahoo-internal navigation
+            if not href.startswith("http") or "yahoo.com" in href:
+                continue
+            # Yahoo sometimes wraps via /rd/... — extract RU= param
+            if "/rd/" in href and "RU=" in href:
                 qs = parse_qs(_up(href).query)
-                real = qs.get("uddg", [None])[0]
+                real = qs.get("RU", [None])[0]
                 if real:
                     href = real
-            if not href.startswith("http"):
+            if target_domain and target_domain not in href:
                 continue
-            sc = score_career_link(href, a.get_text(" ", strip=True))
-            if sc > 0:
-                return href
-    except Exception:
-        pass
+            results.append(href)
+        return results
+
+    def _try_yahoo(q: str, target_domain: str) -> Optional[str]:
+        try:
+            resp = session.get(
+                "https://search.yahoo.com/search",
+                params={"p": q, "n": "10"},
+                headers={"Referer": "https://search.yahoo.com/"},
+                timeout=REQUEST_TIMEOUT,
+                allow_redirects=True,
+            )
+            if resp.status_code == 200:
+                for href in _extract_yahoo_links(resp.text, target_domain):
+                    sc = score_career_link(href, "")
+                    if sc > 0:
+                        return href
+        except Exception:
+            pass
+        return None
+
+    def _try_mojeek(q: str, target_domain: str) -> Optional[str]:
+        """Mojeek is an independent engine that returns plain HTML results."""
+        try:
+            resp = session.get(
+                "https://www.mojeek.com/search",
+                params={"q": q},
+                headers={"Referer": "https://www.mojeek.com/"},
+                timeout=REQUEST_TIMEOUT,
+                allow_redirects=True,
+            )
+            if resp.status_code == 200:
+                soup = BeautifulSoup(resp.text, "html.parser")
+                for a in soup.find_all("a", href=True):
+                    href = a["href"].strip()
+                    if not href.startswith("http") or "mojeek.com" in href:
+                        continue
+                    if target_domain and target_domain not in href:
+                        continue
+                    sc = score_career_link(href, a.get_text(" ", strip=True))
+                    if sc > 0:
+                        return href
+        except Exception:
+            pass
+        return None
+
+    # 1. Yahoo with site: restriction
+    result = _try_yahoo(query, domain)
+    if result:
+        return result
+    _jitter(1.0, 2.0)
+
+    # 2. Yahoo with open query — useful when the company's ATS is on a different domain
+    result = _try_yahoo(query_open, "")
+    if result:
+        # Only accept if it's on a known ATS or the company domain
+        sc = score_career_link(result, "")
+        if sc > 0 and (domain in result or any(
+            m in result for m in ("greenhouse.io", "ashbyhq.com", "lever.co", "myworkdayjobs.com")
+        )):
+            return result
+    _jitter(1.0, 2.0)
+
+    # 3. Mojeek fallback
+    result = _try_mojeek(query, domain)
+    if result:
+        return result
+
     return None
 
 
 _WORKDAY_AUTH_PATHS = re.compile(r"/(login|logout|auth|register|resetpassword)(/.*)?$", re.I)
+# Strip job-detail path segments so we store the board root, not an individual listing.
+# e.g. "bmo.wd3.myworkdayjobs.com/External/job/Frisco-CO/..." → "bmo.wd3.myworkdayjobs.com/External"
+_WORKDAY_JOB_DETAIL_PATH = re.compile(r"/job(?:s)?/.*$", re.I)
 
 def extract_ats_key(text: str, url: str, adapter: str) -> Optional[str]:
     patterns = ATS_PATTERNS.get(adapter, [])
@@ -357,6 +425,7 @@ def extract_ats_key(text: str, url: str, adapter: str) -> Optional[str]:
                 key = m.group(1).split("?")[0].strip("/\\ ")
                 if adapter == "workday":
                     key = _WORKDAY_AUTH_PATHS.sub("", key).strip("/\\ ")
+                    key = _WORKDAY_JOB_DETAIL_PATH.sub("", key).strip("/\\ ")
                 return key or None
     return None
 
@@ -416,6 +485,23 @@ _CAREER_PAGE_SIGNALS = [
     "apply", "job", "career", "position", "opening", "opportunity",
     "hiring", "vacancy", "vacancies", "requisition",
 ]
+# Stronger signals that appear on real job-board pages but rarely on generic homepages.
+_STRONG_JOB_SIGNALS = [
+    "open positions", "open roles", "view all jobs", "view jobs", "see all jobs",
+    "apply now", "apply today", "submit application", "job description",
+    "job requirements", "qualifications", "we're hiring", "we are hiring",
+    "join our team", "current openings", "job openings", "job listings",
+    "no open positions", "no current openings",  # "no openings" pages still count
+]
+
+# Path suffixes that indicate a company homepage or non-careers page even though
+# the URL passed validation.  If the final URL ends with one of these after
+# stripping the domain, the page is almost certainly not a dedicated job board.
+_NON_CAREER_PATH_SUFFIXES = (
+    "/", "", "/index", "/index.html", "/home", "/about", "/about-us",
+    "/company", "/team", "/contact", "/products", "/solutions",
+)
+
 
 def _validate_existing_url(session: requests.Session, url: str, company_name: str, adapter: str) -> bool:
     """
@@ -424,7 +510,8 @@ def _validate_existing_url(session: requests.Session, url: str, company_name: st
     Validation strictness scales with adapter type:
     - greenhouse / ashby / lever : HTTP 200 + not-found check + ownership verification
     - workday                    : HTTP 200 + final URL must remain on myworkdayjobs.com
-    - custom_manual / others     : HTTP 200 + final URL or page content must have career signals
+    - custom_manual / others     : HTTP 200 + URL has career path segment AND content
+                                   has either an ATS embed or strong job-listing signals
     """
     if not url:
         return False
@@ -445,26 +532,47 @@ def _validate_existing_url(session: requests.Session, url: str, company_name: st
             # If the URL redirected away from Workday entirely, the tenant is gone.
             return "myworkdayjobs.com" in resp.url.lower()
 
-        # custom_manual / workday_manual / smartrecruiters / icims / etc.
-        # Verify the final URL or page content looks like a careers/jobs page,
-        # not a homepage or product page that happened to return 200.
+        # custom_manual / smartrecruiters / icims / taleo / etc.
+        # Require two independent signals:
+        #  1. The final URL path looks like a careers page (not the bare homepage)
+        #  2. The page content has either an ATS embed OR strong job-listing vocabulary
         f_url = resp.url.lower()
         content = resp.text.lower()
-        # Final URL contains a career/job path segment
-        if any(x in f_url for x in ["career", "job", "opening", "hiring", "talent", "work-with-us", "join-us"]):
+
+        # Reject if the final URL looks like a plain homepage/about/contact page
+        parsed_path = urlparse(resp.url).path.rstrip("/").lower() or "/"
+        if parsed_path in _NON_CAREER_PATH_SUFFIXES:
+            return False
+
+        # Signal 1: URL path must contain a career/job path segment
+        url_has_career_path = any(
+            x in f_url for x in ["career", "job", "opening", "hiring", "talent", "work-with-us", "join-us"]
+        )
+        if not url_has_career_path:
+            return False
+
+        # Signal 2: content must have an ATS embed OR strong job-listing vocabulary
+        has_ats = any(m in content for m in ["greenhouse.io", "ashbyhq.com", "lever.co", "myworkdayjobs.com",
+                                              "smartrecruiters.com", "icims.com", "taleo.net",
+                                              "successfactors.com", "jobvite.com", "brassring.com",
+                                              "ultipro.com", "ukg.com"])
+        if has_ats:
             return True
-        # Page embeds a known ATS (may have migrated since last heal run)
-        if any(m in content for m in ["greenhouse.io", "ashbyhq.com", "lever.co", "myworkdayjobs.com"]):
+
+        # Strong signal: at least one phrase that only appears on real job-listing pages
+        has_strong = any(s in content for s in _STRONG_JOB_SIGNALS)
+        if has_strong:
             return True
-        # Page has enough career-vocabulary to be a jobs page
+
+        # Fallback: require 5+ general career-word hits (raised from 3 to reduce false positives)
         hits = sum(1 for s in _CAREER_PAGE_SIGNALS if s in content)
-        return hits >= 3
+        return hits >= 5
 
     except Exception:
         return False
 
 
-def discover_for_company(session: requests.Session, company: dict) -> DiscoveryResult:
+def discover_for_company(session: requests.Session, company: dict, force_rediscover: bool = False) -> DiscoveryResult:
     name = company.get("name", "Unknown")
     slug = re.sub(r"[^a-zA-Z0-9]", "", name).lower()
     existing_url = company.get("careers_url", "")
@@ -476,7 +584,8 @@ def discover_for_company(session: requests.Session, company: dict) -> DiscoveryR
         return DiscoveryResult(None, None, existing_url, None, "VALID", "User-verified (heal_skip)")
 
     # --- PRE-CHECK: if the existing URL is still live, skip full discovery ---
-    if _validate_existing_url(session, existing_url, name, existing_adapter):
+    # Skipped when --force is passed so every active company gets full rediscovery.
+    if not force_rediscover and _validate_existing_url(session, existing_url, name, existing_adapter):
         return DiscoveryResult(None, None, existing_url, None, "VALID", "Existing URL confirmed")
 
     # Derive a fallback company domain for the waterfall phase.
@@ -549,16 +658,24 @@ def discover_for_company(session: requests.Session, company: dict) -> DiscoveryR
             pass
         _jitter(0.4, 1.0)
 
-    # --- PHASE 3.5: WORKDAY (probe wd1..wd25 when company is known to use Workday) ---
-    # Triggered when the existing adapter is "workday" or the existing URL is a
-    # myworkdayjobs.com URL that failed validation.  We extract the tenant slug from
-    # the existing URL (most reliable) or fall back to the name-derived slug.
+    # --- PHASE 3.5: WORKDAY (probe wd1..wd25) ---
+    # Triggered when:
+    #  (a) the existing URL is a myworkdayjobs.com URL that failed validation, or
+    #  (b) the existing adapter is "workday", or
+    #  (c) any broken company — companies sometimes migrate TO Workday from other platforms.
+    #      For non-Workday companies we use a lightweight fast probe (just wd1..wd5,
+    #      "External" site name only) before the full waterfall to avoid excessive delay.
     workday_slug: Optional[str] = None
+    _workday_was_adapter = existing_adapter == "workday" or "myworkdayjobs.com" in (existing_url or "").lower()
     if "myworkdayjobs.com" in (existing_url or "").lower():
         m = re.match(r"https?://([\w-]+)\.wd\d+\.myworkdayjobs\.com", existing_url or "", re.I)
         if m:
             workday_slug = m.group(1)
-    if workday_slug is None and existing_adapter == "workday":
+    if workday_slug is None and _workday_was_adapter:
+        workday_slug = slug
+    # Cross-platform: probe Workday with the name-derived slug even if the company
+    # was previously on a different ATS.  Restrict to wd1–5 for speed.
+    if workday_slug is None:
         workday_slug = slug
 
     if workday_slug:
@@ -574,29 +691,68 @@ def discover_for_company(session: requests.Session, company: dict) -> DiscoveryR
             if _path_parts:
                 workday_site = _path_parts[0]
 
-        for wd_n in range(1, 26):
-            if workday_site:
-                wd_url = f"https://{workday_slug}.wd{wd_n}.myworkdayjobs.com/{workday_site}"
-            else:
-                wd_url = f"https://{workday_slug}.wd{wd_n}.myworkdayjobs.com"
-            try:
-                resp = session.get(wd_url, timeout=7, allow_redirects=True)
-                if _is_rate_limited(resp.status_code):
-                    print(f"  Rate limited ({resp.status_code}) on Workday wd{wd_n} — sleeping {RATE_LIMIT_SLEEP}s")
-                    time.sleep(2)
-                    return DiscoveryResult(None, None, None, None, "RATE_LIMITED", f"Workday HTTP {resp.status_code}")
-                if resp.status_code == 200 and not _is_ats_not_found(resp.text):
-                    final_url = resp.url
-                    wd_key = extract_ats_key(resp.text, final_url, "workday")
-                    ats_url = f"https://{wd_key}" if wd_key else final_url
-                    return DiscoveryResult(
-                        "workday", wd_key,
-                        ats_url, urlparse(ats_url).netloc,
-                        "FOUND", f"Workday wd{wd_n} probe",
-                    )
-            except Exception:
-                pass
-            _jitter(0.3, 0.7)
+        # Build candidate site names to try.  Many companies rename their Workday portal
+        # (e.g. "Capital_One" → "Careers") so we probe the original name first, then
+        # the most common Workday site name conventions.
+        slug_title = slug.capitalize()
+        workday_site_candidates: List[Optional[str]] = []
+        if workday_site:
+            workday_site_candidates.append(workday_site)
+        # Common Workday site path names — try these when the original fails
+        _common_wd_sites = [
+            "External", "Careers", "Jobs", "Career", "Job",
+            slug, slug_title,
+            f"{slug}_EXT", f"{slug_title}_EXT",
+            f"{slug}_External", f"{slug_title}_External",
+            "US_External", "GlobalExternal", "Global_External",
+            None,  # bare hostname (wd-number probe without a path)
+        ]
+        for s in _common_wd_sites:
+            if s not in workday_site_candidates:
+                workday_site_candidates.append(s)
+
+        # For companies that were NOT previously on Workday, do a quick cross-platform
+        # probe: "External" site name only, wd1–5.  Avoids spending 5+ minutes probing
+        # wd1–25 × 15 site names for every broken non-Workday company.
+        if not _workday_was_adapter:
+            workday_site_candidates = ["External", "Careers", slug, slug_title]
+        wd_max = 25 if _workday_was_adapter else 5
+
+        # If the existing URL has a specific wd number (which may be > 25, e.g. wd103,
+        # wd108, wd503), extract it and always try that number first — it's the most
+        # likely to still be correct even if the site name changed.
+        _wd_n_match = re.search(r"\.wd(\d+)\.myworkdayjobs\.com", existing_url or "", re.I)
+        existing_wd_n = int(_wd_n_match.group(1)) if _wd_n_match else None
+        if existing_wd_n:
+            wd_sweep = [existing_wd_n] + [n for n in range(1, wd_max + 1) if n != existing_wd_n]
+        else:
+            wd_sweep = list(range(1, wd_max + 1))
+
+        for wd_site_name in workday_site_candidates:
+            for wd_n in wd_sweep:
+                if wd_site_name:
+                    wd_url = f"https://{workday_slug}.wd{wd_n}.myworkdayjobs.com/{wd_site_name}"
+                else:
+                    wd_url = f"https://{workday_slug}.wd{wd_n}.myworkdayjobs.com"
+                try:
+                    resp = session.get(wd_url, timeout=7, allow_redirects=True)
+                    if _is_rate_limited(resp.status_code):
+                        print(f"  Rate limited ({resp.status_code}) on Workday wd{wd_n} — sleeping {RATE_LIMIT_SLEEP}s")
+                        time.sleep(2)
+                        return DiscoveryResult(None, None, None, None, "RATE_LIMITED", f"Workday HTTP {resp.status_code}")
+                    if resp.status_code == 200 and not _is_ats_not_found(resp.text):
+                        final_url = resp.url
+                        wd_key = extract_ats_key(resp.text, final_url, "workday")
+                        ats_url = f"https://{wd_key}" if wd_key else final_url
+                        site_label = wd_site_name or "(bare)"
+                        return DiscoveryResult(
+                            "workday", wd_key,
+                            ats_url, urlparse(ats_url).netloc,
+                            "FOUND", f"Workday wd{wd_n}/{site_label} probe",
+                        )
+                except Exception:
+                    pass
+                _jitter(0.3, 0.7)
 
     # --- PHASE 4: WATERFALL (company careers page — scan for embedded ATS links) ---
     # Fetch the homepage first and extract scored career-link candidates to try before
@@ -635,7 +791,8 @@ def discover_for_company(session: requests.Session, company: dict) -> DiscoveryR
             # Detect redirect straight to a known ATS/HR platform
             _non_parseable_hr = ("salesforce.com", "icims.com", "taleo.net",
                                  "successfactors.com", "smartrecruiters.com",
-                                 "jobvite.com", "brassring.com")
+                                 "jobvite.com", "brassring.com",
+                                 "ultipro.com", "ukg.com")
             if any(h in f_url for h in _non_parseable_hr):
                 return DiscoveryResult("custom_manual", None, resp.url, urlparse(f_url).netloc, "FOUND", f"Redirected to {urlparse(f_url).netloc}")
             # Detect redirect to a parseable ATS (greenhouse, ashby, lever, workday)
@@ -666,10 +823,12 @@ def discover_for_company(session: requests.Session, company: dict) -> DiscoveryR
 
             # Content-based ATS link detection — extract adapter key when possible
             _ats_markers = [
-                ("greenhouse", "greenhouse.io"),
-                ("ashby",      "ashbyhq.com"),
-                ("lever",      "lever.co"),
-                ("workday",    "myworkdayjobs.com"),
+                ("greenhouse",   "greenhouse.io"),
+                ("ashby",        "ashbyhq.com"),
+                ("lever",        "lever.co"),
+                ("workday",      "myworkdayjobs.com"),
+                ("custom_manual", "ultipro.com"),
+                ("custom_manual", "ukg.com"),
             ]
             for ats, marker in _ats_markers:
                 if marker in content or marker in f_url:
@@ -712,11 +871,10 @@ def discover_for_company(session: requests.Session, company: dict) -> DiscoveryR
         except Exception:
             continue
 
-    # --- PHASE 4.5: DUCKDUCKGO LITE SEARCH ---
+    # --- PHASE 4.5: WEB SEARCH (Yahoo / Mojeek fallbacks) ---
     # If the waterfall found nothing, try a targeted web search for the company's careers page.
-    # Uses DuckDuckGo Lite (no API key required) to find a plausible URL, then re-runs the
-    # ATS content scan on whatever page it returns.
-    ddg_url = _ddg_career_search(session, name, comp_domain)
+    # Tries Yahoo search (static HTML) then Mojeek.  No API key required.
+    ddg_url = _web_career_search(session, name, comp_domain)
     if ddg_url:
         try:
             resp = session.get(ddg_url, timeout=REQUEST_TIMEOUT, allow_redirects=True)
@@ -884,7 +1042,7 @@ def update_company_record(company: dict, result: DiscoveryResult) -> bool:
     return changed
 
 
-def heal_registry(heal_all: bool = False) -> None:
+def heal_registry(heal_all: bool = False, heal_broken: bool = False, force_rediscover: bool = False) -> None:
     if not YAML_FILE.exists():
         print(f"Error: {YAML_FILE} not found.")
         return
@@ -896,14 +1054,26 @@ def heal_registry(heal_all: bool = False) -> None:
 
     # Determine which companies need healing.
     # heal_skip=true entries are always excluded — user has manually verified them.
-    # "active" companies are skipped unless --all is passed.
+    # --broken : only companies with status=broken
+    # --all    : all non-skip companies (active included), validate existing URLs
+    # --force  : all non-skip companies, skip pre-check → full rediscovery every time
+    # (default): new / changed / broken
     NEEDS_HEAL = {"new", "changed", "broken", "", None}
     skipped_trust = [c for c in companies if c.get("heal_skip")]
     eligible = [c for c in companies if not c.get("heal_skip") and c.get("active") is not False]
-    to_heal = [c for c in eligible if heal_all or c.get("status") in NEEDS_HEAL]
+
+    if heal_broken:
+        to_heal = [c for c in eligible if c.get("status") == "broken"]
+        mode = "broken only"
+    elif force_rediscover or heal_all:
+        to_heal = list(eligible)
+        mode = "ALL (force rediscover)" if force_rediscover else "all active"
+    else:
+        to_heal = [c for c in eligible if c.get("status") in NEEDS_HEAL]
+        mode = "new / changed / broken"
+
     skipped = len(companies) - len(to_heal)
 
-    mode = "all active" if heal_all else "new / changed / broken"
     print(f"Scanning {len(to_heal)} companies ({mode}) — skipping {skipped} (active/inactive) + {len(skipped_trust)} user-verified (heal_skip).")
     if not to_heal:
         print("Nothing to heal.")
@@ -920,7 +1090,7 @@ def heal_registry(heal_all: bool = False) -> None:
         old_adapter = company.get("adapter", "")
         old_url = company.get("careers_url", "")
 
-        result = discover_for_company(session, company)
+        result = discover_for_company(session, company, force_rediscover=force_rediscover)
         changed = update_company_record(company, result)
 
         row = {
@@ -981,11 +1151,32 @@ def heal_registry(heal_all: bool = False) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Heal and verify ATS URLs in the company registry.")
-    parser.add_argument(
+    mode_group = parser.add_mutually_exclusive_group()
+    mode_group.add_argument(
         "--all",
         action="store_true",
         dest="heal_all",
-        help="Scan all active companies, not just those flagged new/changed/broken.",
+        help="Scan all active companies (validates existing URLs, skips if still valid).",
+    )
+    mode_group.add_argument(
+        "--broken",
+        action="store_true",
+        dest="heal_broken",
+        help="Only scan companies with status=broken.",
+    )
+    mode_group.add_argument(
+        "--force",
+        action="store_true",
+        dest="force_rediscover",
+        help=(
+            "Force full rediscovery for every company — skips the pre-check that "
+            "would otherwise accept an existing active URL as still valid. "
+            "Use this when active companies are pointing at wrong pages."
+        ),
     )
     args = parser.parse_args()
-    heal_registry(heal_all=args.heal_all)
+    heal_registry(
+        heal_all=args.heal_all,
+        heal_broken=args.heal_broken,
+        force_rediscover=args.force_rediscover,
+    )
