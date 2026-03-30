@@ -179,7 +179,7 @@ companies:
   careers_url: https://alignmenthealthcare.com/careers
   active: true
   adapter_key: ''
-  status: broken
+  status: active
 - name: Alkami Technology
   tier: 2
   priority: medium
@@ -713,9 +713,9 @@ companies:
 - name: Bill.com
   tier: 1
   priority: high
-  adapter: greenhouse
+  adapter: custom_manual
   adapter_key: billcom
-  domain: boards.greenhouse.io
+  domain: www.bill.com
   industry:
   - b2b payments
   - financial operations
@@ -723,9 +723,9 @@ companies:
   - reconciliation
   notes: B2B financial ops + AP/AR automation — payments + data integration fit
   sub_industry: B2B Payments / Financial Ops
-  careers_url: https://boards.greenhouse.io/billcom
+  careers_url: https://www.bill.com/careers
   active: true
-  status: broken
+  status: active
 - name: BillingPlatform
   tier: 2
   priority: medium
@@ -1385,7 +1385,9 @@ companies:
   - reconciliation
   - financial reporting
   - investment data
-  notes: Investment accounting + reconciliation + reporting — direct Allstate overlap. Jobs page is JavaScript-rendered; use Manual Job Entry or check cwan.com/company/careers/ directly.
+  notes: Investment accounting + reconciliation + reporting — direct Allstate overlap.
+    Jobs page is JavaScript-rendered; use Manual Job Entry or check cwan.com/company/careers/
+    directly.
   sub_industry: Investment Accounting
   careers_url: https://cwan.com/company/careers/
   active: true
@@ -1586,9 +1588,9 @@ companies:
   industry: retirement | wealth management | data orchestration
   notes: Formerly AIG Life & Retirement; massive US retirement solutions provider.
   sub_industry: Wealth / Retirement
-  careers_url: https://corebridgefinancial.wd1.myworkdayjobs.com/CorebridgeFinancial&#34;}}
+  careers_url: https://corebridgefinancial.wd1.myworkdayjobs.com/CorebridgeFinancial
   active: true
-  adapter_key: corebridgefinancial.wd1.myworkdayjobs.com/CorebridgeFinancial&#34;}}
+  adapter_key: corebridgefinancial.wd1.myworkdayjobs.com/CorebridgeFinancial
   status: active
 - name: CoreCard
   tier: 2
@@ -2379,7 +2381,7 @@ companies:
   sub_industry: WealthTech
   careers_url: https://www.fisherinvestments.com/careers
   active: true
-  status: active
+  status: broken
 - name: Fivetran
   tier: 1
   priority: high
@@ -2549,7 +2551,7 @@ companies:
   sub_industry: WealthTech (TAMP)
   careers_url: https://geowealth.com/careers/
   active: true
-  status: active
+  status: broken
 - name: Gloat
   tier: 2
   priority: medium
@@ -3645,7 +3647,7 @@ companies:
   sub_industry: Cloud Banking / Lending
   careers_url: https://www.ncino.com/our-company/careers
   active: true
-  status: active
+  status: broken
 - name: Nelnet
   tier: 2
   priority: medium
@@ -3727,7 +3729,7 @@ companies:
   sub_industry: WealthTech / Risk
   careers_url: https://nitrogenwealth.com/careers/
   active: true
-  status: active
+  status: broken
 - name: Northern Trust
   tier: 4
   priority: medium
@@ -4324,16 +4326,16 @@ companies:
 - name: Public.com
   tier: 4
   priority: medium
-  adapter: greenhouse
+  adapter: custom_manual
   adapter_key: public
-  domain: boards.greenhouse.io
+  domain: public.com
   industry:
   - investing app
   notes: Re-emphasizing) Multi-asset consumer investing requiring complex data
   sub_industry: Investing App(
-  careers_url: https://boards.greenhouse.io/public
+  careers_url: https://public.com/careers
   active: true
-  status: broken
+  status: active
 - name: Pulley
   tier: 2
   priority: medium
@@ -4443,7 +4445,7 @@ companies:
   sub_industry: Subscription Billing
   careers_url: https://recurly.com/careers/
   active: true
-  status: broken
+  status: active
 - name: Regions Bank
   tier: 2
   priority: medium
@@ -4586,7 +4588,7 @@ companies:
   tier: 2
   priority: medium
   adapter: workday
-  adapter_key: spgi.wd5.myworkdayjobs.com/SPGI_Careers\
+  adapter_key: spgi.wd5.myworkdayjobs.com/SPGI_Careers
   domain: spgi.wd5.myworkdayjobs.com
   industry:
   - financial data
@@ -4595,7 +4597,7 @@ companies:
   - investment
   notes: Market data + financial technology PM — broad FS domain fit
   sub_industry: Financial Data
-  careers_url: https://spgi.wd5.myworkdayjobs.com/SPGI_Careers\
+  careers_url: https://spgi.wd5.myworkdayjobs.com/SPGI_Careers
   active: true
   status: active
 - name: Sallie Mae
@@ -4938,7 +4940,7 @@ companies:
 - name: StoneX Group
   tier: 4
   priority: medium
-  adapter: manual
+  adapter: custom_manual
   adapter_key: ''
   domain: www.stonexgroup.com
   industry:
@@ -5034,15 +5036,15 @@ companies:
   tier: 4
   priority: medium
   adapter: workday
-  adapter_key: ''
-  domain: troweprice.wd1.myworkdayjobs.com
+  adapter_key: troweprice.wd5.myworkdayjobs.com/TRowePrice/jobs
+  domain: troweprice.wd5.myworkdayjobs.com
   industry:
   - asset management
   notes: Strong history of hiring remote/hybrid product leaders for IDW
   sub_industry: Asset Management
-  careers_url: https://troweprice.wd1.myworkdayjobs.com/TRowePrice
+  careers_url: https://troweprice.wd5.myworkdayjobs.com/TRowePrice/jobs
   active: true
-  status: broken
+  status: active
 - name: Tala
   tier: 4
   priority: medium
@@ -5081,7 +5083,7 @@ companies:
   sub_industry: Crypto Trading Tech
   careers_url: https://www.talos.com/working/open-roles
   active: true
-  status: broken
+  status: active
 - name: Tastytrade
   tier: 2
   priority: medium
@@ -5134,16 +5136,16 @@ companies:
 - name: Thought Machine
   tier: 2
   priority: medium
-  adapter: ashby
+  adapter: custom_manual
   adapter_key: thought-machine
-  domain: jobs.ashbyhq.com
+  domain: thoughtmachine.com
   industry: cloud native banking | core banking | legacy migration
   notes: Building modern core banking engines; desperately needs legacy migration
     experts.
   sub_industry: Cloud Native Banking
-  careers_url: https://jobs.ashbyhq.com/thought-machine
+  careers_url: https://thoughtmachine.com/careers
   active: true
-  status: broken
+  status: active
 - name: Thrivent
   tier: 2
   priority: medium
@@ -5667,7 +5669,7 @@ companies:
   sub_industry: Prop Trading
   careers_url: https://www.virtu.com/careers/
   active: true
-  status: active
+  status: broken
 - name: Virtus Investment Partners
   tier: 2
   priority: medium
@@ -6018,4 +6020,4 @@ companies:
   sub_industry: Subscription Billing
   careers_url: https://www.zuora.com/careers/
   active: true
-  status: active
+  status: broken
