@@ -293,8 +293,8 @@ companies:
 - name: Alviere
   tier: 4
   priority: medium
-  adapter: manual
-  adapter_key: alviere
+  adapter: custom_manual
+  adapter_key: ''
   domain: alviere.com
   industry:
   - embedded finance
@@ -303,6 +303,7 @@ companies:
   careers_url: https://alviere.com/careers/
   active: true
   status: active
+  heal_skip: true
 - name: American Century Investments
   tier: 2
   priority: medium
@@ -566,7 +567,7 @@ companies:
 - name: AtoB
   tier: 2
   priority: medium
-  adapter: manual
+  adapter: ashby
   adapter_key: atob
   domain: jobs.ashbyhq.com
   industry: fleet payments | ledgers | high volume transactions
@@ -689,14 +690,15 @@ companies:
 - name: Bethpage Federal Credit Union
   tier: 2
   priority: medium
-  adapter: manual
-  domain: www.fourleaffcu.com
+  adapter: custom_manual
+  domain: fourleaffcu.com
   industry: credit union tech | commercial banking | platforms
   notes: Leading East Coast credit union undergoing deep core infrastructure upgrades.
   sub_industry: Credit Union Tech
   careers_url: https://www.fourleaffcu.com/about-us/careers/
   active: true
   status: active
+  heal_skip: true
 - name: Betterment
   tier: 4
   priority: medium
@@ -842,7 +844,7 @@ companies:
   sub_industry: Custody Bank
   careers_url: https://www.bny.com/corporate/global/en/about-us/careers/work-with-us.html
   active: true
-  status: active
+  status: broken
 - name: BOK Financial
   tier: 2
   priority: medium
@@ -1620,14 +1622,15 @@ companies:
 - name: Corpay
   tier: 2
   priority: medium
-  adapter: manual
-  domain: www.corpay.com
+  adapter: workday
+  domain: corpay.wd103.myworkdayjobs.com
   industry: fleet payments | b2b payments | ledgers
   notes: Formerly Fleetcor; massive US corporate payments and spend management network.
   sub_industry: B2B Payments
-  careers_url: https://www.corpay.com/careers
+  careers_url: https://corpay.wd103.myworkdayjobs.com/Ext_001
   active: true
   status: active
+  adapter_key: corpay.wd103.myworkdayjobs.com/Ext_001
 - name: CoStar Group
   tier: 4
   priority: medium
@@ -1919,15 +1922,15 @@ companies:
 - name: DriveWealth
   tier: 4
   priority: medium
-  adapter: manual
+  adapter: greenhouse
   adapter_key: drivewealth
-  domain: www.drivewealth.com
+  domain: job-boards.greenhouse.io
   industry:
   - brokerage apis
   - adding secondary focus
   notes: Competitor to NFS; exact match for his recent 18-month
   sub_industry: Brokerage APIs(Adding secondary focus)
-  careers_url: https://www.drivewealth.com/company/careers/
+  careers_url: https://job-boards.greenhouse.io/drivewealth
   active: true
   status: active
 - name: DRW
@@ -1969,7 +1972,7 @@ companies:
 - name: Edelman Financial Engines
   tier: 1
   priority: high
-  adapter: manual
+  adapter: custom_manual
   domain: jobs.jobvite.com
   industry: wealthtech | 401k | portfolio mapping
   notes: Massive independent RIA combining personal and workplace wealth tech.
@@ -1977,6 +1980,7 @@ companies:
   careers_url: https://jobs.jobvite.com/edelmanfinancialengines
   active: true
   status: active
+  heal_skip: true
 - name: Edward Jones
   tier: 1
   priority: high
@@ -2014,21 +2018,22 @@ companies:
 - name: Enfusion
   tier: 4
   priority: medium
-  adapter: manual
+  adapter: custom_manual
   adapter_key: enfusion
-  domain: cwan.com
+  domain: enfusion.com
   industry:
   - investment management
   notes: Cloud-native PMS/OMS/EMS system; direct competitor to Charles
   sub_industry: Investment Management
-  careers_url: https://cwan.com/company/careers/
+  careers_url: https://www.enfusion.com/company/careers
   active: true
   status: active
+  heal_skip: true
 - name: Enigma Technologies
   tier: 2
   priority: medium
-  adapter: manual
-  adapter_key: enigmatechnologies
+  adapter: greenhouse
+  adapter_key: enigmaio
   domain: job-boards.greenhouse.io
   industry: financial data | smb data | data pipelines
   notes: US operational data platform focused on SMB financial health and risk.
@@ -2718,14 +2723,15 @@ companies:
 - name: HighRadius
   tier: 2
   priority: medium
-  adapter: manual
-  domain: www.highradius.com
+  adapter: greenhouse
+  domain: job-boards.greenhouse.io
   industry: treasury | fintech | erp integration
   notes: AI-driven treasury software heavily reliant on complex multi-system ERP integrations.
   sub_industry: FinTech / Treasury
-  careers_url: https://www.highradius.com/about-old/careers/
+  careers_url: https://job-boards.greenhouse.io/highradius
   active: true
   status: active
+  adapter_key: highradius
 - name: Hightouch
   tier: 2
   priority: medium
@@ -2841,15 +2847,16 @@ companies:
 - name: Informatica
   tier: 1
   priority: high
-  adapter: manual
+  adapter: custom_manual
   adapter_key: ''
-  domain: careers.salesforce.com
+  domain: informatica.com
   industry: data integration | data management | etl
   notes: He already has deep experience with their enterprise ETL tools from Allstate.
   sub_industry: Data Management
-  careers_url: https://careers.salesforce.com/en/jobs/?search=informatica&pagesize=20#results
+  careers_url: https://careers.informatica.com/
   active: true
   status: active
+  heal_skip: true
 - name: Insperity
   tier: 2
   priority: medium
@@ -2889,14 +2896,15 @@ companies:
 - name: Intuit
   tier: 1
   priority: high
-  adapter: manual
-  domain: www.intuit.com
+  adapter: smartrecruiters
+  domain: careers.smartrecruiters.com
   industry: accounting | ledgers | api integrations
   notes: Parent of QuickBooks; runs the US small business financial ledger ecosystem.
   sub_industry: Accounting Tech
-  careers_url: https://www.intuit.com/careers/
+  careers_url: https://careers.smartrecruiters.com/Intuit
   active: true
   status: active
+  adapter_key: Intuit
 - name: Invesco
   tier: 1
   priority: high
@@ -3086,7 +3094,7 @@ companies:
 - name: KeyBank
   tier: 2
   priority: medium
-  adapter: manual
+  adapter: workday
   domain: keybank.wd5.myworkdayjobs.com
   industry: commercial banking | regional banking | integrations
   notes: Leading US regional bank with strong institutional tech needs.
@@ -3221,7 +3229,7 @@ companies:
 - name: loanDepot
   tier: 2
   priority: medium
-  adapter: manual
+  adapter: custom_manual
   domain: jobs.jobvite.com
   industry: mortgage tech | platform | api integrations
   notes: Massive non-bank mortgage lender.
@@ -3229,6 +3237,7 @@ companies:
   careers_url: https://jobs.jobvite.com/loandepot
   active: true
   status: active
+  heal_skip: true
 - name: LogicGate
   tier: 2
   priority: medium
@@ -3733,7 +3742,7 @@ companies:
 - name: Northern Trust
   tier: 4
   priority: medium
-  adapter: manual
+  adapter: workday
   adapter_key: ''
   domain: ntrs.wd1.myworkdayjobs.com
   industry:
@@ -5173,7 +5182,7 @@ companies:
 - name: Tilled
   tier: 2
   priority: medium
-  adapter: manual
+  adapter: custom_manual
   adapter_key: tilled
   domain: ats.rippling.com
   industry: payments infrastructure | payfac | api
@@ -5182,6 +5191,7 @@ companies:
   careers_url: https://ats.rippling.com/tilledcareers/jobs
   active: true
   status: active
+  heal_skip: true
 - name: Tipalti
   tier: 4
   priority: medium
@@ -5224,15 +5234,16 @@ companies:
 - name: TradePMR
   tier: 1
   priority: high
-  adapter: manual
+  adapter: custom_manual
   adapter_key: tradepmr
-  domain: careers.robinhood.com
+  domain: tradepmr.com
   industry: brokerage apis | ria platform | integration
   notes: RIA custodial platform competing directly in the space he just built for.
   sub_industry: Brokerage APIs
-  careers_url: https://careers.robinhood.com/
+  careers_url: https://www.tradepmr.com/about-tradepmr/careers/
   active: true
   status: active
+  heal_skip: true
 - name: Tradeshift
   tier: 2
   priority: medium
@@ -5785,7 +5796,7 @@ companies:
 - name: Webull
   tier: 4
   priority: medium
-  adapter: manual
+  adapter: custom_manual
   adapter_key: webull
   domain: ats.rippling.com
   industry:
@@ -5795,6 +5806,7 @@ companies:
   careers_url: https://ats.rippling.com/webull/jobs
   active: true
   status: active
+  heal_skip: true
 - name: Wellington Management
   tier: 1
   priority: high
@@ -5867,7 +5879,7 @@ companies:
 - name: Wintrust Financial
   tier: 2
   priority: medium
-  adapter: manual
+  adapter: workday
   domain: wintrust.wd1.myworkdayjobs.com
   industry: regional banking | wealthtech | legacy migration
   notes: Massive US holding company managing multiple community banks.
@@ -5901,15 +5913,16 @@ companies:
 - name: Workiva
   tier: 2
   priority: medium
-  adapter: manual
-  domain: www.workiva.com
+  adapter: workday
+  domain: workiva.wd503.myworkdayjobs.com
   industry: financial reporting | esg | compliance data
   notes: US enterprise reporting platform; maps perfectly to his SEC/back-office automation
     work.
   sub_industry: Financial Reporting
-  careers_url: https://www.workiva.com/careers
+  careers_url: https://workiva.wd503.myworkdayjobs.com/careers
   active: true
   status: active
+  adapter_key: workiva.wd503.myworkdayjobs.com/careers
 - name: Yardi
   tier: 1
   priority: high
