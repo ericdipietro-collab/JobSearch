@@ -3795,8 +3795,8 @@ def score_job(
     jd_positive_points_raw = float(sum(pts for _, pts in jd_positive_hits))
     jd_negative_points_raw = float(sum(pts for _, pts in jd_negative_hits))
 
-    positive_cap = min(POSITIVE_KEYWORD_CAP, 40) if POSITIVE_KEYWORD_CAP >= 0 else 40
-    negative_cap = min(NEGATIVE_KEYWORD_CAP, 45) if NEGATIVE_KEYWORD_CAP >= 0 else 45
+    positive_cap = float(POSITIVE_KEYWORD_CAP) if POSITIVE_KEYWORD_CAP >= 0 else 999.0
+    negative_cap = float(NEGATIVE_KEYWORD_CAP) if NEGATIVE_KEYWORD_CAP >= 0 else 999.0
 
     jd_positive_points = min(jd_positive_points_raw * jd_positive_multiplier, float(positive_cap))
     jd_negative_points = min(jd_negative_points_raw, float(negative_cap))
