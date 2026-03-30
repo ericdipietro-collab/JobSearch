@@ -8,7 +8,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 from urllib.parse import urljoin, urlparse
 
 import requests
@@ -98,6 +98,126 @@ ATS_PATTERNS = {
         re.compile(r"https?://([\w.-]+\.myworkdayjobs\.com/[^\"'&\s<>\\{}]+)", re.I),
     ],
 }
+
+
+# --- Career link scoring for homepage waterfall ---
+# Weights for keywords found in anchor href or visible text.
+CAREER_LINK_KEYWORDS: List[tuple] = [
+    ("careers", 5),
+    ("career", 5),
+    ("jobs", 4),
+    ("join us", 4),
+    ("join-us", 4),
+    ("work with us", 4),
+    ("work-with-us", 4),
+    ("openings", 3),
+    ("open roles", 3),
+    ("open-roles", 3),
+    ("hiring", 3),
+    ("opportunities", 2),
+    ("positions", 2),
+    ("talent", 2),
+    ("job", 2),
+    ("work", 1),
+    ("team", 1),
+]
+
+# Penalise links that are clearly not job boards.
+CAREER_LINK_PENALTIES: List[str] = [
+    "privacy", "cookie", "legal", "terms", "accessibility",
+    "login", "logout", "signin", "signup", "press", "news",
+    "blog", "investor", "media", "about", "contact", "support",
+    "linkedin.com", "twitter.com", "x.com", "facebook.com",
+    "instagram.com", "youtube.com", "glassdoor.com", "indeed.com",
+    "mailto:", "tel:", "#",
+]
+
+
+def score_career_link(href: str, text: str) -> int:
+    """Score an anchor tag by career-page keyword relevance. Higher = more likely a careers page."""
+    combined = (href + " " + text).lower()
+    score = 0
+    for keyword, weight in CAREER_LINK_KEYWORDS:
+        if keyword in combined:
+            score += weight
+    for penalty in CAREER_LINK_PENALTIES:
+        if penalty in combined:
+            score -= 6
+    return score
+
+
+def _homepage_career_links(session: requests.Session, domain: str) -> List[str]:
+    """
+    Fetch the company homepage and return up to 5 internal links scored as likely career pages,
+    ranked highest-score first.  These are prepended to the Phase 4 waterfall so we follow
+    real site navigation rather than purely guessing paths.
+    """
+    candidates: List[tuple] = []  # (score, url)
+    for root_url in (f"https://www.{domain}", f"https://{domain}"):
+        try:
+            resp = session.get(root_url, timeout=REQUEST_TIMEOUT, allow_redirects=True)
+            if resp.status_code != 200:
+                continue
+            soup = BeautifulSoup(resp.text, "html.parser")
+            base = f"https://{urlparse(resp.url).netloc}"
+            for a in soup.find_all("a", href=True):
+                href = a["href"].strip()
+                text = a.get_text(" ", strip=True)
+                abs_href = urljoin(base, href)
+                # Only keep internal links (same domain family)
+                parsed = urlparse(abs_href)
+                if domain not in parsed.netloc:
+                    continue
+                sc = score_career_link(abs_href, text)
+                if sc > 0:
+                    candidates.append((sc, abs_href))
+            break  # got a 200 — no need to try the other variant
+        except Exception:
+            continue
+
+    # Deduplicate by URL, keep highest score per URL, sort descending
+    seen: dict = {}
+    for sc, url in candidates:
+        if url not in seen or sc > seen[url]:
+            seen[url] = sc
+    ranked = sorted(seen.items(), key=lambda x: x[1], reverse=True)
+    return [url for url, _ in ranked[:5]]
+
+
+def _ddg_career_search(session: requests.Session, name: str, domain: str) -> Optional[str]:
+    """
+    Search DuckDuckGo Lite for '{company} careers site:{domain}' and return the first
+    result URL that looks like a careers page, or None.  Uses lite.duckduckgo.com which
+    requires no API key and returns plain HTML.
+    """
+    query = f"{name} careers site:{domain}"
+    try:
+        resp = session.get(
+            "https://lite.duckduckgo.com/lite/",
+            params={"q": query},
+            timeout=REQUEST_TIMEOUT,
+            allow_redirects=True,
+        )
+        if resp.status_code != 200:
+            return None
+        soup = BeautifulSoup(resp.text, "html.parser")
+        for a in soup.find_all("a", href=True):
+            href = a["href"].strip()
+            # DDG Lite wraps result URLs in a redirect; extract the real URL from uddg= param
+            if "uddg=" in href:
+                from urllib.parse import parse_qs, urlparse as _up
+                qs = parse_qs(_up(href).query)
+                real = qs.get("uddg", [None])[0]
+                if real:
+                    href = real
+            if not href.startswith("http"):
+                continue
+            sc = score_career_link(href, a.get_text(" ", strip=True))
+            if sc > 0:
+                return href
+    except Exception:
+        pass
+    return None
 
 
 _WORKDAY_AUTH_PATHS = re.compile(r"/(login|logout|auth|register|resetpassword)(/.*)?$", re.I)
@@ -325,6 +445,10 @@ def discover_for_company(session: requests.Session, company: dict) -> DiscoveryR
             _jitter(0.3, 0.7)
 
     # --- PHASE 4: WATERFALL (company careers page — scan for embedded ATS links) ---
+    # Fetch the homepage first and extract scored career-link candidates to try before
+    # falling through to generic guessed paths.  This way we follow real site navigation.
+    homepage_candidates = _homepage_career_links(session, comp_domain)
+
     # Ordered by likelihood: dedicated careers/jobs subdomains first, then www, then root.
     search_bases = [
         f"https://careers.{comp_domain}",
@@ -333,31 +457,100 @@ def discover_for_company(session: requests.Session, company: dict) -> DiscoveryR
         f"https://www.{comp_domain}",
         f"https://{comp_domain}",
     ]
+    # Build the full URL list: homepage-scored candidates first, then guessed paths.
+    waterfall_urls: List[str] = list(homepage_candidates)
     for base in search_bases:
         for path in ["", "/careers", "/jobs", "/en/jobs", "/about-us/careers.html", "/company/careers"]:
-            try:
-                url = urljoin(base, path)
-                resp = session.get(url, timeout=REQUEST_TIMEOUT, allow_redirects=True)
-                if _is_rate_limited(resp.status_code):
-                    print(f"  Rate limited ({resp.status_code}) on {base} — sleeping {RATE_LIMIT_SLEEP}s")
-                    time.sleep(2)  # brief back-off; parallel workers don't need the full 45s stall
-                    break
-                if resp.status_code != 200:
-                    continue
+            candidate = urljoin(base, path)
+            if candidate not in waterfall_urls:
+                waterfall_urls.append(candidate)
 
+    for url in waterfall_urls:
+        try:
+            resp = session.get(url, timeout=REQUEST_TIMEOUT, allow_redirects=True)
+            if _is_rate_limited(resp.status_code):
+                print(f"  Rate limited ({resp.status_code}) on {url} — sleeping {RATE_LIMIT_SLEEP}s")
+                time.sleep(2)  # brief back-off; parallel workers don't need the full 45s stall
+                continue
+            if resp.status_code != 200:
+                continue
+
+            f_url = resp.url.lower()
+            content = resp.text.lower()
+
+            # Detect redirect straight to a known ATS/HR platform
+            _non_parseable_hr = ("salesforce.com", "icims.com", "taleo.net",
+                                 "successfactors.com", "smartrecruiters.com",
+                                 "jobvite.com", "brassring.com")
+            if any(h in f_url for h in _non_parseable_hr):
+                return DiscoveryResult("custom_manual", None, resp.url, urlparse(f_url).netloc, "FOUND", f"Redirected to {urlparse(f_url).netloc}")
+            # Detect redirect to a parseable ATS (greenhouse, ashby, lever, workday)
+            for ats, marker in [("greenhouse", "greenhouse.io"), ("ashby", "ashbyhq.com"),
+                                 ("lever", "lever.co"), ("workday", "myworkdayjobs.com")]:
+                if marker in f_url:
+                    key = extract_ats_key(resp.text, resp.url, ats)
+                    if ats == "greenhouse" and key:
+                        ats_url = f"https://job-boards.greenhouse.io/{key}"
+                    elif ats == "ashby" and key:
+                        ats_url = f"https://jobs.ashbyhq.com/{key}"
+                    elif ats == "lever" and key:
+                        ats_url = f"https://jobs.lever.co/{key}"
+                    elif ats == "workday" and key:
+                        ats_url = f"https://{key}"
+                    else:
+                        ats_url = resp.url
+                    return DiscoveryResult(ats, key, ats_url, marker, "FOUND", f"Redirected to {ats}")
+
+            # Reject stale or aggregator URLs as fallback candidates.
+            _stale_markers = ("/old/", "/archive/", "/legacy/", "/deprecated/")
+            _aggregator_domains = ("dejobs.org", "jobs2careers.com", "jora.com", "neuvoo.com")
+            url_is_stale = any(m in f_url for m in _stale_markers)
+            url_is_aggregator = any(d in f_url for d in _aggregator_domains)
+
+            if not best_fallback_url and not url_is_stale and not url_is_aggregator and any(x in f_url for x in ["career", "job", "opening"]):
+                best_fallback_url = resp.url
+
+            # Content-based ATS link detection — extract adapter key when possible
+            _ats_markers = [
+                ("greenhouse", "greenhouse.io"),
+                ("ashby",      "ashbyhq.com"),
+                ("lever",      "lever.co"),
+                ("workday",    "myworkdayjobs.com"),
+            ]
+            for ats, marker in _ats_markers:
+                if marker in content or marker in f_url:
+                    key = extract_ats_key(resp.text, resp.url, ats)
+                    if ats == "greenhouse" and key:
+                        ats_url = f"https://job-boards.greenhouse.io/{key}"
+                    elif ats == "ashby" and key:
+                        ats_url = f"https://jobs.ashbyhq.com/{key}"
+                    elif ats == "lever" and key:
+                        ats_url = f"https://jobs.lever.co/{key}"
+                    elif ats == "workday" and key:
+                        ats_url = f"https://{key}"
+                    else:
+                        ats_url = resp.url
+                    return DiscoveryResult(ats, key, ats_url, marker, "FOUND", f"{ats} detected in content")
+
+            _jitter(0.5, 1.2)
+        except Exception:
+            continue
+
+    # --- PHASE 4.5: DUCKDUCKGO LITE SEARCH ---
+    # If the waterfall found nothing, try a targeted web search for the company's careers page.
+    # Uses DuckDuckGo Lite (no API key required) to find a plausible URL, then re-runs the
+    # ATS content scan on whatever page it returns.
+    ddg_url = _ddg_career_search(session, name, comp_domain)
+    if ddg_url:
+        try:
+            resp = session.get(ddg_url, timeout=REQUEST_TIMEOUT, allow_redirects=True)
+            if resp.status_code == 200:
                 f_url = resp.url.lower()
                 content = resp.text.lower()
-
-                # Detect redirect straight to a known ATS/HR platform
-                _non_parseable_hr = ("salesforce.com", "icims.com", "taleo.net",
-                                     "successfactors.com", "smartrecruiters.com",
-                                     "jobvite.com", "brassring.com")
-                if any(h in f_url for h in _non_parseable_hr):
-                    return DiscoveryResult("custom_manual", None, resp.url, urlparse(f_url).netloc, "FOUND", f"Redirected to {urlparse(f_url).netloc}")
-                # Detect redirect to a parseable ATS (greenhouse, ashby, lever, workday)
+                # Check for ATS redirect
                 for ats, marker in [("greenhouse", "greenhouse.io"), ("ashby", "ashbyhq.com"),
                                      ("lever", "lever.co"), ("workday", "myworkdayjobs.com")]:
-                    if marker in f_url:
+                    if marker in f_url or marker in content:
                         key = extract_ats_key(resp.text, resp.url, ats)
                         if ats == "greenhouse" and key:
                             ats_url = f"https://job-boards.greenhouse.io/{key}"
@@ -369,42 +562,12 @@ def discover_for_company(session: requests.Session, company: dict) -> DiscoveryR
                             ats_url = f"https://{key}"
                         else:
                             ats_url = resp.url
-                        return DiscoveryResult(ats, key, ats_url, marker, "FOUND", f"Redirected to {ats}")
-
-                # Reject stale or aggregator URLs as fallback candidates.
-                _stale_markers = ("/old/", "/archive/", "/legacy/", "/deprecated/")
-                _aggregator_domains = ("dejobs.org", "jobs2careers.com", "jora.com", "neuvoo.com")
-                url_is_stale = any(m in f_url for m in _stale_markers)
-                url_is_aggregator = any(d in f_url for d in _aggregator_domains)
-
-                if not best_fallback_url and not url_is_stale and not url_is_aggregator and any(x in f_url for x in ["career", "job", "opening"]):
+                        return DiscoveryResult(ats, key, ats_url, marker, "FOUND", f"DDG search → {ats}")
+                # No ATS found but page looks like a careers page — use as fallback
+                if not best_fallback_url and any(x in f_url for x in ["career", "job", "opening"]):
                     best_fallback_url = resp.url
-
-                # Content-based ATS link detection — extract adapter key when possible
-                _ats_markers = [
-                    ("greenhouse", "greenhouse.io"),
-                    ("ashby",      "ashbyhq.com"),
-                    ("lever",      "lever.co"),
-                    ("workday",    "myworkdayjobs.com"),
-                ]
-                for ats, marker in _ats_markers:
-                    if marker in content or marker in f_url:
-                        key = extract_ats_key(resp.text, resp.url, ats)
-                        if ats == "greenhouse" and key:
-                            ats_url = f"https://job-boards.greenhouse.io/{key}"
-                        elif ats == "ashby" and key:
-                            ats_url = f"https://jobs.ashbyhq.com/{key}"
-                        elif ats == "lever" and key:
-                            ats_url = f"https://jobs.lever.co/{key}"
-                        elif ats == "workday" and key:
-                            ats_url = f"https://{key}"
-                        else:
-                            ats_url = resp.url
-                        return DiscoveryResult(ats, key, ats_url, marker, "FOUND", f"{ats} detected in content")
-
-                _jitter(0.5, 1.2)
-            except Exception:
-                continue
+        except Exception:
+            pass
 
     # --- PHASE 5: FALLBACK ---
     if best_fallback_url:
