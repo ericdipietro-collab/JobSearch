@@ -313,6 +313,9 @@ def _normalize_company_record(raw: Dict[str, Any]) -> Dict[str, Any]:
         rec.pop("discovery_urls", None)
     if not rec.get("domain") and rec.get("careers_url"):
         rec["domain"] = urlparse(rec["careers_url"]).netloc.lower()
+    rec.setdefault("render_required", False)
+    rec.setdefault("jobs_api_url", None)
+    rec.setdefault("iframe_src", None)
     return rec
 
 
@@ -1603,6 +1606,10 @@ class Company:
     careers_url: Optional[str] = None
     discovery_urls: Optional[List[str]] = None
     notes: str = ""
+    # Optional fields set manually or by the healer after discovery
+    render_required: bool = False       # JS-rendered page; generic scraping won't work
+    jobs_api_url: Optional[str] = None  # direct JSON endpoint bypassing the frontend
+    iframe_src: Optional[str] = None    # ATS board embedded via iframe
 
 
 @dataclass
@@ -4631,6 +4638,9 @@ def company_discovery_urls(company: Company) -> List[str]:
     urls: List[str] = []
     if company.careers_url:
         urls.append(company.careers_url)
+    # iframe_src is a known-good ATS embed URL — treat it as a first-class discovery target
+    if company.iframe_src:
+        urls.append(company.iframe_src)
     if company.discovery_urls:
         urls.extend(company.discovery_urls)
     urls.extend(DISCOVERY_URLS_BY_COMPANY.get(company.name, []))
@@ -4640,6 +4650,53 @@ def company_discovery_urls(company: Company) -> List[str]:
         if safe:
             normalized.append(safe)
     return unique_preserve(normalized)
+
+
+def jobs_api_json(company: Company, rejected_jobs: Optional[List[RejectedJob]] = None) -> List[Job]:
+    """Fetch company.jobs_api_url as JSON and extract jobs from common list structures."""
+    if not company.jobs_api_url:
+        return []
+    data = fetch_json(company.jobs_api_url)
+    if not data:
+        return []
+    # Unwrap common wrapper keys
+    if isinstance(data, dict):
+        for key in ("jobs", "results", "data", "items", "postings", "positions",
+                    "requisitions", "openings", "jobPostings"):
+            if isinstance(data.get(key), list):
+                data = data[key]
+                break
+    if not isinstance(data, list):
+        return []
+    jobs: List[Job] = []
+    for raw in data:
+        if not isinstance(raw, dict):
+            continue
+        title = clean(
+            raw.get("title") or raw.get("name") or raw.get("jobTitle") or
+            raw.get("job_title") or raw.get("position") or ""
+        )
+        if not title:
+            continue
+        loc_raw = raw.get("location") or raw.get("locationName") or raw.get("location_name") or ""
+        location = clean(loc_raw.get("name", "") if isinstance(loc_raw, dict) else loc_raw)
+        url = clean(
+            raw.get("url") or raw.get("link") or raw.get("applyUrl") or
+            raw.get("apply_url") or raw.get("absolute_url") or raw.get("absoluteUrl") or
+            company.jobs_api_url or ""
+        )
+        posted_dt = parse_date(
+            raw.get("posted_at") or raw.get("createdAt") or raw.get("created_at") or
+            raw.get("datePosted") or raw.get("date_posted") or ""
+        )
+        description = clean(
+            raw.get("description") or raw.get("content") or raw.get("body") or ""
+        )
+        job = make_job(company, title, location, url, "Jobs API", description, posted_dt,
+                       rejected_jobs=rejected_jobs)
+        if job:
+            jobs.append(job)
+    return jobs
 
 def host_label(url: str) -> str:
     try:
@@ -6091,6 +6148,20 @@ def run_adapter(company: Company, rejected_jobs: Optional[List[RejectedJob]] = N
                 return jobs
             RUNTIME_COMPANY_STATUS[company.name] = "manual fallback"
             return manual_flag(company, rejected_jobs=rejected_jobs)
+        # --- jobs_api_url: hit the discovered JSON endpoint directly ---
+        if company.jobs_api_url:
+            jobs = jobs_api_json(company, rejected_jobs=rejected_jobs)
+            if jobs:
+                RUNTIME_COMPANY_STATUS[company.name] = "✓ (Jobs API)"
+                return jobs
+            # API returned nothing — fall through to normal adapter logic
+
+        # --- render_required: JS-heavy page, generic scraping won't work ---
+        if company.render_required:
+            logging.info("render_required set for %s — skipping generic scraping", company.name)
+            RUNTIME_COMPANY_STATUS[company.name] = "render required (skipped)"
+            return manual_flag(company, rejected_jobs=rejected_jobs)
+
         if company.adapter in ("workday_manual", "custom_manual"):
             jobs = auto_discover(company, rejected_jobs=rejected_jobs)
             if jobs:

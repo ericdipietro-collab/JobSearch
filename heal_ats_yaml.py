@@ -686,6 +686,28 @@ def discover_for_company(session: requests.Session, company: dict) -> DiscoveryR
                         ats_url = resp.url
                     return DiscoveryResult(ats, key, ats_url, marker, "FOUND", f"{ats} detected in content")
 
+                # Explicit iframe scan — catches ATS boards embedded via <iframe src=...>
+                for iframe in BeautifulSoup(resp.text, "html.parser").find_all("iframe", src=True):
+                    isrc = iframe["src"].strip()
+                    if not isrc:
+                        continue
+                    isrc_l = isrc.lower()
+                    for ats, marker in [("greenhouse", "greenhouse.io"), ("ashby", "ashbyhq.com"),
+                                        ("lever", "lever.co"), ("workday", "myworkdayjobs.com")]:
+                        if marker in isrc_l:
+                            key = extract_ats_key("", isrc, ats)
+                            if ats == "greenhouse" and key:
+                                ats_url = f"https://job-boards.greenhouse.io/{key}"
+                            elif ats == "ashby" and key:
+                                ats_url = f"https://jobs.ashbyhq.com/{key}"
+                            elif ats == "lever" and key:
+                                ats_url = f"https://jobs.lever.co/{key}"
+                            elif ats == "workday" and key:
+                                ats_url = f"https://{key}"
+                            else:
+                                ats_url = isrc
+                            return DiscoveryResult(ats, key, ats_url, marker, "FOUND", f"iframe embed → {ats}")
+
             _jitter(0.5, 1.2)
         except Exception:
             continue
