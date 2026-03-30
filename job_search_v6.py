@@ -3016,6 +3016,12 @@ def location_flags(location: str) -> Tuple[bool, bool, bool]:
     is_remote = any(re.search(pattern, loc_l) for pattern in REMOTE_MARKER_PATTERNS)
     is_hybrid = any(k in loc_l for k in HYBRID_MARKERS)
     is_non_us = any(k in loc_l for k in NON_US_MARKERS)
+    # If the job is remote AND explicitly mentions "United States" or "USA", treat it as a
+    # US-available role even when other countries (Canada, etc.) also appear in the string.
+    # e.g. "remote within Canada or United States" should not be rejected as non-US.
+    if is_non_us and is_remote:
+        if re.search(r"\bunited states\b|\bu\.?s\.?a?\.?\b", loc_l):
+            is_non_us = False
     return is_remote, is_hybrid, is_non_us
 
 

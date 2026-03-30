@@ -172,14 +172,14 @@ companies:
   tier: 2
   priority: medium
   adapter: workday
-  domain: alignmenthealthcare5.impl-wd12.myworkdayjobs.com
+  domain: alignmenthealthcare.com
   industry: insuretech | medicare | reporting data
   notes: Tech-enabled Medicare Advantage provider with heavy regulatory data needs.
   sub_industry: InsureTech / Health
-  careers_url: https://alignmenthealthcare5.impl-wd12.myworkdayjobs.com/en-US/ahc_external/introduceYourself
+  careers_url: https://alignmenthealthcare.com/careers
   active: true
-  adapter_key: alignmenthealthcare5.impl-wd12.myworkdayjobs.com/en-US/ahc_external/introduceYourself
-  status: active
+  adapter_key: ''
+  status: broken
 - name: Alkami Technology
   tier: 2
   priority: medium
@@ -870,14 +870,15 @@ companies:
 - name: Bottomline Technologies
   tier: 2
   priority: medium
-  adapter: workday
-  domain: bottomline.com
+  adapter: greenhouse
+  domain: job-boards.greenhouse.io
   industry: b2b payments | financial messaging | treasury
   notes: US business payments network moving trillions in corporate funds.
   sub_industry: B2B Payments
-  careers_url: https://bottomline.wd1.myworkdayjobs.com/Bottomline
+  careers_url: https://job-boards.greenhouse.io/bottomlinetechnologies
   active: true
-  status: broken
+  status: active
+  adapter_key: bottomlinetechnologies
 - name: Braintree (PayPal)
   tier: 4
   priority: medium
@@ -1376,18 +1377,19 @@ companies:
 - name: Clearwater Analytics
   tier: 1
   priority: high
-  adapter: manual
-  adapter_key: clearwateranalytics
+  adapter: custom_manual
+  adapter_key: ''
   domain: cwan.com
   industry:
   - investment accounting
   - reconciliation
   - financial reporting
   - investment data
-  notes: Investment accounting + reconciliation + reporting — direct Allstate overlap
+  notes: Investment accounting + reconciliation + reporting — direct Allstate overlap. Jobs page is JavaScript-rendered; use Manual Job Entry or check cwan.com/company/careers/ directly.
   sub_industry: Investment Accounting
   careers_url: https://cwan.com/company/careers/
   active: true
+  heal_skip: true
   status: active
 - name: Clover Health
   tier: 4
@@ -4115,7 +4117,8 @@ companies:
   adapter_key: pieinsurance
   domain: pieinsurance.com
   industry: insuretech | commercial insurance | data pipelines
-  notes: US commercial insurance tech; Colorado-headquartered with strong engineering culture.
+  notes: US commercial insurance tech; Colorado-headquartered with strong engineering
+    culture.
   sub_industry: InsureTech
   careers_url: https://boards.greenhouse.io/pieinsurance
   active: true
@@ -4257,7 +4260,7 @@ companies:
   sub_industry: WealthTech
   careers_url: https://boards.greenhouse.io/pontera
   active: true
-  status: broken
+  status: active
 - name: Principal Financial Group
   tier: 2
   priority: medium
@@ -4440,7 +4443,7 @@ companies:
   sub_industry: Subscription Billing
   careers_url: https://recurly.com/careers/
   active: true
-  status: active
+  status: broken
 - name: Regions Bank
   tier: 2
   priority: medium
@@ -5069,14 +5072,14 @@ companies:
 - name: Talos
   tier: 4
   priority: medium
-  adapter: greenhouse
+  adapter: ashby
   adapter_key: talos
-  domain: boards.greenhouse.io
+  domain: www.talos.com
   industry:
   - crypto trading tech
   notes: Institutional digital asset trading tech; needs capital markets/OMS
   sub_industry: Crypto Trading Tech
-  careers_url: https://boards.greenhouse.io/talos
+  careers_url: https://www.talos.com/working/open-roles
   active: true
   status: broken
 - name: Tastytrade
@@ -5131,14 +5134,14 @@ companies:
 - name: Thought Machine
   tier: 2
   priority: medium
-  adapter: lever
-  adapter_key: thoughtmachine
-  domain: thoughtmachine.net
+  adapter: ashby
+  adapter_key: thought-machine
+  domain: jobs.ashbyhq.com
   industry: cloud native banking | core banking | legacy migration
   notes: Building modern core banking engines; desperately needs legacy migration
     experts.
   sub_industry: Cloud Native Banking
-  careers_url: https://jobs.lever.co/thoughtmachine
+  careers_url: https://jobs.ashbyhq.com/thought-machine
   active: true
   status: broken
 - name: Thrivent

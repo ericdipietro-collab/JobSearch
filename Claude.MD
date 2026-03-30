@@ -10,7 +10,7 @@
 The pipeline follows a strict multi-stage "Soft-Drop" funnel:
 
 ### 1. Hard Gating (Location & Salary)
-- **Location Policy:** Filter by Remote or Hybrid (specific to Colorado/Firestone range).
+- **Location Policy:** Filter by Remote or Hybrid based on user-configured location preferences.
 - **Salary Floor:** Check against `min_salary_usd`. Apply a **5% negotiation buffer** ($0.95$ multiplier). Support different minimums for Remote vs. Hybrid roles.
 
 ### 2. Job Title Evaluation

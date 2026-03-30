@@ -132,15 +132,37 @@ def _is_rate_limited(status_code: int) -> bool:
 
 
 def verify_page_ownership(html: str, name: str) -> bool:
-    """Check if the company name appears in the page title or main headers."""
+    """
+    Check if the company name appears anywhere in the page's prominent text.
+    Checks title, h1/h2, and og:site_name meta tag.
+    Uses a first-word heuristic for multi-word names (e.g. "Charles Schwab" → "charles")
+    to handle pages that abbreviate or shorten the name.
+    """
     soup = BeautifulSoup(html, "html.parser")
-    page_title = (soup.title.string or "").lower() if soup.title else ""
-    clean_name = name.lower()
-    if clean_name in page_title:
-        return True
-    h1 = soup.find("h1")
-    if h1 and clean_name in h1.get_text().lower():
-        return True
+    clean_name = name.lower().strip()
+    # First significant word of the company name (skips generic "the", "a" prefixes)
+    name_words = [w for w in clean_name.split() if len(w) > 2]
+    first_word = name_words[0] if name_words else clean_name
+
+    candidates = []
+
+    # <title>
+    if soup.title and soup.title.string:
+        candidates.append(soup.title.string.lower())
+
+    # <meta property="og:site_name"> and <meta name="application-name">
+    for meta in soup.find_all("meta", attrs={"property": "og:site_name"}):
+        candidates.append((meta.get("content") or "").lower())
+    for meta in soup.find_all("meta", attrs={"name": "application-name"}):
+        candidates.append((meta.get("content") or "").lower())
+
+    # <h1> and <h2>
+    for tag in soup.find_all(["h1", "h2"]):
+        candidates.append(tag.get_text().lower())
+
+    for text in candidates:
+        if clean_name in text or first_word in text:
+            return True
     return False
 
 
@@ -151,6 +173,9 @@ def _validate_existing_url(session: requests.Session, url: str, company_name: st
     to guard against false-200 'Page not found' responses.
     """
     if not url:
+        return False
+    # Implementation/staging Workday URLs (impl-wd*) are never production — force re-discovery.
+    if re.search(r"\.impl-wd\d+\.myworkdayjobs\.com", url, re.I):
         return False
     try:
         resp = session.get(url, timeout=REQUEST_TIMEOUT, allow_redirects=True)
@@ -184,30 +209,39 @@ def discover_for_company(session: requests.Session, company: dict) -> DiscoveryR
     # If domain is currently an ATS hostname, reconstruct from name.
     comp_domain = company.get("domain", "").strip().lower()
     if any(x in comp_domain for x in ["greenhouse.io", "ashbyhq.com", "lever.co", "workdayjobs.com"]):
-        comp_domain = re.sub(r"[^a-zA-Z0-9.]", "", name).lower() + ".com"
+        # If the company name already looks like a domain (e.g. "Bill.com", "Lemonade.com"),
+        # use it directly — stripping special chars preserves the dot before the TLD.
+        # Otherwise strip all non-alphanumeric chars and append ".com".
+        if re.search(r"\.(com|io|net|org|co|ai|app|tech|finance)$", name.lower()):
+            comp_domain = re.sub(r"[^a-zA-Z0-9.]", "", name).lower()
+        else:
+            comp_domain = re.sub(r"[^a-zA-Z0-9]", "", name).lower() + ".com"
 
     slug_candidates = [slug, f"{slug}1", f"{slug}inc"]
     best_fallback_url = None
 
     # --- PHASE 1: GREENHOUSE (Direct Probe) ---
+    # Try both the legacy boards.greenhouse.io and the newer job-boards.greenhouse.io hosts.
     for s in slug_candidates:
-        url = f"https://boards.greenhouse.io/{s}"
-        try:
-            resp = session.get(url, timeout=8, allow_redirects=True)
-            if resp.status_code == 406:
-                print(f"  !!! BLOCKED by Greenhouse (406) — sleeping {RATE_LIMIT_SLEEP}s")
-                time.sleep(2)  # brief back-off; parallel workers don't need the full 45s stall
-                return DiscoveryResult(None, None, None, None, "BLOCKED", "Greenhouse WAF 406")
-            if _is_rate_limited(resp.status_code):
-                print(f"  Rate limited ({resp.status_code}) on Greenhouse — sleeping {RATE_LIMIT_SLEEP}s")
-                time.sleep(2)  # brief back-off; parallel workers don't need the full 45s stall
-                return DiscoveryResult(None, None, None, None, "RATE_LIMITED", f"Greenhouse HTTP {resp.status_code}")
-            if resp.status_code == 200 and "greenhouse.io" in resp.url.lower():
-                if not _is_ats_not_found(resp.text) and verify_page_ownership(resp.text, name):
-                    return DiscoveryResult("greenhouse", s, resp.url, "boards.greenhouse.io", "FOUND", "Greenhouse Verified")
-        except Exception:
-            pass
-        _jitter(0.4, 1.0)  # delay between slug probes on the same ATS host
+        for gh_host in ("job-boards.greenhouse.io", "boards.greenhouse.io"):
+            url = f"https://{gh_host}/{s}"
+            try:
+                resp = session.get(url, timeout=8, allow_redirects=True)
+                if resp.status_code == 406:
+                    print(f"  !!! BLOCKED by Greenhouse (406) — sleeping {RATE_LIMIT_SLEEP}s")
+                    time.sleep(2)  # brief back-off; parallel workers don't need the full 45s stall
+                    return DiscoveryResult(None, None, None, None, "BLOCKED", "Greenhouse WAF 406")
+                if _is_rate_limited(resp.status_code):
+                    print(f"  Rate limited ({resp.status_code}) on Greenhouse — sleeping {RATE_LIMIT_SLEEP}s")
+                    time.sleep(2)  # brief back-off; parallel workers don't need the full 45s stall
+                    return DiscoveryResult(None, None, None, None, "RATE_LIMITED", f"Greenhouse HTTP {resp.status_code}")
+                if resp.status_code == 200 and "greenhouse.io" in resp.url.lower():
+                    if not _is_ats_not_found(resp.text) and verify_page_ownership(resp.text, name):
+                        final_host = urlparse(resp.url).netloc
+                        return DiscoveryResult("greenhouse", s, resp.url, final_host, "FOUND", f"Greenhouse Verified ({final_host})")
+            except Exception:
+                pass
+            _jitter(0.4, 1.0)  # delay between slug probes on the same ATS host
 
     # --- PHASE 2: ASHBY (Direct Probe with false-200 guard) ---
     for s in slug_candidates:
@@ -300,11 +334,27 @@ def discover_for_company(session: requests.Session, company: dict) -> DiscoveryR
                 content = resp.text.lower()
 
                 # Detect redirect straight to a known ATS/HR platform
-                _known_hr = ("salesforce.com", "myworkdayjobs.com", "icims.com",
-                             "taleo.net", "successfactors.com", "smartrecruiters.com",
-                             "jobvite.com", "brassring.com")
-                if any(h in f_url for h in _known_hr):
+                _non_parseable_hr = ("salesforce.com", "icims.com", "taleo.net",
+                                     "successfactors.com", "smartrecruiters.com",
+                                     "jobvite.com", "brassring.com")
+                if any(h in f_url for h in _non_parseable_hr):
                     return DiscoveryResult("custom_manual", None, resp.url, urlparse(f_url).netloc, "FOUND", f"Redirected to {urlparse(f_url).netloc}")
+                # Detect redirect to a parseable ATS (greenhouse, ashby, lever, workday)
+                for ats, marker in [("greenhouse", "greenhouse.io"), ("ashby", "ashbyhq.com"),
+                                     ("lever", "lever.co"), ("workday", "myworkdayjobs.com")]:
+                    if marker in f_url:
+                        key = extract_ats_key(resp.text, resp.url, ats)
+                        if ats == "greenhouse" and key:
+                            ats_url = f"https://job-boards.greenhouse.io/{key}"
+                        elif ats == "ashby" and key:
+                            ats_url = f"https://jobs.ashbyhq.com/{key}"
+                        elif ats == "lever" and key:
+                            ats_url = f"https://jobs.lever.co/{key}"
+                        elif ats == "workday" and key:
+                            ats_url = f"https://{key}"
+                        else:
+                            ats_url = resp.url
+                        return DiscoveryResult(ats, key, ats_url, marker, "FOUND", f"Redirected to {ats}")
 
                 # Reject stale or aggregator URLs as fallback candidates.
                 _stale_markers = ("/old/", "/archive/", "/legacy/", "/deprecated/")
@@ -316,10 +366,20 @@ def discover_for_company(session: requests.Session, company: dict) -> DiscoveryR
                     best_fallback_url = resp.url
 
                 # Content-based ATS link detection — extract adapter key when possible
-                for ats, marker in [("lever", "lever.co"), ("workday", "myworkdayjobs.com")]:
+                _ats_markers = [
+                    ("greenhouse", "greenhouse.io"),
+                    ("ashby",      "ashbyhq.com"),
+                    ("lever",      "lever.co"),
+                    ("workday",    "myworkdayjobs.com"),
+                ]
+                for ats, marker in _ats_markers:
                     if marker in content or marker in f_url:
                         key = extract_ats_key(resp.text, resp.url, ats)
-                        if ats == "lever" and key:
+                        if ats == "greenhouse" and key:
+                            ats_url = f"https://job-boards.greenhouse.io/{key}"
+                        elif ats == "ashby" and key:
+                            ats_url = f"https://jobs.ashbyhq.com/{key}"
+                        elif ats == "lever" and key:
                             ats_url = f"https://jobs.lever.co/{key}"
                         elif ats == "workday" and key:
                             ats_url = f"https://{key}"
