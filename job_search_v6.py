@@ -4596,7 +4596,10 @@ JOB_TITLE_ANCHOR_WORDS = (
 )
 NON_JOB_LINK_RE = re.compile(
     r"/(benefits|culture|locations|teams|events|students|faq|saved-jobs|talent-network|"
-    r"job-alerts|join|apply|sign-in|login|privacy|people|about|pages|categories|departments)(?:/|$)",
+    r"job-alerts|join|apply|sign-in|login|privacy|people|about|pages|categories|departments|"
+    r"leadership|executives|executive|our-team|meet-the-team|meet-our-team|board-of-directors|"
+    r"board|bios|bio|author|profile|person|team-member|management|management-team|"
+    r"press|news|blog|investor|media|contact|support|products|solutions|platform)(?:/|$)",
     re.I,
 )
 JOB_LINK_RE = re.compile(
@@ -5185,6 +5188,26 @@ def run_external_board(board: Dict[str, Any], rejected_jobs: Optional[List[Rejec
     finally:
         clear_run_context()
 
+# Vocabulary signals that indicate a page is actually a job posting.
+# Requiring 2+ of these before accepting non-structured-data pages filters
+# out leadership bios, product pages, press releases, and navigation pages
+# that pass URL/link heuristics but aren't job listings.
+_JOB_CONTENT_SIGNALS = [
+    "responsibilities", "qualifications", "requirements",
+    "job description", "about the role", "what you'll do",
+    "what you will do", "you will be", "we are looking for",
+    "minimum qualifications", "preferred qualifications",
+    "key responsibilities", "essential functions", "basic qualifications",
+    "this role", "in this role", "the ideal candidate",
+    "apply now", "submit your application", "to apply",
+]
+
+def _has_job_content_signals(text: str) -> bool:
+    """Return True if text contains at least 2 job-posting vocabulary signals."""
+    t = text.lower()
+    return sum(1 for s in _JOB_CONTENT_SIGNALS if s in t) >= 2
+
+
 def guess_title_from_soup(soup: BeautifulSoup) -> str:
     h1 = soup.select_one("h1")
     if h1:
@@ -5301,6 +5324,15 @@ def build_job_from_detail_page(
     if not title:
         return None
     page_text = clean(soup.get_text(" ", strip=True))
+    # Guard against scraping non-job pages (leadership bios, product pages, etc.).
+    # JSON-LD JobPosting structured data is trusted unconditionally; the heuristic
+    # fallback requires at least 2 job-posting vocabulary signals in the page text.
+    if not _has_job_content_signals(page_text):
+        logging.debug(
+            "build_job_from_detail_page: rejected non-job page company=%s url=%s title=%r",
+            company.name, url, title,
+        )
+        return None
     location = guess_location_from_text(page_text)
     posted_dt = guess_posted_from_text(page_text)
     return make_job(
