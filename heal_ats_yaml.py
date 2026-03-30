@@ -184,6 +184,103 @@ def _homepage_career_links(session: requests.Session, domain: str) -> List[str]:
     return [url for url, _ in ranked[:5]]
 
 
+def _sitemap_career_urls(session: requests.Session, domain: str) -> List[str]:
+    """
+    Fetch the company sitemap and return URLs that look like careers/jobs pages.
+
+    Checks in order:
+      1. robots.txt  — picks up Sitemap: directives
+      2. /sitemap_index.xml — index of sub-sitemaps; follows each sub-sitemap
+      3. /sitemap.xml — flat list
+
+    Returns up to 10 candidate URLs scored by career-keyword relevance,
+    highest-score first.
+    """
+    import xml.etree.ElementTree as ET
+
+    sitemap_urls: List[str] = []
+
+    # 1. Check robots.txt for declared Sitemap: lines
+    for root_url in (f"https://www.{domain}", f"https://{domain}"):
+        try:
+            r = session.get(f"{root_url}/robots.txt", timeout=REQUEST_TIMEOUT, allow_redirects=True)
+            if r.status_code == 200:
+                for line in r.text.splitlines():
+                    if line.strip().lower().startswith("sitemap:"):
+                        sm = line.split(":", 1)[1].strip()
+                        if sm and sm not in sitemap_urls:
+                            sitemap_urls.append(sm)
+                break
+        except Exception:
+            continue
+
+    # 2. Always also try the two standard paths
+    for root_url in (f"https://www.{domain}", f"https://{domain}"):
+        for path in ("/sitemap_index.xml", "/sitemap.xml"):
+            candidate = root_url + path
+            if candidate not in sitemap_urls:
+                sitemap_urls.append(candidate)
+
+    def _parse_sitemap(xml_text: str) -> List[str]:
+        """Extract all <loc> values from a sitemap or sitemap index."""
+        locs: List[str] = []
+        try:
+            root = ET.fromstring(xml_text)
+            # Strip namespace
+            ns = re.match(r"\{[^}]+\}", root.tag)
+            prefix = ns.group(0) if ns else ""
+            for elem in root.iter(f"{prefix}loc"):
+                if elem.text:
+                    locs.append(elem.text.strip())
+        except Exception:
+            pass
+        return locs
+
+    visited: set = set()
+    career_candidates: List[str] = []
+
+    for sm_url in sitemap_urls[:6]:   # cap to avoid infinite sitemap chains
+        if sm_url in visited:
+            continue
+        visited.add(sm_url)
+        try:
+            r = session.get(sm_url, timeout=REQUEST_TIMEOUT, allow_redirects=True)
+            if r.status_code != 200:
+                continue
+            locs = _parse_sitemap(r.text)
+            # If this is an index (contains sub-sitemap URLs), recurse one level
+            is_index = any(
+                "sitemap" in loc.lower() and loc.lower().endswith(".xml")
+                for loc in locs
+            )
+            if is_index:
+                for sub in locs[:10]:   # limit sub-sitemaps followed
+                    if sub in visited:
+                        continue
+                    visited.add(sub)
+                    try:
+                        sr = session.get(sub, timeout=REQUEST_TIMEOUT, allow_redirects=True)
+                        if sr.status_code == 200:
+                            locs.extend(_parse_sitemap(sr.text))
+                    except Exception:
+                        continue
+
+            for loc in locs:
+                sc = score_career_link(loc, "")
+                if sc > 0:
+                    career_candidates.append((sc, loc))
+        except Exception:
+            continue
+
+    # Deduplicate, sort by score descending, return top 10
+    seen: dict = {}
+    for sc, url in career_candidates:
+        if url not in seen or sc > seen[url]:
+            seen[url] = sc
+    ranked = sorted(seen.items(), key=lambda x: x[1], reverse=True)
+    return [url for url, _ in ranked[:10]]
+
+
 def _ddg_career_search(session: requests.Session, name: str, domain: str) -> Optional[str]:
     """
     Search DuckDuckGo Lite for '{company} careers site:{domain}' and return the first
@@ -597,7 +694,39 @@ def discover_for_company(session: requests.Session, company: dict) -> DiscoveryR
         except Exception:
             pass
 
-    # --- PHASE 5: FALLBACK ---
+    # --- PHASE 5: SITEMAP DISCOVERY ---
+    # Parse the company's XML sitemap(s) for career/job URLs, then run the
+    # standard ATS content scan on each candidate.  Sitemaps are static XML
+    # so this works on JS-heavy sites that resist HTML scraping.
+    for sitemap_url in _sitemap_career_urls(session, comp_domain):
+        try:
+            resp = session.get(sitemap_url, timeout=REQUEST_TIMEOUT, allow_redirects=True)
+            if resp.status_code != 200:
+                continue
+            f_url = resp.url.lower()
+            content = resp.text.lower()
+            for ats, marker in [("greenhouse", "greenhouse.io"), ("ashby", "ashbyhq.com"),
+                                 ("lever", "lever.co"), ("workday", "myworkdayjobs.com")]:
+                if marker in f_url or marker in content:
+                    key = extract_ats_key(resp.text, resp.url, ats)
+                    if ats == "greenhouse" and key:
+                        ats_url = f"https://job-boards.greenhouse.io/{key}"
+                    elif ats == "ashby" and key:
+                        ats_url = f"https://jobs.ashbyhq.com/{key}"
+                    elif ats == "lever" and key:
+                        ats_url = f"https://jobs.lever.co/{key}"
+                    elif ats == "workday" and key:
+                        ats_url = f"https://{key}"
+                    else:
+                        ats_url = resp.url
+                    return DiscoveryResult(ats, key, ats_url, marker, "FOUND", f"Sitemap → {ats}")
+            # No ATS in content — store as fallback if URL looks like a careers page
+            if not best_fallback_url and any(x in f_url for x in ["career", "job", "opening"]):
+                best_fallback_url = resp.url
+        except Exception:
+            continue
+
+    # --- PHASE 6: FALLBACK ---
     if best_fallback_url:
         return DiscoveryResult("custom_manual", None, best_fallback_url, None, "FALLBACK", "Generic Career Page")
 
