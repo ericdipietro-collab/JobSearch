@@ -4,6 +4,8 @@ A personal job search tool that automatically finds open roles at companies you 
 
 Built for anyone actively job searching. No subscriptions, no data sold to recruiters — everything runs locally on your own computer.
 
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Donate-orange?style=flat-square&logo=buy-me-a-coffee)](https://www.buymeacoffee.com/ericdipietro)
+
 ---
 
 ![Home Dashboard](docs/Screenshots/Homepage.png)

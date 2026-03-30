@@ -467,6 +467,9 @@ if _TRACKER_AVAILABLE:
         pass
 
 st.sidebar.divider()
+st.sidebar.markdown(
+    "[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Donate-orange?style=flat-square&logo=buy-me-a-coffee)](https://www.buymeacoffee.com/ericdipietro)"
+)
 st.sidebar.caption(
     f"v{APP_VERSION} · "
     "[Report a bug](https://github.com/ericdipietro-collab/JobSearch/issues/new)"
