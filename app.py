@@ -70,8 +70,9 @@ BASE_DIR = Path(__file__).resolve().parent
 CONFIG_DIR = BASE_DIR / "config"
 RESULTS_DIR = BASE_DIR / "results"
 
-XLSX_PATH      = RESULTS_DIR / "job_search_v6_results.xlsx"
-REJECTED_CSV   = RESULTS_DIR / "job_search_v6_rejected.csv"
+XLSX_PATH          = RESULTS_DIR / "job_search_v6_results.xlsx"
+MANUAL_TARGETS_CSV = RESULTS_DIR / "job_search_v6_manual_targets.csv"
+REJECTED_CSV       = RESULTS_DIR / "job_search_v6_rejected.csv"
 STATUS_JSON    = RESULTS_DIR / "job_status.json"
 STORE_JSON     = RESULTS_DIR / "job_search_store.json"   # cumulative job store
 PREFS_YAML         = CONFIG_DIR  / "job_search_preferences.yaml"
@@ -555,7 +556,7 @@ if page == "Run Job Search":
 
             if proc.returncode == 0:
                 status_label.success("Pipeline finished successfully.")
-                # Merge new jobs into the persistent store
+                # Merge scored jobs into the persistent store
                 if XLSX_PATH.exists():
                     try:
                         _new_df = pd.read_excel(XLSX_PATH, sheet_name="All Jobs", dtype=str)
@@ -567,6 +568,17 @@ if page == "Run Job Search":
                         )
                     except Exception as _merge_exc:
                         st.warning(f"Could not merge results: {_merge_exc}")
+                # Also merge manual targets so they appear in the MANUAL REVIEW tab
+                if MANUAL_TARGETS_CSV.exists():
+                    try:
+                        _mt_df = pd.read_csv(MANUAL_TARGETS_CSV, dtype=str).fillna("")
+                        _mt_stats = _merge_run_into_store(_mt_df)
+                        st.info(
+                            f"Manual targets: **{_mt_stats['added']}** new · "
+                            f"**{_mt_stats['updated']}** updated — check the **Manual Review** tab in Job Matches"
+                        )
+                    except Exception as _mt_exc:
+                        st.warning(f"Could not merge manual targets: {_mt_exc}")
                 if _ATS_AVAILABLE and XLSX_PATH.exists():
                     try:
                         _sync_conn = get_db()
