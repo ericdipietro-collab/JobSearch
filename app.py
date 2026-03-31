@@ -225,6 +225,7 @@ def _load_jobs() -> pd.DataFrame:
     """
     Load the accumulated job store as a DataFrame.
     On first use (store empty), seeds from the last XLSX run if one exists.
+    Also ensures manual targets are always present in the store.
     """
     store = _load_store()
 
@@ -235,6 +236,20 @@ def _load_jobs() -> pd.DataFrame:
             if not seed_df.empty:
                 _merge_run_into_store(seed_df)
                 store = _load_store()
+        except Exception:
+            pass
+
+    # Ensure manual targets are always present — re-merge if none are in the store.
+    # This recovers from cache invalidation or store resets that lose manual targets.
+    manual_in_store = any(
+        str(v.get("action_bucket", "")).upper() == "MANUAL REVIEW"
+        for v in store.values()
+    )
+    if not manual_in_store and MANUAL_TARGETS_CSV.exists():
+        try:
+            _mt_df = pd.read_csv(MANUAL_TARGETS_CSV, dtype=str).fillna("")
+            _merge_run_into_store(_mt_df)
+            store = _load_store()
         except Exception:
             pass
 
@@ -1672,7 +1687,7 @@ elif page == "Target Companies":
             cols_s[i].metric(f"{icon} {s.title()}", cnt)
         st.divider()
 
-    tab_list, tab_edit, tab_bulk, tab_heal, tab_raw = st.tabs(["Company List", "Add / Edit Company", "Bulk URL Fix", "Heal ATS", "Raw YAML Editor"])
+    tab_list, tab_edit, tab_bulk, tab_heal, tab_raw, tab_manual = st.tabs(["Company List", "Add / Edit Company", "Bulk URL Fix", "Heal ATS", "Raw YAML Editor", "🔍 Manual Check"])
 
     # ── Company list (editable table) ─────────────────────────────────────────
     with tab_list:
@@ -2098,3 +2113,45 @@ elif page == "Target Companies":
                     st.success(f"Saved. Backup → {COMPANIES_BAK.name}")
             except yaml.YAMLError as exc:
                 st.error(f"YAML parse error: {exc}")
+
+    # ── Manual Check ──────────────────────────────────────────────────────────
+    with tab_manual:
+        st.caption(
+            "Companies the scraper couldn't auto-fetch jobs from. "
+            "Visit each career page manually and check for open roles."
+        )
+        if not MANUAL_TARGETS_CSV.exists():
+            st.info("No manual targets yet — run the pipeline first.")
+        else:
+            try:
+                _mt = pd.read_csv(MANUAL_TARGETS_CSV, dtype=str).fillna("")
+                # Keep only the columns we need and rename for display
+                _mt_cols = ["company", "tier", "priority", "url", "company_notes"]
+                _mt_disp = _mt[[c for c in _mt_cols if c in _mt.columns]].copy()
+                _mt_disp.columns = [c.replace("company_notes", "notes").replace("url", "career_page") for c in _mt_disp.columns]
+                # Sort by tier (numeric), then company name
+                if "tier" in _mt_disp.columns:
+                    _mt_disp["tier"] = pd.to_numeric(_mt_disp["tier"], errors="coerce").fillna(9).astype(int)
+                    _mt_disp = _mt_disp.sort_values(["tier", "company"], ignore_index=True)
+                # Filter control
+                _mt_q = st.text_input("Filter", placeholder="Search company or notes…", key="mt_filter")
+                if _mt_q:
+                    _mt_mask = _mt_disp.apply(
+                        lambda r: r.astype(str).str.contains(_mt_q, case=False, na=False).any(), axis=1
+                    )
+                    _mt_disp = _mt_disp[_mt_mask]
+                st.caption(f"{len(_mt_disp)} companies need manual checks")
+                st.dataframe(
+                    _mt_disp,
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "tier":        st.column_config.NumberColumn("Tier", width="small"),
+                        "priority":    st.column_config.TextColumn("Priority", width="small"),
+                        "company":     st.column_config.TextColumn("Company", width="medium"),
+                        "career_page": st.column_config.LinkColumn("Career Page", width="large"),
+                        "notes":       st.column_config.TextColumn("Notes", width="large"),
+                    },
+                )
+            except Exception as _mt_exc:
+                st.error(f"Could not load manual targets: {_mt_exc}")
