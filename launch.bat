@@ -2,6 +2,10 @@
 setlocal enabledelayedexpansion
 title Job Search Dashboard
 
+REM ── Detect setup-only mode early (installer runs us hidden — no pause allowed) ─
+set "SETUP_ONLY=0"
+if /i "%~1"=="--setup-only" set "SETUP_ONLY=1"
+
 REM ── Locate Python 3.9+ ───────────────────────────────────────────────────────
 set "PYTHON="
 
@@ -59,8 +63,8 @@ if not defined PYTHON (
     echo   During install, check "Add Python to PATH", then re-launch.
     echo  ============================================================
     echo.
-    pause
-    start https://www.python.org/downloads/
+    if "%SETUP_ONLY%"=="0" pause
+    if "%SETUP_ONLY%"=="0" start https://www.python.org/downloads/
     exit /b 1
 )
 
@@ -81,10 +85,14 @@ if not exist ".venv\Scripts\activate.bat" (
     echo.
     echo  Setting up for the first time (this takes about a minute^) ...
     echo.
+    if exist ".venv" (
+        echo  Removing incomplete virtual environment...
+        rmdir /s /q ".venv"
+    )
     %PYTHON% -m venv .venv
     if errorlevel 1 (
         echo  ERROR: Could not create virtual environment.
-        pause
+        if "%SETUP_ONLY%"=="0" pause
         exit /b 1
     )
 )
@@ -100,7 +108,7 @@ if errorlevel 1 (
     echo.
     echo  ERROR: Failed to install dependencies.
     echo  Check your internet connection and try again.
-    pause
+    if "%SETUP_ONLY%"=="0" pause
     exit /b 1
 )
 
@@ -109,7 +117,7 @@ if not exist "results" mkdir results
 if not exist "config"  mkdir config
 
 REM ── Setup-only mode (called by installer to pre-warm the venv) ───────────────
-if /i "%~1"=="--setup-only" (
+if "%SETUP_ONLY%"=="1" (
     echo  Setup complete. Launch Job Search Dashboard to start the app.
     exit /b 0
 )
