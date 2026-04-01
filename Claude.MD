@@ -1,10 +1,14 @@
 # Job Search Healer - Technical Specification & Guide
 
 ## 🚀 Build & Run Commands
-- **Main Scraper:** `python job_search_main.py`
+- **Main Scraper:** `python run_job_search_v6.py`
+- **Main Scraper (deep search):** `python run_job_search_v6.py --deep-search`
 - **Dashboard (Main UI):** `streamlit run app.py`
 - **ATS URL Repair Tool:** `python heal_ats_yaml.py`
+- **ATS URL Repair Tool (deep heal):** `python heal_ats_yaml.py --deep-heal`
 - **Install Environment:** `pip install -r requirements.txt`
+- **Install Deep Search add-on (Windows):** `deep_search\install_deep_search.bat`
+- **Install Deep Search add-on (Mac/Linux):** `bash deep_search/install_deep_search.sh`
 
 ## 🎯 Bucket Filter & Scoring Logic
 The pipeline follows a strict multi-stage "Soft-Drop" funnel:

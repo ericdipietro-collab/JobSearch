@@ -136,6 +136,47 @@ job in the **Job Matches** page to create one automatically.
 
 ---
 
+## Deep Search & Deep Heal (optional add-ons)
+
+The standard install scrapes careers pages with lightweight HTTP requests. About 300 companies
+use JavaScript-heavy pages (React SPAs, dynamically-loaded iframes) that the static scraper
+can't read. The optional **Deep Search / Deep Heal** add-on unlocks these using a headless
+Chromium browser — it's a separate download because it pulls ~170 MB of browser binaries.
+
+### Install the add-on
+
+**Windows** — double-click or run in a terminal:
+```
+deep_search\install_deep_search.bat
+```
+
+**macOS / Linux:**
+```bash
+bash deep_search/install_deep_search.sh
+```
+
+This installs `playwright` and downloads Chromium. Restart the dashboard afterwards.
+
+### What each mode does
+
+**Deep Search** (Run Job Search page)
+- Scrapes careers pages on JavaScript-heavy sites that return nothing with static HTTP
+- Covers BlackRock, Charles Schwab, S&P Global, and any company with `render_required: true`
+- Enable the **Deep Search** toggle before clicking Start Pipeline, or pass `--deep-search` on the CLI
+
+**Deep Heal** (Target Companies → Heal ATS tab)
+- Identifies *which ATS* a company uses when the static healer can't figure it out
+- Uses Playwright **network request interception** — watches API calls made during page load
+  to catch Greenhouse, Lever, Ashby, Workday API calls invisible to HTML parsing
+- Also detects JS-constructed iframes (where `<iframe src="">` is set by JavaScript at runtime)
+- Only fires for companies the static scan marks NOT_FOUND, FALLBACK, or unresolved custom_manual
+- Enable the **Deep Heal** toggle in the Heal ATS tab, or pass `--deep-heal` on the CLI
+
+> **Performance note:** Deep Search/Heal launches a headless browser per company, so it's
+> slower than standard runs. Use it when you want to maximise coverage, not for every daily run.
+
+---
+
 ## Keeping your data safe
 
 Your data lives in `results/jobsearch.db` on your own computer — nothing is sent anywhere.

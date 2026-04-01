@@ -15,6 +15,19 @@ import requests
 import yaml
 from bs4 import BeautifulSoup
 
+# --- Optional deep search add-on (playwright-based) ---
+try:
+    from deep_search import playwright_adapter as _deep_search_mod
+    _DEEP_SEARCH_INSTALLED = True
+except ImportError:
+    _deep_search_mod = None  # type: ignore[assignment]
+    _DEEP_SEARCH_INSTALLED = False
+
+
+def deep_heal_available() -> bool:
+    """Return True if the Playwright add-on is installed and usable."""
+    return _DEEP_SEARCH_INSTALLED and _deep_search_mod is not None and _deep_search_mod.is_available()
+
 # --- Configuration ---
 BASE_DIR = Path(__file__).resolve().parent
 YAML_FILE = BASE_DIR / "config" / "job_search_companies.yaml"
@@ -1042,7 +1055,7 @@ def update_company_record(company: dict, result: DiscoveryResult) -> bool:
     return changed
 
 
-def heal_registry(heal_all: bool = False, heal_broken: bool = False, force_rediscover: bool = False) -> None:
+def heal_registry(heal_all: bool = False, heal_broken: bool = False, force_rediscover: bool = False, deep_heal: bool = False) -> None:
     if not YAML_FILE.exists():
         print(f"Error: {YAML_FILE} not found.")
         return
@@ -1074,7 +1087,11 @@ def heal_registry(heal_all: bool = False, heal_broken: bool = False, force_redis
 
     skipped = len(companies) - len(to_heal)
 
-    print(f"Scanning {len(to_heal)} companies ({mode}) — skipping {skipped} (active/inactive) + {len(skipped_trust)} user-verified (heal_skip).")
+    deep_heal_flag = deep_heal and deep_heal_available()
+    if deep_heal and not deep_heal_available():
+        print("WARNING: --deep-heal requested but playwright is not installed. Run deep_search/install_deep_search.bat first.")
+    deep_label = " + deep heal (playwright)" if deep_heal_flag else ""
+    print(f"Scanning {len(to_heal)} companies ({mode}{deep_label}) — skipping {skipped} (active/inactive) + {len(skipped_trust)} user-verified (heal_skip).")
     if not to_heal:
         print("Nothing to heal.")
         return
@@ -1091,6 +1108,36 @@ def heal_registry(heal_all: bool = False, heal_broken: bool = False, force_redis
         old_url = company.get("careers_url", "")
 
         result = discover_for_company(session, company, force_rediscover=force_rediscover)
+
+        # Deep heal: fire when static discovery couldn't pin the ATS.
+        # Triggers on: NOT_FOUND, FALLBACK, or FOUND-but-custom_manual.
+        if deep_heal_flag and result.status not in ("VALID", "BLOCKED", "RATE_LIMITED"):
+            needs_deep = (
+                result.status in ("NOT_FOUND", "FALLBACK")
+                or (result.status == "FOUND" and result.adapter == "custom_manual")
+            )
+            if needs_deep:
+                with print_lock:
+                    print(f"  deep heal → {name}")
+                try:
+                    raw = _deep_search_mod.deep_heal_company(
+                        result.careers_url or company.get("careers_url") or "",
+                        name,
+                        comp_domain=company.get("domain", ""),
+                    )
+                    if raw:
+                        result = DiscoveryResult(
+                            adapter=raw["adapter"],
+                            adapter_key=raw.get("adapter_key"),
+                            careers_url=raw["careers_url"],
+                            ats_host=None,
+                            status="FOUND",
+                            detail=f"deep heal: {raw.get('detail', '')}",
+                        )
+                except Exception as exc:
+                    with print_lock:
+                        print(f"  deep heal error {name}: {exc}")
+
         changed = update_company_record(company, result)
 
         row = {
@@ -1174,9 +1221,20 @@ if __name__ == "__main__":
             "Use this when active companies are pointing at wrong pages."
         ),
     )
+    parser.add_argument(
+        "--deep-heal",
+        action="store_true",
+        dest="deep_heal",
+        help=(
+            "Enable deep heal mode: use Playwright to identify ATS providers for companies "
+            "that static discovery couldn't resolve (NOT_FOUND, FALLBACK, or custom_manual). "
+            "Requires the deep search add-on — run deep_search/install_deep_search.bat first."
+        ),
+    )
     args = parser.parse_args()
     heal_registry(
         heal_all=args.heal_all,
         heal_broken=args.heal_broken,
         force_rediscover=args.force_rediscover,
+        deep_heal=args.deep_heal,
     )

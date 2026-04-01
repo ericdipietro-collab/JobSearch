@@ -37,10 +37,19 @@ from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urljoin, urlparse
 
 import builtins
+import os
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup, FeatureNotFound, XMLParsedAsHTMLWarning
 import yaml
+
+# --- Optional deep search add-on (playwright-based) ---
+try:
+    from deep_search import playwright_adapter as _deep_search_mod
+    _DEEP_SEARCH_INSTALLED = True
+except ImportError:
+    _deep_search_mod = None  # type: ignore[assignment]
+    _DEEP_SEARCH_INSTALLED = False
 
 
 def _early_cli_value(flag_names):
@@ -121,6 +130,42 @@ OUTPUT_ACTIVE_CONFIG_JSON = str(RESULTS_DIR / "job_search_v6_active_config.json"
 DEFAULT_CHECKPOINT_DIR = str(RESULTS_DIR / "job_search_v6_checkpoints")
 HISTORY_JSON = str(RESULTS_DIR / "job_search_history_v6.json")
 RUN_LOG = str(RESULTS_DIR / "job_search_v6.log")
+
+
+# ---------------------------------------------------------------------------
+# Deep search mode helpers
+# ---------------------------------------------------------------------------
+
+def _deep_search_enabled() -> bool:
+    """Return True if the Playwright add-on is installed and deep search is enabled."""
+    if not _DEEP_SEARCH_INSTALLED:
+        return False
+    # Set by run_job_search_v6.py (--deep-search flag) or app.py subprocess env
+    if getattr(builtins, "DEEP_SEARCH_ENABLED", False):
+        return True
+    if os.environ.get("JOB_SEARCH_DEEP_MODE", "").lower() in ("1", "true", "yes"):
+        return True
+    return False
+
+
+def _convert_raw_jobs(company, raw_jobs, rejected_jobs=None):
+    """Convert deep_search raw dicts → Job objects via make_job()."""
+    jobs = []
+    for raw in raw_jobs:
+        job = make_job(
+            company=company,
+            title=raw.get("title") or "",
+            location=raw.get("location") or "",
+            url=raw.get("url") or company.careers_url or "",
+            source=raw.get("source") or "Deep Search",
+            description=raw.get("description") or "",
+            posted_dt=parse_date(raw.get("posted_at") or ""),
+            rejected_jobs=rejected_jobs,
+        )
+        if job:
+            jobs.append(job)
+    return jobs
+
 
 HEADERS = {
     "User-Agent": (
@@ -6113,17 +6158,43 @@ def run_adapter(company: Company, rejected_jobs: Optional[List[RejectedJob]] = N
             if jobs:
                 RUNTIME_COMPANY_STATUS[company.name] = "custom scraper"
                 return jobs
+            # Deep search fallback for JS-rendered custom sites
+            if _deep_search_enabled():
+                logging.info("deep_search fallback for custom_site company=%s", company.name)
+                raw = _deep_search_mod.scrape_jobs_generic(company.careers_url or "", company.name)
+                jobs = _convert_raw_jobs(company, raw, rejected_jobs)
+                if jobs:
+                    RUNTIME_COMPANY_STATUS[company.name] = "deep search"
+                    return jobs
             RUNTIME_COMPANY_STATUS[company.name] = "manual fallback: bad URL" if company_health_rows(company.name) else "manual fallback"
             return manual_flag(company, rejected_jobs=rejected_jobs)
         if company.adapter == "custom_blackrock":
+            if _deep_search_enabled():
+                raw = _deep_search_mod.scrape_jobs_blackrock(company.careers_url or "", company.name)
+                jobs = _convert_raw_jobs(company, raw, rejected_jobs)
+                if jobs:
+                    RUNTIME_COMPANY_STATUS[company.name] = "deep search"
+                    return jobs
             jobs = blackrock(company, rejected_jobs=rejected_jobs)
             RUNTIME_COMPANY_STATUS[company.name] = "custom scraper"
             return jobs
         if company.adapter == "custom_schwab":
+            if _deep_search_enabled():
+                raw = _deep_search_mod.scrape_jobs_schwab(company.careers_url or "", company.name)
+                jobs = _convert_raw_jobs(company, raw, rejected_jobs)
+                if jobs:
+                    RUNTIME_COMPANY_STATUS[company.name] = "deep search"
+                    return jobs
             jobs = schwab(company, rejected_jobs=rejected_jobs)
             RUNTIME_COMPANY_STATUS[company.name] = "custom scraper"
             return jobs
         if company.adapter == "custom_spglobal":
+            if _deep_search_enabled():
+                raw = _deep_search_mod.scrape_jobs_spglobal(company.careers_url or "", company.name)
+                jobs = _convert_raw_jobs(company, raw, rejected_jobs)
+                if jobs:
+                    RUNTIME_COMPANY_STATUS[company.name] = "deep search"
+                    return jobs
             jobs = spglobal(company, rejected_jobs=rejected_jobs)
             RUNTIME_COMPANY_STATUS[company.name] = "custom scraper"
             return jobs
@@ -6156,8 +6227,15 @@ def run_adapter(company: Company, rejected_jobs: Optional[List[RejectedJob]] = N
                 return jobs
             # API returned nothing — fall through to normal adapter logic
 
-        # --- render_required: JS-heavy page, generic scraping won't work ---
+        # --- render_required: JS-heavy page, use deep search if available ---
         if company.render_required:
+            if _deep_search_enabled():
+                logging.info("render_required + deep_search enabled for %s", company.name)
+                raw = _deep_search_mod.scrape_jobs_generic(company.careers_url or "", company.name)
+                jobs = _convert_raw_jobs(company, raw, rejected_jobs)
+                if jobs:
+                    RUNTIME_COMPANY_STATUS[company.name] = "deep search"
+                    return jobs
             logging.info("render_required set for %s — skipping generic scraping", company.name)
             RUNTIME_COMPANY_STATUS[company.name] = "render required (skipped)"
             return manual_flag(company, rejected_jobs=rejected_jobs)

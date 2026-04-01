@@ -50,6 +50,7 @@ def _prepare_builtins() -> None:
 
     builtins.CLI_PREFERENCES_PATH_OVERRIDE = str(prefs_override) if prefs_override else None
     builtins.CLI_COMPANIES_PATH_OVERRIDE = str(companies_override) if companies_override else None
+    builtins.DEEP_SEARCH_ENABLED = _has_flag("--deep-search")
 
     builtins.COMPANY_REGISTRY_FILE_CANDIDATES = [
         p for p in [

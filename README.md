@@ -146,6 +146,41 @@ Everything runs locally. Your database is `results/jobsearch.db` — a single SQ
 
 ---
 
+## Deep Search & Deep Heal add-ons (optional)
+
+The standard installer uses lightweight HTTP requests to scrape careers pages. Around 300 companies use JavaScript-heavy pages (React SPAs, dynamic iframes) that the static scraper can't read. The optional **Deep Search** add-on unlocks these using a headless Chromium browser.
+
+> **Not bundled with the installer** — it downloads ~170 MB of browser binaries, so it's a separate install for users who want it.
+
+### Install
+
+**Windows:**
+```
+deep_search\install_deep_search.bat
+```
+**Mac / Linux:**
+```
+bash deep_search/install_deep_search.sh
+```
+
+### What it unlocks
+
+| Add-on | Where | What it does |
+|---|---|---|
+| **Deep Search** | Run Job Search page | Scrapes JS-rendered careers pages (BlackRock, Schwab, S&P Global, any site with `render_required: true`) |
+| **Deep Heal** | Target Companies → Heal ATS tab | Uses Playwright **network interception** to identify ATS providers for companies the static scanner marks as NOT_FOUND or custom_manual — catches JS-constructed iframes and AJAX-mounted job boards |
+
+### Usage
+
+Enable the toggle in the dashboard before running, or pass `--deep-search` / `--deep-heal` on the CLI:
+
+```bash
+python run_job_search_v6.py --deep-search
+python heal_ats_yaml.py --deep-heal --all
+```
+
+---
+
 ## Requirements
 
 - **Windows Installer:** no prerequisites — Python is bundled if needed
@@ -153,6 +188,8 @@ Everything runs locally. Your database is `results/jobsearch.db` — a single SQ
 - All package dependencies are in `requirements.txt` and installed automatically by the launcher
 
 Key packages: `streamlit`, `requests`, `PyYAML`, `beautifulsoup4`, `pandas`, `openpyxl`
+
+**Deep Search / Deep Heal add-on:** `playwright` + Chromium (~170 MB, installed separately via `deep_search/install_deep_search.bat`)
 
 ---
 

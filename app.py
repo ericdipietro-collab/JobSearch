@@ -500,6 +500,36 @@ if page == "Run Job Search":
     st.title("Run Job Search")
     st.markdown("Runs the job search pipeline and refreshes results when complete.")
 
+    # --- Deep Search availability check ---
+    try:
+        from deep_search import playwright_adapter as _dsa
+        _ds_installed = _dsa.is_available()
+    except ImportError:
+        _ds_installed = False
+
+    with st.expander("Deep Search (add-on)", expanded=not _ds_installed):
+        if _ds_installed:
+            st.success(
+                "Deep Search is installed. Enable it below to scrape JavaScript-heavy "
+                "careers pages (BlackRock, Schwab, S&P Global, and sites with `render_required`)."
+            )
+        else:
+            st.info(
+                "**Deep Search is not installed.** 300+ companies blocked by JavaScript or "
+                "iframes are skipped by default. Install the add-on to unlock them.\n\n"
+                "Run `deep_search/install_deep_search.bat` (Windows) or "
+                "`deep_search/install_deep_search.sh` (Mac/Linux), then restart the dashboard."
+            )
+        use_deep_search = st.checkbox(
+            "Enable Deep Search",
+            value=False,
+            disabled=not _ds_installed,
+            help=(
+                "Uses a headless Chromium browser to scrape JS-rendered pages. "
+                "Slower than standard scraping — allow extra time per run."
+            ),
+        )
+
     col_a, col_b = st.columns([3, 1])
     with col_a:
         extra_args = st.text_input(
@@ -513,6 +543,8 @@ if page == "Run Job Search":
         cmd = [sys.executable, str(BASE_DIR / "run_job_search_v6.py")]
         if use_test:
             cmd.append("--test-companies")
+        if use_deep_search and _ds_installed:
+            cmd.append("--deep-search")
         if extra_args.strip():
             cmd.extend(extra_args.strip().split())
 
@@ -1910,6 +1942,41 @@ elif page == "Target Companies":
 
         st.divider()
 
+        # --- Deep Heal availability ---
+        try:
+            from heal_ats_yaml import deep_heal_available as _dha
+            _deep_heal_ok = _dha()
+        except Exception:
+            _deep_heal_ok = False
+
+        with st.expander("Deep Heal (add-on)", expanded=not _deep_heal_ok):
+            if _deep_heal_ok:
+                st.success(
+                    "Deep Heal is installed. Enable it below to use Playwright network "
+                    "interception for companies the static scanner can't identify "
+                    "(NOT_FOUND, FALLBACK, or unresolved custom sites). "
+                    "Adds ~10–30 s per unresolved company."
+                )
+            else:
+                st.info(
+                    "**Deep Heal is not installed.** The ATS Healer uses only static HTTP "
+                    "requests and may misidentify ~20% of companies whose career pages rely "
+                    "on JavaScript. Install the add-on to unlock Playwright-based ATS "
+                    "fingerprinting via network interception.\n\n"
+                    "Run `deep_search/install_deep_search.bat` (Windows) or "
+                    "`deep_search/install_deep_search.sh` (Mac/Linux), then restart."
+                )
+            use_deep_heal = st.checkbox(
+                "Enable Deep Heal",
+                value=False,
+                disabled=not _deep_heal_ok,
+                help=(
+                    "Uses a headless browser to intercept ATS API calls and detect "
+                    "JS-constructed iframes — catches providers invisible to static HTML parsing. "
+                    "Only fires for companies that couldn't be resolved by static discovery."
+                ),
+            )
+
         heal_all_flag = st.checkbox(
             "Heal All (re-scan every active company too)",
             help="Unchecked = only new/changed/broken/unscanned. Checked = every active company is re-probed.",
@@ -1925,6 +1992,8 @@ elif page == "Target Companies":
             cmd = [sys.executable, str(BASE_DIR / "heal_ats_yaml.py")]
             if heal_all_flag:
                 cmd.append("--all")
+            if use_deep_heal and _deep_heal_ok:
+                cmd.append("--deep-heal")
             heal_status  = st.empty()
             heal_progress = st.empty()
             log_box      = st.empty()
