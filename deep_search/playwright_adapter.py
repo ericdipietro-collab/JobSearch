@@ -661,9 +661,13 @@ _ATS_NET_PATTERNS = [
     ),
 ]
 
-# ATS URL patterns to match against frame URLs and rendered page source
+# ATS URL patterns to match against frame URLs and rendered page source.
+# Greenhouse embed iframes use ?for=SLUG — must be checked BEFORE the generic
+# path pattern or it would extract "embed" as the slug.
 _ATS_URL_PATTERNS = [
-    ("greenhouse",    re.compile(r"(?:job-boards|boards)\.greenhouse\.io/([^/?#\s\"']+)", re.I),
+    ("greenhouse",    re.compile(r"(?:job-boards|boards)\.greenhouse\.io/embed/job_board\?for=([^&\s\"'#]+)", re.I),
+     lambda m: f"https://job-boards.greenhouse.io/{m.group(1)}", lambda m: m.group(1)),
+    ("greenhouse",    re.compile(r"(?:job-boards|boards)\.greenhouse\.io/(?!embed/)([^/?#\s\"']+)", re.I),
      lambda m: f"https://job-boards.greenhouse.io/{m.group(1)}", lambda m: m.group(1)),
     ("lever",         re.compile(r"jobs\.lever\.co/([^/?#\s\"']+)", re.I),
      lambda m: f"https://jobs.lever.co/{m.group(1)}", lambda m: m.group(1)),
