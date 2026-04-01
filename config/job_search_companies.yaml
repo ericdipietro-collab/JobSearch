@@ -283,13 +283,13 @@ companies:
 - name: Altruist
   tier: 1
   priority: high
-  adapter: greenhouse
+  adapter: custom_manual
   adapter_key: altruist
-  domain: job-boards.greenhouse.io
+  domain: altruist.com
   industry: ria custodian | wealthtech | architecture leaders
   notes: Disrupting legacy custodians; desperately needs architecture leaders.
   sub_industry: RIA Custodian
-  careers_url: https://job-boards.greenhouse.io/altruist
+  careers_url: https://altruist.com/careers/
   active: true
   status: active
 - name: Alviere
@@ -314,10 +314,10 @@ companies:
   industry: asset management | wealth management | platform
   notes: US-based asset manager with deep proprietary wealth tech requirements.
   sub_industry: Asset Management
-  careers_url: https://americancentury.wd5.myworkdayjobs.com
+  careers_url: https://americancentury.wd5.myworkdayjobs.com/americancenturyinvestments
   active: true
   status: active
-  adapter_key: americancentury.wd5.myworkdayjobs.com
+  adapter_key: americancentury.wd5.myworkdayjobs.com/americancenturyinvestments
 - name: American Express
   tier: 4
   priority: medium
@@ -417,7 +417,7 @@ companies:
   sub_industry: Digital Banking
   careers_url: https://www.apiture.com/careers/
   active: true
-  status: broken
+  status: active
 - name: AppFolio
   tier: 1
   priority: high
@@ -471,7 +471,6 @@ companies:
   careers_url: https://jobs.ashbyhq.com/arch.co
   active: true
   status: active
-  heal_skip: true
 - name: Archer
   tier: 1
   priority: high
@@ -484,7 +483,6 @@ companies:
   careers_url: https://job-boards.greenhouse.io/archer56
   active: true
   status: changed
-  heal_skip: true
 - name: Argyle
   tier: 4
   priority: medium
@@ -550,13 +548,13 @@ companies:
 - name: Astra
   tier: 2
   priority: medium
-  adapter: ashby
+  adapter: custom_manual
   adapter_key: astra
-  domain: jobs.ashbyhq.com
+  domain: astra.com
   industry: payments api | money movement | ledger
   notes: API platform for real-time account-to-account (A2A) transfers.
   sub_industry: Payments API
-  careers_url: https://jobs.ashbyhq.com/astra
+  careers_url: https://astra.com/careers
   active: true
   status: active
 - name: Athene
@@ -596,7 +594,6 @@ companies:
   careers_url: https://atomic.financial/careers/
   active: true
   status: changed
-  heal_skip: true
 - name: AuditBoard
   tier: 2
   priority: medium
@@ -658,7 +655,6 @@ companies:
   careers_url: https://boards.greenhouse.io/bamboohr17
   active: true
   status: changed
-  heal_skip: true
 - name: Bank of America
   tier: 1
   priority: high
@@ -709,7 +705,6 @@ companies:
   careers_url: https://www.fourleaffcu.com/about-us/careers/
   active: true
   status: active
-  heal_skip: true
 - name: Betterment
   tier: 4
   priority: medium
@@ -868,7 +863,6 @@ companies:
   careers_url: https://jobs.bokf.com/Colorado-State-Bank-Trust/go/Colorado/4477800/
   active: true
   status: changed
-  heal_skip: true
 - name: Boomi
   tier: 1
   priority: high
@@ -1021,7 +1015,6 @@ companies:
   careers_url: https://franklintempleton.wd5.myworkdayjobs.com/
   active: true
   status: changed
-  heal_skip: true
 - name: Capco
   tier: 4
   priority: medium
@@ -1099,7 +1092,6 @@ companies:
   careers_url: https://www.carvana.com/careers/jobs/
   active: true
   status: changed
-  heal_skip: true
 - name: Catch
   tier: 2
   priority: medium
@@ -1140,16 +1132,16 @@ companies:
 - name: Cedar
   tier: 4
   priority: medium
-  adapter: custom_manual
-  adapter_key: null
+  adapter: greenhouse
+  adapter_key: embed
   domain: job-boards.greenhouse.io
   industry:
   - health fintech
   notes: Healthcare billing and payment platform needing enterprise integration
   sub_industry: Health FinTech
-  careers_url: null
+  careers_url: https://job-boards.greenhouse.io/embed
   active: true
-  status: broken
+  status: active
 - name: Celigo
   tier: 2
   priority: medium
@@ -1293,18 +1285,17 @@ companies:
   careers_url: https://careers.chime.com/en/jobs/
   active: true
   status: changed
-  heal_skip: true
 - name: CI&T
   tier: 4
   priority: medium
-  adapter: lever
+  adapter: custom_manual
   adapter_key: ciandt
-  domain: jobs.lever.co
+  domain: www.cit.com
   industry:
   - tech consulting
   notes: Global digital specialist focusing on large-scale bank and retail
   sub_industry: Tech Consulting
-  careers_url: https://jobs.lever.co/ciandt
+  careers_url: https://www.cit.com/careers
   active: true
   status: active
 - name: Circle
@@ -1332,7 +1323,6 @@ companies:
   careers_url: https://www.citadelsecurities.com/careers/open-opportunities/
   active: true
   status: changed
-  heal_skip: true
 - name: Citi
   tier: 4
   priority: medium
@@ -1347,7 +1337,6 @@ companies:
   careers_url: https://jobs.citi.com/search-jobs
   active: true
   status: changed
-  heal_skip: true
 - name: Citizens Bank
   tier: 2
   priority: medium
@@ -1360,7 +1349,6 @@ companies:
   careers_url: https://jobs.citizensbank.com/search-jobs
   active: true
   status: changed
-  heal_skip: true
 - name: Clear Street
   tier: 1
   priority: high
@@ -1394,8 +1382,8 @@ companies:
   notes: US platform for trading private company securities.
   sub_industry: Private Markets
   careers_url: https://www.clearlist.com/careers
-  active: true
-  status: broken
+  active: false
+  status: inactive
 - name: Clearwater Analytics
   tier: 1
   priority: high
@@ -1413,7 +1401,6 @@ companies:
   sub_industry: Investment Accounting
   careers_url: https://cwan.com/company/careers/
   active: true
-  heal_skip: true
   status: active
 - name: Clover Health
   tier: 4
@@ -1452,8 +1439,8 @@ companies:
   notes: Active cyber insurance needing massive risk ingestion
   sub_industry: Cyber InsureTech
   careers_url: https://www.coalitioninc.com/jobs
-  active: true
-  status: broken
+  active: false
+  status: inactive
 - name: Coastal Community Bank
   tier: 2
   priority: medium
@@ -1476,7 +1463,7 @@ companies:
   sub_industry: Banking
   careers_url: https://careers.cobank.com/web/iam-portal/login?p_p_id=iam_login_mvc&p_p_lifecycle=0&_iam_login_mvc_redirect=%2F#main-content
   active: true
-  status: broken
+  status: active
 - name: Cohen & Steers
   tier: 2
   priority: medium
@@ -1486,8 +1473,8 @@ companies:
   notes: US manager specializing in real estate and alternative income architectures.
   sub_industry: Asset Management / Alts
   careers_url: https://cohenandsteers.wd1.myworkdayjobs.com/Cohen_and_Steers
-  active: true
-  status: broken
+  active: false
+  status: inactive
 - name: Coinbase
   tier: 4
   priority: medium
@@ -1501,7 +1488,6 @@ companies:
   careers_url: https://www.coinbase.com/careers/positions
   active: true
   status: changed
-  heal_skip: true
 - name: Collibra
   tier: 2
   priority: medium
@@ -1579,8 +1565,8 @@ companies:
     other T2
   sub_industry: Data Streaming
   careers_url: https://job-boards.greenhouse.io/confluent
-  active: true
-  status: active
+  active: false
+  status: inactive
 - name: ConsenSys
   tier: 2
   priority: medium
@@ -1602,8 +1588,8 @@ companies:
   notes: Source-to-pay software needing heavy data mapping into SAP/Oracle.
   sub_industry: B2B Payments
   careers_url: https://corcentric.wd1.myworkdayjobs.com/Corcentric
-  active: true
-  status: broken
+  active: false
+  status: inactive
 - name: Corebridge Financial
   tier: 2
   priority: medium
@@ -1670,13 +1656,13 @@ companies:
 - name: Coupa
   tier: 1
   priority: high
-  adapter: lever
+  adapter: custom_manual
   adapter_key: coupa
-  domain: jobs.lever.co
+  domain: careers.coupa.com
   industry: spend management | procurement | data architecture
   notes: Enterprise business spend management; massive procure-to-pay data architecture.
   sub_industry: Business Spend
-  careers_url: https://jobs.lever.co/coupa
+  careers_url: https://careers.coupa.com/
   active: true
   status: active
 - name: Creative Planning
@@ -1770,12 +1756,12 @@ companies:
   tier: 4
   priority: medium
   adapter: workday
-  adapter_key: dataminr.wd12.myworkdayjobs.com
+  adapter_key: dataminr.wd12.myworkdayjobs.com/dataminr
   domain: dataminr.wd12.myworkdayjobs.com
   industry: []
   notes: ''
   sub_industry: ''
-  careers_url: https://dataminr.wd12.myworkdayjobs.com
+  careers_url: https://dataminr.wd12.myworkdayjobs.com/dataminr
   active: true
   status: active
 - name: DataRobot
@@ -1916,8 +1902,8 @@ companies:
   notes: Massive US fixed income manager needing specialized trade data orchestration.
   sub_industry: Asset Management / Fixed Income
   careers_url: https://www.paycomonline.net/v4/ats/web.php/portal/38CBF00EC5A30DD0F5859FC6251BFD31/career-page
-  active: true
-  status: broken
+  active: false
+  status: inactive
 - name: Dremio
   tier: 4
   priority: medium
@@ -1967,8 +1953,8 @@ companies:
   notes: Diversified trading firm needing data architects to handle multi-asset integrations.
   sub_industry: Prop Trading
   careers_url: https://job-boards.greenhouse.io/drw
-  active: true
-  status: active
+  active: false
+  status: inactive
 - name: EarnIn
   tier: 4
   priority: medium
@@ -2106,7 +2092,6 @@ companies:
   careers_url: https://careers.envestnet.com/search/jobs
   active: true
   status: changed
-  heal_skip: true
 - name: EPAM Systems
   tier: 4
   priority: medium
@@ -2295,7 +2280,6 @@ companies:
   careers_url: https://jobs.fidelity.com/en/jobs/
   active: true
   status: changed
-  heal_skip: true
 - name: Fifth Third Bank
   tier: 2
   priority: medium
@@ -2564,13 +2548,13 @@ companies:
 - name: Gemini
   tier: 1
   priority: high
-  adapter: greenhouse
+  adapter: custom_manual
   adapter_key: gemini
-  domain: job-boards.greenhouse.io
+  domain: www.gemini.com
   industry: crypto | exchange | clearing
   notes: US-regulated crypto exchange needing institutional clearing architects.
   sub_industry: Digital Assets
-  careers_url: https://job-boards.greenhouse.io/gemini
+  careers_url: https://www.gemini.com/careers
   active: true
   status: active
 - name: GeoWealth
@@ -2605,7 +2589,7 @@ companies:
   industry: credit union tech | enterprise data | reporting
   notes: Massive California-based institution needing robust backend accounting mapping.
   sub_industry: Credit Union Tech
-  careers_url: https://www.golden1.com/discoverg1
+  careers_url: https://www.golden1.com/discoverg1/careers
   active: true
   status: active
 - name: Goldman Sachs (Marcus/TxB)
@@ -2678,9 +2662,9 @@ companies:
   notes: Massive US financial services firm needing enterprise capital markets architects.
   sub_industry: Asset Management
   careers_url: https://community.workday.com/maintenance-page?d=1&s=1&e=1&o=
-  active: true
+  active: false
   adapter_key: guggenheim.wd1.myworkdayjobs.com/en-US/External_Careers_Site
-  status: broken
+  status: inactive
 - name: Guideline
   tier: 2
   priority: medium
@@ -2783,8 +2767,8 @@ companies:
   notes: Proactive home insurance needing modern API
   sub_industry: InsureTech
   careers_url: https://jobs.lever.co/hippo
-  active: true
-  status: broken
+  active: false
+  status: inactive
 - name: Hudson River Trading
   tier: 2
   priority: medium
@@ -2857,8 +2841,8 @@ companies:
   notes: Formerly Ellie Mae/Black Knight; the undisputed giant of US mortgage pipelines.
   sub_industry: Mortgage Tech
   careers_url: https://ice.wd1.myworkdayjobs.com/ICE
-  active: true
-  status: broken
+  active: false
+  status: inactive
 - name: IEX Group
   tier: 4
   priority: medium
@@ -2957,8 +2941,8 @@ companies:
   notes: He previously reverse-engineered their UX; direct domain match.
   sub_industry: WealthTech
   careers_url: https://jobs.lever.co/investcloud
-  active: true
-  status: broken
+  active: false
+  status: inactive
 - name: Jack Henry & Associates
   tier: 1
   priority: high
@@ -3091,8 +3075,8 @@ companies:
   notes: HR tech platform managing massive flows of payroll and benefits
   sub_industry: PEO / Payroll
   careers_url: https://job-boards.greenhouse.io/justworks
-  active: true
-  status: broken
+  active: false
+  status: inactive
 - name: Keep Financial
   tier: 2
   priority: medium
@@ -3104,8 +3088,8 @@ companies:
     modeling.
   sub_industry: FinTech / Compensation
   careers_url: https://job-boards.greenhouse.io/keepfinancial
-  active: true
-  status: active
+  active: false
+  status: inactive
 - name: Kensho (S&P Global)
   tier: 4
   priority: medium
@@ -3183,8 +3167,8 @@ companies:
   notes: Tech-forward US community bank powering modern financial apps.
   sub_industry: BaaS / Tech Bank
   careers_url: https://jobs.lever.co/leadbank
-  active: true
-  status: broken
+  active: false
+  status: inactive
 - name: Lemonade
   tier: 2
   priority: medium
@@ -3195,8 +3179,8 @@ companies:
   notes: US tech-first insurance needing enterprise-grade technical product managers.
   sub_industry: InsureTech
   careers_url: https://job-boards.greenhouse.io/lemonade
-  active: true
-  status: active
+  active: false
+  status: inactive
 - name: LendingClub
   tier: 2
   priority: medium
@@ -3290,7 +3274,7 @@ companies:
   sub_industry: Asset Management
   careers_url: https://www.lordabbett.com/en-us/financial-advisor/about-us
   active: true
-  status: broken
+  status: active
 - name: LPL Financial
   tier: 1
   priority: high
@@ -3418,8 +3402,8 @@ companies:
   notes: Financial operations for B2B SaaS; deep need for accounting data
   sub_industry: B2B Billing
   careers_url: https://job-boards.greenhouse.io/maxio
-  active: true
-  status: active
+  active: false
+  status: inactive
 - name: Maxwell
   tier: 2
   priority: medium
@@ -3820,8 +3804,8 @@ companies:
   notes: Digital loan origination platform for US commercial banks.
   sub_industry: Lending Tech
   careers_url: https://jobs.lever.co/numerated
-  active: true
-  status: broken
+  active: false
+  status: inactive
 - name: NYDIG
   tier: 4
   priority: medium
@@ -3833,21 +3817,21 @@ companies:
   notes: Bridges Bitcoin with traditional banking
   sub_industry: Bitcoin for Institutions
   careers_url: https://job-boards.greenhouse.io/nydig
-  active: true
-  status: active
+  active: false
+  status: inactive
 - name: Nymbus
   tier: 4
   priority: medium
-  adapter: custom_manual
-  adapter_key: null
+  adapter: greenhouse
+  adapter_key: embed
   domain: job-boards.greenhouse.io
   industry:
   - core banking tech
   notes: Builds niche digital banks and modernizes core tech for legacy
   sub_industry: Core Banking Tech
-  careers_url: null
+  careers_url: https://job-boards.greenhouse.io/embed
   active: true
-  status: broken
+  status: active
 - name: Oasis Pro
   tier: 2
   priority: medium
@@ -3871,8 +3855,8 @@ companies:
   notes: Brings institutional-grade financial products to
   sub_industry: DeFi / TradFi Bridge
   careers_url: https://jobs.ashbyhq.com/ondo
-  active: true
-  status: broken
+  active: false
+  status: inactive
 - name: OneMain Financial
   tier: 2
   priority: medium
@@ -4215,8 +4199,8 @@ companies:
   notes: Competitor to Argyle; heavy API logic and data normalization
   sub_industry: Payroll Data APIs
   careers_url: https://job-boards.greenhouse.io/pinwheel
-  active: true
-  status: active
+  active: false
+  status: inactive
 - name: Piper Sandler
   tier: 1
   priority: high
@@ -4416,10 +4400,10 @@ companies:
   notes: Strong history of hiring remote product architects for bank and credit union
     tech.
   sub_industry: Digital Banking Tech
-  careers_url: https://q2ebanking.wd5.myworkdayjobs.com
+  careers_url: https://q2ebanking.wd5.myworkdayjobs.com/q2
   active: true
   status: active
-  adapter_key: q2ebanking.wd5.myworkdayjobs.com
+  adapter_key: q2ebanking.wd5.myworkdayjobs.com/q2
 - name: Qualia
   tier: 2
   priority: medium
@@ -4443,8 +4427,8 @@ companies:
   notes: Competitor to Brex; highly values technical depth and speed of delivery.
   sub_industry: Corporate Spend / Banking
   careers_url: https://community.workday.com/maintenance-page?d=3&s=1&e=1
-  active: true
-  status: broken
+  active: false
+  status: inactive
 - name: Raymond James
   tier: 1
   priority: high
@@ -4454,8 +4438,8 @@ companies:
   notes: Massive financial services firm with deep enterprise integration needs.
   sub_industry: Broker-Dealer Tech
   careers_url: https://raymondjames.wd5.myworkdayjobs.com/RaymondJames
-  active: true
-  status: broken
+  active: false
+  status: inactive
 - name: RBFCU
   tier: 2
   priority: medium
@@ -4535,7 +4519,6 @@ companies:
   careers_url: https://ridgeline.ai/company/careers
   active: true
   status: changed
-  heal_skip: true
 - name: Ripple
   tier: 2
   priority: medium
@@ -4584,7 +4567,6 @@ companies:
   careers_url: https://careers.rocket.com/careers?search=remote&origin=global
   active: true
   status: changed
-  heal_skip: true
 - name: Roofstock
   tier: 2
   priority: medium
@@ -4607,8 +4589,8 @@ companies:
   notes: Data-driven US auto insurance; relies heavily on complex data ingestion pipelines.
   sub_industry: InsureTech
   careers_url: https://job-boards.greenhouse.io/rootinsurance
-  active: true
-  status: active
+  active: false
+  status: inactive
 - name: Routable
   tier: 2
   priority: medium
@@ -4735,8 +4717,8 @@ companies:
   notes: Re-emphasizing) Builds digital wealth solutions for massive enterprise
   sub_industry: B2B WealthTech(
   careers_url: https://www.sigfig.com/careers
-  active: true
-  status: broken
+  active: false
+  status: inactive
 - name: Signifyd
   tier: 2
   priority: medium
@@ -4748,8 +4730,8 @@ companies:
     logic.
   sub_industry: Fraud / Payments
   careers_url: https://job-boards.greenhouse.io/signifyd
-  active: true
-  status: active
+  active: false
+  status: inactive
 - name: Sila
   tier: 2
   priority: medium
@@ -5058,8 +5040,8 @@ companies:
   notes: Major US consumer financial services company.
   sub_industry: Consumer Finance
   careers_url: https://synchrony.wd1.myworkdayjobs.com/Synchrony_Careers
-  active: true
-  status: broken
+  active: false
+  status: inactive
 - name: Synctera
   tier: 2
   priority: medium
@@ -5275,7 +5257,6 @@ companies:
   careers_url: https://careers.thetradedesk.com/jobs
   active: true
   status: changed
-  heal_skip: true
 - name: TradePMR
   tier: 1
   priority: high
@@ -5325,7 +5306,6 @@ companies:
   careers_url: https://www.tradeweb.com/who-we-are/careers/
   active: true
   status: changed
-  heal_skip: true
 - name: Tradier
   tier: 4
   priority: medium
@@ -5379,26 +5359,26 @@ companies:
   tier: 2
   priority: medium
   adapter: workday
-  adapter_key: trintech.wd501.myworkdayjobs.com
+  adapter_key: trintech.wd501.myworkdayjobs.com/trintech
   domain: trintech.wd501.myworkdayjobs.com
   industry: reconciliation | month-end close | financial ops
   notes: Direct match for his Allstate reconciliation and ledger automation experience.
   sub_industry: FinTech / Accounting
-  careers_url: https://trintech.wd501.myworkdayjobs.com
+  careers_url: https://trintech.wd501.myworkdayjobs.com/trintech
   active: true
   status: active
 - name: TRM Labs
   tier: 2
   priority: medium
-  adapter: custom_manual
-  adapter_key: null
+  adapter: greenhouse
+  adapter_key: embed
   domain: job-boards.greenhouse.io
   industry: crypto compliance | integrations | api
   notes: Digital asset compliance; hires deeply technical integration managers.
   sub_industry: Crypto Compliance
-  careers_url: null
+  careers_url: https://job-boards.greenhouse.io/embed
   active: true
-  status: broken
+  status: active
 - name: Trovata
   tier: 2
   priority: medium
@@ -5557,8 +5537,8 @@ companies:
   notes: Infrastructure for risk and compliance; relies on complex data ingestion.
   sub_industry: RegTech / Risk
   careers_url: https://job-boards.greenhouse.io/unit21
-  active: true
-  status: active
+  active: false
+  status: inactive
 - name: United Wholesale Mortgage (UWM)
   tier: 2
   priority: medium
@@ -6001,8 +5981,8 @@ companies:
   notes: Needs platform architects to structure complex private market data.
   sub_industry: Alt Investment Tech
   careers_url: https://job-boards.greenhouse.io/yieldstreet
-  active: true
-  status: active
+  active: false
+  status: inactive
 - name: Zanbato
   tier: 2
   priority: medium
@@ -6087,5 +6067,5 @@ companies:
   notes: Enterprise billing platform; massive requirement for complex ERP
   sub_industry: Subscription Billing
   careers_url: https://www.zuora.com/careers/
-  active: true
-  status: broken
+  active: false
+  status: inactive

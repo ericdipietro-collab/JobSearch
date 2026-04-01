@@ -188,7 +188,7 @@ URL_FAILURE_COUNTS: Dict[str, int] = {}
 URL_FAMILY_FAILURE_COUNTS: Dict[str, int] = {}
 URL_FAMILY_COOLDOWNS: Dict[str, float] = {}
 WORKDAY_DETAIL_FAMILY_COOLDOWNS: Dict[str, float] = {}
-CURRENT_RUN_CONTEXT: Dict[str, str] = {}
+_RUN_CTX = threading.local()  # thread-safe run context (replaces shared CURRENT_RUN_CONTEXT)
 REGISTRY_HEALTH: Dict[Tuple[str, str, str], Dict[str, Any]] = {}
 RUNTIME_COMPANY_STATUS: Dict[str, str] = {}
 
@@ -1831,17 +1831,16 @@ def browser_headers(
 
 
 def set_run_context(kind: str, name: str, adapter: str = "", careers_url: str = "") -> None:
-    CURRENT_RUN_CONTEXT.clear()
-    CURRENT_RUN_CONTEXT.update({
+    _RUN_CTX.context = {
         "kind": clean(kind),
         "name": clean(name),
         "adapter": clean(adapter),
         "careers_url": clean(careers_url),
-    })
+    }
 
 
 def clear_run_context() -> None:
-    CURRENT_RUN_CONTEXT.clear()
+    _RUN_CTX.context = {}
 
 
 def url_family_key(url: str) -> str:
@@ -1952,7 +1951,7 @@ def record_registry_health(
     safe = sanitize_url(url) or clean(url)
     if not safe:
         return
-    ctx = dict(CURRENT_RUN_CONTEXT)
+    ctx = dict(getattr(_RUN_CTX, 'context', {}))
     key = (ctx.get("kind", ""), ctx.get("name", ""), safe)
     rec = REGISTRY_HEALTH.get(key)
     if rec is None:
@@ -5717,7 +5716,12 @@ def workday(company: Company, rejected_jobs: Optional[List[RejectedJob]] = None)
                 detail_desc = ""
                 detail_url = ""
                 if external_path:
-                    detail_endpoint = f"https://{host}/wday/cxs/{tenant}/{site}/job/{external_path}"
+                    # Strip leading '/job/' if present — some Workday instances return
+                    # externalPath as '/job/<slug>' which would produce a double '/job//job/' URL.
+                    _ep = external_path.lstrip('/')
+                    if _ep.startswith('job/'):
+                        _ep = _ep[4:]
+                    detail_endpoint = f"https://{host}/wday/cxs/{tenant}/{site}/job/{_ep}"
                     if not workday_detail_family_is_blocked(host, site):
                         try:
                             detail = fetch_json_post(detail_endpoint, {}, retries=1, referer=endpoint)
@@ -5740,7 +5744,7 @@ def workday(company: Company, rejected_jobs: Optional[List[RejectedJob]] = None)
                                     note=f"company={company.name};site={site}",
                                 )
                             logging.debug("workday detail fetch failed company=%s site=%s path=%s err=%s", company.name, site, external_path, e)
-                    detail_url = f"https://{host}/en-US/{site}/job/{external_path}"
+                    detail_url = f"https://{host}/en-US/{site}/job/{_ep}"
                 desc = clean(" ".join([
                     title,
                     location,
