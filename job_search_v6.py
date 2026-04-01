@@ -790,6 +790,11 @@ APPLY_DOMAINS: Dict[str, List[str]] = {
         "financial data pipeline", "financial data pipelines",
         "partner platform", "partner api",
     ],
+    "Digital Banking / Core Banking": [
+        "digital banking", "core banking", "mobile banking", "banking platform",
+        "credit union platform", "online banking", "neobank", "banking infrastructure",
+        "deposit account", "account opening", "digital bank",
+    ],
 }
 
 SKIP_DOMAINS: Dict[str, List[str]] = {
@@ -1627,6 +1632,9 @@ CONTEXT_FALLBACK_TITLE_MARKERS = [
     "integration consultant",
     "integration product manager",
     "platform product manager",
+    "platform product management",
+    "technical product management",
+    "product manager",
 ]
 
 NON_US_MARKERS.extend([
