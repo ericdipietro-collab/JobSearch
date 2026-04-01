@@ -482,7 +482,7 @@ companies:
   sub_industry: WealthTech
   careers_url: https://job-boards.greenhouse.io/archer56
   active: true
-  status: changed
+  status: active
 - name: Argyle
   tier: 4
   priority: medium
@@ -592,8 +592,8 @@ companies:
   notes: Infrastructure for payroll
   sub_industry: Payroll Data APIs
   careers_url: https://atomic.financial/careers/
-  active: true
-  status: changed
+  active: false
+  status: broken
 - name: AuditBoard
   tier: 2
   priority: medium
@@ -654,7 +654,7 @@ companies:
   sub_industry: HRIS / Payroll
   careers_url: https://boards.greenhouse.io/bamboohr17
   active: true
-  status: changed
+  status: active
 - name: Bank of America
   tier: 1
   priority: high
@@ -862,7 +862,7 @@ companies:
   sub_industry: Regional Banking / Wealth
   careers_url: https://jobs.bokf.com/Colorado-State-Bank-Trust/go/Colorado/4477800/
   active: true
-  status: changed
+  status: active
 - name: Boomi
   tier: 1
   priority: high
@@ -1006,15 +1006,15 @@ companies:
   tier: 4
   priority: medium
   adapter: workday
-  adapter_key: ''
+  adapter_key: franklintempleton.wd1.myworkdayjobs.com
   domain: franklintempleton.wd1.myworkdayjobs.com
   industry:
   - custom indexing
   notes: Custom indexing platform; requires deep portfolio hierarchy
   sub_industry: Custom Indexing
-  careers_url: https://franklintempleton.wd5.myworkdayjobs.com/
+  careers_url: https://franklintempleton.wd1.myworkdayjobs.com
   active: true
-  status: changed
+  status: active
 - name: Capco
   tier: 4
   priority: medium
@@ -1090,8 +1090,8 @@ companies:
     pipelines.
   sub_industry: Auto Finance / FinTech
   careers_url: https://www.carvana.com/careers/jobs/
-  active: true
-  status: changed
+  active: false
+  status: broken
 - name: Catch
   tier: 2
   priority: medium
@@ -1283,8 +1283,8 @@ companies:
   notes: Constant need for scalable architecture to support millions of daily transactions.
   sub_industry: Digital Banking
   careers_url: https://careers.chime.com/en/jobs/
-  active: true
-  status: changed
+  active: false
+  status: broken
 - name: CI&T
   tier: 4
   priority: medium
@@ -1321,8 +1321,8 @@ companies:
     architects.
   sub_industry: Prop Trading
   careers_url: https://www.citadelsecurities.com/careers/open-opportunities/
-  active: true
-  status: changed
+  active: false
+  status: broken
 - name: Citi
   tier: 4
   priority: medium
@@ -1336,7 +1336,7 @@ companies:
   sub_industry: Banking / Tech
   careers_url: https://jobs.citi.com/search-jobs
   active: true
-  status: changed
+  status: active
 - name: Citizens Bank
   tier: 2
   priority: medium
@@ -1348,7 +1348,7 @@ companies:
   sub_industry: Commercial Banking
   careers_url: https://jobs.citizensbank.com/search-jobs
   active: true
-  status: changed
+  status: active
 - name: Clear Street
   tier: 1
   priority: high
@@ -1486,8 +1486,8 @@ companies:
   notes: Institutional crypto exchange needing TradFi architects to bridge the
   sub_industry: Digital Assets
   careers_url: https://www.coinbase.com/careers/positions
-  active: true
-  status: changed
+  active: false
+  status: broken
 - name: Collibra
   tier: 2
   priority: medium
@@ -2078,8 +2078,8 @@ companies:
 - name: Envestnet
   tier: 1
   priority: high
-  adapter: custom_site
-  adapter_key: ''
+  adapter: workday
+  adapter_key: envestnet.wd5.myworkdayjobs.com
   domain: envestnet.wd5.myworkdayjobs.com
   industry:
   - wealth management
@@ -2089,9 +2089,9 @@ companies:
   - platform
   notes: Advisor tech ecosystem — major platform integrations across wealth management
   sub_industry: WealthTech
-  careers_url: https://careers.envestnet.com/search/jobs
+  careers_url: https://envestnet.wd5.myworkdayjobs.com
   active: true
-  status: changed
+  status: active
 - name: EPAM Systems
   tier: 4
   priority: medium
@@ -2278,8 +2278,8 @@ companies:
   notes: NFS platform is primary proof point — custodian PM roles exist
   sub_industry: Brokerage / Clearing
   careers_url: https://jobs.fidelity.com/en/jobs/
-  active: true
-  status: changed
+  active: false
+  status: broken
 - name: Fifth Third Bank
   tier: 2
   priority: medium
@@ -4518,7 +4518,7 @@ companies:
   sub_industry: WealthTech / Cloud
   careers_url: https://ridgeline.ai/company/careers
   active: true
-  status: changed
+  status: active
 - name: Ripple
   tier: 2
   priority: medium
@@ -4559,14 +4559,14 @@ companies:
 - name: Rocket Companies
   tier: 2
   priority: medium
-  adapter: custom_site
+  adapter: custom_manual
   domain: www.rocketcompanies.com
   industry: mortgage tech | consumer finance | integrations
   notes: Parent of Rocket Mortgage; massive remote tech teams and data pipelines.
   sub_industry: Mortgage Tech
-  careers_url: https://careers.rocket.com/careers?search=remote&origin=global
+  careers_url: https://www.rocketcompanies.com/our-team/careers/
   active: true
-  status: changed
+  status: active
 - name: Roofstock
   tier: 2
   priority: medium
@@ -5246,17 +5246,17 @@ companies:
 - name: TradeDesk
   tier: 4
   priority: medium
-  adapter: custom_site
-  adapter_key: ''
+  adapter: workday
+  adapter_key: thetradedesk.wd1.myworkdayjobs.com
   domain: thetradedesk.wd1.myworkdayjobs.com
   industry:
   - adtech
   - fin-adjacent
   notes: Real-time bidding platforms function exactly like high-frequency trading
   sub_industry: AdTech (Fin-adjacent)
-  careers_url: https://careers.thetradedesk.com/jobs
+  careers_url: https://thetradedesk.wd1.myworkdayjobs.com
   active: true
-  status: changed
+  status: active
 - name: TradePMR
   tier: 1
   priority: high
@@ -5304,8 +5304,8 @@ companies:
     and clearing.
   sub_industry: Capital Markets
   careers_url: https://www.tradeweb.com/who-we-are/careers/
-  active: true
-  status: changed
+  active: false
+  status: broken
 - name: Tradier
   tier: 4
   priority: medium
