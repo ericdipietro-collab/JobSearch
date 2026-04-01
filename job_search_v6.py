@@ -6610,6 +6610,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--checkpoint-every", type=int, default=20, help="Write partial checkpoint files every N companies. Use 0 to disable.")
     parser.add_argument("--checkpoint-dir", default=DEFAULT_CHECKPOINT_DIR, help="Directory for partial checkpoint exports.")
     parser.add_argument("--skip-external-boards", action="store_true", help="Skip external board scraping during the run.")
+    parser.add_argument("--deep-search", action="store_true", help="Enable Playwright-based deep search for JS-heavy careers pages (requires deep search add-on).")
     return parser.parse_args()
 
 
