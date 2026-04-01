@@ -102,7 +102,7 @@ Controls salary floors, location policy, and the keyword scoring engine. The lau
 
 ### `job_search_companies.yaml`
 
-**A starter list of ~485 companies is already included** — weighted toward FinTech, FinServ, and adjacent tech (wealth management, payments, data platforms, insurtech, banking software, enterprise SaaS). Add, edit, or remove companies from the **Target Companies** page in the dashboard.
+**A starter list of ~450 active companies is already included** — weighted toward FinTech, FinServ, and adjacent tech (wealth management, payments, data platforms, insurtech, banking software, enterprise SaaS). Add, edit, or remove companies from the **Target Companies** page in the dashboard.
 
 Each entry looks like:
 

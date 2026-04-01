@@ -6,7 +6,7 @@
 ; ─────────────────────────────────────────────────────────────────────────────
 
 #define AppName      "Job Search Dashboard"
-#define AppVersion   "1.5"
+#define AppVersion   "1.6"
 #define AppPublisher "Job Search Tools"
 #define AppExeName   "launch.vbs"
 #define PythonVer    "3.11.9"
