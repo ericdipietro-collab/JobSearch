@@ -518,10 +518,10 @@ companies:
   industry: asset management | capital markets | reporting
   notes: US-based global investment management firm needing enterprise ETL experts.
   sub_industry: Asset Management
-  careers_url: https://job-boards.greenhouse.io/embed
+  careers_url: https://job-boards.greenhouse.io/artisanpartners
   active: true
   status: active
-  adapter_key: embed
+  adapter_key: artisanpartners
 - name: Ascent
   tier: 2
   priority: medium
@@ -1140,16 +1140,16 @@ companies:
 - name: Cedar
   tier: 4
   priority: medium
-  adapter: greenhouse
-  adapter_key: embed
+  adapter: custom_manual
+  adapter_key: null
   domain: job-boards.greenhouse.io
   industry:
   - health fintech
   notes: Healthcare billing and payment platform needing enterprise integration
   sub_industry: Health FinTech
-  careers_url: https://job-boards.greenhouse.io/embed
+  careers_url: null
   active: true
-  status: active
+  status: broken
 - name: Celigo
   tier: 2
   priority: medium
@@ -2148,12 +2148,12 @@ companies:
   tier: 2
   priority: medium
   adapter: greenhouse
-  adapter_key: embed
+  adapter_key: ethicinvesting
   domain: job-boards.greenhouse.io
   industry: esg wealthtech | direct indexing | data pipelines
   notes: Direct indexing platform focusing on ESG; needs massive data pipeline architects.
   sub_industry: ESG WealthTech
-  careers_url: https://job-boards.greenhouse.io/embed
+  careers_url: https://job-boards.greenhouse.io/ethicinvesting
   active: true
   status: active
 - name: Ethos Life
@@ -2756,10 +2756,10 @@ companies:
   industry: treasury | fintech | erp integration
   notes: AI-driven treasury software heavily reliant on complex multi-system ERP integrations.
   sub_industry: FinTech / Treasury
-  careers_url: https://job-boards.greenhouse.io/embed
+  careers_url: https://job-boards.greenhouse.io/highradius
   active: true
   status: active
-  adapter_key: embed
+  adapter_key: highradius
 - name: Hightouch
   tier: 2
   priority: medium
@@ -3838,16 +3838,16 @@ companies:
 - name: Nymbus
   tier: 4
   priority: medium
-  adapter: greenhouse
-  adapter_key: embed
+  adapter: custom_manual
+  adapter_key: null
   domain: job-boards.greenhouse.io
   industry:
   - core banking tech
   notes: Builds niche digital banks and modernizes core tech for legacy
   sub_industry: Core Banking Tech
-  careers_url: https://job-boards.greenhouse.io/embed
+  careers_url: null
   active: true
-  status: active
+  status: broken
 - name: Oasis Pro
   tier: 2
   priority: medium
@@ -5390,15 +5390,15 @@ companies:
 - name: TRM Labs
   tier: 2
   priority: medium
-  adapter: greenhouse
-  adapter_key: embed
+  adapter: custom_manual
+  adapter_key: null
   domain: job-boards.greenhouse.io
   industry: crypto compliance | integrations | api
   notes: Digital asset compliance; hires deeply technical integration managers.
   sub_industry: Crypto Compliance
-  careers_url: https://job-boards.greenhouse.io/embed
+  careers_url: null
   active: true
-  status: active
+  status: broken
 - name: Trovata
   tier: 2
   priority: medium

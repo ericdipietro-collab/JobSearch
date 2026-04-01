@@ -344,8 +344,8 @@ def render_pipeline(conn: sqlite3.Connection) -> None:
     # Columns to show in the table
     display_cols = [
         c for c in [
-            "score", "company", "title", "current_stage", "location",
-            "salary_text", "days_in_stage", "url",
+            "score", "company", "url", "title", "current_stage", "location",
+            "salary_text", "days_in_stage",
         ]
         if c in pipeline_df.columns
     ]

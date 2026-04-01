@@ -149,9 +149,9 @@ KNOWN_ADAPTERS = [
 
 # Columns shown in job tables (subset of TRACKER_COLS from job_search_v6.py)
 DISPLAY_COLS = [
-    "company", "tier", "title", "score", "fit_band",
-    "location", "salary_range", "age_days", "is_new",
-    "matched_keywords", "decision_reason", "url",
+    "company", "url", "title", "score", "fit_band",
+    "location", "salary_range", "age_days", "tier", "is_new",
+    "matched_keywords", "decision_reason",
 ]
 
 
