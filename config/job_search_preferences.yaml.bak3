@@ -1,0 +1,593 @@
+version: 1
+search:
+  location_policy: remote_only
+  geography:
+    us_only: true
+  location_preferences:
+    remote_us:
+      enabled: true
+      bonus: 14
+    local_hybrid:
+      enabled: true
+      primary_zip: '80504'
+      radius_miles: 30
+      markers:
+      - '80504'
+      - firestone
+      - frederick
+      - dacono
+      - mead
+      - longmont
+      - erie
+      - lafayette
+      - louisville
+      - boulder
+      - broomfield
+      - westminster
+      - thornton
+      - northglenn
+      - johnstown
+      - loveland
+      bonus: 4
+      allow_if_salary_at_least_usd: 170000
+  compensation:
+    enforce_min_salary: true
+    target_salary_usd: 165000
+    min_salary_usd: 165000
+    preferred_remote_min_salary_usd: 165000
+    allow_missing_salary: true
+    salary_floor_basis: midpoint
+    negotiation_buffer_pct: 0.05
+  recency:
+    enforce_job_age: true
+    max_job_age_days: 21
+scoring:
+  minimum_score_to_keep: 35
+  apply_now:
+    require_strong_title: true
+    min_role_alignment: 6.0
+    direct_title_markers:
+    - architect
+    - product manager
+    - program manager
+    - business analyst
+    - systems analyst
+    - solution architect
+    - product architect
+    - integration architect
+    - platform
+    - api
+    - data architect
+  adjustments:
+    missing_salary_penalty: 6
+    salary_at_or_above_target_bonus: 6
+    salary_meets_floor_bonus: 2
+    salary_below_target_penalty: 12
+  keyword_matching:
+    count_unique_matches_only: true
+    positive_keyword_cap: 60
+    negative_keyword_cap: 45
+  action_buckets:
+    ranks:
+      APPLY NOW: 0
+      REVIEW TODAY: 1
+      WATCH: 2
+      MANUAL REVIEW: 3
+      IGNORE: 4
+    rules:
+    - label: MANUAL REVIEW
+      when:
+        manual_review: true
+    - label: APPLY NOW
+      when:
+        min_score: 88
+        eligible: true
+        strong_title: true
+        known_salary_for_apply: true
+    - label: REVIEW TODAY
+      when:
+        min_score: 88
+        eligible: true
+        strong_title: true
+        known_salary_for_apply: false
+    - label: REVIEW TODAY
+      when:
+        min_score: 74
+        eligible: true
+    - label: REVIEW TODAY
+      when:
+        tier_in:
+        - 1
+        min_score: 67
+        eligible: true
+    - label: WATCH
+      when:
+        min_score: 55
+        eligible: true
+    - label: WATCH
+      when:
+        min_score: 40
+    - label: IGNORE
+      when: {}
+titles:
+  require_one_positive_keyword: true
+  positive_keywords:
+  - senior technical product manager
+  - staff technical product manager
+  - principal technical product manager
+  - senior product manager
+  - staff product manager
+  - principal product manager
+  - lead product manager
+  - product architect
+  - solution architect
+  - solutions architect
+  - senior solutions architect
+  - enterprise architect
+  - integration architect
+  - integrations architect
+  - data architect
+  - platform architect
+  - api architect
+  - product owner
+  - technical product owner
+  - platform product manager
+  - data product manager
+  - senior data product manager
+  - api product manager
+  - integrations product manager
+  - integration product manager
+  - platform integrations product manager
+  - technical program manager
+  - technical program management
+  - senior business systems analyst
+  - business systems analyst
+  - senior business analyst
+  - lead business analyst
+  - principal business analyst
+  - senior systems analyst
+  - lead systems analyst
+  - integration analyst
+  - integrations analyst
+  - lead integration analyst
+  - manager of integration analysis
+  - integration manager
+  - integrations manager
+  - solutions consultant
+  - enterprise solutions consultant
+  - technical consultant
+  - principal consultant
+  - implementation consultant
+  - professional services consultant
+  - solutions delivery manager
+  - technical delivery manager
+  - client solutions architect
+  - financial systems architect
+  - investment systems architect
+  - investment data architect
+  - brokerage integration architect
+  - financial data product manager
+  - wealth management product manager
+  - asset management product manager
+  - capital markets product manager
+  - aladdin consultant
+  - aladdin business analyst
+  - aladdin product manager
+  - charles river consultant
+  - charles river business analyst
+  - portfolio accounting architect
+  - investment operations architect
+  - data integration architect
+  - data warehouse architect
+  - etl architect
+  - analytics product manager
+  - reporting product manager
+  - data governance product manager
+  - master data product manager
+  - information architect
+  - product lead
+  - technical product
+  - platform
+  - integration
+  - integrations
+  - api
+  - solution
+  - solutions
+  - architect
+  - product management
+  - investment solutions
+  negative_disqualifiers:
+  - software engineer
+  - senior software engineer
+  - staff software engineer
+  - principal software engineer
+  - engineering manager
+  - senior engineering manager
+  - director of engineering
+  - vp engineering
+  - data engineer
+  - analytics engineer
+  - machine learning engineer
+  - ml engineer
+  - ai engineer
+  - prompt engineer
+  - sales engineer
+  - solutions engineer
+  - support engineer
+  - devops engineer
+  - site reliability engineer
+  - sre
+  - security engineer
+  - network engineer
+  - infrastructure engineer
+  - cloud engineer
+  - qa engineer
+  - test engineer
+  - recruiter
+  - talent
+  - talent acquisition
+  - human resources
+  - ' hr '
+  - attorney
+  - counsel
+  - legal
+  - account executive
+  - account manager
+  - customer success
+  - customer support
+  - support specialist
+  - marketing manager
+  - product marketing manager
+  - content manager
+  - 'content '
+  - designer
+  - product designer
+  - ux designer
+  - ui designer
+  - ux researcher
+  - researcher
+  - research scientist
+  - data scientist
+  - applied scientist
+  - finance analyst
+  - financial analyst
+  - fp&a
+  - controller
+  - accountant
+  - sales
+  - sales representative
+  - sales development representative
+  - business development representative
+  - bdr
+  - sdr
+positive_weights:
+  senior technical product manager: 10
+  principal technical product manager: 10
+  staff technical product manager: 9
+  technical product manager: 8
+  product architect: 9
+  solution architect: 9
+  solutions architect: 9
+  senior solutions architect: 9
+  integration architect: 8
+  integrations architect: 8
+  data architect: 8
+  enterprise architect: 7
+  platform architect: 7
+  api architect: 7
+  data integration architect: 7
+  financial systems architect: 8
+  investment systems architect: 8
+  investment data architect: 8
+  brokerage integration architect: 8
+  platform product manager: 8
+  api product manager: 8
+  integrations product manager: 8
+  integration product manager: 8
+  data product manager: 7
+  senior data product manager: 7
+  analytics product manager: 6
+  reporting product manager: 6
+  financial data product manager: 8
+  wealth management product manager: 8
+  asset management product manager: 8
+  capital markets product manager: 8
+  aladdin product manager: 8
+  principal product manager: 7
+  staff product manager: 7
+  senior product manager: 6
+  lead product manager: 6
+  product owner: 4
+  technical product owner: 5
+  enterprise solutions consultant: 8
+  solutions consultant: 7
+  client solutions architect: 7
+  technical consultant: 6
+  principal consultant: 6
+  implementation consultant: 5
+  professional services consultant: 5
+  solutions delivery manager: 5
+  technical delivery manager: 5
+  senior business systems analyst: 8
+  business systems analyst: 6
+  senior systems analyst: 6
+  lead systems analyst: 6
+  principal business analyst: 6
+  lead business analyst: 5
+  senior business analyst: 5
+  integration analyst: 5
+  lead integration analyst: 5
+  manager of integration analysis: 7
+  aladdin consultant: 6
+  aladdin business analyst: 7
+  charles river consultant: 5
+  charles river business analyst: 6
+  portfolio accounting architect: 7
+  investment operations architect: 7
+  data warehouse architect: 6
+  etl architect: 5
+  information architect: 4
+constraints:
+  product_manager_requires_modifier: true
+  product_manager_allowed_modifiers:
+  - staff
+  - principal
+  - senior
+  - lead
+  - technical
+  - platform
+  - api
+  - integration
+  - integrations
+  - data
+  - analytics
+  - reporting
+  - infrastructure
+  - enterprise
+  - financial
+  - capital
+  - capital markets
+  - investment
+  - brokerage
+  - wealth
+  - asset management
+  - trading
+  - payments
+  - billing
+  - ledger
+  - reconciliation
+  - advisor
+  - fund
+  - alternative
+  - solution
+  - solutions
+  - aladdin
+  business_analyst_requires_modifier: true
+  business_analyst_allowed_modifiers:
+  - senior
+  - lead
+  - principal
+  - systems
+  - technical
+  - business systems
+  - investment
+  - financial
+  - capital markets
+  - data
+  - aladdin
+  - charles river
+  - integration
+  - platform
+  architect_requires_modifier: true
+  architect_allowed_modifiers:
+  - product
+  - solution
+  - solutions
+  - senior solutions
+  - integration
+  - integrations
+  - platform
+  - enterprise
+  - data
+  - api
+  - financial systems
+  - investment systems
+  - investment data
+  - brokerage integration
+  - portfolio accounting
+  - data integration
+  - data warehouse
+  consultant_requires_modifier: true
+  consultant_allowed_modifiers:
+  - solutions
+  - enterprise solutions
+  - technical
+  - principal
+  - implementation
+  - professional services
+  - aladdin
+  - charles river
+  deprioritize_program_manager: true
+  program_manager_allowed_modifiers:
+  - technical
+  - platform
+  - integration
+  - data
+  - enterprise
+  - financial
+  - capital markets
+  - investment
+  - brokerage
+fast_track_base_score: 50
+fast_track_min_weight: 8
+keywords:
+  body_positive:
+    aladdin: 12
+    eagle pace: 12
+    charles river: 10
+    investment data warehouse: 15
+    idw: 8
+    ss&c: 8
+    maximis: 8
+    ibor: 8
+    abor: 8
+    capital markets: 8
+    nfs: 8
+    alternative investments: 8
+    private markets: 8
+    subscription documents: 8
+    custodian api: 8
+    separately managed accounts: 8
+    double entry: 8
+    double-entry: 8
+    trading systems: 7
+    portfolio analytics: 7
+    financial reporting: 7
+    reconciliation: 7
+    subledger: 7
+    gl integration: 7
+    fund accounting: 7
+    dtcc: 7
+    custodian: 7
+    brokerage: 7
+    self-directed trading: 7
+    private equity: 7
+    hedge fund: 7
+    fund administration: 7
+    wealth management: 7
+    advisor technology: 7
+    wealthtech: 7
+    ria platform: 7
+    b2b payments: 7
+    api integration: 7
+    market data api: 7
+    investment management: 7
+    portfolio management: 7
+    managed accounts: 7
+    bill pay: 7
+    card issuing: 7
+    fixed income: 6
+    risk analytics: 6
+    month-end close: 6
+    tax lots: 6
+    investor onboarding: 6
+    portfolio reporting: 6
+    payment rails: 6
+    money movement: 6
+    data integration: 10
+    integration platform: 10
+    payment operations: 6
+    partner api: 6
+    ledger: 6
+    general ledger: 6
+    gl mapping: 6
+    equities: 5
+    derivatives: 5
+    sox: 5
+    settlements: 5
+    clearing: 5
+    ach: 5
+    disbursements: 5
+    financial services: 5
+    payables: 5
+    partner platform: 5
+    asset management: 10
+    journal entry: 5
+    fintech: 10
+    data platform: 4
+    etl: 4
+    data pipeline: 4
+    SQL: 10
+  body_negative:
+    earned wage access: 30
+    buy now pay later: 30
+    site reliability: 30
+    vector database: 30
+    llm infrastructure: 30
+    embedding models: 30
+    restaurant software: 30
+    bnpl: 25
+    consumer lending: 25
+    incident management: 25
+    pagerduty: 25
+    ml platform: 25
+    deep learning: 25
+    growth hacking: 25
+    sdk for developers: 25
+    employee scheduling: 25
+    defi: 25
+    smart contracts: 25
+    web3: 25
+    nft: 25
+    write production code: 25
+    daily coding: 25
+    hands-on coding: 25
+    marketing automation: 25
+    seo/sem: 25
+    ewa: 20
+    mortgage: 20
+    home equity: 20
+    personal finance: 20
+    consumer loans: 20
+    kubernetes: 20
+    observability: 20
+    datadog: 20
+    model training: 20
+    consumer app: 20
+    mobile banking: 20
+    user acquisition: 20
+    developer tools: 20
+    cli tool: 20
+    small business payroll: 20
+    blockchain: 20
+    cryptocurrency: 20
+    golang: 20
+    rust language: 20
+    c++ development: 1
+    lifecycle campaigns: 20
+    a/b testing consumer: 1
+    credit scoring: 15
+    ci/cd: 15
+    feature engineering: 15
+    retail banking: 15
+    auth platform: 15
+policy:
+  title_rescue:
+    adjacent_title_bonus: 8
+    adjacent_title_strong_domain_bonus: 6
+    adjacent_title_min_score_to_keep: 26
+    strong_body_domain_markers:
+    - risk
+    - fraud
+    - merchant
+    - banking
+    - platform
+    - api
+    - integrations
+    - compliance
+    - credit
+    - underwriting
+    - payments
+    - money movement
+    - ledger
+    adjacent_title_markers:
+    - strategic insights
+    - risk
+    - implementation
+    - technical programs
+    analyst_variant_markers:
+    - strategic insights
+    - credit risk
+    - merchant risk
+    - risk analyst
+    - implementation analyst
+    - implementation specialist
+    - technical analyst
+    - product analyst
+    - compliance analyst
+    adjacent_title_auto_rescue_patterns:
+    - compliance analyst
+    - risk analyst
+    - implementation analyst
+    - implementation specialist
+    - technical program

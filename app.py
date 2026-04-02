@@ -18,17 +18,7 @@ import yaml
 
 # ── ATS database layer ────────────────────────────────────────────────────────
 try:
-    from db.connection import get_db
-    from db.schema import init_db
-    from services.opportunity_service import sync_from_excel
-    from services.importer import import_tracker_csv
-    from views.pipeline_page import render_pipeline
-    from views.analytics_page import render_analytics
-    _ATS_AVAILABLE = True
-except ImportError:
-    _ATS_AVAILABLE = False
-
-try:
+    import ats_db
     from views.tracker_page           import render_tracker
     from views.report_page            import render_activity_report
     from views.training_page          import render_training
@@ -38,9 +28,12 @@ try:
     from views.contacts_page          import render_contacts
     from views.question_bank_page     import render_question_bank
     from views.company_profiles_page  import render_company_profiles
-    import ats_db
+    from views.pipeline_page          import render_pipeline
+    from views.analytics_page         import render_analytics
+    _ATS_AVAILABLE = True
     _TRACKER_AVAILABLE = True
 except ImportError:
+    _ATS_AVAILABLE = False
     _TRACKER_AVAILABLE = False
 
 def _safe_render(fn, *args, page_name: str = "", **kwargs):
@@ -84,10 +77,9 @@ TRACKER_CSV    = RESULTS_DIR / "ApplicationTracker.csv"
 
 # Initialise DB on startup (idempotent)
 if _ATS_AVAILABLE:
-    import sqlite3 as _sqlite3
-    from db.schema import init_db as _init_db
-    _init_conn = _sqlite3.connect(str(DB_PATH))
-    _init_db(_init_conn)
+    import ats_db as _db
+    _init_conn = _db.get_connection()
+    _db.init_db(_init_conn)
     _init_conn.close()
 
 # ── Page config ───────────────────────────────────────────────────────────────
@@ -223,47 +215,69 @@ def _merge_run_into_store(new_df: pd.DataFrame) -> dict:
 @st.cache_data(show_spinner=False)
 def _load_jobs() -> pd.DataFrame:
     """
-    Load the accumulated job store as a DataFrame.
-    On first use (store empty), seeds from the last XLSX run if one exists.
-    Also ensures manual targets are always present in the store.
+    Load jobs from the unified database.
+    Maps database fields to the expected DataFrame structure for the UI.
     """
-    store = _load_store()
-
-    # First-time migration: seed from existing XLSX so history isn't lost.
-    if not store and XLSX_PATH.exists():
-        try:
-            seed_df = pd.read_excel(XLSX_PATH, sheet_name="All Jobs", dtype=str)
-            if not seed_df.empty:
-                _merge_run_into_store(seed_df)
-                store = _load_store()
-        except Exception:
-            pass
-
-    # Ensure manual targets are always present — re-merge if none are in the store.
-    # This recovers from cache invalidation or store resets that lose manual targets.
-    manual_in_store = any(
-        str(v.get("action_bucket", "")).upper() == "MANUAL REVIEW"
-        for v in store.values()
-    )
-    if not manual_in_store and MANUAL_TARGETS_CSV.exists():
-        try:
-            _mt_df = pd.read_csv(MANUAL_TARGETS_CSV, dtype=str).fillna("")
-            _merge_run_into_store(_mt_df)
-            store = _load_store()
-        except Exception:
-            pass
-
-    if not store:
+    if not _TRACKER_AVAILABLE:
         return pd.DataFrame()
+        
+    conn = ats_db.get_connection()
+    try:
+        # Load all applications that are in discovery/match status
+        query = "SELECT * FROM applications"
+        df = pd.read_sql_query(query, conn)
+        
+        if df.empty:
+            return df
+            
+        # Map DB columns to UI expected names
+        column_map = {
+            "role": "title",
+            "job_url": "url",
+            "scraper_key": "_key",
+        }
+        df = df.rename(columns=column_map)
+        
+        # Derive age_days from date_discovered
+        now = datetime.now()
+        def get_age(d):
+            if not d: return 0
+            try:
+                dt = datetime.fromisoformat(d.split('T')[0])
+                return (now - dt).days
+            except: return 0
+        df["age_days"] = df["date_discovered"].apply(get_age)
 
-    rows = list(store.values())
-    keys = list(store.keys())
-    df = pd.DataFrame(rows)
-    for num_col in ("score", "tier", "age_days", "salary_low", "salary_high"):
-        if num_col in df.columns:
-            df[num_col] = pd.to_numeric(df[num_col], errors="coerce")
-    df["_key"] = keys
-    return df
+        # Derive buckets from status and score
+        def get_bucket(row):
+            status = str(row.get("status", "")).lower()
+            if status in ("applied", "interviewing", "screening", "offer", "accepted"):
+                return "Applied"
+            if status == "rejected":
+                return "Rejected"
+            if status == "withdrawn":
+                return "Filtered Out"
+                
+            # If still considering, use score to bucket
+            score = float(row.get("score", 0))
+            if score >= 85: return "APPLY NOW"
+            if score >= 70: return "REVIEW TODAY"
+            if score >= 50: return "WATCH"
+            return "MANUAL REVIEW"
+
+        df["effective_bucket"] = df.apply(get_bucket, axis=1)
+        df["action_bucket"] = df["effective_bucket"] # for UI legacy
+        df["user_status"] = df["status"].map(lambda s: s.capitalize())
+        df["is_new"] = False # Default for now
+        
+        # Ensure numeric types
+        for col in ("score", "user_priority", "salary_low", "salary_high", "tier"):
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+                
+        return df
+    finally:
+        conn.close()
 
 
 @st.cache_data(show_spinner=False)
@@ -312,6 +326,7 @@ def _render_apply_now_cards(bucket_df, overrides: dict, store: dict) -> None:
     """Quick-action cards for the Apply Now bucket: open job link + one-click Apply & Track."""
     if bucket_df.empty:
         return
+        
     for _, row in bucket_df.iterrows():
         key     = row["_key"]
         company = str(row.get("company") or "")
@@ -331,56 +346,34 @@ def _render_apply_now_cards(bucket_df, overrides: dict, store: dict) -> None:
                 unsafe_allow_html=True,
             )
         if c3.button("✅ Apply & Track", key=f"apply_track_{key}"):
-            # Save Applied override
-            entry = dict(overrides.get(key, {}))
-            entry["user_status"] = "Applied"
-            if not entry.get("applied_at"):
-                entry["applied_at"] = _now_iso()
-            save_status_overrides({**overrides, key: entry})
-
-            # Bridge to Application Tracker
             if _TRACKER_AVAILABLE:
                 try:
-                    _tc = ats_db.get_connection()
-                    ats_db.init_db(_tc)
-                    _job = store.get(key, {})
-                    _company = str(_job.get("company") or company)
-                    _role    = str(_job.get("title")   or title)
-                    if _company and _role:
-                        _exists = _tc.execute(
-                            "SELECT id FROM applications "
-                            "WHERE lower(company)=lower(?) AND lower(role)=lower(?)",
-                            (_company, _role),
-                        ).fetchone()
-                        if not _exists:
-                            _sal_low  = _job.get("salary_low")
-                            _sal_high = _job.get("salary_high")
-                            _sal_rng  = _job.get("salary_range") or (
-                                f"${int(_sal_low):,}–${int(_sal_high):,}"
-                                if _sal_low and _sal_high else None
-                            )
-                            _applied_at = entry["applied_at"][:10]
-                            _app_id = ats_db.add_application(
-                                _tc,
-                                company      = _company,
-                                role         = _role,
-                                job_url      = str(_job.get("url") or _job.get("canonical_url") or url or ""),
-                                source       = "scraper",
-                                scraper_key  = key,
-                                status       = "applied",
-                                salary_low   = int(_sal_low)  if _sal_low  else None,
-                                salary_high  = int(_sal_high) if _sal_high else None,
-                                salary_range = _sal_rng,
-                                jd_summary   = str(_job.get("description_excerpt") or "")[:500] or None,
-                                date_applied = _applied_at,
-                            )
-                            ats_db.add_event(_tc, _app_id, "applied", _applied_at,
-                                             title=f"Applied to {_company}")
+                    conn = ats_db.get_connection()
+                    now = _now_iso()
+                    today = now[:10]
+                    
+                    # 1. Update status
+                    conn.execute(
+                        "UPDATE applications SET status = 'applied', date_applied = ?, updated_at = ? "
+                        "WHERE scraper_key = ?",
+                        (today, now, key)
+                    )
+                    
+                    # 2. Add event
+                    res = conn.execute("SELECT id FROM applications WHERE scraper_key = ?", (key,)).fetchone()
+                    if res:
+                        ats_db.add_event(conn, res["id"], "applied", now, title=f"Applied to {company}")
+                    
+                    conn.commit()
+                    conn.close()
+                    _invalidate_data_cache()
+                    st.toast(f"Marked '{company}' as Applied!", icon="✅")
+                    st.rerun()
                 except Exception as _exc:
-                    st.toast(f"Tracker sync warning: {_exc}", icon="⚠️")
-
-            st.toast(f"Marked '{company}' as Applied!", icon="✅")
-            st.rerun()
+                    st.error(f"Failed to update application: {_exc}")
+            else:
+                st.error("Tracker not available for updates.")
+                
         st.markdown('<hr style="margin:2px 0;border-color:#374151">', unsafe_allow_html=True)
     st.divider()
 
@@ -628,8 +621,8 @@ if page == "Run Job Search":
                         st.warning(f"Could not merge manual targets: {_mt_exc}")
                 if _ATS_AVAILABLE and XLSX_PATH.exists():
                     try:
-                        _sync_conn = get_db()
-                        _sync_result = sync_from_excel(_sync_conn, XLSX_PATH, STATUS_JSON)
+                        _sync_conn = ats_db.get_connection()
+                        sync_from_excel(_sync_conn, XLSX_PATH, STATUS_JSON)
                     except Exception:
                         pass
             else:
@@ -670,14 +663,14 @@ if page == "Run Job Search":
                         _sd = pd.read_excel(XLSX_PATH, sheet_name="All Jobs", dtype=str)
                         _sr = _merge_run_into_store(_sd)
                         if _ATS_AVAILABLE:
-                            sync_from_excel(get_db(), XLSX_PATH, STATUS_JSON)
+                            sync_from_excel(ats_db.get_connection(), XLSX_PATH, STATUS_JSON)
                     st.success(f"{_sr['added']} added · {_sr['updated']} updated · {_sr['total']} total")
                 else:
                     st.warning("No results file found. Run the pipeline first.")
         with _sc2:
             if TRACKER_CSV.exists() and st.button("⬆ Import ApplicationTracker.csv"):
                 with st.spinner("Importing…"):
-                    _tr = import_tracker_csv(get_db(), TRACKER_CSV)
+                    _tr = import_tracker_csv(ats_db.get_connection(), TRACKER_CSV)
                 st.success(f"{_tr['inserted']} inserted · {_tr['updated']} updated · {_tr['errors']} errors")
 
     # ── Re-score with current preferences ─────────────────────────────────────
@@ -887,14 +880,14 @@ elif page == "Company Profiles":
 
 elif page == "Pipeline":
     if _ATS_AVAILABLE:
-        conn = get_db()
+        conn = ats_db.get_connection()
         _safe_render(render_pipeline, conn, page_name="Pipeline")
     else:
         st.error("ATS database modules not available. Check that db/ and services/ packages are installed.")
 
 elif page == "Analytics":
     if _ATS_AVAILABLE:
-        conn = get_db()
+        conn = ats_db.get_connection()
         _safe_render(render_analytics, conn, page_name="Analytics")
     else:
         st.error("ATS database modules not available.")
@@ -928,7 +921,12 @@ elif page == "Job Matches":
 
     # ── Summary row ──────────────────────────────────────────────────────────
     n_total   = len(df)
-    n_new     = int(df.get("is_new", pd.Series(dtype=str)).str.lower().eq("true").sum())
+    # Check is_new - handle both boolean and string representations
+    if "is_new" in df.columns:
+        n_new = int(df["is_new"].apply(lambda x: str(x).lower() == "true").sum())
+    else:
+        n_new = 0
+        
     n_applied = int((df["user_status"] == "Applied").sum())
     n_rej_user = int((df["user_status"] == "Rejected").sum())
     avg_score = df["score"].mean() if "score" in df.columns else 0.0
@@ -1028,14 +1026,51 @@ elif page == "Job Matches":
             for i, row in edited_df.iterrows():
                 key = display_df.iloc[list(display_df.index).index(i)]["_key"]
 
-                new_status = str(row.get("user_status") or "").strip()
-                original_status = overrides.get(key, {}).get("user_status", "")
-                if new_status and new_status != original_status:
-                    entry = dict(overrides.get(key, {}))
-                    entry["user_status"] = new_status
-                    if new_status == "Applied" and not entry.get("applied_at"):
-                        entry["applied_at"] = _now_iso()
-                    all_changed_overrides[key] = entry
+                new_status_label = str(row.get("user_status") or "").strip()
+                original_status_label = display_df.iloc[list(display_df.index).index(i)]["user_status"]
+                
+                if new_status_label and new_status_label != original_status_label:
+                    # Map UI label back to DB status
+                    status_map = {
+                        "Applied": "applied",
+                        "Rejected": "rejected",
+                        "APPLY NOW": "considering",
+                        "REVIEW TODAY": "considering",
+                        "WATCH": "considering",
+                        "MANUAL REVIEW": "considering"
+                    }
+                    db_status = status_map.get(new_status_label, "considering")
+                    
+                    try:
+                        conn = ats_db.get_connection()
+                        now = _now_iso()
+                        
+                        # 1. Update status
+                        update_query = "UPDATE applications SET status = ?, updated_at = ?"
+                        params = [db_status, now]
+                        
+                        if db_status == "applied":
+                            update_query += ", date_applied = ?"
+                            params.append(now[:10])
+                        
+                        update_query += " WHERE scraper_key = ?"
+                        params.append(key)
+                        
+                        conn.execute(update_query, tuple(params))
+                        
+                        # 2. Add event
+                        res = conn.execute("SELECT id, company FROM applications WHERE scraper_key = ?", (key,)).fetchone()
+                        if res:
+                            ats_db.add_event(conn, res["id"], db_status, now, 
+                                             title=f"Moved to {new_status_label}")
+                        
+                        conn.commit()
+                        conn.close()
+                        _invalidate_data_cache()
+                        st.toast(f"Moved to {new_status_label}", icon="✅")
+                        st.rerun()
+                    except Exception as _exc:
+                        st.error(f"Failed to update status: {_exc}")
 
                 # Annotations
                 if _TRACKER_AVAILABLE:

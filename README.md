@@ -35,7 +35,15 @@ Short version:
 3. Double-click `launch.bat` (Windows) or `launch.command` (macOS)
 4. Browser opens to the dashboard — follow the setup checklist
 
-The launcher creates a virtual environment, installs all dependencies, and copies the example config automatically on first run.
+**Developer CLI:**
+Once installed via `launch.bat`, you can use the unified CLI:
+```bash
+# Run the scraper
+python src/jobsearch/cli.py run
+
+# Launch the dashboard
+python src/jobsearch/cli.py dashboard
+```
 
 ---
 
@@ -43,22 +51,13 @@ The launcher creates a virtual environment, installs all dependencies, and copie
 
 | Feature | What you get |
 |---|---|
-| **Automated job scraping** | Checks career pages at companies you choose, pulls open roles, filters by your salary floor and location |
+| **Automated job scraping** | Modular engine with multi-threaded support for Greenhouse, Lever, Ashby, and Workday |
+| **Direct Persistence** | Scraped jobs are saved directly to a unified SQLite database — no Excel intermediaries |
 | **Smart scoring** | Ranks jobs by how well they match your background using keyword weights you define |
 | **Home dashboard** | KPIs, pipeline snapshot, activity trend charts, overdue follow-ups, and upcoming interviews at a glance |
 | **Job Matches** | Apply Now / Review Today / Watch buckets with one-click Apply & Track |
 | **My Applications** | Full CRM: timeline, interview log, contacts, prep tab, offer negotiation worksheet |
-| **Offer comparison** | Side-by-side table of base, bonus, equity, PTO, and total comp across all active offers |
-| **Email Templates** | Thank-you notes, follow-up templates, cold outreach — with variable substitution |
-| **Job Search Journal** | Daily mood-tagged notes to keep perspective during a long search |
-| **Networking Contacts** | Contact book with follow-up reminders and direct mailto/LinkedIn links |
-| **Interview Question Bank** | Store and refine your STAR-method answers by category |
-| **Company Research Profiles** | Persistent research notes (culture, interview process, red flags) shared across all apps to that company |
-| **Training tracker** | Plan and track courses/certifications with status and completion dates |
-| **Weekly Activity Report** | Configurable weekly goal, activity log for any date range, copy-paste unemployment certification text |
-| **Target Companies manager** | Add, edit, and bulk-update the list of companies being scraped — ATS Healer auto-fixes broken URLs |
-| **Search Settings** | Edit salary floor, location, keyword weights, and scoring thresholds in the UI — no YAML editing required |
-| **Backup & Restore** | One-click ZIP backup of your database and config; restore from backup on a new machine |
+| **Unified Data** | All matches and tracking data live in a single `results/jobsearch.db` file |
 
 ---
 

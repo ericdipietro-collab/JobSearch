@@ -18,7 +18,7 @@ from typing import Any, Dict, List, Optional
 
 _BASE_DIR = Path(__file__).resolve().parent
 BASE_DIR  = _BASE_DIR   # public alias
-DB_PATH   = _BASE_DIR / "results" / "job_applications.db"
+DB_PATH   = _BASE_DIR / "results" / "jobsearch.db"
 
 # ── Status vocabulary ──────────────────────────────────────────────────────────
 STATUSES = [
@@ -366,7 +366,7 @@ def update_application(conn: sqlite3.Connection, app_id: int, **kwargs) -> None:
 
 
 def get_application(conn: sqlite3.Connection, app_id: int) -> Optional[sqlite3.Row]:
-    return conn.execute("SELECT * FROM applications WHERE id = ?", (app_id,)).fetchone()
+    return conn.execute("SELECT *, user_priority AS fit_stars FROM applications WHERE id = ?", (app_id,)).fetchone()
 
 
 def get_applications(
@@ -383,7 +383,7 @@ def get_applications(
         params.append(entry_type)
     where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
     return conn.execute(
-        f"SELECT * FROM applications {where} ORDER BY date_applied DESC, created_at DESC",
+        f"SELECT *, user_priority AS fit_stars FROM applications {where} ORDER BY date_applied DESC, created_at DESC",
         params,
     ).fetchall()
 
@@ -701,15 +701,22 @@ def get_recent_events(conn: sqlite3.Connection, limit: int = 10) -> List[sqlite3
 
 
 def pipeline_snapshot(conn: sqlite3.Connection) -> Dict[str, int]:
-    """Count of applications per status (excludes job_fair entry_type)."""
+    """Count of applications per status (includes high-score matches as 'considering')."""
     rows = conn.execute(
         """
         SELECT status, COUNT(*) AS n FROM applications
-        WHERE entry_type != 'job_fair'
         GROUP BY status
         """
     ).fetchall()
-    return {r["status"]: r["n"] for r in rows}
+    counts = {r["status"]: r["n"] for r in rows}
+    
+    # Scraper 'Apply Now' matches (score >= 85) that are still 'considering'
+    high_score = conn.execute(
+        "SELECT COUNT(*) AS n FROM applications WHERE status = 'considering' AND score >= 85"
+    ).fetchone()["n"]
+    counts["apply_now"] = high_score
+    
+    return counts
 
 
 def upcoming_interviews_this_week(conn: sqlite3.Connection) -> List[sqlite3.Row]:
@@ -732,13 +739,21 @@ def upcoming_interviews_this_week(conn: sqlite3.Connection) -> List[sqlite3.Row]
 
 
 def apply_now_count(conn: sqlite3.Connection) -> int:
-    """Count of jobs currently in Apply Now bucket (from job_search_store, not tracker)."""
-    # This is a placeholder — the actual Apply Now count comes from the XLSX/store.
-    # For the home dashboard we count active tracker entries at interview+ stage.
-    row = conn.execute(
+    """
+    Count of active jobs in the unified pipeline.
+    Includes both high-score scraper matches and active tracker entries.
+    """
+    # Active tracker entries (Applied and beyond)
+    active_tracker = conn.execute(
         "SELECT COUNT(*) AS n FROM applications WHERE status IN ('applied','screening','interviewing','offer')"
-    ).fetchone()
-    return row["n"] if row else 0
+    ).fetchone()["n"]
+    
+    # Scraper matches with score >= 85 that aren't yet Applied
+    apply_now_scraper = conn.execute(
+        "SELECT COUNT(*) AS n FROM applications WHERE status = 'considering' AND score >= 85"
+    ).fetchone()["n"]
+    
+    return active_tracker + apply_now_scraper
 
 
 def weekly_activity_count(conn: sqlite3.Connection, start_date: str, end_date: str) -> int:

@@ -100,10 +100,11 @@ if not exist ".venv\Scripts\activate.bat" (
 REM ── Activate venv ─────────────────────────────────────────────────────────────
 call .venv\Scripts\activate.bat
 
-REM ── Install / update dependencies (fast no-op after first run^) ───────────────
+REM ── Install / update dependencies (fast no-op after first run) ───────────────
 echo  Checking dependencies...
 python -m pip install -q --upgrade pip
 python -m pip install -q -r requirements.txt
+python -m pip install -q -e .
 if errorlevel 1 (
     echo.
     echo  ERROR: Failed to install dependencies.

@@ -56,21 +56,18 @@ Source: "..\ats_db.py";            DestDir: "{app}"; Flags: ignoreversion
 Source: "..\launch.bat";           DestDir: "{app}"; Flags: ignoreversion
 Source: "..\launch.vbs";           DestDir: "{app}"; Flags: ignoreversion
 Source: "..\requirements.txt";     DestDir: "{app}"; Flags: ignoreversion
-Source: "..\views\*";              DestDir: "{app}\views"; Flags: ignoreversion recursesubdirs
+Source: "..\pyproject.toml";       DestDir: "{app}"; Flags: ignoreversion
+Source: "..\src\*";                DestDir: "{app}\src";      Flags: ignoreversion recursesubdirs
+Source: "..\views\*";              DestDir: "{app}\views";    Flags: ignoreversion recursesubdirs
 Source: "..\config\job_search_companies.yaml";         DestDir: "{app}\config"; Flags: ignoreversion onlyifdoesntexist
 Source: "..\config\job_search_preferences.example.yaml"; DestDir: "{app}\config"; Flags: ignoreversion
 ; Preferences only copied if not already present (preserves user edits on reinstall)
 Source: "..\config\job_search_preferences.example.yaml"; DestDir: "{app}\config"; DestName: "job_search_preferences.yaml"; Flags: onlyifdoesntexist
 ; Installer icon (for uninstaller display)
 Source: "assets\app.ico";          DestDir: "{app}\installer\assets"; Flags: ignoreversion
-; Optional modules present in the repo
-Source: "..\heal_ats_yaml.py";        DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
-Source: "..\run_job_search_v6.py";    DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
-Source: "..\job_search_v6.py";        DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+; Additional tools
 Source: "..\rescore_pipeline.py";     DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 Source: "..\config\manual_jobs_template.csv"; DestDir: "{app}\config"; Flags: ignoreversion
-Source: "..\db\*";                 DestDir: "{app}\db";       Flags: ignoreversion recursesubdirs skipifsourcedoesntexist
-Source: "..\services\*";           DestDir: "{app}\services"; Flags: ignoreversion recursesubdirs skipifsourcedoesntexist
 Source: "..\docs\*";               DestDir: "{app}\docs";     Flags: ignoreversion recursesubdirs skipifsourcedoesntexist
 ; ── Bundled Python installer ──────────────────────────────────────────────────
 Source: "downloads\{#PythonExe}";  DestDir: "{tmp}"; Flags: deleteafterinstall; Check: NeedsPython
