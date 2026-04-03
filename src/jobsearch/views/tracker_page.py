@@ -4,6 +4,7 @@ Renders inside the main app.py navigation via render_tracker(conn).
 """
 from __future__ import annotations
 
+import csv
 from datetime import date, datetime, timedelta
 from typing import Optional
 
@@ -14,6 +15,7 @@ import yaml
 from jobsearch import ats_db as db
 from jobsearch.config.settings import settings
 from jobsearch.scraper.scoring import normalize_compensation
+from jobsearch.services.email_signal_service import classify_email_signal
 
 FORMAL_TRACKER_EXCLUDED_STATUSES = {"considering"}
 AUTO_FOLLOW_UP_DAYS = {
@@ -360,6 +362,140 @@ def _render_linkedin_import(conn) -> None:
             st.rerun()
 
 
+def _email_import_value(row: dict, keys: list[str]) -> str:
+    for key in keys:
+        value = row.get(key)
+        if value:
+            return str(value).strip()
+    return ""
+
+
+def _import_email_signals(conn, uploaded_file) -> int:
+    uploaded_file.seek(0)
+    raw_text = uploaded_file.read().decode("utf-8", errors="ignore")
+    reader = csv.DictReader(raw_text.splitlines())
+    companies = [str(r["company"]) for r in db.get_applications(conn)] + [str(r["name"]) for r in db.get_all_company_profiles(conn)]
+    imported = 0
+    for row in reader:
+        signal = classify_email_signal(
+            message_id=_email_import_value(row, ["message_id", "Message-ID", "Message Id", "id"]),
+            thread_id=_email_import_value(row, ["thread_id", "Thread-ID", "threadId"]),
+            sender=_email_import_value(row, ["from", "From", "sender", "Sender"]),
+            subject=_email_import_value(row, ["subject", "Subject"]),
+            body=_email_import_value(row, ["body", "Body", "snippet", "Snippet"]),
+            received_at=_email_import_value(row, ["date", "Date", "received_at", "Received At"]),
+            known_companies=companies,
+        )
+        if not signal:
+            continue
+        linked = db.find_best_application_match(conn, signal.get("company"), signal.get("role"))
+        db.upsert_email_signal(conn, **signal, application_id=linked["id"] if linked else None)
+        imported += 1
+    return imported
+
+
+def _render_email_signal_import(conn) -> None:
+    with st.expander("📬 Import Gmail email signals", expanded=False):
+        st.caption(
+            "Upload a CSV export of Gmail messages with columns like From, Subject, Date, Snippet/Body. "
+            "The tracker will detect missed applications, rejection emails, and interview requests."
+        )
+        uploaded = st.file_uploader(
+            "Choose Gmail message CSV",
+            type="csv",
+            key="gmail_signal_uploader",
+            label_visibility="collapsed",
+        )
+        if not uploaded:
+            return
+        try:
+            imported = _import_email_signals(conn, uploaded)
+        except Exception as exc:
+            st.error(f"Could not import Gmail signals: {exc}")
+            return
+        st.success(f"Imported {imported} email signal(s). Review them below.")
+        st.rerun()
+
+
+def _apply_email_signal_action(conn, signal, action: str) -> None:
+    signal_id = signal["id"]
+    app = db.get_application(conn, signal["application_id"]) if signal["application_id"] else None
+    received_day = (signal["received_at"] or date.today().isoformat())[:10]
+
+    if action == "ignore":
+        db.update_email_signal(conn, signal_id, signal_status="ignored")
+        return
+    if action == "resolve":
+        db.update_email_signal(conn, signal_id, signal_status="resolved")
+        return
+    if action == "add_to_tracker":
+        app_id = db.add_application(
+            conn,
+            company=signal["company"] or "Unknown Company",
+            role=signal["role"] or signal["subject"],
+            source="gmail_signal",
+            status="applied",
+            entry_type="application",
+            date_applied=received_day,
+            notes=signal["subject"],
+        )
+        db.add_event(conn, app_id, "applied", received_day, title=f"Detected from Gmail: {signal['subject']}")
+        db.update_email_signal(conn, signal_id, signal_status="resolved", application_id=app_id)
+        return
+    if not app:
+        db.update_email_signal(conn, signal_id, notes="No linked application found", signal_status="new")
+        return
+    if action == "mark_rejected":
+        db.update_application(conn, app["id"], status="rejected", date_closed=received_day)
+        db.add_event(conn, app["id"], "rejected", received_day, title="Gmail-detected rejection", notes=signal["subject"])
+        db.update_email_signal(conn, signal_id, signal_status="resolved")
+        return
+    if action == "mark_interviewing":
+        if app["status"] not in ("interviewing", "offer", "accepted", "rejected", "withdrawn"):
+            db.update_application(conn, app["id"], status="interviewing")
+        db.add_event(conn, app["id"], "conversation", received_day, title="Gmail-detected interview request", notes=signal["subject"])
+        db.update_email_signal(conn, signal_id, signal_status="resolved")
+
+
+def _render_email_signal_banner(conn) -> None:
+    signals = db.get_email_signals(conn, signal_status="new")
+    if not signals:
+        return
+    counts = {}
+    for signal in signals:
+        counts[signal["signal_type"]] = counts.get(signal["signal_type"], 0) + 1
+    summary = ", ".join(f"{count} {kind.replace('_', ' ')}" for kind, count in counts.items())
+    st.caption(f"**Inbox signals** — {summary}")
+    for signal in signals[:10]:
+        company = signal["company"] or signal["linked_company"] or "Unknown company"
+        role = signal["role"] or signal["linked_role"] or "Unknown role"
+        with st.container(border=True):
+            st.markdown(
+                f"**{signal['signal_type'].replace('_', ' ').title()}** — **{company}** — {role}  \n"
+                f"{signal['subject']}  \n"
+                f"From: {signal['sender'] or 'Unknown'} | Received: {_fmt_dt(signal['received_at'])}"
+            )
+            c1, c2, c3 = st.columns(3)
+            if signal["signal_type"] == "new_application":
+                if c1.button("Add to tracker", key=f"email_add_{signal['id']}"):
+                    _apply_email_signal_action(conn, signal, "add_to_tracker")
+                    st.rerun()
+            elif signal["signal_type"] == "rejection":
+                if c1.button("Mark rejected", key=f"email_reject_{signal['id']}"):
+                    _apply_email_signal_action(conn, signal, "mark_rejected")
+                    st.rerun()
+            elif signal["signal_type"] == "interview_request":
+                if c1.button("Mark interviewing", key=f"email_interview_{signal['id']}"):
+                    _apply_email_signal_action(conn, signal, "mark_interviewing")
+                    st.rerun()
+            if c2.button("Resolve", key=f"email_resolve_{signal['id']}"):
+                _apply_email_signal_action(conn, signal, "resolve")
+                st.rerun()
+            if c3.button("Ignore", key=f"email_ignore_{signal['id']}"):
+                _apply_email_signal_action(conn, signal, "ignore")
+                st.rerun()
+
+
 # ── Main entry point ───────────────────────────────────────────────────────────
 
 def render_tracker(conn) -> None:
@@ -376,7 +512,9 @@ def render_tracker(conn) -> None:
     _render_followup_banner(conn)
     _render_summary_bar(conn)
     _render_linkedin_import(conn)
+    _render_email_signal_import(conn)
     _render_jd_change_banner(conn)
+    _render_email_signal_banner(conn)
 
     offer_apps = db.get_applications_with_offers(conn)
     if len(offer_apps) >= 2:

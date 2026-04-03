@@ -129,6 +129,9 @@ REPORTABLE_EVENT_TYPES = {
     "follow_up_sent",
 }
 
+EMAIL_SIGNAL_TYPES = ["new_application", "rejection", "interview_request"]
+EMAIL_SIGNAL_STATUSES = ["new", "resolved", "ignored"]
+
 
 class Opportunity(BaseModel):
     id: str
@@ -438,6 +441,23 @@ def init_db(conn: sqlite3.Connection) -> None:
             location TEXT,
             jd_fingerprint TEXT
         );
+        CREATE TABLE IF NOT EXISTS email_signals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            message_id TEXT NOT NULL UNIQUE,
+            thread_id TEXT,
+            sender TEXT,
+            subject TEXT NOT NULL,
+            received_at TEXT,
+            signal_type TEXT NOT NULL,
+            company TEXT,
+            role TEXT,
+            application_id INTEGER REFERENCES applications(id) ON DELETE SET NULL,
+            signal_status TEXT NOT NULL DEFAULT 'new',
+            notes TEXT,
+            raw_excerpt TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
         CREATE TABLE IF NOT EXISTS company_profiles (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
@@ -530,6 +550,7 @@ def init_db(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX IF NOT EXISTS idx_interviews_app_date ON interviews(application_id, scheduled_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_apps_status ON applications(status)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_job_observations_app_seen ON job_observations(application_id, seen_at)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_email_signals_status ON email_signals(signal_status, signal_type)")
     seed_default_templates(conn)
     seed_default_questions(conn)
     conn.commit()
@@ -1037,6 +1058,127 @@ def latest_job_observation_date(conn: sqlite3.Connection, application_id: int) -
         (application_id,),
     ).fetchone()
     return row["seen_at"] if row and row["seen_at"] else None
+
+
+def upsert_email_signal(
+    conn: sqlite3.Connection,
+    *,
+    message_id: str,
+    signal_type: str,
+    subject: str,
+    thread_id: Optional[str] = None,
+    sender: Optional[str] = None,
+    received_at: Optional[str] = None,
+    company: Optional[str] = None,
+    role: Optional[str] = None,
+    application_id: Optional[int] = None,
+    signal_status: str = "new",
+    notes: Optional[str] = None,
+    raw_excerpt: Optional[str] = None,
+) -> int:
+    now = _now()
+    existing = conn.execute("SELECT id FROM email_signals WHERE message_id = ?", (message_id,)).fetchone()
+    payload = {
+        "thread_id": thread_id,
+        "sender": sender,
+        "subject": subject,
+        "received_at": received_at,
+        "signal_type": signal_type,
+        "company": company,
+        "role": role,
+        "application_id": application_id,
+        "signal_status": signal_status,
+        "notes": notes,
+        "raw_excerpt": raw_excerpt,
+        "updated_at": now,
+    }
+    if existing:
+        sets = ", ".join(f"{k} = ?" for k in payload)
+        conn.execute(
+            f"UPDATE email_signals SET {sets} WHERE id = ?",
+            [*payload.values(), existing["id"]],
+        )
+        conn.commit()
+        return existing["id"]
+    cur = conn.execute(
+        """
+        INSERT INTO email_signals (
+            message_id, thread_id, sender, subject, received_at, signal_type, company, role,
+            application_id, signal_status, notes, raw_excerpt, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            message_id,
+            thread_id,
+            sender,
+            subject,
+            received_at,
+            signal_type,
+            company,
+            role,
+            application_id,
+            signal_status,
+            notes,
+            raw_excerpt,
+            now,
+            now,
+        ),
+    )
+    conn.commit()
+    return cur.lastrowid
+
+
+def get_email_signals(conn: sqlite3.Connection, signal_status: Optional[str] = None) -> List[sqlite3.Row]:
+    if signal_status:
+        return conn.execute(
+            """
+            SELECT es.*, a.company AS linked_company, a.role AS linked_role, a.status AS linked_status
+            FROM email_signals es
+            LEFT JOIN applications a ON a.id = es.application_id
+            WHERE es.signal_status = ?
+            ORDER BY COALESCE(es.received_at, es.created_at) DESC
+            """,
+            (signal_status,),
+        ).fetchall()
+    return conn.execute(
+        """
+        SELECT es.*, a.company AS linked_company, a.role AS linked_role, a.status AS linked_status
+        FROM email_signals es
+        LEFT JOIN applications a ON a.id = es.application_id
+        ORDER BY COALESCE(es.received_at, es.created_at) DESC
+        """
+    ).fetchall()
+
+
+def update_email_signal(conn: sqlite3.Connection, signal_id: int, **kwargs) -> None:
+    if not kwargs:
+        return
+    kwargs["updated_at"] = _now()
+    sets = ", ".join(f"{k} = ?" for k in kwargs)
+    conn.execute(f"UPDATE email_signals SET {sets} WHERE id = ?", [*kwargs.values(), signal_id])
+    conn.commit()
+
+
+def find_best_application_match(conn: sqlite3.Connection, company: Optional[str], role: Optional[str] = None) -> Optional[sqlite3.Row]:
+    if company:
+        rows = conn.execute(
+            """
+            SELECT * FROM applications
+            WHERE LOWER(company) = LOWER(?)
+            ORDER BY
+                CASE WHEN status IN ('applied', 'screening', 'interviewing', 'offer') THEN 0 ELSE 1 END,
+                COALESCE(date_applied, date_discovered, created_at) DESC
+            """,
+            (company,),
+        ).fetchall()
+        if role:
+            role_l = role.lower()
+            for row in rows:
+                if role_l and role_l in str(row["role"] or "").lower():
+                    return row
+        if rows:
+            return rows[0]
+    return None
 
 
 def get_company_profile(conn: sqlite3.Connection, name: str) -> Optional[sqlite3.Row]:

@@ -12,6 +12,7 @@ if str(SRC_DIR) not in sys.path:
 from jobsearch.scraper.adapters.base import BaseAdapter, BlockedSiteError
 from jobsearch.scraper.adapters.generic import GenericAdapter
 from jobsearch.scraper.scoring import Scorer
+from jobsearch.services.email_signal_service import classify_email_signal
 from jobsearch.services.opportunity_service import _is_material_jd_change, _jd_fingerprint
 from jobsearch import ats_db as db
 from jobsearch.app_main import (
@@ -318,6 +319,73 @@ class BlockedAndLocationTests(unittest.TestCase):
         self.assertEqual(_title_family("Business Systems Analyst"), "Analyst")
         self.assertEqual(_parse_keyword_blob("['mortgage', 'consumer lending']"), ["mortgage", "consumer lending"])
         self.assertEqual(_parse_keyword_blob("mortgage, consumer lending"), ["mortgage", "consumer lending"])
+
+    def test_email_signal_classifier_detects_three_signal_types(self):
+        known = ["Stripe", "Acme"]
+        app_signal = classify_email_signal(
+            message_id="m1",
+            thread_id="t1",
+            sender="jobs@stripe.com",
+            subject="Thank you for applying to Stripe",
+            body="We have received your application for the Product Architect role.",
+            received_at="2026-04-03T10:00:00",
+            known_companies=known,
+        )
+        reject_signal = classify_email_signal(
+            message_id="m2",
+            thread_id="t2",
+            sender="careers@acme.com",
+            subject="Update on your application",
+            body="Unfortunately, we are moving forward with other candidates.",
+            received_at="2026-04-03T10:00:00",
+            known_companies=known,
+        )
+        interview_signal = classify_email_signal(
+            message_id="m3",
+            thread_id="t3",
+            sender="recruiting@stripe.com",
+            subject="Schedule an interview",
+            body="Please share your availability for the next interview for the Solutions Architect role.",
+            received_at="2026-04-03T10:00:00",
+            known_companies=known,
+        )
+        self.assertEqual(app_signal["signal_type"], "new_application")
+        self.assertEqual(app_signal["company"], "Stripe")
+        self.assertEqual(reject_signal["signal_type"], "rejection")
+        self.assertEqual(interview_signal["signal_type"], "interview_request")
+        self.assertEqual(interview_signal["role"], "Solutions Architect")
+
+    def test_email_signal_storage_and_matching(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        db.init_db(conn)
+        app_id = db.add_application(
+            conn,
+            company="Stripe",
+            role="Solutions Architect",
+            status="applied",
+            scraper_key="stripe-1",
+            date_discovered="2026-04-01",
+            created_at="2026-04-01T00:00:00",
+            updated_at="2026-04-01T00:00:00",
+        )
+        match = db.find_best_application_match(conn, "Stripe", "Solutions Architect")
+        self.assertEqual(match["id"], app_id)
+        signal_id = db.upsert_email_signal(
+            conn,
+            message_id="gmail-1",
+            signal_type="interview_request",
+            subject="Schedule an interview",
+            sender="recruiting@stripe.com",
+            company="Stripe",
+            role="Solutions Architect",
+            application_id=app_id,
+        )
+        signals = db.get_email_signals(conn, signal_status="new")
+        self.assertEqual(len(signals), 1)
+        self.assertEqual(signals[0]["id"], signal_id)
+        self.assertEqual(signals[0]["linked_company"], "Stripe")
+        conn.close()
 
     def test_offer_comparison_rows_normalize_salary_and_1099(self):
         rows = _offer_comparison_rows(
