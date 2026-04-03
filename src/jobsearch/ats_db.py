@@ -326,6 +326,9 @@ def init_db(conn: sqlite3.Connection) -> None:
             entry_type TEXT NOT NULL DEFAULT 'application',
             resume_url TEXT,
             cover_letter_url TEXT,
+            resume_tailor_keywords TEXT,
+            resume_tailor_summary TEXT,
+            resume_tailor_notes TEXT,
             job_description TEXT,
             prep_company TEXT,
             prep_why TEXT,
@@ -575,6 +578,9 @@ def init_db(conn: sqlite3.Connection) -> None:
             "entry_type": "TEXT NOT NULL DEFAULT 'application'",
             "resume_url": "TEXT",
             "cover_letter_url": "TEXT",
+            "resume_tailor_keywords": "TEXT",
+            "resume_tailor_summary": "TEXT",
+            "resume_tailor_notes": "TEXT",
             "job_description": "TEXT",
             "prep_company": "TEXT",
             "prep_why": "TEXT",
@@ -833,12 +839,61 @@ def find_matching_interview(
     interviewer_key = str(interviewer_names or "").strip().lower()
     location_key = str(location or "").strip().lower()
     for interview in interviews:
-        if scheduled_key and str(interview["scheduled_at"] or "")[:16] == scheduled_key:
+        existing_scheduled_key = str(interview["scheduled_at"] or "")[:16]
+        existing_interviewer_key = str(interview["interviewer_names"] or "").strip().lower()
+        existing_location_key = str(interview["location"] or "").strip().lower()
+        if scheduled_key and existing_scheduled_key == scheduled_key:
             return interview
-        if interviewer_key and interviewer_key == str(interview["interviewer_names"] or "").strip().lower() and interviewer_key:
+        if (
+            not scheduled_key
+            and interviewer_key
+            and interviewer_key == existing_interviewer_key
+            and interviewer_key
+        ):
             return interview
-        if location_key and location_key == str(interview["location"] or "").strip().lower() and location_key:
+        if (
+            not scheduled_key
+            and location_key
+            and location_key == existing_location_key
+            and location_key
+        ):
             return interview
+    return None
+
+
+def find_reschedulable_interview(
+    conn: sqlite3.Connection,
+    application_id: int,
+    *,
+    scheduled_at: Optional[str] = None,
+    interviewer_names: Optional[str] = None,
+    location: Optional[str] = None,
+) -> Optional[sqlite3.Row]:
+    interviews = [row for row in get_interviews(conn, application_id) if str(row["outcome"] or "pending").lower() == "pending"]
+    if not interviews:
+        return None
+
+    scheduled_prefix = str(scheduled_at or "")[:10]
+    interviewer_key = str(interviewer_names or "").strip().lower()
+    location_key = str(location or "").strip().lower()
+
+    strong_matches: list[sqlite3.Row] = []
+    for interview in interviews:
+        existing_interviewer = str(interview["interviewer_names"] or "").strip().lower()
+        existing_location = str(interview["location"] or "").strip().lower()
+        existing_prefix = str(interview["scheduled_at"] or "")[:10]
+
+        interviewer_match = bool(interviewer_key and existing_interviewer and interviewer_key == existing_interviewer)
+        location_match = bool(location_key and existing_location and location_key == existing_location)
+        date_match = bool(scheduled_prefix and existing_prefix and scheduled_prefix == existing_prefix)
+
+        if interviewer_match or location_match:
+            strong_matches.append(interview)
+        elif date_match and len(interviews) == 1:
+            strong_matches.append(interview)
+
+    if len(strong_matches) == 1:
+        return strong_matches[0]
     return None
 
 

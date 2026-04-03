@@ -49,8 +49,12 @@ from jobsearch.views.tracker_page import (
     _formal_tracker_rows,
     _negotiation_counter_draft,
     _negotiation_playbook_lines,
+    _offer_comparison_markdown,
     _offer_comparison_rows,
+    _resume_contains_phrase,
     _summary_metrics_for_rows,
+    _tailor_resume_keywords,
+    _tailored_resume_summary,
 )
 import pandas as pd
 
@@ -872,6 +876,84 @@ class BlockedAndLocationTests(unittest.TestCase):
         self.assertAlmostEqual(salary_row["First-Year Cash ($)"], 224000.0)
         self.assertEqual(contract_row["Work Type"], "1099 hourly")
         self.assertAlmostEqual(contract_row["Normalized Annual ($)"], 163056.0)
+
+    def test_offer_comparison_markdown_includes_company_and_role(self):
+        markdown = _offer_comparison_markdown(
+            [
+                {
+                    "company": "SalaryCo",
+                    "role": "Principal Architect",
+                    "work_type": "fte",
+                    "compensation_unit": "salary",
+                    "offer_base": 190000,
+                    "salary_low": None,
+                    "salary_high": None,
+                    "hourly_rate": None,
+                    "hours_per_week": None,
+                    "weeks_per_year": None,
+                    "offer_bonus_pct": 10,
+                    "offer_signing": 15000,
+                    "offer_pto_days": 20,
+                    "offer_k401_match": "4%",
+                    "offer_equity": "RSU",
+                    "offer_remote_policy": "Remote",
+                    "offer_start_date": None,
+                    "offer_expiry_date": None,
+                    "offer_notes": "",
+                }
+            ]
+        )
+        self.assertIn("Offer Comparison", markdown)
+        self.assertIn("SalaryCo", markdown)
+        self.assertIn("Principal Architect", markdown)
+
+    def test_resume_tailoring_prefers_missing_keywords(self):
+        app = {
+            "company": "Advisor360",
+            "role": "Enterprise Solutions Architect",
+            "matched_keywords": "capital markets,data lineage,api integration,advisor platform",
+            "jd_summary": "Architecture role",
+        }
+        base_resume = {
+            "text": "Built API integration platforms for capital markets and wealth systems.",
+            "focus": "advisor platform\ndata lineage",
+            "ignore": "wealth systems",
+            "name": "Master Resume",
+        }
+        keywords = _tailor_resume_keywords(app, base_resume)
+        lowered = [keyword.lower() for keyword in keywords]
+        self.assertIn("advisor platform", lowered)
+        self.assertIn("data lineage", lowered)
+        self.assertNotIn("api integration", lowered)
+        self.assertTrue(_resume_contains_phrase(base_resume["text"], "capital markets"))
+        brief = _tailored_resume_summary(app, base_resume)
+        self.assertIn("Target the Enterprise Solutions Architect role at Advisor360.", brief)
+
+    def test_find_reschedulable_interview_matches_pending_round(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        db.init_db(conn)
+        app_id = db.add_application(conn, company="Advisor360", role="Enterprise Solutions Architect", status="interviewing")
+        db.add_interview(
+            conn,
+            app_id,
+            round_number=2,
+            interview_type="video",
+            scheduled_at="2026-04-06T11:00:00",
+            interviewer_names="Drew Norell",
+            location="https://meet.google.com/old-link",
+            outcome="pending",
+        )
+        matched = db.find_reschedulable_interview(
+            conn,
+            app_id,
+            scheduled_at="2026-04-07T12:00:00",
+            interviewer_names="Drew Norell",
+            location="https://meet.google.com/new-link",
+        )
+        self.assertIsNotNone(matched)
+        self.assertEqual(matched["round_number"], 2)
+        conn.close()
 
     def test_jd_change_detection_flags_material_excerpt_changes(self):
         original = "Build product roadmap for data integrations, API strategy, and platform governance."

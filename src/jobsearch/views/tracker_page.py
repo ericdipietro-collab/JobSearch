@@ -154,6 +154,70 @@ def _load_search_preferences() -> dict:
         return {}
 
 
+def _load_base_resume_settings(conn) -> dict:
+    return {
+        "name": db.get_setting(conn, "base_resume_name", default="Master Resume"),
+        "source_url": db.get_setting(conn, "base_resume_source_url", default=""),
+        "text": db.get_setting(conn, "base_resume_text", default=""),
+        "notes": db.get_setting(conn, "base_resume_notes", default=""),
+        "focus": db.get_setting(conn, "base_resume_keyword_focus", default=""),
+        "ignore": db.get_setting(conn, "base_resume_keyword_ignore", default=""),
+    }
+
+
+def _normalize_resume_text(value: str) -> str:
+    return " " + "".join(ch.lower() if ch.isalnum() or ch in {" ", "+", "/", "-", "."} else " " for ch in str(value or "")) + " "
+
+
+def _resume_contains_phrase(resume_text: str, phrase: str) -> bool:
+    normalized_resume = _normalize_resume_text(resume_text)
+    normalized_phrase = _normalize_resume_text(phrase).strip()
+    if not normalized_phrase:
+        return True
+    return f" {normalized_phrase} " in normalized_resume
+
+
+def _parse_multiline_keywords(value: str) -> list[str]:
+    return [line.strip() for line in str(value or "").splitlines() if line.strip()]
+
+
+def _tailor_resume_keywords(app: dict, base_resume: dict, limit: int = 8) -> list[str]:
+    resume_text = str(base_resume.get("text") or "")
+    ignored = {phrase.lower() for phrase in _parse_multiline_keywords(base_resume.get("ignore", ""))}
+    preferred = _parse_multiline_keywords(base_resume.get("focus", ""))
+    matched_keywords = [item.strip() for item in str(app.get("matched_keywords") or "").split(",") if item.strip()]
+
+    candidates: list[str] = []
+    for keyword in preferred + matched_keywords:
+        if not keyword:
+            continue
+        lowered = keyword.lower()
+        if lowered in ignored:
+            continue
+        if _resume_contains_phrase(resume_text, keyword):
+            continue
+        if keyword not in candidates:
+            candidates.append(keyword)
+        if len(candidates) >= limit:
+            break
+    return candidates
+
+
+def _tailored_resume_summary(app: dict, base_resume: dict) -> str:
+    company = app.get("company") or "the company"
+    role = app.get("role") or "the role"
+    gaps = _tailor_resume_keywords(app, base_resume, limit=5)
+    bullets = [
+        f"Target the {role} role at {company}.",
+        "Lead with the strongest directly relevant product, architecture, integration, and domain achievements from the base resume.",
+    ]
+    if gaps:
+        bullets.append("Explicitly reinforce these JD-aligned keywords: " + ", ".join(gaps) + ".")
+    if app.get("jd_summary"):
+        bullets.append("Use the JD summary to tighten the opening summary and top three bullets.")
+    return "\n".join(f"- {bullet}" for bullet in bullets)
+
+
 def _offer_work_type_defaults(app) -> tuple[str, str, float, float]:
     work_type = str(app["work_type"] or "fte")
     unit = str(app["compensation_unit"] or ("hourly" if "contract" in work_type else "salary"))
@@ -216,6 +280,29 @@ def _offer_comparison_rows(offer_apps) -> list[dict]:
             }
         )
     return rows
+
+
+def _offer_comparison_markdown(offer_apps) -> str:
+    rows = _offer_comparison_rows(offer_apps)
+    if not rows:
+        return "No comparable offers available."
+    lines = ["# Offer Comparison", ""]
+    for row in rows:
+        lines.extend(
+            [
+                f"## {row['Company']} — {row['Role']}",
+                f"- Work type: {row['Work Type']}",
+                f"- Base / rate: {row['Base/Rate']}",
+                f"- Normalized annual: ${float(row['Normalized Annual ($)'] or 0):,.0f}",
+                f"- First-year cash: ${float(row['First-Year Cash ($)'] or 0):,.0f}",
+                f"- Remote policy: {row['Remote Policy']}",
+                f"- Equity: {row['Equity']}",
+                f"- PTO days: {int(float(row['PTO Days'] or 0)) if row['PTO Days'] else '—'}",
+                f"- Notes: {row['Notes'] or '—'}",
+                "",
+            ]
+        )
+    return "\n".join(lines).strip()
 
 
 def _negotiation_playbook_lines(app: dict, target_base: float, walkaway_base: float, market_low: float, market_high: float) -> list[str]:
@@ -601,6 +688,38 @@ def _apply_email_signal_action(conn, signal, action: str) -> None:
         )
         if existing:
             db.update_email_signal(conn, signal_id, signal_status="resolved", notes="Matched existing interview.")
+            return
+        rescheduled = db.find_reschedulable_interview(
+            conn,
+            app["id"],
+            scheduled_at=signal["interview_scheduled_at"] or None,
+            interviewer_names=signal["interviewer_names"] or None,
+            location=signal["interview_location"] or None,
+        )
+        if rescheduled:
+            update_payload = {
+                "scheduled_at": signal["interview_scheduled_at"] or rescheduled["scheduled_at"],
+                "duration_mins": signal["interview_duration_mins"] or rescheduled["duration_mins"],
+                "interviewer_names": signal["interviewer_names"] or rescheduled["interviewer_names"],
+                "location": signal["interview_location"] or rescheduled["location"],
+                "prep_notes": signal["subject"] or rescheduled["prep_notes"],
+                "interview_type": infer_interview_type(
+                    signal["subject"],
+                    signal["raw_excerpt"],
+                    signal["sender"],
+                    signal["interview_location"],
+                ),
+            }
+            db.update_interview(conn, rescheduled["id"], **update_payload)
+            db.add_event(
+                conn,
+                app["id"],
+                "interview_scheduled",
+                received_day,
+                title="Gmail-detected interview rescheduled",
+                notes=signal["subject"],
+            )
+            db.update_email_signal(conn, signal_id, signal_status="resolved", notes="Updated existing interview with rescheduled details.")
             return
         db.add_interview(
             conn,
@@ -1517,6 +1636,7 @@ def _render_contacts(conn, app) -> None:
 
 def _render_prep_tab(conn, app) -> None:
     st.caption("Use this tab to prep for interviews. Notes are saved per application.")
+    base_resume = _load_base_resume_settings(conn)
     linked_questions = db.get_questions(conn, company=app["company"], application_id=app["id"])
     if linked_questions:
         with st.expander(f"🎯 Related Question Bank ({len(linked_questions)})", expanded=False):
@@ -1537,6 +1657,51 @@ def _render_prep_tab(conn, app) -> None:
                 else:
                     st.caption("No STAR story saved yet.")
                 st.markdown("---")
+    with st.expander("📄 Resume Tailoring", expanded=False):
+        if not str(base_resume.get("text") or "").strip():
+            st.info("Add your base resume in Search Settings → Base Resume to enable tailored resume guidance.")
+        else:
+            suggested_keywords = _tailor_resume_keywords(app, base_resume)
+            suggested_summary = _tailored_resume_summary(app, base_resume)
+            st.caption(f"Using base resume: {base_resume.get('name') or 'Stored resume'}")
+            tc1, tc2 = st.columns(2)
+            tailored_keywords = tc1.text_area(
+                "Keywords To Add / Emphasize",
+                value=app["resume_tailor_keywords"] or "\n".join(suggested_keywords),
+                height=120,
+                placeholder="One keyword or phrase per line.",
+            )
+            tailored_notes = tc2.text_area(
+                "Tailoring Notes",
+                value=app["resume_tailor_notes"] or "",
+                height=120,
+                placeholder="What to emphasize, compress, or reorder for this role.",
+            )
+            tailored_summary = st.text_area(
+                "Tailored Resume Brief",
+                value=app["resume_tailor_summary"] or suggested_summary,
+                height=180,
+                help="A copy-ready tailoring brief based on the base resume and this job's matched keywords.",
+            )
+            save_col, copy_col = st.columns([1, 1])
+            if save_col.button("💾 Save Tailoring Notes", key=f"save_resume_tailor_{app['id']}"):
+                db.update_application(
+                    conn,
+                    app["id"],
+                    resume_tailor_keywords=tailored_keywords.strip() or None,
+                    resume_tailor_notes=tailored_notes.strip() or None,
+                    resume_tailor_summary=tailored_summary.strip() or None,
+                )
+                st.success("Resume tailoring notes saved.")
+                st.rerun()
+            copy_col.download_button(
+                "⬇️ Export Tailoring Brief",
+                data=(tailored_summary or "").encode("utf-8"),
+                file_name=f"resume_tailor_{app['company']}_{app['id']}.md".replace(" ", "_"),
+                mime="text/markdown",
+                key=f"export_resume_tailor_{app['id']}",
+                use_container_width=True,
+            )
     with st.form(f"prep_form_{app['id']}"):
         prep_company = st.text_area(
             "Company Research",
@@ -1911,3 +2076,22 @@ def _render_offer_comparison(offer_apps) -> None:
 
     st.caption("Annual values are normalized using the same salary/W2/1099 assumptions as the search scorer.")
     st.dataframe(display_df.set_index("Company"), use_container_width=True)
+    exp1, exp2 = st.columns(2)
+    exp1.download_button(
+        "⬇️ Export Comparison CSV",
+        data=df.to_csv(index=False).encode("utf-8"),
+        file_name=f"offer_comparison_{date.today().isoformat()}.csv",
+        mime="text/csv",
+        key="offer_comparison_csv",
+        use_container_width=True,
+    )
+    exp2.download_button(
+        "⬇️ Export Comparison Brief",
+        data=_offer_comparison_markdown(offer_apps).encode("utf-8"),
+        file_name=f"offer_comparison_{date.today().isoformat()}.md",
+        mime="text/markdown",
+        key="offer_comparison_md",
+        use_container_width=True,
+    )
+    with st.expander("Copy-Ready Comparison Brief", expanded=False):
+        st.code(_offer_comparison_markdown(offer_apps), language="markdown")
