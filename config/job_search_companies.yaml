@@ -10,7 +10,7 @@ companies:
   notes: Wealth, lending, and banking tech for credit
   sub_industry: Digital Banking
   careers_url: https://jobs.lever.co/accesssoftek
-  active: true
+  active: false
   status: active
   discovery_method: Existing URL confirmed (forced check)
   last_healed: '2026-04-02T23:14:12.399234'
@@ -25,7 +25,7 @@ companies:
   notes: Re-emphasizing) Handles massive volumes of fractional share
   sub_industry: Micro-Investing(
   careers_url: https://jobs.ashbyhq.com/acorns
-  active: true
+  active: false
   status: active
   discovery_method: Existing URL confirmed (forced check)
   last_healed: '2026-04-02T23:14:11.659129'
@@ -44,7 +44,7 @@ companies:
     match
   sub_industry: Wealth Data
   careers_url: https://job-boards.greenhouse.io/addepar1/jobs/8464433002
-  active: true
+  active: false
   status: active
   discovery_method: Existing URL confirmed (forced check)
   last_healed: '2026-04-02T23:14:12.140534'
@@ -52,7 +52,7 @@ companies:
   tier: 1
   priority: high
   adapter: generic
-  active: true
+  active: false
   careers_url: https://jobs.adp.com
   domain: jobs.adp.com
   industry:
@@ -71,7 +71,7 @@ companies:
   notes: Hires Enterprise Solutions Architects to build complex wealth platforms.
   sub_industry: WealthTech
   careers_url: https://www.advisor360.com/careers
-  active: true
+  active: false
   status: active
   discovery_method: Generic career page discovered
   last_healed: '2026-04-02T23:17:16.951524'
@@ -84,7 +84,7 @@ companies:
   notes: Comprehensive wealth management platform for advisors.
   sub_industry: WealthTech
   careers_url: https://www.advyzon.com/
-  active: true
+  active: false
   status: active
   discovery_method: Generic career page discovered
   last_healed: '2026-04-02T23:17:09.668371'
@@ -103,7 +103,7 @@ companies:
   notes: 3 active applications — financial reporting + capital platform
   sub_industry: FinTech / Payments
   careers_url: https://job-boards.greenhouse.io/affirm/jobs/7535014003
-  active: true
+  active: false
   status: active
   discovery_method: Existing URL confirmed (forced check)
   last_healed: '2026-04-02T23:14:12.141537'
@@ -117,7 +117,7 @@ companies:
   notes: US broker compliance tech; heavy API integration needs. Based in Denver.
   sub_industry: InsureTech / Compliance
   careers_url: https://ats.rippling.com/agentsync-careers/jobs
-  active: true
+  active: false
   status: active
   discovery_method: Existing URL confirmed (forced check)
   last_healed: '2026-04-02T23:14:12.125534'
@@ -132,10 +132,10 @@ companies:
   notes: Procure-to-pay platform needing deep architectural understanding of GL
   sub_industry: Spend Management
   careers_url: https://jobs.ashbyhq.com/airbase
-  active: true
+  active: false
   status: broken
   discovery_method: No board detected
-  last_healed: '2026-04-02T23:17:09.417021'
+  last_healed: '2026-04-03T10:39:34.502303'
 - name: Airbyte
   tier: 2
   priority: medium
@@ -244,11 +244,11 @@ companies:
   sub_industry: Credit Union Tech
   careers_url: https://jobs.ashbyhq.com/alliantcreditunion
   active: true
-  status: broken
+  status: active
   heal_skip: true
-  discovery_method: No board detected
+  discovery_method: User-verified (heal_skip)
   adapter_key: alliantcreditunion
-  last_healed: '2026-04-02T23:19:57.927110'
+  last_healed: '2026-04-03T10:36:57.476367'
 - name: Alloy
   tier: 4
   priority: medium
@@ -1327,10 +1327,10 @@ companies:
   notes: Major US sponsor bank focusing on SMB lending APIs and fintech partnerships.
   sub_industry: BaaS / Tech Bank
   careers_url: https://jobs.ashbyhq.com/celticbank
-  active: true
+  active: false
   status: broken
   discovery_method: No board detected
-  last_healed: '2026-04-02T23:34:30.507861'
+  last_healed: '2026-04-03T10:39:39.067925'
   adapter_key: celticbank
 - name: Census
   tier: 2
@@ -1578,7 +1578,7 @@ companies:
   status: broken
   discovery_method: No board detected
   adapter_key: clearlist
-  last_healed: '2026-04-02T23:38:55.275327'
+  last_healed: '2026-04-03T10:39:34.150918'
 - name: Clearwater Analytics
   tier: 1
   priority: high
@@ -1653,11 +1653,11 @@ companies:
   notes: Highly aggressive US regional bank powering massive fintech API integrations.
   sub_industry: BaaS / Tech Bank
   careers_url: https://jobs.ashbyhq.com/coastalcommunitybank
-  active: true
+  active: false
   status: broken
   adapter_key: coastalcommunitybank
   discovery_method: No board detected
-  last_healed: '2026-04-02T23:40:14.684613'
+  last_healed: '2026-04-03T10:39:53.229566'
 - name: CoBank
   tier: 2
   priority: medium
@@ -2962,11 +2962,11 @@ companies:
   notes: Massive California-based institution needing robust backend accounting mapping.
   sub_industry: Credit Union Tech
   careers_url: https://jobs.ashbyhq.com/golden1creditunion
-  active: true
+  active: false
   status: broken
   discovery_method: No board detected
   adapter_key: golden1creditunion
-  last_healed: '2026-04-03T00:00:20.521598'
+  last_healed: '2026-04-03T10:42:10.199329'
 - name: Goldman Sachs (Marcus/TxB)
   tier: 4
   priority: medium
@@ -3061,10 +3061,10 @@ companies:
   notes: Tech-forward US 401(k) provider needing deep recordkeeping and API logic.
   sub_industry: Retirement Tech
   careers_url: https://jobs.ashbyhq.com/guideline
-  active: true
+  active: false
   status: broken
   discovery_method: No board detected
-  last_healed: '2026-04-03T00:00:51.540921'
+  last_healed: '2026-04-03T10:42:22.118672'
 - name: Gusto
   tier: 1
   priority: high
@@ -3817,11 +3817,11 @@ companies:
     markets knowledge.
   sub_industry: Capital Markets
   careers_url: https://jobs.ashbyhq.com/marketaxess
-  active: true
+  active: false
   status: broken
   discovery_method: No board detected
   adapter_key: marketaxess
-  last_healed: '2026-04-03T00:12:42.377696'
+  last_healed: '2026-04-03T10:42:22.474891'
 - name: Marqeta
   tier: 1
   priority: high
@@ -4789,17 +4789,16 @@ companies:
 - name: Pinnacle Financial Partners
   tier: 2
   priority: medium
-  adapter: ashby
+  adapter: generic
   domain: www.pnfp.com
   industry: commercial banking | wealth management | data
   notes: US financial services firm needing enterprise architects for rapid scaling.
   sub_industry: Commercial Banking
-  careers_url: https://jobs.ashbyhq.com/pinnaclefinancialpartners
-  active: true
+  careers_url: https://www.pnfp.com/business-finance/corporate-employee-benefit-services/corporate-retirement-services/
+  active: false
   status: broken
-  discovery_method: No board detected
-  adapter_key: pinnaclefinancialpartners
-  last_healed: '2026-04-03T00:26:45.998036'
+  discovery_method: Generic career page discovered
+  last_healed: '2026-04-03T10:42:38.616506'
 - name: Pinwheel
   tier: 4
   priority: medium
@@ -6304,11 +6303,11 @@ companies:
   notes: West Coast regional powerhouse deeply embedded in enterprise tech modernization.
   sub_industry: Regional Banking
   careers_url: https://jobs.ashbyhq.com/umpquabank
-  active: true
+  active: false
   status: broken
   discovery_method: No board detected
   adapter_key: umpquabank
-  last_healed: '2026-04-03T00:46:25.023767'
+  last_healed: '2026-04-03T10:42:49.963792'
 - name: Unchained
   tier: 2
   priority: medium
