@@ -132,6 +132,24 @@ REPORTABLE_EVENT_TYPES = {
 EMAIL_SIGNAL_TYPES = ["new_application", "rejection", "interview_request"]
 EMAIL_SIGNAL_STATUSES = ["new", "resolved", "ignored"]
 
+_COMPANY_STOPWORDS = {
+    "inc",
+    "incorporated",
+    "llc",
+    "l.l.c",
+    "corp",
+    "corporation",
+    "co",
+    "company",
+    "holdings",
+    "group",
+    "bank",
+    "financial",
+    "services",
+    "technologies",
+    "technology",
+}
+
 
 class Opportunity(BaseModel):
     id: str
@@ -230,6 +248,25 @@ DEFAULT_QUESTIONS = [
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _normalize_company_name(value: Optional[str]) -> str:
+    text = re.sub(r"[^a-z0-9]+", " ", str(value or "").lower().replace("&", " and "))
+    parts = [part for part in text.split() if part and part not in _COMPANY_STOPWORDS]
+    return " ".join(parts)
+
+
+def _normalize_role_text(value: Optional[str]) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", str(value or "").lower()).strip()
+
+
+def _token_overlap(a: str, b: str) -> float:
+    a_tokens = set(a.split())
+    b_tokens = set(b.split())
+    if not a_tokens or not b_tokens:
+        return 0.0
+    shared = len(a_tokens & b_tokens)
+    return shared / max(len(a_tokens), len(b_tokens))
 
 
 def _add_columns_if_missing(conn: sqlite3.Connection, table: str, columns: Dict[str, str]) -> None:
@@ -416,6 +453,8 @@ def init_db(conn: sqlite3.Connection) -> None:
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             question TEXT NOT NULL,
             category TEXT NOT NULL DEFAULT 'behavioral',
+            company TEXT,
+            application_id INTEGER REFERENCES applications(id) ON DELETE SET NULL,
             star_situation TEXT,
             star_task TEXT,
             star_action TEXT,
@@ -455,6 +494,10 @@ def init_db(conn: sqlite3.Connection) -> None:
             signal_status TEXT NOT NULL DEFAULT 'new',
             notes TEXT,
             raw_excerpt TEXT,
+            interview_scheduled_at TEXT,
+            interviewer_names TEXT,
+            interview_location TEXT,
+            interview_duration_mins INTEGER,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
@@ -544,6 +587,24 @@ def init_db(conn: sqlite3.Connection) -> None:
             "jd_last_changed_at": "TEXT",
             "jd_change_summary": "TEXT",
             "jd_needs_review": "INTEGER DEFAULT 0",
+        },
+    )
+    _add_columns_if_missing(
+        conn,
+        "email_signals",
+        {
+            "interview_scheduled_at": "TEXT",
+            "interviewer_names": "TEXT",
+            "interview_location": "TEXT",
+            "interview_duration_mins": "INTEGER",
+        },
+    )
+    _add_columns_if_missing(
+        conn,
+        "question_bank",
+        {
+            "company": "TEXT",
+            "application_id": "INTEGER",
         },
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_events_app_date ON events(application_id, event_date)")
@@ -937,10 +998,35 @@ def update_question(conn: sqlite3.Connection, question_id: int, **kwargs) -> Non
     conn.commit()
 
 
-def get_questions(conn: sqlite3.Connection, category: Optional[str] = None) -> List[sqlite3.Row]:
+def get_questions(
+    conn: sqlite3.Connection,
+    category: Optional[str] = None,
+    company: Optional[str] = None,
+    application_id: Optional[int] = None,
+) -> List[sqlite3.Row]:
+    clauses = []
+    params: List[Any] = []
     if category:
-        return conn.execute("SELECT * FROM question_bank WHERE category = ? ORDER BY id ASC", (category,)).fetchall()
-    return conn.execute("SELECT * FROM question_bank ORDER BY category ASC, id ASC").fetchall()
+        clauses.append("category = ?")
+        params.append(category)
+    if company:
+        clauses.append("(company IS NULL OR LOWER(company) = LOWER(?))")
+        params.append(company)
+    if application_id:
+        clauses.append("(application_id IS NULL OR application_id = ?)")
+        params.append(application_id)
+    where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+    return conn.execute(
+        f"""
+        SELECT * FROM question_bank
+        {where}
+        ORDER BY
+            CASE WHEN application_id IS NOT NULL THEN 0 WHEN company IS NOT NULL THEN 1 ELSE 2 END,
+            category ASC,
+            id ASC
+        """,
+        params,
+    ).fetchall()
 
 
 def delete_question(conn: sqlite3.Connection, question_id: int) -> None:
@@ -1075,6 +1161,10 @@ def upsert_email_signal(
     signal_status: str = "new",
     notes: Optional[str] = None,
     raw_excerpt: Optional[str] = None,
+    interview_scheduled_at: Optional[str] = None,
+    interviewer_names: Optional[str] = None,
+    interview_location: Optional[str] = None,
+    interview_duration_mins: Optional[int] = None,
 ) -> int:
     now = _now()
     existing = conn.execute("SELECT id FROM email_signals WHERE message_id = ?", (message_id,)).fetchone()
@@ -1090,6 +1180,10 @@ def upsert_email_signal(
         "signal_status": signal_status,
         "notes": notes,
         "raw_excerpt": raw_excerpt,
+        "interview_scheduled_at": interview_scheduled_at,
+        "interviewer_names": interviewer_names,
+        "interview_location": interview_location,
+        "interview_duration_mins": interview_duration_mins,
         "updated_at": now,
     }
     if existing:
@@ -1104,8 +1198,9 @@ def upsert_email_signal(
         """
         INSERT INTO email_signals (
             message_id, thread_id, sender, subject, received_at, signal_type, company, role,
-            application_id, signal_status, notes, raw_excerpt, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            application_id, signal_status, notes, raw_excerpt, interview_scheduled_at,
+            interviewer_names, interview_location, interview_duration_mins, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             message_id,
@@ -1120,6 +1215,10 @@ def upsert_email_signal(
             signal_status,
             notes,
             raw_excerpt,
+            interview_scheduled_at,
+            interviewer_names,
+            interview_location,
+            interview_duration_mins,
             now,
             now,
         ),
@@ -1161,23 +1260,56 @@ def update_email_signal(conn: sqlite3.Connection, signal_id: int, **kwargs) -> N
 
 def find_best_application_match(conn: sqlite3.Connection, company: Optional[str], role: Optional[str] = None) -> Optional[sqlite3.Row]:
     if company:
+        company_norm = _normalize_company_name(company)
+        role_norm = _normalize_role_text(role)
         rows = conn.execute(
             """
             SELECT * FROM applications
-            WHERE LOWER(company) = LOWER(?)
             ORDER BY
                 CASE WHEN status IN ('applied', 'screening', 'interviewing', 'offer') THEN 0 ELSE 1 END,
                 COALESCE(date_applied, date_discovered, created_at) DESC
-            """,
-            (company,),
+            """
         ).fetchall()
-        if role:
-            role_l = role.lower()
-            for row in rows:
-                if role_l and role_l in str(row["role"] or "").lower():
-                    return row
-        if rows:
-            return rows[0]
+
+        scored: List[tuple[tuple[int, int, int, int], sqlite3.Row]] = []
+        for row in rows:
+            row_company = str(row["company"] or "")
+            row_company_norm = _normalize_company_name(row_company)
+            company_exact = int(company_norm != "" and row_company_norm == company_norm)
+            company_contains = int(
+                company_norm != ""
+                and row_company_norm != ""
+                and (company_norm in row_company_norm or row_company_norm in company_norm)
+            )
+            company_overlap = int(_token_overlap(company_norm, row_company_norm) >= 0.5)
+            if not (company_exact or company_contains or company_overlap):
+                continue
+
+            role_score = 0
+            if role_norm:
+                row_role_norm = _normalize_role_text(row["role"])
+                if row_role_norm == role_norm:
+                    role_score = 3
+                elif role_norm and row_role_norm and (role_norm in row_role_norm or row_role_norm in role_norm):
+                    role_score = 2
+                elif _token_overlap(role_norm, row_role_norm) >= 0.5:
+                    role_score = 1
+
+            status_priority = int(str(row["status"]).lower() in {"applied", "screening", "interviewing", "offer"})
+            scored.append(((company_exact, company_contains, role_score, status_priority), row))
+
+        if scored:
+            scored.sort(
+                key=lambda item: (
+                    item[0][0],
+                    item[0][1],
+                    item[0][2],
+                    item[0][3],
+                    str(item[1]["date_applied"] or item[1]["date_discovered"] or item[1]["created_at"] or ""),
+                ),
+                reverse=True,
+            )
+            return scored[0][1]
     return None
 
 

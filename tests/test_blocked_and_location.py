@@ -13,7 +13,7 @@ if str(SRC_DIR) not in sys.path:
 from jobsearch.scraper.adapters.base import BaseAdapter, BlockedSiteError
 from jobsearch.scraper.adapters.generic import GenericAdapter
 from jobsearch.scraper.scoring import Scorer
-from jobsearch.services.email_signal_service import classify_email_signal
+from jobsearch.services.email_signal_service import classify_email_signal, signal_resolution_for_existing_application
 from jobsearch.services.gmail_sync_service import _parse_imap_message
 from jobsearch.services.opportunity_service import _is_material_jd_change, _jd_fingerprint
 from jobsearch import ats_db as db
@@ -316,6 +316,31 @@ class BlockedAndLocationTests(unittest.TestCase):
         self.assertEqual(row["last_seen_at"], "2026-03-10T12:00:00")
         conn.close()
 
+    def test_question_bank_can_link_to_company_and_application(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        db.init_db(conn)
+        app_id = db.add_application(
+            conn,
+            company="Stripe",
+            role="Solutions Architect",
+            status="interviewing",
+            scraper_key="stripe-question-1",
+            date_discovered="2026-04-01",
+            created_at="2026-04-01T00:00:00",
+            updated_at="2026-04-01T00:00:00",
+        )
+        shared_id = db.add_question(conn, "Tell me about yourself.", "behavioral")
+        company_id = db.add_question(conn, "Why Stripe?", "behavioral", company="Stripe")
+        app_question_id = db.add_question(conn, "Walk me through an API integration launch.", "technical", company="Stripe", application_id=app_id)
+
+        linked = db.get_questions(conn, company="Stripe", application_id=app_id)
+        linked_ids = [row["id"] for row in linked]
+        self.assertIn(shared_id, linked_ids)
+        self.assertIn(company_id, linked_ids)
+        self.assertIn(app_question_id, linked_ids)
+        conn.close()
+
     def test_rejection_pattern_helpers(self):
         self.assertEqual(_title_family("Senior Enterprise Architect"), "Architect")
         self.assertEqual(_title_family("Lead Product Manager"), "Product")
@@ -389,6 +414,26 @@ class BlockedAndLocationTests(unittest.TestCase):
         self.assertEqual(signals[0]["id"], signal_id)
         self.assertEqual(signals[0]["linked_company"], "Stripe")
         conn.close()
+
+    def test_interview_signal_extracts_schedule_and_link(self):
+        signal = classify_email_signal(
+            message_id="msg-1",
+            thread_id=None,
+            sender="Jane Recruiter <jane@example.com>",
+            subject="Interview request for Senior Product Manager",
+            body=(
+                "We would like to interview you on April 7, 2026 at 2:30 pm with Jane Recruiter. "
+                "Please join via https://meet.google.com/example and plan for 45 minutes."
+            ),
+            received_at="Fri, 03 Apr 2026 10:00:00 -0000",
+            known_companies=["Assured"],
+        )
+        self.assertIsNotNone(signal)
+        self.assertEqual(signal["signal_type"], "interview_request")
+        self.assertEqual(signal["interviewer_names"], "Jane Recruiter")
+        self.assertEqual(signal["interview_duration_mins"], 45)
+        self.assertIn("2026-04-07T14:30:00", signal["interview_scheduled_at"])
+        self.assertEqual(signal["interview_location"], "https://meet.google.com/example")
 
     def test_parse_imap_message_extracts_headers_and_plain_text(self):
         msg = EmailMessage()
@@ -502,6 +547,40 @@ class BlockedAndLocationTests(unittest.TestCase):
         self.assertEqual(summary["contacts"], 2)
         self.assertEqual(summary["reached_out"], 1)
         self.assertEqual(summary["referrals"], 1)
+
+    def test_email_signal_matches_existing_rejected_application_and_auto_resolves(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        db.init_db(conn)
+        app_id = db.add_application(
+            conn,
+            company="Assured",
+            role="Product Lead, Data & Integrations",
+            status="rejected",
+            entry_type="application",
+            date_applied="2026-03-31",
+        )
+        matched = db.find_best_application_match(conn, "Assured", "Product Lead, Data & Integrations")
+        self.assertIsNotNone(matched)
+        self.assertEqual(matched["id"], app_id)
+        signal_status, note = signal_resolution_for_existing_application("new_application", matched["status"])
+        self.assertEqual(signal_status, "resolved")
+        self.assertIn("already tracked as rejected", note)
+
+    def test_email_signal_company_match_tolerates_name_suffixes(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        db.init_db(conn)
+        app_id = db.add_application(
+            conn,
+            company="Pinnacle Financial Partners",
+            role="Enterprise Architect",
+            status="applied",
+            entry_type="application",
+        )
+        matched = db.find_best_application_match(conn, "Pinnacle", "Enterprise Architect")
+        self.assertIsNotNone(matched)
+        self.assertEqual(matched["id"], app_id)
 
 
 if __name__ == "__main__":

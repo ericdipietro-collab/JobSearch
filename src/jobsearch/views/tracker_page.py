@@ -15,7 +15,7 @@ import yaml
 from jobsearch import ats_db as db
 from jobsearch.config.settings import settings
 from jobsearch.scraper.scoring import normalize_compensation
-from jobsearch.services.email_signal_service import classify_email_signal
+from jobsearch.services.email_signal_service import classify_email_signal, signal_resolution_for_existing_application
 from jobsearch.services.gmail_sync_service import sync_gmail_email_signals
 
 FORMAL_TRACKER_EXCLUDED_STATUSES = {"considering"}
@@ -390,7 +390,18 @@ def _import_email_signals(conn, uploaded_file) -> int:
         if not signal:
             continue
         linked = db.find_best_application_match(conn, signal.get("company"), signal.get("role"))
-        db.upsert_email_signal(conn, **signal, application_id=linked["id"] if linked else None)
+        signal_status = "new"
+        notes = signal.get("notes")
+        if linked:
+            signal_status, auto_note = signal_resolution_for_existing_application(signal["signal_type"], linked["status"])
+            notes = auto_note or notes
+        db.upsert_email_signal(
+            conn,
+            **signal,
+            application_id=linked["id"] if linked else None,
+            signal_status=signal_status,
+            notes=notes,
+        )
         imported += 1
     return imported
 
@@ -493,9 +504,48 @@ def _apply_email_signal_action(conn, signal, action: str) -> None:
             db.update_application(conn, app["id"], status="interviewing")
         db.add_event(conn, app["id"], "conversation", received_day, title="Gmail-detected interview request", notes=signal["subject"])
         db.update_email_signal(conn, signal_id, signal_status="resolved")
+        return
+    if action == "create_interview":
+        if app["status"] not in ("interviewing", "offer", "accepted", "rejected", "withdrawn"):
+            db.update_application(conn, app["id"], status="interviewing")
+        db.add_interview(
+            conn,
+            app["id"],
+            round_number=max((iv["round_number"] or 0 for iv in db.get_interviews(conn, app["id"])), default=0) + 1,
+            interview_type="phone_screen",
+            format="mixed",
+            scheduled_at=signal["interview_scheduled_at"] or None,
+            duration_mins=signal["interview_duration_mins"] or None,
+            interviewer_names=signal["interviewer_names"] or None,
+            location=signal["interview_location"] or None,
+            prep_notes=signal["subject"],
+        )
+        db.add_event(
+            conn,
+            app["id"],
+            "interview_scheduled",
+            received_day,
+            title="Gmail-detected interview scheduled",
+            notes=signal["subject"],
+        )
+        db.update_email_signal(conn, signal_id, signal_status="resolved")
+
+
+def _auto_resolve_existing_email_signals(conn) -> None:
+    dirty = False
+    for signal in db.get_email_signals(conn, signal_status="new"):
+        linked_status = signal["linked_status"]
+        if not linked_status:
+            continue
+        new_status, note = signal_resolution_for_existing_application(signal["signal_type"], linked_status)
+        if new_status != "new":
+            db.update_email_signal(conn, signal["id"], signal_status=new_status, notes=note or signal["notes"])
+            dirty = True
+    return dirty
 
 
 def _render_email_signal_banner(conn) -> None:
+    _auto_resolve_existing_email_signals(conn)
     signals = db.get_email_signals(conn, signal_status="new")
     if not signals:
         return
@@ -513,6 +563,18 @@ def _render_email_signal_banner(conn) -> None:
                 f"{signal['subject']}  \n"
                 f"From: {signal['sender'] or 'Unknown'} | Received: {_fmt_dt(signal['received_at'])}"
             )
+            if signal["signal_type"] == "interview_request":
+                details = []
+                if signal["interview_scheduled_at"]:
+                    details.append(f"When: {_fmt_dt(signal['interview_scheduled_at'])}")
+                if signal["interviewer_names"]:
+                    details.append(f"With: {signal['interviewer_names']}")
+                if signal["interview_duration_mins"]:
+                    details.append(f"Duration: {signal['interview_duration_mins']} mins")
+                if signal["interview_location"]:
+                    details.append(f"Link/Location: {signal['interview_location']}")
+                if details:
+                    st.caption(" | ".join(details))
             c1, c2, c3 = st.columns(3)
             if signal["signal_type"] == "new_application":
                 if c1.button("Add to tracker", key=f"email_add_{signal['id']}"):
@@ -523,9 +585,16 @@ def _render_email_signal_banner(conn) -> None:
                     _apply_email_signal_action(conn, signal, "mark_rejected")
                     st.rerun()
             elif signal["signal_type"] == "interview_request":
-                if c1.button("Mark interviewing", key=f"email_interview_{signal['id']}"):
-                    _apply_email_signal_action(conn, signal, "mark_interviewing")
-                    st.rerun()
+                if signal["application_id"] and (
+                    signal["interview_scheduled_at"] or signal["interviewer_names"] or signal["interview_location"]
+                ):
+                    if c1.button("Create interview", key=f"email_interview_create_{signal['id']}"):
+                        _apply_email_signal_action(conn, signal, "create_interview")
+                        st.rerun()
+                else:
+                    if c1.button("Mark interviewing", key=f"email_interview_{signal['id']}"):
+                        _apply_email_signal_action(conn, signal, "mark_interviewing")
+                        st.rerun()
             if c2.button("Resolve", key=f"email_resolve_{signal['id']}"):
                 _apply_email_signal_action(conn, signal, "resolve")
                 st.rerun()
@@ -1274,6 +1343,26 @@ def _render_contacts(conn, app) -> None:
 
 def _render_prep_tab(conn, app) -> None:
     st.caption("Use this tab to prep for interviews. Notes are saved per application.")
+    linked_questions = db.get_questions(conn, company=app["company"], application_id=app["id"])
+    if linked_questions:
+        with st.expander(f"🎯 Related Question Bank ({len(linked_questions)})", expanded=False):
+            for q in linked_questions:
+                star_parts = [q["star_situation"], q["star_task"], q["star_action"], q["star_result"]]
+                has_story = any(part for part in star_parts)
+                tags = f"  ·  _{q['tags']}_" if q["tags"] else ""
+                st.markdown(f"**{q['question']}**{tags}")
+                if has_story:
+                    if q["star_situation"]:
+                        st.caption(f"Situation: {q['star_situation']}")
+                    if q["star_task"]:
+                        st.caption(f"Task: {q['star_task']}")
+                    if q["star_action"]:
+                        st.caption(f"Action: {q['star_action']}")
+                    if q["star_result"]:
+                        st.caption(f"Result: {q['star_result']}")
+                else:
+                    st.caption("No STAR story saved yet.")
+                st.markdown("---")
     with st.form(f"prep_form_{app['id']}"):
         prep_company = st.text_area(
             "Company Research",

@@ -10,7 +10,7 @@ from typing import Optional
 
 from jobsearch import ats_db as db
 from jobsearch.config.settings import settings
-from jobsearch.services.email_signal_service import classify_email_signal
+from jobsearch.services.email_signal_service import classify_email_signal, signal_resolution_for_existing_application
 
 
 def _decode_header_value(value: Optional[str]) -> str:
@@ -123,7 +123,18 @@ def sync_gmail_email_signals(
                 continue
             stats["classified"] += 1
             linked = db.find_best_application_match(conn, signal.get("company"), signal.get("role"))
-            db.upsert_email_signal(conn, **signal, application_id=linked["id"] if linked else None)
+            signal_status = "new"
+            notes = signal.get("notes")
+            if linked:
+                signal_status, auto_note = signal_resolution_for_existing_application(signal["signal_type"], linked["status"])
+                notes = auto_note or notes
+            db.upsert_email_signal(
+                conn,
+                **signal,
+                application_id=linked["id"] if linked else None,
+                signal_status=signal_status,
+                notes=notes,
+            )
             stats["stored"] += 1
         return stats
     finally:
