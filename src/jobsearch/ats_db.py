@@ -501,6 +501,14 @@ def init_db(conn: sqlite3.Connection) -> None:
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS manual_review_actions (
+            company TEXT PRIMARY KEY,
+            adapter TEXT,
+            url TEXT,
+            resolution TEXT NOT NULL DEFAULT 'new',
+            notes TEXT,
+            updated_at TEXT NOT NULL
+        );
         CREATE TABLE IF NOT EXISTS company_profiles (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
@@ -1166,6 +1174,36 @@ def latest_job_observation_date(conn: sqlite3.Connection, application_id: int) -
         (application_id,),
     ).fetchone()
     return row["seen_at"] if row and row["seen_at"] else None
+
+
+def get_manual_review_actions(conn: sqlite3.Connection) -> List[sqlite3.Row]:
+    return conn.execute("SELECT * FROM manual_review_actions").fetchall()
+
+
+def set_manual_review_action(
+    conn: sqlite3.Connection,
+    *,
+    company: str,
+    resolution: str,
+    adapter: Optional[str] = None,
+    url: Optional[str] = None,
+    notes: Optional[str] = None,
+) -> None:
+    now = _now()
+    conn.execute(
+        """
+        INSERT INTO manual_review_actions (company, adapter, url, resolution, notes, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(company) DO UPDATE SET
+            adapter = excluded.adapter,
+            url = excluded.url,
+            resolution = excluded.resolution,
+            notes = excluded.notes,
+            updated_at = excluded.updated_at
+        """,
+        (company, adapter, url, resolution, notes, now),
+    )
+    conn.commit()
 
 
 def upsert_email_signal(

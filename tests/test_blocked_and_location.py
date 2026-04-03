@@ -25,6 +25,7 @@ from jobsearch.config.settings import settings
 from jobsearch.app_main import (
     _annualized_compensation_preview,
     _decorate_role_velocity,
+    _parse_manual_review_lines,
     _role_velocity_summary,
     _sidebar_metrics_for_df,
 )
@@ -649,6 +650,35 @@ class BlockedAndLocationTests(unittest.TestCase):
         self.assertEqual(summary["contacts"], 2)
         self.assertEqual(summary["reached_out"], 1)
         self.assertEqual(summary["referrals"], 1)
+
+    def test_manual_review_line_parser_structures_items(self):
+        rows = _parse_manual_review_lines(
+            [
+                "ADP | adapter=generic | note=Blocked by site protection | url=https://jobs.adp.com/en/jobs/",
+            ]
+        )
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["company"], "ADP")
+        self.assertEqual(rows[0]["adapter"], "generic")
+        self.assertEqual(rows[0]["note"], "Blocked by site protection")
+        self.assertEqual(rows[0]["url"], "https://jobs.adp.com/en/jobs/")
+
+    def test_manual_review_actions_persist_resolution(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        db.init_db(conn)
+        db.set_manual_review_action(
+            conn,
+            company="ADP",
+            adapter="generic",
+            url="https://jobs.adp.com/en/jobs/",
+            resolution="disabled",
+            notes="Disabled from queue.",
+        )
+        actions = db.get_manual_review_actions(conn)
+        self.assertEqual(len(actions), 1)
+        self.assertEqual(actions[0]["company"], "ADP")
+        self.assertEqual(actions[0]["resolution"], "disabled")
 
     def test_email_signal_matches_existing_rejected_application_and_auto_resolves(self):
         conn = sqlite3.connect(":memory:")

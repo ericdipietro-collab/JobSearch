@@ -191,6 +191,42 @@ def _load_manual_review_lines():
     except Exception:
         return []
 
+
+def _parse_manual_review_lines(lines):
+    rows = []
+    for line in lines:
+        parts = [part.strip() for part in line.split("|")]
+        if not parts:
+            continue
+        row = {"company": parts[0], "adapter": "", "note": "", "url": ""}
+        for part in parts[1:]:
+            if "=" in part:
+                key, value = part.split("=", 1)
+                row[key.strip()] = value.strip()
+        rows.append(row)
+    return rows
+
+
+def _disable_company_in_registry(company_name: str) -> bool:
+    data = load_yaml(settings.companies_yaml)
+    companies = data.get("companies", [])
+    changed = False
+    for company in companies:
+        if str(company.get("name", "")).lower() == company_name.lower():
+            company["active"] = False
+            company["status"] = "broken"
+            company["manual_only"] = True
+            notes = str(company.get("notes", "") or "")
+            note_add = "Marked manual-only from manual review queue."
+            if note_add not in notes:
+                company["notes"] = f"{notes}\n{note_add}".strip()
+            changed = True
+            break
+    if changed:
+        data["companies"] = companies
+        save_yaml(settings.companies_yaml, data)
+    return changed
+
 def _render_apply_now_cards(df):
     for _, r in df.iterrows():
         key, co, ti, sc, url = r["_key"], str(r.get("company","")), str(r.get("title","")), r.get("score"), str(r.get("url",""))
@@ -278,6 +314,17 @@ def main():
         st.title("Job Matches")
         rejected_df = _load_rejected_jobs_df()
         manual_review_lines = _load_manual_review_lines()
+        manual_review_items = _parse_manual_review_lines(manual_review_lines)
+        review_conn = ats_db.get_connection()
+        try:
+            review_actions = {row["company"]: dict(row) for row in ats_db.get_manual_review_actions(review_conn)}
+        finally:
+            review_conn.close()
+        unresolved_manual_review = [
+            item
+            for item in manual_review_items
+            if review_actions.get(item["company"], {}).get("resolution", "new") not in {"resolved", "ignored", "disabled"}
+        ]
         if df_all.empty and rejected_df.empty and not manual_review_lines:
             st.info("No jobs yet. Run the pipeline.")
             return
@@ -329,11 +376,73 @@ def main():
                         conn.commit(); conn.close(); _invalidate_data_cache(); st.rerun()
 
         with tabs[3]:
-            if manual_review_lines:
-                st.caption(f"Blocked or protected sites requiring manual review: {len(manual_review_lines)}")
-                st.code("\n".join(manual_review_lines[:50]))
-                if len(manual_review_lines) > 50:
-                    st.info(f"Showing first 50 of {len(manual_review_lines)} manual-review entries. Full list: {settings.manual_review_file.name}")
+            if not manual_review_items:
+                st.info("No manual-review items recorded for the latest run.")
+            else:
+                st.caption(
+                    f"Manual review queue: {len(unresolved_manual_review)} unresolved of {len(manual_review_items)} total "
+                    f"({settings.manual_review_file.name})"
+                )
+                if not unresolved_manual_review:
+                    st.success("All manual-review items have been handled.")
+                for item in unresolved_manual_review[:50]:
+                    with st.container(border=True):
+                        st.markdown(
+                            f"**{item['company']}**"
+                            + (f"  \nAdapter: `{item.get('adapter')}`" if item.get("adapter") else "")
+                            + (f"  \nReason: {item.get('note')}" if item.get("note") else "")
+                        )
+                        if item.get("url"):
+                            st.markdown(f"[Open source URL]({item['url']})")
+                        c1, c2, c3 = st.columns(3)
+                        if c1.button("Resolve", key=f"mr_resolve_{item['company']}"):
+                            conn = ats_db.get_connection()
+                            try:
+                                ats_db.set_manual_review_action(
+                                    conn,
+                                    company=item["company"],
+                                    adapter=item.get("adapter"),
+                                    url=item.get("url"),
+                                    resolution="resolved",
+                                    notes=item.get("note"),
+                                )
+                            finally:
+                                conn.close()
+                            st.rerun()
+                        if c2.button("Ignore", key=f"mr_ignore_{item['company']}"):
+                            conn = ats_db.get_connection()
+                            try:
+                                ats_db.set_manual_review_action(
+                                    conn,
+                                    company=item["company"],
+                                    adapter=item.get("adapter"),
+                                    url=item.get("url"),
+                                    resolution="ignored",
+                                    notes=item.get("note"),
+                                )
+                            finally:
+                                conn.close()
+                            st.rerun()
+                        if c3.button("Disable Target", key=f"mr_disable_{item['company']}"):
+                            if _disable_company_in_registry(item["company"]):
+                                conn = ats_db.get_connection()
+                                try:
+                                    ats_db.set_manual_review_action(
+                                        conn,
+                                        company=item["company"],
+                                        adapter=item.get("adapter"),
+                                        url=item.get("url"),
+                                        resolution="disabled",
+                                        notes="Disabled in primary ATS registry from manual review queue.",
+                                    )
+                                finally:
+                                    conn.close()
+                                st.success(f"Disabled {item['company']} in {settings.companies_yaml.name}.")
+                                st.rerun()
+                            else:
+                                st.error(f"Could not find {item['company']} in {settings.companies_yaml.name}.")
+                if len(unresolved_manual_review) > 50:
+                    st.info(f"Showing first 50 of {len(unresolved_manual_review)} unresolved manual-review entries.")
 
         with tabs[4]:
             if rejected_df.empty:
