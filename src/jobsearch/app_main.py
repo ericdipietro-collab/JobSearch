@@ -469,7 +469,14 @@ def main():
 
     elif page == "Target Companies":
         st.title("Target Companies")
-        data = load_yaml(settings.companies_yaml); cos = data.get("companies", [])
+        registry_options = {
+            "Primary ATS Registry": settings.companies_yaml,
+            "Contractor Registry": settings.contract_companies_yaml,
+        }
+        registry_label = st.radio("Registry", list(registry_options.keys()), horizontal=True)
+        registry_path = registry_options[registry_label]
+        data = load_yaml(registry_path)
+        cos = data.get("companies", [])
         t1, t2, t3, t4 = st.tabs(["List", "Add / Edit", "Heal ATS", "YAML Editor"])
         with t1:
             df_companies = pd.DataFrame(cos)
@@ -524,34 +531,37 @@ def main():
                     else:
                         cos.append(new_company)
                     data["companies"] = cos
-                    save_yaml(settings.companies_yaml, data)
-                    st.success("Company saved.")
+                    save_yaml(registry_path, data)
+                    st.success(f"Company saved to {registry_path.name}.")
 
             if mode == "Edit Existing" and selected_name and st.button("Delete Company"):
                 data["companies"] = [company for company in cos if company.get("name") != selected_name]
-                save_yaml(settings.companies_yaml, data)
-                st.success("Company deleted.")
+                save_yaml(registry_path, data)
+                st.success(f"Company deleted from {registry_path.name}.")
         with t3:
-            h_all = st.checkbox("All", value=True)
-            h_deep = st.checkbox("Deep", value=False)
-            h_force = st.checkbox("Process Active Too", value=False)
-            h_workers = st.number_input("Workers", min_value=1, max_value=20, value=5, step=1)
-            h_deep_timeout = st.number_input("Deep Timeout (sec)", min_value=5, max_value=120, value=20, step=5)
-            if st.button("🚀 Run Healer"):
-                cmd = [sys.executable, "-m", "jobsearch.cli", "heal"]
-                if h_all: cmd.append("--all")
-                if h_deep: cmd.append("--deep")
-                if h_force: cmd.append("--force")
-                cmd.extend(["--workers", str(int(h_workers))])
-                cmd.extend(["--deep-timeout", str(float(h_deep_timeout))])
-                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding="utf-8", env={**os.environ, "PYTHONPATH": "src;."})
-                log = st.empty(); lines = []
-                for raw in iter(proc.stdout.readline, ""): lines.append(raw.rstrip()); log.code("\n".join(lines[-20:]))
-                proc.wait(); st.success("Healer complete.")
+            if registry_path != settings.companies_yaml:
+                st.info("ATS healing is only supported for the primary ATS registry. Use Add / Edit or YAML Editor for contractor sources.")
+            else:
+                h_all = st.checkbox("All", value=True)
+                h_deep = st.checkbox("Deep", value=False)
+                h_force = st.checkbox("Process Active Too", value=False)
+                h_workers = st.number_input("Workers", min_value=1, max_value=20, value=5, step=1)
+                h_deep_timeout = st.number_input("Deep Timeout (sec)", min_value=5, max_value=120, value=20, step=5)
+                if st.button("🚀 Run Healer"):
+                    cmd = [sys.executable, "-m", "jobsearch.cli", "heal"]
+                    if h_all: cmd.append("--all")
+                    if h_deep: cmd.append("--deep")
+                    if h_force: cmd.append("--force")
+                    cmd.extend(["--workers", str(int(h_workers))])
+                    cmd.extend(["--deep-timeout", str(float(h_deep_timeout))])
+                    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding="utf-8", env={**os.environ, "PYTHONPATH": "src;."})
+                    log = st.empty(); lines = []
+                    for raw in iter(proc.stdout.readline, ""): lines.append(raw.rstrip()); log.code("\n".join(lines[-20:]))
+                    proc.wait(); st.success("Healer complete.")
         with t4:
-            raw = settings.companies_yaml.read_text(encoding="utf-8") if settings.companies_yaml.exists() else ""
+            raw = registry_path.read_text(encoding="utf-8") if registry_path.exists() else ""
             new_raw = st.text_area("YAML", value=raw, height=600)
-            if st.button("Save Companies"): settings.companies_yaml.write_text(new_raw, encoding="utf-8"); st.success("Saved.")
+            if st.button("Save Companies"): registry_path.write_text(new_raw, encoding="utf-8"); st.success(f"Saved {registry_path.name}.")
 
     elif page == "Run Job Search":
         st.title("Run Search Pipeline")
