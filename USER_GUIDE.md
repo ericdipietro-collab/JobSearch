@@ -67,6 +67,8 @@ On first launch the launcher creates a virtual environment, installs dependencie
 
 When you first open the app, the Home page shows a setup checklist. Work through it top to bottom before running your first search.
 
+![Setup checklist on first launch](docs/Screenshots/dashboard.png)
+
 ### Step 1 — Configure Search Settings
 
 Open **Search Settings** in the left sidebar. There are five tabs:
@@ -153,6 +155,8 @@ Run **Heal ATS** periodically (weekly is usually enough) to catch companies that
 
 The **Job Matches** page shows all scraped jobs that passed the scoring threshold, sorted by score descending.
 
+![Job Matches — scored roles from all active target companies](docs/Screenshots/jobmatches.png)
+
 **Key columns:**
 - **Score / Band** — numeric score and fit band label
 - **Matched / Penalized** — the specific keywords that drove the score up or down
@@ -172,6 +176,8 @@ The **Job Matches** page shows all scraped jobs that passed the scoring threshol
 ## 6. My Applications — Tracking Your Pipeline
 
 The **My Applications** tracker is the core CRM. Every application you actively pursue lives here.
+
+![My Applications — full pipeline list with Gmail sync and stage counts](docs/Screenshots/myapplications.png)
 
 ### Stage Workflow
 
@@ -193,6 +199,9 @@ Expanding an application shows tabbed sections:
 **Events**
 - Log any interaction: applied, recruiter outreach, phone screen scheduled/complete, interview scheduled/complete, offer received, offer negotiating, follow-up sent, note
 - Each event is timestamped and shown in a chronological feed
+- Gmail-detected events are imported automatically and shown inline
+
+![Application detail — event timeline with Gmail-detected interview signals](docs/Screenshots/applicationdetail.png)
 
 **Follow-up**
 - Set a follow-up date and note
@@ -219,6 +228,8 @@ Expanding an application shows tabbed sections:
 - When you reach offer stage, record: base, bonus %, equity, signing, PTO, 401k match, remote policy, start date, offer expiry
 - Normalized total comp is calculated automatically for comparison across FTE and contract roles
 
+![Offer details form — compensation fields and policy tracking](docs/Screenshots/offerdetails.png)
+
 **Offer Comparison & Negotiation**
 - Side-by-side total comp comparison across multiple offers
 - Negotiation worksheet: your floor, your target, the posted range, days the role has been open (leverage signal), and a counter-offer note field
@@ -242,6 +253,8 @@ The tracker automatically calculates follow-up due dates based on current stage.
 
 **Pipeline** shows a tabular Kanban across active stages (Applied, Screening, Interviewing, Offer). Use it for a quick status sweep across all live applications. You can change status directly from the table.
 
+![ATS Pipeline — tabular kanban across active stages](docs/Screenshots/Pipeline.png)
+
 The view also shows time-in-stage for each application. Applications stuck in the same stage for more than 7 days are highlighted — a signal to follow up or move on.
 
 ---
@@ -249,6 +262,8 @@ The view also shows time-in-stage for each application. Applications stuck in th
 ## 8. Home Dashboard
 
 The Home page gives an at-a-glance status of your search:
+
+![Home dashboard — KPIs, pipeline summary, and activity trends](docs/Screenshots/Homepage.png)
 
 - **Overdue follow-ups** — applications past their follow-up date, with one-click links
 - **Active pipeline count** — how many roles are in each active stage
@@ -261,6 +276,8 @@ The Home page gives an at-a-glance status of your search:
 ## 9. Analytics
 
 The **Analytics** page shows where your search is working and where it isn't.
+
+![Analytics — funnel overview with conversion rates](docs/Screenshots/analytics.png)
 
 **Funnel counts** — how many applications are in each stage, and cumulative totals.
 
@@ -275,6 +292,14 @@ The **Analytics** page shows where your search is working and where it isn't.
 **Score vs. outcome** — scatter plot of your score at application versus final outcome (interview, offer, rejected). Over time this shows whether your scoring predicts success.
 
 **Company pipeline** — how many applications and what stages at each company.
+
+**Rejection Pattern Analysis** — after enough data, surfaces which companies and title families are consistently rejecting you, and what penalty signals appear most often.
+
+![Rejection Pattern Analysis — top rejected companies and common penalty signals](docs/Screenshots/rejection.png)
+
+**Resume Keyword Gap Analysis** — compares your stored base resume against all matched roles to surface the most common JD terms you're missing.
+
+![Resume Keyword Gap Analysis — gap keywords ranked by frequency across matched roles](docs/Screenshots/gaps.png)
 
 **Rejected jobs browser** — review the jobs that were scored out. Useful for tuning your `minimum_score_to_keep`.
 
@@ -311,6 +336,8 @@ For each contact you can store:
 ## 12. Interview Question Bank
 
 The **Question Bank** is your behavioral interview story library. Write a STAR answer once and reuse it across every interview.
+
+![Question Bank — behavioral categories with STAR story prompts](docs/Screenshots/questionbank.png)
 
 ### Categories
 
@@ -383,11 +410,17 @@ Useful for keeping your resume and interview prep current as you learn, and for 
 
 Originally designed to simplify unemployment benefit paperwork — the report lists every logged event (applications submitted, calls made, interviews attended) in the format those forms typically require.
 
+![Weekly Report — activity log with benefit certification summary](docs/Screenshots/weeklyactivity.png)
+
 Select a date range and export the table directly. All event types are translated to human-readable descriptions (e.g. `interview_complete` → *In-person / video interview*).
 
 ---
 
 ## 17. Search Settings Reference
+
+### JD Evaluation — Positive and Negative Keywords
+
+![Search Settings — JD keyword weights for scoring](docs/Screenshots/searchprefscoring.png)
 
 ### Compensation & Location
 
@@ -430,6 +463,8 @@ Select a date range and export the table directly. All event types are translate
 
 ## 18. Target Companies Reference
 
+![Target Companies — registry list with adapter and tier columns](docs/Screenshots/targets.png)
+
 ### Company Fields
 
 | Field | Required | Description |
@@ -456,6 +491,8 @@ Select a date range and export the table directly. All event types are translate
 | `generic` | Any careers page without a supported ATS |
 
 ### Heal ATS
+
+![Heal ATS — configuration options before running a heal pass](docs/Screenshots/healats.png)
 
 The healer probes each company's careers URL and attempts to:
 - Confirm the board is live
