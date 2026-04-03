@@ -47,6 +47,7 @@ from jobsearch.views.tracker_page import (
     _default_follow_up_date,
     _follow_up_template_note,
     _formal_tracker_rows,
+    _negotiation_playbook_lines,
     _offer_comparison_rows,
     _summary_metrics_for_rows,
 )
@@ -723,6 +724,79 @@ class BlockedAndLocationTests(unittest.TestCase):
             location="https://meet.google.com/example",
         )
         self.assertIsNotNone(matched)
+
+    def test_interview_debrief_fields_persist_and_appear_in_signal_rows(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        db.init_db(conn)
+        app_id = db.add_application(
+            conn,
+            company="Advisor360",
+            role="Enterprise Solutions Architect",
+            status="interviewing",
+            entry_type="application",
+        )
+        interview_id = db.add_interview(
+            conn,
+            app_id,
+            round_number=2,
+            interview_type="video",
+            scheduled_at="2026-04-06T11:00:00",
+            interviewer_names="Drew Norell",
+            location="https://meet.google.com/qsb-jwfi-wae",
+        )
+        db.update_interview(
+            conn,
+            interview_id,
+            outcome="passed",
+            rapport_score=4,
+            role_clarity_score=5,
+            interviewer_engaged_score=4,
+            confidence_score=5,
+            next_steps_clear=1,
+            timeline_mentioned=1,
+            compensation_discussed=0,
+            availability_discussed=1,
+            debrief_notes="Strong hiring-manager round with clear next steps.",
+            outcome_notes="Strong hiring-manager round with clear next steps.",
+        )
+        row = db.get_interviews(conn, app_id)[0]
+        self.assertEqual(row["rapport_score"], 4)
+        self.assertEqual(row["role_clarity_score"], 5)
+        self.assertEqual(row["confidence_score"], 5)
+        self.assertEqual(row["next_steps_clear"], 1)
+        self.assertEqual(row["timeline_mentioned"], 1)
+        self.assertEqual(row["debrief_notes"], "Strong hiring-manager round with clear next steps.")
+
+        signal_rows = db.get_interview_signal_rows(conn)
+        self.assertEqual(len(signal_rows), 1)
+        self.assertEqual(signal_rows[0]["company"], "Advisor360")
+        self.assertEqual(signal_rows[0]["outcome"], "passed")
+        conn.close()
+
+    def test_negotiation_playbook_flags_below_floor_and_market_gap(self):
+        app = {
+            "offer_base": 175000,
+            "offer_expiry_date": "2026-04-10",
+            "offer_remote_policy": "Hybrid",
+            "offer_equity": "RSU",
+            "offer_signing": 15000,
+        }
+        lines = _negotiation_playbook_lines(
+            app,
+            target_base=195000,
+            walkaway_base=180000,
+            market_low=190000,
+            market_high=220000,
+        )
+        rendered = "\n".join(lines)
+        self.assertIn("Ask: `$195,000`", rendered)
+        self.assertIn("below your walk-away floor", rendered)
+        self.assertIn("Offer deadline: `2026-04-10`", rendered)
+        self.assertIn("Remote policy is `Hybrid`", rendered)
+        self.assertIn("Equity is part of the package", rendered)
+        self.assertIn("There is already a sign-on component", rendered)
+        self.assertIn("Offer is below your market range", rendered)
 
     def test_gmail_sync_flag_is_boolean(self):
         self.assertIsInstance(settings.gmail_sync_enabled, bool)

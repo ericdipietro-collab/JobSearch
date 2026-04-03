@@ -466,13 +466,98 @@ def _render_rejection_patterns(conn: sqlite3.Connection) -> None:
         st.dataframe(rejected_df[show_cols], hide_index=True, use_container_width=True)
 
 
+def _render_interview_signal_analysis(conn: sqlite3.Connection) -> None:
+    st.subheader("Interview Debrief + Outcome Correlation")
+    rows = [dict(row) for row in conn.execute(
+        """
+        SELECT i.*, a.company, a.role, a.status
+        FROM interviews i
+        JOIN applications a ON a.id = i.application_id
+        """
+    ).fetchall()]
+    if not rows:
+        st.info("No interview data available yet.")
+        return
+
+    df = pd.DataFrame(rows)
+    if df.empty:
+        st.info("No interview data available yet.")
+        return
+
+    df["outcome"] = df["outcome"].fillna("pending").astype(str)
+    scored_cols = ["rapport_score", "role_clarity_score", "interviewer_engaged_score", "confidence_score"]
+    for col in scored_cols:
+        df[col] = pd.to_numeric(df.get(col), errors="coerce")
+    bool_cols = ["next_steps_clear", "timeline_mentioned", "compensation_discussed", "availability_discussed"]
+    for col in bool_cols:
+        df[col] = pd.to_numeric(df.get(col), errors="coerce").fillna(0).astype(int)
+
+    reviewed_df = df[
+        df[scored_cols + bool_cols].notna().any(axis=1)
+    ].copy()
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Interview Rows", len(df))
+    c2.metric("Debriefs Completed", len(reviewed_df))
+    c3.metric("Passed Rounds", int((df["outcome"] == "passed").sum()))
+
+    if reviewed_df.empty:
+        st.info("Start filling out Interview Debrief on interview rounds to unlock signal correlation.")
+        return
+
+    avg_df = (
+        reviewed_df.groupby("outcome")[scored_cols]
+        .mean()
+        .reset_index()
+        .sort_values("outcome")
+    )
+    st.markdown("**Average Debrief Scores by Outcome**")
+    st.dataframe(avg_df, hide_index=True, use_container_width=True)
+
+    signal_rows = []
+    for col in bool_cols:
+        yes_df = reviewed_df[reviewed_df[col] == 1]
+        total = len(yes_df)
+        passed = int((yes_df["outcome"] == "passed").sum())
+        failed = int((yes_df["outcome"] == "failed").sum())
+        signal_rows.append(
+            {
+                "signal": col.replace("_", " ").title(),
+                "count": total,
+                "passed": passed,
+                "failed": failed,
+                "pass_rate_pct": round((passed / total) * 100, 1) if total else 0.0,
+            }
+        )
+    signal_df = pd.DataFrame(signal_rows).sort_values(["pass_rate_pct", "count"], ascending=[False, False])
+    st.markdown("**Signal Win Rates**")
+    st.dataframe(signal_df, hide_index=True, use_container_width=True)
+
+    with st.expander("Latest interview debrief rows"):
+        show_cols = [
+            "company",
+            "role",
+            "scheduled_at",
+            "outcome",
+            "rapport_score",
+            "role_clarity_score",
+            "interviewer_engaged_score",
+            "confidence_score",
+            "next_steps_clear",
+            "timeline_mentioned",
+            "compensation_discussed",
+            "availability_discussed",
+            "debrief_notes",
+        ]
+        st.dataframe(reviewed_df[[c for c in show_cols if c in reviewed_df.columns]], hide_index=True, use_container_width=True)
+
+
 # ── Main page renderer ────────────────────────────────────────────────────────
 
 def render_analytics(conn: sqlite3.Connection) -> None:
     """Entry point called from app.py."""
     st.title("Analytics")
 
-    tab_funnel, tab_score, tab_health, tab_company, tab_outcome, tab_reject, tab_resume = st.tabs([
+    tab_funnel, tab_score, tab_health, tab_company, tab_outcome, tab_reject, tab_resume, tab_interview = st.tabs([
         "Funnel",
         "Score Analysis",
         "Pipeline Health",
@@ -480,6 +565,7 @@ def render_analytics(conn: sqlite3.Connection) -> None:
         "Score vs Outcome",
         "Rejection Patterns",
         "Resume Gaps",
+        "Interview Signals",
     ])
 
     with tab_funnel:
@@ -502,3 +588,6 @@ def render_analytics(conn: sqlite3.Connection) -> None:
 
     with tab_resume:
         _render_resume_gap_analysis(conn)
+
+    with tab_interview:
+        _render_interview_signal_analysis(conn)

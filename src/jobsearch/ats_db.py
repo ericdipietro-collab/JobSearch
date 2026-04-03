@@ -392,6 +392,15 @@ def init_db(conn: sqlite3.Connection) -> None:
             prep_notes TEXT,
             outcome TEXT DEFAULT 'pending',
             outcome_notes TEXT,
+            rapport_score INTEGER,
+            role_clarity_score INTEGER,
+            interviewer_engaged_score INTEGER,
+            confidence_score INTEGER,
+            next_steps_clear INTEGER,
+            timeline_mentioned INTEGER,
+            compensation_discussed INTEGER,
+            availability_discussed INTEGER,
+            debrief_notes TEXT,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
@@ -605,6 +614,21 @@ def init_db(conn: sqlite3.Connection) -> None:
             "interviewer_names": "TEXT",
             "interview_location": "TEXT",
             "interview_duration_mins": "INTEGER",
+        },
+    )
+    _add_columns_if_missing(
+        conn,
+        "interviews",
+        {
+            "rapport_score": "INTEGER",
+            "role_clarity_score": "INTEGER",
+            "interviewer_engaged_score": "INTEGER",
+            "confidence_score": "INTEGER",
+            "next_steps_clear": "INTEGER",
+            "timeline_mentioned": "INTEGER",
+            "compensation_discussed": "INTEGER",
+            "availability_discussed": "INTEGER",
+            "debrief_notes": "TEXT",
         },
     )
     _add_columns_if_missing(
@@ -1629,6 +1653,17 @@ def get_jd_changed_applications(conn: sqlite3.Connection) -> List[sqlite3.Row]:
         WHERE jd_needs_review = 1
           AND status IN ('applied', 'screening', 'interviewing', 'offer')
         ORDER BY COALESCE(jd_last_changed_at, updated_at) DESC
+        """
+    ).fetchall()
+
+
+def get_interview_signal_rows(conn: sqlite3.Connection) -> List[sqlite3.Row]:
+    return conn.execute(
+        """
+        SELECT i.*, a.company, a.role, a.status
+        FROM interviews i
+        JOIN applications a ON a.id = i.application_id
+        ORDER BY COALESCE(i.scheduled_at, i.created_at) DESC, i.id DESC
         """
     ).fetchall()
 

@@ -218,6 +218,38 @@ def _offer_comparison_rows(offer_apps) -> list[dict]:
     return rows
 
 
+def _negotiation_playbook_lines(app: dict, target_base: float, walkaway_base: float, market_low: float, market_high: float) -> list[str]:
+    offer_base = float(app.get("offer_base") or 0)
+    playbook: list[str] = []
+    if offer_base and target_base:
+        diff = target_base - offer_base
+        pct = (diff / offer_base * 100) if offer_base else 0
+        if diff > 0:
+            playbook.append(f"Ask: `${target_base:,.0f}` which is `+${diff:,.0f}` (`+{pct:.1f}%`) over the current offer.")
+        elif diff == 0:
+            playbook.append("Your current target matches the offer. Focus on equity, sign-on, remote flexibility, or PTO.")
+        else:
+            playbook.append("Your target is below the current offer. Revisit the worksheet before negotiating.")
+    if walkaway_base and offer_base and offer_base < walkaway_base:
+        playbook.append("Current offer is below your walk-away floor. Prepare a firm decline or a very direct counter.")
+    if app.get("offer_expiry_date"):
+        playbook.append(f"Offer deadline: `{app['offer_expiry_date']}`. Counter early and ask for written confirmation on any extension.")
+    if app.get("offer_remote_policy"):
+        playbook.append(f"Remote policy is `{app['offer_remote_policy']}`. If flexibility matters, make it part of the trade package.")
+    if app.get("offer_equity"):
+        playbook.append("Equity is part of the package. Ask for grant size, vesting schedule, refresh policy, and strike/valuation context.")
+    if app.get("offer_signing"):
+        playbook.append("There is already a sign-on component. If base is sticky, use sign-on or guaranteed bonus as an alternate lever.")
+    if market_low and market_high and offer_base:
+        if offer_base < market_low:
+            playbook.append("Offer is below your market range. Use market data as your lead justification.")
+        elif offer_base > market_high:
+            playbook.append("Offer is above your market range. Negotiate carefully and focus on non-cash terms only if needed.")
+        else:
+            playbook.append("Offer is inside your market range. Anchor on role fit, scope, and execution leverage rather than comp alone.")
+    return playbook
+
+
 def _snooze_follow_up(conn, app_id: int, days: int) -> None:
     app = db.get_application(conn, app_id)
     if not app:
@@ -1291,6 +1323,8 @@ def _render_interviews(conn, app) -> None:
             st.caption(f"With: {iv['interviewer_names']}")
         if iv["location"]:
             st.caption(f"📍 {iv['location']}")
+        if iv["duration_mins"]:
+            st.caption(f"Duration: {iv['duration_mins']} mins")
 
         # Quick outcome update
         oc1, oc2, _ = st.columns([2, 2, 4])
@@ -1316,6 +1350,42 @@ def _render_interviews(conn, app) -> None:
         if dc1.button("🗑", key=f"del_iv_{iv['id']}", help="Delete"):
             db.delete_interview(conn, iv["id"])
             st.rerun()
+
+        with st.expander("Interview Debrief", expanded=False):
+            with st.form(f"iv_debrief_{iv['id']}"):
+                d1, d2, d3, d4 = st.columns(4)
+                rapport = d1.slider("Rapport", 1, 5, int(iv["rapport_score"] or 3))
+                clarity = d2.slider("Role Clarity", 1, 5, int(iv["role_clarity_score"] or 3))
+                engaged = d3.slider("Interviewer Engaged", 1, 5, int(iv["interviewer_engaged_score"] or 3))
+                confidence = d4.slider("Your Confidence", 1, 5, int(iv["confidence_score"] or 3))
+                b1, b2, b3, b4 = st.columns(4)
+                next_steps = b1.checkbox("Next steps discussed", value=bool(iv["next_steps_clear"]))
+                timeline = b2.checkbox("Timeline mentioned", value=bool(iv["timeline_mentioned"]))
+                comp = b3.checkbox("Comp discussed", value=bool(iv["compensation_discussed"]))
+                availability = b4.checkbox("Availability discussed", value=bool(iv["availability_discussed"]))
+                debrief_notes = st.text_area(
+                    "Debrief Notes",
+                    value=iv["debrief_notes"] or iv["outcome_notes"] or "",
+                    height=90,
+                    placeholder="Signals, concerns, what they emphasized, what to prepare next…",
+                )
+                if st.form_submit_button("Save Debrief", type="primary"):
+                    db.update_interview(
+                        conn,
+                        iv["id"],
+                        rapport_score=rapport,
+                        role_clarity_score=clarity,
+                        interviewer_engaged_score=engaged,
+                        confidence_score=confidence,
+                        next_steps_clear=1 if next_steps else 0,
+                        timeline_mentioned=1 if timeline else 0,
+                        compensation_discussed=1 if comp else 0,
+                        availability_discussed=1 if availability else 0,
+                        debrief_notes=debrief_notes.strip() or None,
+                        outcome_notes=debrief_notes.strip() or None,
+                    )
+                    st.success("Debrief saved.")
+                    st.rerun()
         st.markdown('<hr style="margin:6px 0;border-color:#374151">', unsafe_allow_html=True)
 
 
@@ -1517,6 +1587,24 @@ def _render_negotiate_tab(conn, app) -> None:
             c1, c2 = st.columns([2, 3])
             c1.caption(label)
             c2.markdown(val)
+
+    if offer_base or target_base or walkaway_base:
+        st.divider()
+        st.markdown("**Negotiation Playbook**")
+        playbook = _negotiation_playbook_lines(app, target_base, walkaway_base, market_low, market_high)
+
+        cadence = [
+            "1. Thank them, restate enthusiasm, and ask for a short window to review.",
+            "2. Counter once with a specific ask and 2–3 business reasons tied to scope, market, and impact.",
+            "3. If base stalls, shift to sign-on, equity, remote flexibility, or start-date support.",
+            "4. Get final terms in writing before you verbally accept.",
+        ]
+
+        for line in playbook:
+            st.markdown(f"- {line}")
+        st.caption("Suggested cadence")
+        for line in cadence:
+            st.markdown(f"- {line}")
 
 
 # ── Inline company profile ──────────────────────────────────────────────────────
