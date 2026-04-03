@@ -4,6 +4,8 @@ from datetime import date
 from email.message import EmailMessage
 from pathlib import Path
 import sqlite3
+import io
+import zipfile
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 SRC_DIR = BASE_DIR / "src"
@@ -28,13 +30,19 @@ from jobsearch.app_main import (
     _apply_work_type_filter,
     _disable_company_in_registry,
     _decorate_role_velocity,
+    _extract_resume_text,
     _normalize_work_type,
     _parse_manual_review_lines,
     _role_velocity_summary,
     _sidebar_metrics_for_df,
     _work_type_label,
 )
-from jobsearch.views.analytics_page import _parse_keyword_blob, _title_family
+from jobsearch.views.analytics_page import (
+    _parse_keyword_blob,
+    _resume_contains_keyword,
+    _resume_gap_rows,
+    _title_family,
+)
 from jobsearch.views.tracker_page import (
     _default_follow_up_date,
     _follow_up_template_note,
@@ -55,6 +63,15 @@ class _Resp:
         self.text = text
         self.status_code = status_code
         self.url = url
+
+
+class _UploadedFileStub:
+    def __init__(self, name: str, content: bytes):
+        self.name = name
+        self._content = content
+
+    def getvalue(self) -> bytes:
+        return self._content
 
 
 class _FakeDiceAdapter(DiceAdapter):
@@ -410,6 +427,88 @@ class BlockedAndLocationTests(unittest.TestCase):
         self.assertEqual(_title_family("Business Systems Analyst"), "Analyst")
         self.assertEqual(_parse_keyword_blob("['mortgage', 'consumer lending']"), ["mortgage", "consumer lending"])
         self.assertEqual(_parse_keyword_blob("mortgage, consumer lending"), ["mortgage", "consumer lending"])
+
+    def test_resume_gap_helpers_detect_missing_keywords(self):
+        self.assertTrue(_resume_contains_keyword("Built API integration pipelines and data lineage controls", "API integration"))
+        self.assertFalse(_resume_contains_keyword("Built API integration pipelines and data lineage controls", "Data Vault"))
+
+        df = pd.DataFrame(
+            [
+                {
+                    "company": "Advisor360",
+                    "title": "Enterprise Solutions Architect",
+                    "score": 82.0,
+                    "matched_keywords": "['API integration', 'Data Vault', 'capital markets systems']",
+                    "status": "considering",
+                },
+                {
+                    "company": "BNY Mellon",
+                    "title": "Data Platform Architect",
+                    "score": 78.0,
+                    "matched_keywords": "['Data Vault', 'data lineage']",
+                    "status": "considering",
+                },
+                {
+                    "company": "NoiseCo",
+                    "title": "Irrelevant Role",
+                    "score": 34.0,
+                    "matched_keywords": "['mortgage']",
+                    "status": "considering",
+                },
+            ]
+        )
+        resume_text = "Enterprise architecture, API integration, and data lineage across wealth platforms."
+        gap_df = _resume_gap_rows(df, resume_text, minimum_score=60.0)
+        keywords = gap_df["keyword"].tolist()
+        self.assertIn("Data Vault", keywords)
+        self.assertIn("capital markets systems", keywords)
+        self.assertNotIn("API integration", keywords)
+        self.assertNotIn("mortgage", keywords)
+
+        data_vault_row = gap_df.loc[gap_df["keyword"] == "Data Vault"].iloc[0]
+        self.assertEqual(int(data_vault_row["roles"]), 2)
+
+    def test_resume_gap_helpers_respect_ignore_keywords(self):
+        df = pd.DataFrame(
+            [
+                {
+                    "company": "Advisor360",
+                    "title": "Enterprise Solutions Architect",
+                    "score": 82.0,
+                    "matched_keywords": "['Data Vault', 'capital markets systems']",
+                    "status": "considering",
+                }
+            ]
+        )
+        gap_df = _resume_gap_rows(
+            df,
+            "Enterprise solutions architecture",
+            minimum_score=60.0,
+            ignored_keywords=["Data Vault"],
+        )
+        self.assertEqual(gap_df["keyword"].tolist(), ["capital markets systems"])
+
+    def test_resume_upload_extractor_supports_txt_and_docx(self):
+        txt_file = _UploadedFileStub("master_resume.txt", b"API integration\nData lineage\n")
+        txt_text, txt_type = _extract_resume_text(txt_file)
+        self.assertEqual(txt_type, "txt")
+        self.assertIn("API integration", txt_text)
+
+        document_xml = b"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p><w:r><w:t>Enterprise architecture</w:t></w:r></w:p>
+            <w:p><w:r><w:t>Capital markets systems</w:t></w:r></w:p>
+          </w:body>
+        </w:document>"""
+        docx_buffer = io.BytesIO()
+        with zipfile.ZipFile(docx_buffer, "w") as zf:
+            zf.writestr("word/document.xml", document_xml)
+        docx_file = _UploadedFileStub("master_resume.docx", docx_buffer.getvalue())
+        docx_text, docx_type = _extract_resume_text(docx_file)
+        self.assertEqual(docx_type, "docx")
+        self.assertIn("Enterprise architecture", docx_text)
+        self.assertIn("Capital markets systems", docx_text)
 
     def test_email_signal_classifier_detects_three_signal_types(self):
         known = ["Stripe", "Acme"]

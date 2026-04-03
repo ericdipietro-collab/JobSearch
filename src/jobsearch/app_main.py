@@ -1,9 +1,10 @@
 """src/jobsearch/app_main.py — Full Feature Dashboard with Structural Reinforcements."""
 
 from __future__ import annotations
-import os, re, json, subprocess, sys
+import os, re, json, subprocess, sys, io, zipfile
 from datetime import datetime, timezone
 from pathlib import Path
+from xml.etree import ElementTree as ET
 import pandas as pd
 import streamlit as st
 import yaml
@@ -339,6 +340,45 @@ def _companies_file_label(path: Path) -> str:
         return f"{name} (legacy contractor test lane)"
     return name
 
+
+def _extract_docx_text(file_bytes: bytes) -> str:
+    with zipfile.ZipFile(io.BytesIO(file_bytes)) as zf:
+        xml_bytes = zf.read("word/document.xml")
+    root = ET.fromstring(xml_bytes)
+    ns = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+    parts = []
+    for para in root.findall(".//w:p", ns):
+        texts = [node.text for node in para.findall(".//w:t", ns) if node.text]
+        if texts:
+            parts.append("".join(texts))
+    return "\n".join(parts).strip()
+
+
+def _extract_pdf_text(file_bytes: bytes) -> str:
+    try:
+        from pypdf import PdfReader
+    except Exception as exc:
+        raise RuntimeError("PDF import requires the 'pypdf' package in the runtime environment.") from exc
+    reader = PdfReader(io.BytesIO(file_bytes))
+    pages = []
+    for page in reader.pages:
+        text = page.extract_text() or ""
+        if text.strip():
+            pages.append(text.strip())
+    return "\n\n".join(pages).strip()
+
+
+def _extract_resume_text(uploaded_file) -> tuple[str, str]:
+    suffix = Path(uploaded_file.name or "").suffix.lower()
+    file_bytes = uploaded_file.getvalue()
+    if suffix == ".txt":
+        return file_bytes.decode("utf-8", errors="replace"), "txt"
+    if suffix == ".docx":
+        return _extract_docx_text(file_bytes), "docx"
+    if suffix == ".pdf":
+        return _extract_pdf_text(file_bytes), "pdf"
+    raise ValueError(f"Unsupported resume format: {suffix or 'unknown'}")
+
 def main():
     st.set_page_config(page_title="Job Search", page_icon="💼", layout="wide")
     
@@ -547,7 +587,7 @@ def main():
     elif page == "Search Settings":
         st.title("Search Settings")
         prefs = load_yaml(settings.prefs_yaml)
-        t1, t2, t3, t4, t5, t6 = st.tabs(["Compensation & Location", "Title Evaluation", "JD Evaluation", "Scoring & Rescue", "Full YAML Editor", "App Settings"])
+        t1, t2, t3, t4, t5, t6, t7 = st.tabs(["Compensation & Location", "Title Evaluation", "JD Evaluation", "Scoring & Rescue", "Full YAML Editor", "App Settings", "Base Resume"])
         
         with t1:
             s = prefs.setdefault("search", {}); c = s.setdefault("compensation", {})
@@ -788,6 +828,90 @@ def main():
                     ats_db.set_setting(conn, "gmail_app_password", app_gmail_password.strip())
                     ats_db.set_setting(conn, "gmail_imap_host", app_gmail_host.strip() or "imap.gmail.com")
                     st.success("App settings saved.")
+            finally:
+                conn.close()
+
+        with t7:
+            conn = ats_db.get_connection()
+            try:
+                resume_name = ats_db.get_setting(conn, "base_resume_name", default="Master Resume")
+                resume_source_url = ats_db.get_setting(conn, "base_resume_source_url", default="")
+                resume_text = ats_db.get_setting(conn, "base_resume_text", default="")
+                resume_notes = ats_db.get_setting(conn, "base_resume_notes", default="")
+                keyword_focus = ats_db.get_setting(conn, "base_resume_keyword_focus", default="")
+                keyword_ignore = ats_db.get_setting(conn, "base_resume_keyword_ignore", default="")
+
+                st.session_state.setdefault("base_resume_name_input", resume_name)
+                st.session_state.setdefault("base_resume_source_input", resume_source_url)
+                st.session_state.setdefault("base_resume_notes_input", resume_notes)
+                st.session_state.setdefault("base_resume_text_input", resume_text)
+                st.session_state.setdefault("base_resume_focus_input", keyword_focus)
+                st.session_state.setdefault("base_resume_ignore_input", keyword_ignore)
+
+                st.caption(
+                    "Store the canonical resume text here, then use it as the source-of-truth for tailored resumes "
+                    "and keyword-gap analysis."
+                )
+                uploaded_resume = st.file_uploader(
+                    "Upload Base Resume (.txt, .docx, .pdf)",
+                    type=["txt", "docx", "pdf"],
+                    help="The extracted text populates the editable base resume field below. You can review and edit it before saving.",
+                )
+                if uploaded_resume is not None and st.button("Load Uploaded Resume"):
+                    try:
+                        extracted_text, source_type = _extract_resume_text(uploaded_resume)
+                        if not extracted_text.strip():
+                            st.warning("The uploaded file was read, but no extractable text was found.")
+                        else:
+                            st.session_state["base_resume_text_input"] = extracted_text
+                            st.session_state["base_resume_source_input"] = uploaded_resume.name
+                            if not str(st.session_state.get("base_resume_name_input", "")).strip():
+                                st.session_state["base_resume_name_input"] = Path(uploaded_resume.name).stem
+                            st.success(f"Loaded {uploaded_resume.name} ({source_type.upper()}). Review and save when ready.")
+                            st.rerun()
+                    except Exception as exc:
+                        st.error(f"Could not extract resume text: {exc}")
+                br1, br2 = st.columns(2)
+                base_resume_name = br1.text_input("Resume Name", key="base_resume_name_input")
+                base_resume_source = br2.text_input("Source URL", key="base_resume_source_input", placeholder="Optional link to the living master resume")
+                base_resume_notes = st.text_area(
+                    "Resume Notes",
+                    key="base_resume_notes_input",
+                    height=80,
+                    placeholder="Role focus, intended audience, or editing notes.",
+                )
+                base_resume_text = st.text_area(
+                    "Base Resume Text",
+                    key="base_resume_text_input",
+                    height=360,
+                    placeholder="Paste the full canonical resume text here.",
+                )
+                kf1, kf2 = st.columns(2)
+                base_keyword_focus = kf1.text_area(
+                    "Priority Keywords / Phrases",
+                    key="base_resume_focus_input",
+                    height=120,
+                    placeholder="One per line. Optional emphasis list for tailoring.",
+                )
+                base_keyword_ignore = kf2.text_area(
+                    "Ignore Keywords / Phrases",
+                    key="base_resume_ignore_input",
+                    height=120,
+                    placeholder="One per line. Terms to ignore in gap analysis.",
+                )
+
+                stats1, stats2 = st.columns(2)
+                stats1.metric("Characters", len(base_resume_text or ""))
+                stats2.metric("Lines", len([line for line in str(base_resume_text or "").splitlines() if line.strip()]))
+
+                if st.button("Save Base Resume"):
+                    ats_db.set_setting(conn, "base_resume_name", base_resume_name.strip() or "Master Resume")
+                    ats_db.set_setting(conn, "base_resume_source_url", base_resume_source.strip())
+                    ats_db.set_setting(conn, "base_resume_text", base_resume_text)
+                    ats_db.set_setting(conn, "base_resume_notes", base_resume_notes.strip())
+                    ats_db.set_setting(conn, "base_resume_keyword_focus", base_keyword_focus.strip())
+                    ats_db.set_setting(conn, "base_resume_keyword_ignore", base_keyword_ignore.strip())
+                    st.success("Base resume saved.")
             finally:
                 conn.close()
 

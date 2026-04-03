@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import sqlite3
 from collections import Counter
+import re
 
 import altair as alt
 import pandas as pd
@@ -67,6 +68,129 @@ def _title_family(title: str) -> str:
         if any(needle in text for needle in needles):
             return family
     return "Other"
+
+
+def _normalize_gap_text(value: str) -> str:
+    return re.sub(r"[^a-z0-9+/#.\s-]+", " ", str(value or "").lower()).strip()
+
+
+def _resume_contains_keyword(resume_text: str, keyword: str) -> bool:
+    normalized_resume = f" {_normalize_gap_text(resume_text)} "
+    normalized_keyword = _normalize_gap_text(keyword)
+    if not normalized_keyword:
+        return True
+    return f" {normalized_keyword} " in normalized_resume
+
+
+def _resume_gap_rows(
+    df: pd.DataFrame,
+    resume_text: str,
+    minimum_score: float = 60.0,
+    ignored_keywords: list[str] | None = None,
+) -> pd.DataFrame:
+    if df.empty or not resume_text.strip():
+        return pd.DataFrame()
+    ignored = {_normalize_gap_text(keyword) for keyword in (ignored_keywords or []) if _normalize_gap_text(keyword)}
+
+    work_df = df.copy()
+    if "score" in work_df.columns:
+        work_df["score"] = pd.to_numeric(work_df["score"], errors="coerce").fillna(0.0)
+        work_df = work_df[work_df["score"] >= float(minimum_score)]
+    if work_df.empty:
+        return pd.DataFrame()
+
+    keyword_rows = []
+    for _, row in work_df.iterrows():
+        keywords = _parse_keyword_blob(row.get("matched_keywords"))
+        unique_keywords = []
+        seen = set()
+        for keyword in keywords:
+            normalized = _normalize_gap_text(keyword)
+            if normalized and normalized not in seen:
+                unique_keywords.append(keyword)
+                seen.add(normalized)
+        for keyword in unique_keywords:
+            if _normalize_gap_text(keyword) in ignored:
+                continue
+            if _resume_contains_keyword(resume_text, keyword):
+                continue
+            keyword_rows.append(
+                {
+                    "keyword": keyword,
+                    "company": row.get("company", ""),
+                    "title": row.get("title") or row.get("role") or "",
+                    "score": float(row.get("score", 0.0) or 0.0),
+                }
+            )
+
+    if not keyword_rows:
+        return pd.DataFrame()
+
+    keyword_df = pd.DataFrame(keyword_rows)
+    total_roles = max(len(work_df), 1)
+    gap_df = (
+        keyword_df.groupby("keyword")
+        .agg(
+            roles=("keyword", "size"),
+            avg_score=("score", "mean"),
+            companies=("company", lambda s: ", ".join(sorted({str(v) for v in s if str(v).strip()})[:3])),
+            sample_titles=("title", lambda s: " | ".join(list(dict.fromkeys([str(v) for v in s if str(v).strip()]))[:3])),
+        )
+        .reset_index()
+        .sort_values(["roles", "avg_score", "keyword"], ascending=[False, False, True])
+    )
+    gap_df["coverage_pct"] = gap_df["roles"].map(lambda count: round((count / total_roles) * 100, 1))
+    return gap_df
+
+
+def _render_resume_gap_analysis(conn: sqlite3.Connection) -> None:
+    st.subheader("Resume Keyword Gap Analysis")
+
+    resume_name = (conn.execute("SELECT value FROM settings WHERE key = 'base_resume_name'").fetchone() or [None])[0]
+    resume_text = (conn.execute("SELECT value FROM settings WHERE key = 'base_resume_text'").fetchone() or [None])[0] or ""
+    ignored_keywords = (
+        (conn.execute("SELECT value FROM settings WHERE key = 'base_resume_keyword_ignore'").fetchone() or [None])[0]
+        or ""
+    )
+    if not str(resume_text).strip():
+        st.info("Add your base resume in Search Settings → Base Resume to enable keyword gap analysis.")
+        return
+
+    apps_df = pd.DataFrame(
+        [
+            dict(row)
+            for row in conn.execute(
+                "SELECT company, role AS title, score, matched_keywords, status FROM applications"
+            ).fetchall()
+        ]
+    )
+    if apps_df.empty:
+        st.info("No scraped role data available yet.")
+        return
+
+    minimum_score = st.slider("Minimum role score to include", min_value=35, max_value=95, value=60, step=5)
+    ignored = [line.strip() for line in str(ignored_keywords).splitlines() if line.strip()]
+    gap_df = _resume_gap_rows(apps_df, resume_text, minimum_score=minimum_score, ignored_keywords=ignored)
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Base Resume", resume_name or "Stored")
+    col2.metric("Roles Scanned", int((pd.to_numeric(apps_df.get("score"), errors="coerce").fillna(0) >= minimum_score).sum()))
+    col3.metric("Gap Keywords", len(gap_df))
+
+    if gap_df.empty:
+        st.success("No obvious keyword gaps found at the selected score threshold.")
+        return
+
+    st.caption("Terms below are appearing repeatedly in stronger roles but were not found in the stored base resume.")
+    st.dataframe(
+        gap_df[["keyword", "roles", "coverage_pct", "avg_score", "companies", "sample_titles"]],
+        hide_index=True,
+        use_container_width=True,
+        column_config={
+            "roles": st.column_config.NumberColumn("Roles"),
+            "coverage_pct": st.column_config.NumberColumn("Coverage %", format="%.1f"),
+            "avg_score": st.column_config.NumberColumn("Avg Score", format="%.1f"),
+        },
+    )
 
 
 def _metric_or_dash(value, fmt: str = "{}") -> str:
@@ -348,13 +472,14 @@ def render_analytics(conn: sqlite3.Connection) -> None:
     """Entry point called from app.py."""
     st.title("Analytics")
 
-    tab_funnel, tab_score, tab_health, tab_company, tab_outcome, tab_reject = st.tabs([
+    tab_funnel, tab_score, tab_health, tab_company, tab_outcome, tab_reject, tab_resume = st.tabs([
         "Funnel",
         "Score Analysis",
         "Pipeline Health",
         "By Company",
         "Score vs Outcome",
         "Rejection Patterns",
+        "Resume Gaps",
     ])
 
     with tab_funnel:
@@ -374,3 +499,6 @@ def render_analytics(conn: sqlite3.Connection) -> None:
 
     with tab_reject:
         _render_rejection_patterns(conn)
+
+    with tab_resume:
+        _render_resume_gap_analysis(conn)
