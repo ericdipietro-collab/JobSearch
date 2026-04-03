@@ -989,6 +989,27 @@ class BlockedAndLocationTests(unittest.TestCase):
         brief = _tailored_resume_summary(app, base_resume)
         self.assertIn("Target the Enterprise Solutions Architect role at Advisor360.", brief)
 
+    def test_resume_tailoring_accepts_sqlite_row_records(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        row = conn.execute(
+            "SELECT 'Advisor360' AS company, "
+            "'Enterprise Solutions Architect' AS role, "
+            "'capital markets,data lineage,api integration' AS matched_keywords, "
+            "'Architecture role' AS jd_summary"
+        ).fetchone()
+        base_resume = {
+            "text": "Built API integration platforms for capital markets and wealth systems.",
+            "focus": "advisor platform\ndata lineage",
+            "ignore": "wealth systems",
+            "name": "Master Resume",
+        }
+        keywords = _tailor_resume_keywords(row, base_resume)
+        brief = _tailored_resume_summary(row, base_resume)
+        lowered = [keyword.lower() for keyword in keywords]
+        self.assertIn("advisor platform", lowered)
+        self.assertIn("Advisor360", brief)
+
     def test_find_reschedulable_interview_matches_pending_round(self):
         conn = sqlite3.connect(":memory:")
         conn.row_factory = sqlite3.Row

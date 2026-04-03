@@ -181,11 +181,22 @@ def _parse_multiline_keywords(value: str) -> list[str]:
     return [line.strip() for line in str(value or "").splitlines() if line.strip()]
 
 
+def _record_get(record, key: str, default=None):
+    if record is None:
+        return default
+    if isinstance(record, dict):
+        return record.get(key, default)
+    try:
+        return record[key]
+    except Exception:
+        return default
+
+
 def _tailor_resume_keywords(app: dict, base_resume: dict, limit: int = 8) -> list[str]:
     resume_text = str(base_resume.get("text") or "")
     ignored = {phrase.lower() for phrase in _parse_multiline_keywords(base_resume.get("ignore", ""))}
     preferred = _parse_multiline_keywords(base_resume.get("focus", ""))
-    matched_keywords = [item.strip() for item in str(app.get("matched_keywords") or "").split(",") if item.strip()]
+    matched_keywords = [item.strip() for item in str(_record_get(app, "matched_keywords") or "").split(",") if item.strip()]
 
     candidates: list[str] = []
     for keyword in preferred + matched_keywords:
@@ -204,8 +215,8 @@ def _tailor_resume_keywords(app: dict, base_resume: dict, limit: int = 8) -> lis
 
 
 def _tailored_resume_summary(app: dict, base_resume: dict) -> str:
-    company = app.get("company") or "the company"
-    role = app.get("role") or "the role"
+    company = _record_get(app, "company") or "the company"
+    role = _record_get(app, "role") or "the role"
     gaps = _tailor_resume_keywords(app, base_resume, limit=5)
     bullets = [
         f"Target the {role} role at {company}.",
@@ -213,7 +224,7 @@ def _tailored_resume_summary(app: dict, base_resume: dict) -> str:
     ]
     if gaps:
         bullets.append("Explicitly reinforce these JD-aligned keywords: " + ", ".join(gaps) + ".")
-    if app.get("jd_summary"):
+    if _record_get(app, "jd_summary"):
         bullets.append("Use the JD summary to tighten the opening summary and top three bullets.")
     return "\n".join(f"- {bullet}" for bullet in bullets)
 
@@ -306,7 +317,7 @@ def _offer_comparison_markdown(offer_apps) -> str:
 
 
 def _negotiation_playbook_lines(app: dict, target_base: float, walkaway_base: float, market_low: float, market_high: float) -> list[str]:
-    offer_base = float(app.get("offer_base") or 0)
+    offer_base = float(_record_get(app, "offer_base") or 0)
     playbook: list[str] = []
     if offer_base and target_base:
         diff = target_base - offer_base
@@ -319,13 +330,13 @@ def _negotiation_playbook_lines(app: dict, target_base: float, walkaway_base: fl
             playbook.append("Your target is below the current offer. Revisit the worksheet before negotiating.")
     if walkaway_base and offer_base and offer_base < walkaway_base:
         playbook.append("Current offer is below your walk-away floor. Prepare a firm decline or a very direct counter.")
-    if app.get("offer_expiry_date"):
-        playbook.append(f"Offer deadline: `{app['offer_expiry_date']}`. Counter early and ask for written confirmation on any extension.")
-    if app.get("offer_remote_policy"):
-        playbook.append(f"Remote policy is `{app['offer_remote_policy']}`. If flexibility matters, make it part of the trade package.")
-    if app.get("offer_equity"):
+    if _record_get(app, "offer_expiry_date"):
+        playbook.append(f"Offer deadline: `{_record_get(app, 'offer_expiry_date')}`. Counter early and ask for written confirmation on any extension.")
+    if _record_get(app, "offer_remote_policy"):
+        playbook.append(f"Remote policy is `{_record_get(app, 'offer_remote_policy')}`. If flexibility matters, make it part of the trade package.")
+    if _record_get(app, "offer_equity"):
         playbook.append("Equity is part of the package. Ask for grant size, vesting schedule, refresh policy, and strike/valuation context.")
-    if app.get("offer_signing"):
+    if _record_get(app, "offer_signing"):
         playbook.append("There is already a sign-on component. If base is sticky, use sign-on or guaranteed bonus as an alternate lever.")
     if market_low and market_high and offer_base:
         if offer_base < market_low:
@@ -338,16 +349,16 @@ def _negotiation_playbook_lines(app: dict, target_base: float, walkaway_base: fl
 
 
 def _negotiation_counter_draft(app: dict, target_base: float, market_low: float, market_high: float) -> str:
-    company = app.get("company") or "the company"
-    role = app.get("role") or "the role"
-    offer_base = float(app.get("offer_base") or 0)
-    remote_policy = app.get("offer_remote_policy") or ""
+    company = _record_get(app, "company") or "the company"
+    role = _record_get(app, "role") or "the role"
+    offer_base = float(_record_get(app, "offer_base") or 0)
+    remote_policy = _record_get(app, "offer_remote_policy") or ""
     reasons: list[str] = []
     if market_low and target_base and target_base >= market_low:
         reasons.append("the market range for comparable roles")
     if remote_policy:
         reasons.append(f"the `{remote_policy}` working model")
-    if app.get("offer_equity"):
+    if _record_get(app, "offer_equity"):
         reasons.append("the equity structure")
     if not reasons:
         reasons.append("the scope and impact of the role")
