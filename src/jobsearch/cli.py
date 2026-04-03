@@ -316,9 +316,7 @@ def run(deep_search, test_companies, contract_sources, workers, prefs, companies
 
     prefs_path = Path(prefs) if prefs else settings.preferences_yaml
     comp_path = Path(companies) if companies else settings.companies_yaml
-    if contract_sources and not companies:
-        comp_path = settings.contract_companies_yaml
-    elif test_companies and not companies:
+    if test_companies and not companies:
         comp_path = BASE_DIR / "config" / "job_search_companies_test.yaml"
 
     if not prefs_path.exists():

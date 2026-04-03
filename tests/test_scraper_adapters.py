@@ -1,6 +1,7 @@
 import sys
 import unittest
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 SRC_DIR = BASE_DIR / "src"
@@ -10,6 +11,7 @@ if str(SRC_DIR) not in sys.path:
 from jobsearch.scraper.adapters.ashby import AshbyAdapter
 from jobsearch.scraper.adapters.lever import LeverAdapter
 from jobsearch.scraper.adapters.motionrecruitment import MotionRecruitmentAdapter
+from jobsearch.scraper.adapters.rippling import RipplingAdapter
 from jobsearch.scraper.adapters.smartrecruiters import SmartRecruitersAdapter
 from jobsearch.scraper.adapters.workday import WorkdayAdapter
 from jobsearch.scraper.engine import ScraperEngine
@@ -49,6 +51,20 @@ class _FakeMotionRecruitmentAdapter(MotionRecruitmentAdapter):
     def __init__(self, html: str):
         super().__init__(session=None, scorer=None)
         self.html = html
+
+    def fetch_text(self, url: str) -> str:
+        return self.html
+
+
+class _FakeRipplingAdapter(RipplingAdapter):
+    def __init__(self, payload_by_slug=None, html: str = ""):
+        super().__init__(session=None, scorer=None)
+        self.payload_by_slug = payload_by_slug or {}
+        self.html = html
+
+    def fetch_json(self, url: str):
+        slug = parse_qs(urlparse(url).query).get("company_slug", [""])[0]
+        return self.payload_by_slug.get(slug, {})
 
     def fetch_text(self, url: str) -> str:
         return self.html
@@ -157,6 +173,55 @@ class ScraperAdapterRegressionTests(unittest.TestCase):
         self.assertEqual(jobs[0].source, "Motion Recruitment")
         self.assertEqual(jobs[0].work_type, "w2_contract")
         self.assertIn("/contract/", jobs[0].url)
+
+    def test_rippling_adapter_derives_slug_from_careers_url_when_key_is_invalid(self):
+        adapter = _FakeRipplingAdapter(
+            payload_by_slug={
+                "vouch-inc": {
+                    "results": [
+                        {
+                            "id": "abc123",
+                            "title": "Senior Solutions Architect",
+                            "location": "Remote",
+                            "description": "Integrations and platform architecture",
+                        }
+                    ]
+                }
+            }
+        )
+        jobs = adapter.scrape(
+            {
+                "name": "Vouch Insurance",
+                "adapter_key": "_next",
+                "careers_url": "https://ats.rippling.com/vouch-inc/jobs",
+                "tier": 2,
+            }
+        )
+        self.assertEqual(len(jobs), 1)
+        self.assertEqual(jobs[0].adapter, "rippling")
+        self.assertIn("/vouch-inc/jobs/abc123", jobs[0].url)
+
+    def test_rippling_adapter_falls_back_to_html_job_links(self):
+        adapter = _FakeRipplingAdapter(
+            payload_by_slug={},
+            html="""
+            <html><body>
+              <a href="/tilledcareers/jobs/123">Senior Technical Product Manager</a>
+              <a href="/tilledcareers/about">About</a>
+            </body></html>
+            """,
+        )
+        jobs = adapter.scrape(
+            {
+                "name": "Tilled",
+                "adapter_key": "_next",
+                "careers_url": "https://ats.rippling.com/tilledcareers/jobs",
+                "tier": 2,
+            }
+        )
+        self.assertEqual(len(jobs), 1)
+        self.assertEqual(jobs[0].adapter, "rippling")
+        self.assertIn("/tilledcareers/jobs/123", jobs[0].url)
 
 
 if __name__ == "__main__":

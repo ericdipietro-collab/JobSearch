@@ -1054,9 +1054,7 @@ def main():
                 if path.exists()
             ]
             default_companies = settings.companies_yaml
-            if r_contract and settings.contract_companies_yaml in comp_options:
-                default_companies = settings.contract_companies_yaml
-            elif r_test and (settings.config_dir / "job_search_companies_test.yaml") in comp_options:
+            if r_test and (settings.config_dir / "job_search_companies_test.yaml") in comp_options:
                 default_companies = settings.config_dir / "job_search_companies_test.yaml"
             default_index = comp_options.index(default_companies) if default_companies in comp_options else 0
             r_prefs = st.selectbox("Preferences File", pref_options, format_func=lambda p: p.name)

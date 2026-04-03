@@ -61,6 +61,25 @@ class GenericAdapter(BaseAdapter):
         "jobs directory", "work at dice", "browse jobs", "specialties",
         "project / program management project / program management",
     }
+    PAGE_OPENING_MARKERS = {
+        "career opportunities",
+        "current openings",
+        "current opportunities",
+        "join our team",
+        "open positions",
+        "open roles",
+        "search jobs",
+        "view open roles",
+        "we're hiring",
+        "work with us",
+    }
+    PAGE_NO_OPENING_MARKERS = {
+        "no current openings",
+        "no open positions",
+        "no open roles",
+        "there are no openings",
+        "no opportunities available",
+    }
 
     def scrape(self, company_config: Dict[str, Any]) -> List[Job]:
         careers_url = company_config.get("careers_url")
@@ -78,6 +97,8 @@ class GenericAdapter(BaseAdapter):
                     continue
 
                 soup = BeautifulSoup(html, "html.parser")
+                if not self._page_looks_like_openings_page(url, soup, html, company_config):
+                    continue
                 company_name = company_config.get("name", "Unknown")
 
                 for anchor in soup.find_all("a", href=True):
@@ -112,6 +133,23 @@ class GenericAdapter(BaseAdapter):
                 continue
 
         return jobs
+
+    def _page_looks_like_openings_page(self, url: str, soup: BeautifulSoup, html: str, company_config: Dict[str, Any]) -> bool:
+        if company_config.get("contractor_source"):
+            return True
+
+        url_l = url.lower()
+        if any(token in url_l for token in self.STRONG_PATH_SIGNALS):
+            return True
+        if any(token in url_l for token in ("/careers", "/career", "/jobs", "/join-us", "/openings", "/positions", "/roles")):
+            return True
+
+        text_l = soup.get_text(" ", strip=True).lower()[:12000]
+        if any(marker in text_l for marker in self.PAGE_OPENING_MARKERS):
+            return True
+        if any(marker in text_l for marker in self.PAGE_NO_OPENING_MARKERS):
+            return False
+        return False
 
     def _extract_link_text(self, anchor) -> str:
         parts = [

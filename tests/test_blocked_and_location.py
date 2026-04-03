@@ -7,6 +7,8 @@ import sqlite3
 import io
 import zipfile
 
+from bs4 import BeautifulSoup
+
 BASE_DIR = Path(__file__).resolve().parents[1]
 SRC_DIR = BASE_DIR / "src"
 if str(SRC_DIR) not in sys.path:
@@ -241,6 +243,32 @@ class BlockedAndLocationTests(unittest.TestCase):
         adapter = GenericAdapter()
         self.assertTrue(
             adapter._is_probable_job_link("Associate Product Manager, FIC Support", "https://jobs.lever.co/trustly/abc123")
+        )
+
+    def test_generic_adapter_skips_static_pages_without_opening_signals(self):
+        adapter = GenericAdapter()
+        html = """
+        <html><body>
+          <h1>Our Platform</h1>
+          <p>Learn about our embedded finance infrastructure and integrations.</p>
+        </body></html>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        self.assertFalse(
+            adapter._page_looks_like_openings_page("https://example.com/platform", soup, html, {"name": "ExampleCo"})
+        )
+
+    def test_generic_adapter_accepts_careers_pages_with_opening_markers(self):
+        adapter = GenericAdapter()
+        html = """
+        <html><body>
+          <h1>Careers</h1>
+          <p>Explore our current openings and join our team.</p>
+        </body></html>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        self.assertTrue(
+            adapter._page_looks_like_openings_page("https://example.com/company", soup, html, {"name": "ExampleCo"})
         )
 
     def test_contractor_board_rejects_category_pages(self):
