@@ -26,6 +26,7 @@ from jobsearch.config.settings import settings
 from jobsearch.app_main import (
     _annualized_compensation_preview,
     _apply_work_type_filter,
+    _disable_company_in_registry,
     _decorate_role_velocity,
     _normalize_work_type,
     _parse_manual_review_lines,
@@ -736,6 +737,25 @@ class BlockedAndLocationTests(unittest.TestCase):
         self.assertEqual(len(actions), 1)
         self.assertEqual(actions[0]["company"], "ADP")
         self.assertEqual(actions[0]["resolution"], "disabled")
+
+    def test_disable_company_marks_manual_only(self):
+        original = settings.companies_yaml.read_text(encoding="utf-8")
+        try:
+            settings.companies_yaml.write_text(
+                "companies:\n"
+                "  - name: ExampleCo\n"
+                "    active: true\n"
+                "    status: active\n",
+                encoding="utf-8",
+            )
+            changed = _disable_company_in_registry("ExampleCo")
+            self.assertTrue(changed)
+            updated = settings.companies_yaml.read_text(encoding="utf-8")
+            self.assertIn("manual_only: true", updated)
+            self.assertIn("status: manual_only", updated)
+            self.assertIn("active: false", updated)
+        finally:
+            settings.companies_yaml.write_text(original, encoding="utf-8")
 
     def test_email_signal_matches_existing_rejected_application_and_auto_resolves(self):
         conn = sqlite3.connect(":memory:")

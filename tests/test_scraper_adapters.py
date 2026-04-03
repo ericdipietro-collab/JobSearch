@@ -60,6 +60,16 @@ class ScraperAdapterRegressionTests(unittest.TestCase):
         self.assertIn("custom_blackrock", ScraperEngine.ADAPTER_MAP)
         self.assertIn("dice", ScraperEngine.ADAPTER_MAP)
 
+    def test_engine_skips_manual_only_companies(self):
+        engine = ScraperEngine(
+            preferences={},
+            companies=[
+                {"name": "ManualOnlyCo", "active": True, "manual_only": True},
+                {"name": "ActiveCo", "active": True},
+            ],
+        )
+        self.assertEqual([company["name"] for company in engine.companies], ["ActiveCo"])
+
     def test_lever_adapter_ignores_malformed_payload(self):
         adapter = _FakeLeverAdapter({"unexpected": "shape"})
         jobs = adapter.scrape({"name": "Recurly", "adapter_key": "recurly"})

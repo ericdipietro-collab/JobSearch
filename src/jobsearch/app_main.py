@@ -263,7 +263,7 @@ def _disable_company_in_registry(company_name: str) -> bool:
     for company in companies:
         if str(company.get("name", "")).lower() == company_name.lower():
             company["active"] = False
-            company["status"] = "broken"
+            company["status"] = "manual_only"
             company["manual_only"] = True
             notes = str(company.get("notes", "") or "")
             note_add = "Marked manual-only from manual review queue."
@@ -805,6 +805,22 @@ def main():
         with t1:
             df_companies = pd.DataFrame(cos)
             if not df_companies.empty:
+                filter_option = st.selectbox("Show", ["All", "Active", "Inactive", "Manual Only"], index=0)
+                active_series = df_companies.get("active", pd.Series([False] * len(df_companies), index=df_companies.index)).fillna(False).astype(bool)
+                manual_series = df_companies.get("manual_only", pd.Series([False] * len(df_companies), index=df_companies.index)).fillna(False).astype(bool)
+                if filter_option == "Active":
+                    df_companies = df_companies[active_series]
+                elif filter_option == "Inactive":
+                    df_companies = df_companies[~active_series]
+                elif filter_option == "Manual Only":
+                    df_companies = df_companies[manual_series]
+                total_count = len(cos)
+                active_count = sum(1 for company in cos if company.get("active", True))
+                manual_only_count = sum(1 for company in cos if company.get("manual_only", False))
+                c1, c2, c3 = st.columns(3)
+                c1.metric("Total Targets", total_count)
+                c2.metric("Active Targets", active_count)
+                c3.metric("Manual Only", manual_only_count)
                 df_companies = df_companies.apply(lambda col: col.map(_normalize_editor_value))
             st.data_editor(df_companies, use_container_width=True, hide_index=True)
         with t2:
@@ -824,7 +840,9 @@ def main():
             c_tier = st.number_input("Tier", min_value=1, max_value=4, value=int(selected_company.get("tier", 2)))
             c_priority = st.selectbox("Priority", ["high", "medium", "low"], index=["high", "medium", "low"].index(selected_company.get("priority", "medium")) if selected_company.get("priority", "medium") in ["high", "medium", "low"] else 1)
             c_active = st.checkbox("Active", value=bool(selected_company.get("active", True)))
-            c_status = st.selectbox("Status", ["active", "broken", "pending"], index=["active", "broken", "pending"].index(selected_company.get("status", "active")) if selected_company.get("status", "active") in ["active", "broken", "pending"] else 0)
+            c_manual_only = st.checkbox("Manual Only", value=bool(selected_company.get("manual_only", False)))
+            status_options = ["active", "broken", "pending", "manual_only"]
+            c_status = st.selectbox("Status", status_options, index=status_options.index(selected_company.get("status", "active")) if selected_company.get("status", "active") in status_options else 0)
             c_industry = st.text_input("Industry", value=_normalize_editor_value(selected_company.get("industry", "")))
             c_sub = st.text_input("Sub Industry", value=str(selected_company.get("sub_industry", "")))
             c_notes = st.text_area("Notes", value=str(selected_company.get("notes", "")))
@@ -839,7 +857,8 @@ def main():
                     "tier": int(c_tier),
                     "priority": c_priority,
                     "active": bool(c_active),
-                    "status": c_status,
+                    "manual_only": bool(c_manual_only),
+                    "status": "manual_only" if c_manual_only else c_status,
                     "industry": _parse_pipe_list(c_industry) if "|" in c_industry else c_industry.strip(),
                     "sub_industry": c_sub.strip(),
                     "notes": c_notes.strip(),

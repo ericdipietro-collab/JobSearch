@@ -49,7 +49,12 @@ class ScraperEngine:
         self.companies = [
             company
             for company in companies
-            if isinstance(company, dict) and company.get("active", True) and company.get("name")
+            if (
+                isinstance(company, dict)
+                and company.get("active", True)
+                and not company.get("manual_only", False)
+                and company.get("name")
+            )
         ]
         self.scorer = Scorer(preferences)
         self.deep_search = deep_search
