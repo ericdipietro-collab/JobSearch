@@ -6,6 +6,7 @@ from pathlib import Path
 import sqlite3
 import io
 import zipfile
+import tempfile
 
 from bs4 import BeautifulSoup
 
@@ -17,6 +18,7 @@ if str(SRC_DIR) not in sys.path:
 from jobsearch.scraper.adapters.base import BaseAdapter, BlockedSiteError
 from jobsearch.scraper.adapters.dice import DiceAdapter
 from jobsearch.scraper.adapters.generic import GenericAdapter
+from jobsearch.scraper.engine import ScraperEngine
 from jobsearch.scraper.scoring import Scorer
 from jobsearch.services.email_signal_service import (
     classify_email_signal,
@@ -152,6 +154,41 @@ class BlockedAndLocationTests(unittest.TestCase):
         self.assertFalse(company["manual_only_suggested"])
         self.assertNotIn("cooldown_until", company)
         self.assertNotIn("heal_last_failure_detail", company)
+
+    def test_workday_target_health_cooldown_skips_company(self):
+        original_db_path = db.DB_PATH
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                temp_db = Path(tmpdir) / "workday_health.db"
+                db.DB_PATH = temp_db
+                conn = db.get_connection()
+                try:
+                    db.update_workday_target_health(
+                        conn,
+                        company="CooldownCo",
+                        careers_url="https://cooldownco.wd1.myworkdayjobs.com/External",
+                        status="budget_exhausted",
+                        elapsed_ms=510000.0,
+                        cooldown_days=7,
+                        notes="Budget exhausted after HTML fallback",
+                    )
+                finally:
+                    conn.close()
+                engine = ScraperEngine(
+                    preferences={},
+                    companies=[
+                        {
+                            "name": "CooldownCo",
+                            "active": True,
+                            "adapter": "workday",
+                            "careers_url": "https://cooldownco.wd1.myworkdayjobs.com/External",
+                        }
+                    ],
+                )
+                reason = engine._workday_cooldown_reason(engine.companies[0])
+                self.assertIn("Cooldown until", reason)
+        finally:
+            db.DB_PATH = original_db_path
 
     def test_tracker_summary_excludes_scraper_only_considering_rows(self):
         rows = [

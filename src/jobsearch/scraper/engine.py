@@ -5,10 +5,11 @@ import logging
 import random
 import time
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Type
 
 from jobsearch.config.settings import BASE_DIR, get_shared_session, rotate_log_file, settings
+from jobsearch import ats_db as db
 from jobsearch.db.connection import get_connection
 from jobsearch.scraper.adapters.ashby import AshbyAdapter
 from jobsearch.scraper.adapters.base import BaseAdapter, BlockedSiteError
@@ -143,6 +144,7 @@ class ScraperEngine:
                         used_deep_search = scrape_result["used_deep_search"]
                         scrape_status = scrape_result.get("status", "ok")
                         scrape_note = scrape_result.get("note", "")
+                        self._update_scrape_health(company, adapter_name, scrape_status, scrape_ms, scrape_note)
                         persisted, inserted, dropped, evaluated, process_ms, score_stats, company_rejected_rows = self._process_and_save_jobs(company, jobs)
                         total_evaluated += evaluated
                         total_persisted += persisted
@@ -251,8 +253,18 @@ class ScraperEngine:
     def _scrape_company_with_retry(self, company: Dict[str, Any]) -> Dict[str, Any]:
         time.sleep(random.uniform(0.5, 2.0))
         started_at = time.perf_counter()
+        workday_skip_reason = self._workday_cooldown_reason(company)
+        if workday_skip_reason:
+            return {
+                "jobs": [],
+                "adapter": "workday",
+                "scrape_ms": 0.0,
+                "used_deep_search": False,
+                "status": "cooldown",
+                "note": workday_skip_reason,
+            }
         try:
-            jobs, adapter_name = self._scrape_company(company)
+            jobs, adapter_name, adapter_status, adapter_note = self._scrape_company(company)
             if not jobs and self.deep_search:
                 deep_jobs = self._deep_scrape(company)
                 return {
@@ -260,14 +272,16 @@ class ScraperEngine:
                     "adapter": "deep_search" if deep_jobs else adapter_name,
                     "scrape_ms": round((time.perf_counter() - started_at) * 1000, 1),
                     "used_deep_search": bool(deep_jobs),
-                    "status": "ok" if deep_jobs or jobs else "empty",
+                    "status": "ok" if deep_jobs or jobs else adapter_status,
+                    "note": "" if deep_jobs else adapter_note,
                 }
             return {
                 "jobs": jobs,
                 "adapter": adapter_name,
                 "scrape_ms": round((time.perf_counter() - started_at) * 1000, 1),
                 "used_deep_search": False,
-                "status": "ok" if jobs else "empty",
+                "status": "ok" if jobs else adapter_status,
+                "note": adapter_note,
             }
         except BlockedSiteError as exc:
             return {
@@ -318,7 +332,54 @@ class ScraperEngine:
         jobs = adapter.scrape(company)
         if not isinstance(jobs, list):
             raise TypeError(f"{adapter_cls.__name__}.scrape returned {type(jobs).__name__}, expected list")
-        return jobs, adapter_name
+        adapter_status = getattr(adapter, "last_status", "empty" if not jobs else "ok")
+        adapter_note = getattr(adapter, "last_note", "")
+        return jobs, adapter_name, adapter_status, adapter_note
+
+    def _workday_cooldown_reason(self, company: Dict[str, Any]) -> str:
+        careers_url = str(company.get("careers_url", "") or "")
+        adapter_name = str(company.get("adapter", "") or "").lower()
+        if "myworkdayjobs.com" not in careers_url.lower() and adapter_name not in {"workday", "workday_manual"}:
+            return ""
+        conn = db.get_connection()
+        try:
+            row = db.get_workday_target_health(conn, company.get("name", ""))
+        finally:
+            conn.close()
+        if not row or not row["cooldown_until"]:
+            return ""
+        try:
+            cooldown_until = datetime.fromisoformat(str(row["cooldown_until"]))
+        except Exception:
+            return ""
+        if cooldown_until.tzinfo is None:
+            cooldown_until = cooldown_until.replace(tzinfo=timezone.utc)
+        if cooldown_until > datetime.now(timezone.utc):
+            return f"Cooldown until {cooldown_until.isoformat()}"
+        return ""
+
+    def _update_scrape_health(self, company: Dict[str, Any], adapter_name: str, scrape_status: str, scrape_ms: float, scrape_note: str) -> None:
+        if adapter_name != "workday":
+            return
+        conn = db.get_connection()
+        try:
+            cooldown_days = 0
+            if scrape_status == "budget_exhausted":
+                existing = db.get_workday_target_health(conn, company.get("name", ""))
+                streak = int(existing["empty_streak"]) if existing else 0
+                if streak + 1 >= settings.workday_empty_cooldown_threshold:
+                    cooldown_days = settings.workday_empty_cooldown_days
+            db.update_workday_target_health(
+                conn,
+                company=company.get("name", ""),
+                careers_url=str(company.get("careers_url", "") or ""),
+                status=scrape_status if scrape_status in {"ok", "empty", "budget_exhausted", "cooldown"} else "ok",
+                elapsed_ms=scrape_ms,
+                cooldown_days=cooldown_days,
+                notes=scrape_note,
+            )
+        finally:
+            conn.close()
 
     def _deep_scrape(self, company: Dict[str, Any]) -> List[Any]:
         from jobsearch.ats_db import Job

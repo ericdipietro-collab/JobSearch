@@ -2,37 +2,72 @@ from typing import List, Dict, Any, Tuple
 import hashlib
 import logging
 import re
+import time
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 
 from .base import BaseAdapter
+from jobsearch.config.settings import settings
 from jobsearch.scraper.models import Job
 
 logger = logging.getLogger(__name__)
 
 
 class WorkdayAdapter(BaseAdapter):
+    def __init__(self, session=None, scorer=None):
+        super().__init__(session=session, scorer=scorer)
+        self.last_status = "ok"
+        self.last_note = ""
+
     def scrape(self, company_config: Dict[str, Any]) -> List[Job]:
         careers_url = company_config.get("careers_url") or ""
         adapter_key = company_config.get("adapter_key") or ""
         if "myworkdayjobs" not in careers_url and "myworkdayjobs" not in adapter_key:
             return []
 
+        self.last_status = "ok"
+        self.last_note = ""
         jobs: List[Job] = []
         seen_urls = set()
+        started_at = time.perf_counter()
+        budget_override = company_config.get("scrape_budget_ms")
+        budget_ms = int(settings.workday_scrape_budget_ms if budget_override is None else budget_override)
 
         for host, tenant, site in self._candidate_contexts(careers_url, adapter_key):
+            if self._budget_exhausted(started_at, budget_ms):
+                self.last_status = "budget_exhausted"
+                self.last_note = f"Budget exhausted before listing fetch ({budget_ms} ms)"
+                break
             endpoint = f"https://{host}/wday/cxs/{tenant}/{site}/jobs"
-            site_jobs = self._scrape_endpoint(company_config, host, tenant, site, endpoint, careers_url, seen_urls)
+            site_jobs = self._scrape_endpoint(company_config, host, tenant, site, endpoint, careers_url, seen_urls, started_at, budget_ms)
             if site_jobs:
                 jobs.extend(site_jobs)
                 break
 
         if jobs:
+            self.last_status = "ok"
+            self.last_note = ""
             return jobs
 
-        return self._scrape_html_fallback(company_config, careers_url or f"https://{adapter_key}", self._candidate_contexts(careers_url, adapter_key))
+        if self.last_status == "budget_exhausted":
+            return []
+
+        html_jobs = self._scrape_html_fallback(
+            company_config,
+            careers_url or f"https://{adapter_key}",
+            self._candidate_contexts(careers_url, adapter_key),
+            started_at,
+            budget_ms,
+        )
+        if not html_jobs:
+            if self._budget_exhausted(started_at, budget_ms):
+                self.last_status = "budget_exhausted"
+                self.last_note = f"Budget exhausted after HTML fallback ({budget_ms} ms)"
+            else:
+                self.last_status = "empty"
+                self.last_note = "No Workday jobs detected"
+        return html_jobs
 
     def _candidate_contexts(self, careers_url: str, adapter_key: str) -> List[Tuple[str, str, str]]:
         contexts: List[Tuple[str, str, str]] = []
@@ -67,14 +102,18 @@ class WorkdayAdapter(BaseAdapter):
         endpoint: str,
         referer: str,
         seen_urls: set,
+        started_at: float,
+        budget_ms: int,
     ) -> List[Job]:
         jobs: List[Job] = []
         offset = 0
         limit = 20
 
         while offset < 400:
+            if self._budget_exhausted(started_at, budget_ms):
+                break
             try:
-                data = self._fetch_listing(endpoint, limit, offset, referer)
+                data = self._fetch_listing(endpoint, limit, offset, referer, self._remaining_timeout_seconds(started_at, budget_ms))
             except Exception as exc:
                 logger.debug("Workday listing failed for %s: %s", endpoint, exc)
                 break
@@ -109,7 +148,14 @@ class WorkdayAdapter(BaseAdapter):
                     continue
                 seen_urls.add(job_url)
 
-                description = self._fetch_detail_description(host, tenant, site, external_path, endpoint)
+                description = self._fetch_detail_description(
+                    host,
+                    tenant,
+                    site,
+                    external_path,
+                    endpoint,
+                    self._remaining_timeout_seconds(started_at, budget_ms),
+                )
                 company_name = company_config.get("name", "Unknown")
                 job_id = hashlib.md5(f"{company_name}{title}{job_url}".encode()).hexdigest()
                 jobs.append(
@@ -132,10 +178,18 @@ class WorkdayAdapter(BaseAdapter):
 
         return jobs
 
-    def _fetch_detail_description(self, host: str, tenant: str, site: str, external_path: str, referer: str) -> str:
+    def _fetch_detail_description(
+        self,
+        host: str,
+        tenant: str,
+        site: str,
+        external_path: str,
+        referer: str,
+        timeout_seconds: float,
+    ) -> str:
         detail_endpoint = f"https://{host}/wday/cxs/{tenant}/{site}/job/{external_path}"
         try:
-            detail = self.fetch_json_post(detail_endpoint, {}, referer=referer)
+            detail = self.fetch_json_post(detail_endpoint, {}, referer=referer, timeout=timeout_seconds)
         except Exception:
             return ""
 
@@ -156,7 +210,7 @@ class WorkdayAdapter(BaseAdapter):
             )
         )
 
-    def _fetch_listing(self, endpoint: str, limit: int, offset: int, referer: str) -> Dict[str, Any]:
+    def _fetch_listing(self, endpoint: str, limit: int, offset: int, referer: str, timeout_seconds: float) -> Dict[str, Any]:
         variants = [
             {"limit": limit, "offset": offset, "appliedFacets": {}, "searchText": ""},
             {"limit": limit, "offset": offset, "appliedFacets": {}},
@@ -166,7 +220,7 @@ class WorkdayAdapter(BaseAdapter):
         last_error = None
         for payload in variants:
             try:
-                data = self.fetch_json_post(endpoint, payload, referer=referer)
+                data = self.fetch_json_post(endpoint, payload, referer=referer, timeout=timeout_seconds)
                 if isinstance(data, dict):
                     return data
             except Exception as exc:
@@ -205,6 +259,8 @@ class WorkdayAdapter(BaseAdapter):
         company_config: Dict[str, Any],
         careers_url: str,
         contexts: List[Tuple[str, str, str]],
+        started_at: float,
+        budget_ms: int,
     ) -> List[Job]:
         if not careers_url:
             return []
@@ -221,8 +277,10 @@ class WorkdayAdapter(BaseAdapter):
                 ]
             )
         for url in dict.fromkeys(candidate_urls):
+            if self._budget_exhausted(started_at, budget_ms):
+                break
             try:
-                html = self.fetch_text(url)
+                html = self.fetch_text(url, timeout=self._remaining_timeout_seconds(started_at, budget_ms))
             except Exception:
                 continue
             soup = BeautifulSoup(html, "html.parser")
@@ -258,6 +316,13 @@ class WorkdayAdapter(BaseAdapter):
             if jobs:
                 break
         return jobs
+
+    def _budget_exhausted(self, started_at: float, budget_ms: int) -> bool:
+        return ((time.perf_counter() - started_at) * 1000) >= max(1, budget_ms)
+
+    def _remaining_timeout_seconds(self, started_at: float, budget_ms: int) -> float:
+        remaining_ms = max(1000, budget_ms - ((time.perf_counter() - started_at) * 1000))
+        return max(1.0, min(self.timeout, remaining_ms / 1000.0))
 
     def _extract_title(self, anchor) -> str:
         text = anchor.get_text(" ", strip=True) or anchor.get("title") or anchor.get("aria-label") or ""

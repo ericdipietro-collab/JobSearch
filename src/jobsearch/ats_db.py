@@ -533,6 +533,16 @@ def init_db(conn: sqlite3.Connection) -> None:
             notes TEXT,
             updated_at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS workday_target_health (
+            company TEXT PRIMARY KEY,
+            careers_url TEXT,
+            empty_streak INTEGER NOT NULL DEFAULT 0,
+            cooldown_until TEXT,
+            last_status TEXT,
+            last_elapsed_ms REAL,
+            notes TEXT,
+            updated_at TEXT NOT NULL
+        );
         CREATE TABLE IF NOT EXISTS company_profiles (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
@@ -664,6 +674,7 @@ def init_db(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX IF NOT EXISTS idx_job_observations_app_seen ON job_observations(application_id, seen_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_email_signals_status ON email_signals(signal_status, signal_type)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_resume_variants_application ON resume_variants(application_id, updated_at DESC)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_workday_target_health_cooldown ON workday_target_health(cooldown_until)")
     seed_default_templates(conn)
     seed_default_questions(conn)
     conn.commit()
@@ -1362,6 +1373,59 @@ def set_manual_review_action(
         """,
         (company, adapter, url, resolution, notes, now),
     )
+    conn.commit()
+
+
+def get_workday_target_health(conn: sqlite3.Connection, company: str) -> Optional[sqlite3.Row]:
+    return conn.execute(
+        "SELECT * FROM workday_target_health WHERE company = ?",
+        (company,),
+    ).fetchone()
+
+
+def update_workday_target_health(
+    conn: sqlite3.Connection,
+    company: str,
+    careers_url: str,
+    status: str,
+    elapsed_ms: float,
+    *,
+    cooldown_days: int = 0,
+    notes: str = "",
+) -> None:
+    now = _now()
+    existing = get_workday_target_health(conn, company)
+    empty_streak = int(existing["empty_streak"]) if existing else 0
+    cooldown_until = None
+    normalized_status = str(status or "").lower()
+
+    if normalized_status == "ok":
+        empty_streak = 0
+    elif normalized_status in {"empty", "budget_exhausted"}:
+        empty_streak += 1
+        if cooldown_days > 0:
+            cooldown_until = (datetime.now(timezone.utc) + timedelta(days=cooldown_days)).isoformat()
+    elif normalized_status == "cooldown":
+        cooldown_until = existing["cooldown_until"] if existing else None
+
+    if existing:
+        conn.execute(
+            """
+            UPDATE workday_target_health
+            SET careers_url = ?, empty_streak = ?, cooldown_until = ?, last_status = ?, last_elapsed_ms = ?, notes = ?, updated_at = ?
+            WHERE company = ?
+            """,
+            (careers_url, empty_streak, cooldown_until, normalized_status, elapsed_ms, notes, now, company),
+        )
+    else:
+        conn.execute(
+            """
+            INSERT INTO workday_target_health
+            (company, careers_url, empty_streak, cooldown_until, last_status, last_elapsed_ms, notes, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (company, careers_url, empty_streak, cooldown_until, normalized_status, elapsed_ms, notes, now),
+        )
     conn.commit()
 
 

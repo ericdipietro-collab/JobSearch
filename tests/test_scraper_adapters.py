@@ -1,4 +1,5 @@
 import sys
+import time
 import unittest
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -76,10 +77,10 @@ class _FakeWorkdayAdapter(WorkdayAdapter):
         self.payload = payload or {}
         self.html_by_url = html_by_url or {}
 
-    def fetch_json_post(self, url: str, payload, referer=None):
+    def fetch_json_post(self, url: str, payload, referer=None, timeout=None):
         return self.payload
 
-    def fetch_text(self, url: str) -> str:
+    def fetch_text(self, url: str, timeout=None) -> str:
         return self.html_by_url.get(url, "")
 
 
@@ -164,9 +165,24 @@ class ScraperAdapterRegressionTests(unittest.TestCase):
             {"name": "ExampleCo", "tier": 2},
             "https://example.wd1.myworkdayjobs.com/External",
             [("example.wd1.myworkdayjobs.com", "example", "Careers")],
+            time.perf_counter(),
+            45000,
         )
         self.assertEqual(len(jobs), 1)
         self.assertIn("/job/", jobs[0].url)
+
+    def test_workday_budget_exhaustion_sets_adapter_status(self):
+        adapter = WorkdayAdapter(session=None, scorer=None)
+        jobs = adapter.scrape(
+            {
+                "name": "Budgeted Workday",
+                "careers_url": "https://example.wd1.myworkdayjobs.com/External",
+                "adapter_key": "https://example.wd1.myworkdayjobs.com/Careers",
+                "scrape_budget_ms": 0,
+            }
+        )
+        self.assertEqual(jobs, [])
+        self.assertEqual(adapter.last_status, "budget_exhausted")
 
     def test_smartrecruiters_adapter_builds_public_job_url(self):
         payload = {

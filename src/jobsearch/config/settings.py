@@ -31,6 +31,9 @@ class Settings:
         self.gmail_address = os.getenv("JOBSEARCH_GMAIL_ADDRESS", "").strip()
         self.gmail_app_password = os.getenv("JOBSEARCH_GMAIL_APP_PASSWORD", "").strip()
         self.gmail_imap_host = os.getenv("JOBSEARCH_GMAIL_IMAP_HOST", "imap.gmail.com").strip() or "imap.gmail.com"
+        self.workday_scrape_budget_ms = int(os.getenv("JOBSEARCH_WORKDAY_SCRAPE_BUDGET_MS", "45000"))
+        self.workday_empty_cooldown_days = int(os.getenv("JOBSEARCH_WORKDAY_EMPTY_COOLDOWN_DAYS", "7"))
+        self.workday_empty_cooldown_threshold = int(os.getenv("JOBSEARCH_WORKDAY_EMPTY_COOLDOWN_THRESHOLD", "2"))
 
         # Ensure directories exist
         self.results_dir.mkdir(parents=True, exist_ok=True)

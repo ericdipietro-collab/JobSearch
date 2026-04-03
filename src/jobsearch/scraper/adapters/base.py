@@ -21,23 +21,29 @@ class BaseAdapter(ABC):
         """Scrape jobs for the given company."""
         pass
 
-    def fetch_json(self, url: str) -> Dict[str, Any]:
+    def fetch_json(self, url: str, timeout: float | None = None) -> Dict[str, Any]:
         """Helper to fetch JSON data."""
-        response = self._request("get", url)
+        response = self._request("get", url, timeout=timeout)
         return response.json()
 
-    def fetch_json_post(self, url: str, payload: Dict[str, Any], referer: str = None) -> Dict[str, Any]:
+    def fetch_json_post(
+        self,
+        url: str,
+        payload: Dict[str, Any],
+        referer: str = None,
+        timeout: float | None = None,
+    ) -> Dict[str, Any]:
         """Helper to fetch JSON data via POST."""
         headers = {"Content-Type": "application/json"}
         if referer:
             headers["Referer"] = referer
 
-        response = self._request("post", url, json=payload, headers=headers)
+        response = self._request("post", url, json=payload, headers=headers, timeout=timeout)
         return response.json()
 
-    def fetch_text(self, url: str) -> str:
+    def fetch_text(self, url: str, timeout: float | None = None) -> str:
         """Helper to fetch HTML/text data."""
-        response = self._request("get", url)
+        response = self._request("get", url, timeout=timeout)
         return response.text
 
     def _request(self, method: str, url: str, **kwargs):
@@ -47,7 +53,8 @@ class BaseAdapter(ABC):
         else:
             session = self.session
 
-        response = getattr(session, method)(url, timeout=self.timeout, **kwargs)
+        timeout = kwargs.pop("timeout", None)
+        response = getattr(session, method)(url, timeout=timeout or self.timeout, **kwargs)
         self._raise_if_blocked(response, url)
         return response
 
