@@ -3,13 +3,13 @@ companies:
     active: true
     priority: low
     tier: 4
-    adapter: generic
+    adapter: motionrecruitment
     contractor_source: true
     careers_url: https://motionrecruitment.com/tech-jobs/contract
     domain: motionrecruitment.com
     industry: staffing | contract
     status: active
-    notes: Contractor-only source for testing hourly W2 and short-term remote roles.
+    notes: Contractor source with dedicated Motion Recruitment detail-link extraction.
 
   - name: Dice Contract
     active: true

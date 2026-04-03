@@ -16,6 +16,7 @@ from jobsearch.scraper.adapters.dice import DiceAdapter
 from jobsearch.scraper.adapters.generic import GenericAdapter
 from jobsearch.scraper.adapters.greenhouse import GreenhouseAdapter
 from jobsearch.scraper.adapters.lever import LeverAdapter
+from jobsearch.scraper.adapters.motionrecruitment import MotionRecruitmentAdapter
 from jobsearch.scraper.adapters.rippling import RipplingAdapter
 from jobsearch.scraper.adapters.smartrecruiters import SmartRecruitersAdapter
 from jobsearch.scraper.adapters.workday import WorkdayAdapter
@@ -29,6 +30,7 @@ class ScraperEngine:
     ADAPTER_MAP: Dict[str, Type[BaseAdapter]] = {
         "greenhouse": GreenhouseAdapter,
         "lever": LeverAdapter,
+        "motionrecruitment": MotionRecruitmentAdapter,
         "ashby": AshbyAdapter,
         "workday": WorkdayAdapter,
         "workday_manual": WorkdayAdapter,

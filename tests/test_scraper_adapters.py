@@ -9,6 +9,7 @@ if str(SRC_DIR) not in sys.path:
 
 from jobsearch.scraper.adapters.ashby import AshbyAdapter
 from jobsearch.scraper.adapters.lever import LeverAdapter
+from jobsearch.scraper.adapters.motionrecruitment import MotionRecruitmentAdapter
 from jobsearch.scraper.adapters.smartrecruiters import SmartRecruitersAdapter
 from jobsearch.scraper.adapters.workday import WorkdayAdapter
 from jobsearch.scraper.engine import ScraperEngine
@@ -39,6 +40,15 @@ class _FakeAshbyAdapter(AshbyAdapter):
 
     def fetch_json(self, url: str):
         raise RuntimeError("force html fallback")
+
+    def fetch_text(self, url: str) -> str:
+        return self.html
+
+
+class _FakeMotionRecruitmentAdapter(MotionRecruitmentAdapter):
+    def __init__(self, html: str):
+        super().__init__(session=None, scorer=None)
+        self.html = html
 
     def fetch_text(self, url: str) -> str:
         return self.html
@@ -111,6 +121,32 @@ class ScraperAdapterRegressionTests(unittest.TestCase):
         self.assertEqual(len(jobs), 1)
         self.assertEqual(jobs[0].url, "https://jobs.smartrecruiters.com/Visa/123456")
         self.assertEqual(jobs[0].location, "Denver, CO")
+
+    def test_motionrecruitment_adapter_extracts_contract_detail_links(self):
+        html = """
+        <html><body>
+          <div>
+            <a href="/tech-jobs/chicago/contract/senior-technical-product-manager/12345">Senior Technical Product Manager</a>
+            <span>Remote</span>
+          </div>
+          <div>
+            <a href="/tech-jobs/contract?specialties=project-program-management">Project / Program Management</a>
+          </div>
+        </body></html>
+        """
+        adapter = _FakeMotionRecruitmentAdapter(html)
+        jobs = adapter.scrape(
+            {
+                "name": "Motion Recruitment Contract",
+                "careers_url": "https://motionrecruitment.com/tech-jobs/contract",
+                "tier": 4,
+            }
+        )
+        self.assertEqual(len(jobs), 1)
+        self.assertEqual(jobs[0].adapter, "motionrecruitment")
+        self.assertEqual(jobs[0].source, "Motion Recruitment")
+        self.assertEqual(jobs[0].work_type, "w2_contract")
+        self.assertIn("/contract/", jobs[0].url)
 
 
 if __name__ == "__main__":
