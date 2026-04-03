@@ -2,6 +2,8 @@
 
 A local job-search dashboard that discovers jobs from target companies, scores them against your preferences, and tracks applications in a single SQLite database.
 
+**[→ User Guide](USER_GUIDE.md)** — full walkthrough of every feature
+
 ## Installation
 
 ### Windows installer
@@ -29,6 +31,9 @@ Short version:
 - Saves jobs directly into `results/jobsearch.db`
 - Scores jobs using your title, keyword, salary, and tier preferences
 - Lets you manage applications, contacts, journals, templates, training notes, and reports from the dashboard
+- Syncs Gmail signals to detect missed applications, rejections, and interview requests
+- Stores a base resume locally for keyword-gap analysis and per-application tailoring
+- Includes offer comparison, negotiation planning, interview debriefs, and network leverage views
 - Includes ATS healing to repair or rediscover stale careers URLs
 
 ## Current Product Surface
@@ -58,6 +63,8 @@ Main dashboard pages:
 - `JD Evaluation`
 - `Scoring & Rescue`
 - `Full YAML Editor`
+- `App Settings`
+- `Base Resume`
 
 ### Target Companies tabs
 
@@ -65,6 +72,26 @@ Main dashboard pages:
 - `Add / Edit`
 - `Heal ATS`
 - `YAML Editor`
+
+### High-leverage workflows
+
+- `My Applications`
+  - Gmail inbox signal import / live sync
+  - follow-up scheduler
+  - offer comparison
+  - negotiation playbook
+  - interview debriefs
+  - resume tailoring per application
+- `Analytics`
+  - resume keyword gap analysis
+  - rejection pattern intelligence
+  - interview signal correlations
+- `Company Profiles` / `Contacts`
+  - network leverage scoring by company
+- `Job Matches`
+  - role velocity
+  - contractor/full-time filtering
+  - structured manual review queue
 
 ## CLI
 
@@ -98,6 +125,13 @@ Launch the dashboard:
 python -m jobsearch.cli dashboard
 ```
 
+If running from a raw checkout without installing the package, the checkout-safe entrypoints are:
+
+```bash
+python src/jobsearch/cli.py dashboard
+python src/jobsearch/cli.py run
+```
+
 ## Deep Search and Deep Heal
 
 The optional `deep_search/` add-on uses Playwright and Chromium for JavaScript-heavy sites.
@@ -129,6 +163,11 @@ Everything stays local.
 - Company registry: `config/job_search_companies.yaml`
 - Contractor registry: `config/job_search_companies_contract.yaml`
 
+Additional local state:
+
+- Base resume and app settings are stored in `results/jobsearch.db`
+- Gmail sync settings are stored locally in the app settings table
+
 To back up your state, copy:
 
 - `results/`
@@ -150,6 +189,17 @@ If no results are being kept:
 - relax title or keyword weights
 - inspect `results/job_search_v6.log` for adapter timing and score breakdowns
 - inspect `results/job_search_v6_rejected.csv` for score rejects
+
+If Gmail sync fails:
+
+- for Gmail accounts, use a Google App Password rather than your main account password
+- App Passwords are managed at `https://myaccount.google.com/apppasswords`
+- store Gmail settings in `Search Settings -> App Settings`
+
+If the resume gap analysis is empty:
+
+- add your master resume in `Search Settings -> Base Resume`
+- rerun the scraper so matched keywords are current
 
 If companies are blocked or require manual follow-up:
 
