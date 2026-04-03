@@ -25,6 +25,7 @@ Short version:
 ## What It Does
 
 - Scrapes company careers pages from ATS providers like Greenhouse, Lever, Ashby, Workday, Rippling, and SmartRecruiters
+- Supports an optional contractor lane using curated external contract-oriented sources
 - Saves jobs directly into `results/jobsearch.db`
 - Scores jobs using your title, keyword, salary, and tier preferences
 - Lets you manage applications, contacts, journals, templates, training notes, and reports from the dashboard
@@ -73,6 +74,18 @@ Run the scraper:
 python -m jobsearch.cli run
 ```
 
+Run the contractor lane:
+
+```bash
+python -m jobsearch.cli run --contract-sources
+```
+
+Run ATS and contractor sources together:
+
+```bash
+python -m jobsearch.cli run --contract-sources --companies config/job_search_companies.yaml
+```
+
 Run ATS healing:
 
 ```bash
@@ -114,12 +127,14 @@ Everything stays local.
 - Score-rejected jobs: `results/job_search_v6_rejected.csv`
 - Preferences: `config/job_search_preferences.yaml`
 - Company registry: `config/job_search_companies.yaml`
+- Contractor registry: `config/job_search_companies_contract.yaml`
 
 To back up your state, copy:
 
 - `results/`
 - `config/job_search_preferences.yaml`
 - `config/job_search_companies.yaml`
+- `config/job_search_companies_contract.yaml`
 
 ## Notes
 

@@ -78,6 +78,14 @@ Use `Run Job Search` to start the scraper from the dashboard, or run:
 python -m jobsearch.cli run
 ```
 
+For contract-focused discovery, enable `Use Contractor Sources` in the dashboard or run:
+
+```bash
+python -m jobsearch.cli run --contract-sources
+```
+
+To combine your normal ATS targets with contractor sources in one run, keep the primary companies file selected and enable `Use Contractor Sources`.
+
 ### Track Applications
 
 Use `My Applications` to track the pipeline once jobs are saved into the database.
@@ -114,12 +122,14 @@ Your data is local.
 - Score-rejected jobs: `results/job_search_v6_rejected.csv`
 - Personal preferences: `config/job_search_preferences.yaml`
 - Company registry: `config/job_search_companies.yaml`
+- Contractor registry: `config/job_search_companies_contract.yaml`
 
 To back up the app state, copy:
 
 - `results/`
 - `config/job_search_preferences.yaml`
 - `config/job_search_companies.yaml`
+- `config/job_search_companies_contract.yaml`
 
 ## Troubleshooting
 

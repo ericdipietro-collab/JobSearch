@@ -22,6 +22,7 @@ class Settings:
         self.db_path = self.results_dir / "jobsearch.db"
         self.prefs_yaml = self.config_dir / "job_search_preferences.yaml"
         self.companies_yaml = self.config_dir / "job_search_companies.yaml"
+        self.contract_companies_yaml = self.config_dir / "job_search_companies_contract.yaml"
         self.history_json = self.results_dir / "job_search_history_v6.json"
         self.rejected_csv = self.results_dir / "job_search_v6_rejected.csv"
         self.log_file = self.results_dir / "job_search_v6.log"

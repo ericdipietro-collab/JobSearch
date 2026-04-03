@@ -1,0 +1,24 @@
+companies:
+  - name: Motion Recruitment Contract
+    active: true
+    priority: low
+    tier: 4
+    adapter: generic
+    contractor_source: true
+    careers_url: https://motionrecruitment.com/tech-jobs/contract
+    domain: motionrecruitment.com
+    industry: staffing | contract
+    status: active
+    notes: Contractor-only source for testing hourly W2 and short-term remote roles.
+
+  - name: Dice Contract
+    active: true
+    priority: low
+    tier: 4
+    adapter: generic
+    contractor_source: true
+    careers_url: https://www.dice.com/jobs/jtype-Contracts--jobs
+    domain: dice.com
+    industry: job board | contract
+    status: active
+    notes: High-noise contract source; keep isolated to the contractor lane.

@@ -138,6 +138,42 @@ def _normalize_editor_value(value):
 def _parse_pipe_list(value: str):
     return [item.strip() for item in str(value or "").split("|") if item.strip()]
 
+
+def _annualized_compensation_preview(
+    comp_type: str,
+    amount: float,
+    hours_per_week: float,
+    weeks_per_year: float,
+    contractor_cfg: dict,
+) -> dict[str, float]:
+    benefits = float(contractor_cfg.get("benefits_replacement_usd", 18000))
+    w2_gap = float(contractor_cfg.get("w2_benefits_gap_usd", 6000))
+    overhead_1099_pct = float(contractor_cfg.get("overhead_1099_pct", 0.18))
+
+    if comp_type == "salary":
+        gross = amount
+        normalized = amount
+    else:
+        gross = amount * hours_per_week * weeks_per_year
+        if comp_type == "w2_hourly":
+            normalized = gross - w2_gap
+        else:
+            normalized = gross * (1.0 - overhead_1099_pct) - benefits
+    return {"gross_annual_usd": gross, "normalized_compensation_usd": normalized}
+
+
+def _companies_file_label(path: Path) -> str:
+    name = path.name
+    if name == settings.companies_yaml.name:
+        return f"{name} (primary ATS lane)"
+    if name == "job_search_companies_test.yaml":
+        return f"{name} (test ATS lane)"
+    if name == settings.contract_companies_yaml.name:
+        return f"{name} (contractor lane)"
+    if name == "job_search_companies_contract_test.yaml":
+        return f"{name} (legacy contractor test lane)"
+    return name
+
 def main():
     st.set_page_config(page_title="Job Search", page_icon="💼", layout="wide")
     
@@ -219,7 +255,7 @@ def main():
                 st.info("No filtered-out jobs recorded for the latest pipeline run.")
             else:
                 st.caption(f"Filtered out by scoring in latest run: {len(rejected_df)}")
-                show_cols = [c for c in ["company", "title", "score", "fit_band", "location", "adapter", "drop_reason", "decision_reason", "url"] if c in rejected_df.columns]
+                show_cols = [c for c in ["company", "title", "score", "fit_band", "work_type", "normalized_compensation_usd", "location", "adapter", "drop_reason", "decision_reason", "url"] if c in rejected_df.columns]
                 st.dataframe(
                     rejected_df[show_cols],
                     column_config={"url": st.column_config.LinkColumn("URL")},
@@ -235,6 +271,7 @@ def main():
         with t1:
             s = prefs.setdefault("search", {}); c = s.setdefault("compensation", {})
             geography = s.setdefault("geography", {})
+            contractor = s.setdefault("contractor", {})
             local_hybrid = s.setdefault("location_preferences", {}).setdefault("local_hybrid", {})
             remote_us = s.setdefault("location_preferences", {}).setdefault("remote_us", {})
             recency = s.setdefault("recency", {})
@@ -259,6 +296,16 @@ def main():
             f_markers = st.text_area("Hybrid Location Markers", value="\n".join(local_hybrid.get("markers", [])))
             f_recency_enabled = st.checkbox("Enforce Job Age", value=bool(recency.get("enforce_job_age", True)))
             f_max_age = st.number_input("Max Job Age Days", min_value=1, max_value=365, value=int(recency.get("max_job_age_days", 21)))
+            st.markdown("#### Contractor Preferences")
+            f_include_contract = st.checkbox("Include Contract Roles", value=bool(contractor.get("include_contract_roles", True)))
+            f_allow_w2 = st.checkbox("Allow W2 Hourly", value=bool(contractor.get("allow_w2_hourly", True)))
+            f_allow_1099 = st.checkbox("Allow 1099 / C2C", value=bool(contractor.get("allow_1099_hourly", True)))
+            f_hours = st.number_input("Default Hours / Week", min_value=1.0, max_value=80.0, value=float(contractor.get("default_hours_per_week", 40)), step=1.0)
+            f_w2_weeks = st.number_input("Default W2 Weeks / Year", min_value=1.0, max_value=52.0, value=float(contractor.get("default_w2_weeks_per_year", 50)), step=1.0)
+            f_1099_weeks = st.number_input("Default 1099 Weeks / Year", min_value=1.0, max_value=52.0, value=float(contractor.get("default_1099_weeks_per_year", 46)), step=1.0)
+            f_benefits = st.number_input("1099 Benefits Replacement USD", min_value=0.0, value=float(contractor.get("benefits_replacement_usd", 18000)), step=1000.0)
+            f_w2_gap = st.number_input("W2 Hourly Benefits Gap USD", min_value=0.0, value=float(contractor.get("w2_benefits_gap_usd", 6000)), step=500.0)
+            f_1099_overhead = st.number_input("1099 Overhead %", min_value=0.0, max_value=0.75, value=float(contractor.get("overhead_1099_pct", 0.18)), step=0.01, format="%.2f")
             if st.button("Save Comp"):
                 c.update({
                     "min_salary_usd": int(f_min),
@@ -281,8 +328,59 @@ def main():
                     "markers": [line.strip() for line in f_markers.splitlines() if line.strip()],
                 })
                 recency.update({"enforce_job_age": bool(f_recency_enabled), "max_job_age_days": int(f_max_age)})
+                contractor.update({
+                    "include_contract_roles": bool(f_include_contract),
+                    "allow_w2_hourly": bool(f_allow_w2),
+                    "allow_1099_hourly": bool(f_allow_1099),
+                    "default_hours_per_week": float(f_hours),
+                    "default_w2_weeks_per_year": float(f_w2_weeks),
+                    "default_w2_hourly_weeks_per_year": float(f_w2_weeks),
+                    "default_1099_weeks_per_year": float(f_1099_weeks),
+                    "benefits_replacement_usd": float(f_benefits),
+                    "w2_benefits_gap_usd": float(f_w2_gap),
+                    "overhead_1099_pct": float(f_1099_overhead),
+                })
                 s["location_policy"] = f_pol
                 save_yaml(settings.prefs_yaml, prefs); st.success("Saved.")
+
+            with st.expander("Compensation Calculator", expanded=False):
+                calc_type = st.selectbox("Comp Type", ["salary", "w2_hourly", "1099_hourly"])
+                calc_amount_label = "Annual Salary USD" if calc_type == "salary" else "Hourly Rate USD"
+                calc_amount = st.number_input(calc_amount_label, min_value=0.0, value=float(f_target if calc_type == "salary" else 95.0), step=5.0)
+                calc_hours = st.number_input(
+                    "Calculator Hours / Week",
+                    min_value=1.0,
+                    max_value=80.0,
+                    value=float(f_hours),
+                    step=1.0,
+                    disabled=(calc_type == "salary"),
+                )
+                calc_weeks_default = f_w2_weeks if calc_type == "w2_hourly" else f_1099_weeks
+                calc_weeks = st.number_input(
+                    "Calculator Weeks / Year",
+                    min_value=1.0,
+                    max_value=52.0,
+                    value=float(52.0 if calc_type == "salary" else calc_weeks_default),
+                    step=1.0,
+                    disabled=(calc_type == "salary"),
+                )
+                calc_preview = _annualized_compensation_preview(
+                    calc_type,
+                    calc_amount,
+                    calc_hours,
+                    calc_weeks,
+                    contractor,
+                )
+                breakeven_w2 = (float(f_target) + float(f_w2_gap)) / max(float(f_hours) * float(f_w2_weeks), 1.0)
+                breakeven_1099 = (float(f_target) + float(f_benefits)) / max((1.0 - float(f_1099_overhead)) * float(f_hours) * float(f_1099_weeks), 1.0)
+                c_calc1, c_calc2, c_calc3 = st.columns(3)
+                c_calc1.metric("Gross Annualized", f"${calc_preview['gross_annual_usd']:,.0f}")
+                c_calc2.metric("Normalized Equivalent", f"${calc_preview['normalized_compensation_usd']:,.0f}")
+                c_calc3.metric("Target Salary", f"${float(f_target):,.0f}")
+                st.caption(
+                    f"Break-even hourly vs target salary: W2 ${breakeven_w2:,.2f}/hr | "
+                    f"1099 ${breakeven_1099:,.2f}/hr"
+                )
         
         with t2:
             t = prefs.setdefault("titles", {})
@@ -461,16 +559,38 @@ def main():
         with t1:
             r_deep = st.checkbox("Deep Search", value=False)
             r_test = st.checkbox("Use Test Companies", value=False)
+            r_contract = st.checkbox("Use Contractor Sources", value=False)
             r_workers = st.number_input("Workers", min_value=1, max_value=20, value=8, step=1)
             pref_options = [path for path in [settings.prefs_yaml, settings.config_dir / "job_search_preferences_test.yaml"] if path.exists()]
-            comp_options = [path for path in [settings.companies_yaml, settings.config_dir / "job_search_companies_test.yaml"] if path.exists()]
+            comp_options = [
+                path
+                for path in [
+                    settings.companies_yaml,
+                    settings.config_dir / "job_search_companies_test.yaml",
+                    settings.contract_companies_yaml,
+                    settings.config_dir / "job_search_companies_contract_test.yaml",
+                ]
+                if path.exists()
+            ]
+            default_companies = settings.companies_yaml
+            if r_contract and settings.contract_companies_yaml in comp_options:
+                default_companies = settings.contract_companies_yaml
+            elif r_test and (settings.config_dir / "job_search_companies_test.yaml") in comp_options:
+                default_companies = settings.config_dir / "job_search_companies_test.yaml"
+            default_index = comp_options.index(default_companies) if default_companies in comp_options else 0
             r_prefs = st.selectbox("Preferences File", pref_options, format_func=lambda p: p.name)
-            r_companies = st.selectbox("Companies File", comp_options, format_func=lambda p: p.name)
+            r_companies = st.selectbox("Companies File", comp_options, index=default_index, format_func=_companies_file_label)
+            selected_name = Path(r_companies).name
+            if selected_name in {settings.contract_companies_yaml.name, "job_search_companies_contract_test.yaml"}:
+                st.info("Contractor-only lane enabled: this run uses external contract-oriented sources only.")
+            elif r_contract:
+                st.info("Combined lane enabled: this run merges the selected ATS company file with the contractor source registry.")
 
             if st.button("🚀 Start Pipeline", type="primary"):
                 cmd = [sys.executable, "-m", "jobsearch.cli", "run", "--workers", str(int(r_workers))]
                 if r_deep: cmd.append("--deep-search")
                 if r_test: cmd.append("--test-companies")
+                if r_contract: cmd.append("--contract-sources")
                 if Path(r_prefs) != settings.prefs_yaml: cmd.extend(["--prefs", str(r_prefs)])
                 if Path(r_companies) != settings.companies_yaml: cmd.extend(["--companies", str(r_companies)])
 

@@ -1,40 +1,62 @@
-"""src/jobsearch/scraper/scoring.py — Refined Scoring Logic for Deep YAML."""
+"""Refined scoring logic including contractor normalization."""
 
-import re
+from __future__ import annotations
+
 import logging
-from typing import List, Tuple, Dict, Any, Optional
+import re
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
+
 
 class Scorer:
     def __init__(self, preferences: Dict[str, Any]):
         self.prefs = preferences
-        
-        # 1. Title Evaluation Settings (Nested under 'titles')
+
         title_cfg = self.prefs.get("titles", {})
         self.title_positive_weights = self._pref_weight_pairs(title_cfg.get("positive_weights"), [])
         self.title_positive_keywords = [str(item).strip().lower() for item in title_cfg.get("positive_keywords", []) if str(item).strip()]
         self.negative_disqualifiers = title_cfg.get("negative_disqualifiers", [])
         self.must_have_modifiers = title_cfg.get("must_have_modifiers", [])
-        
-        # 2. JD Evaluation Settings (Nested under 'keywords')
+
         kw_cfg = self.prefs.get("keywords", {})
         self.body_positive = self._pref_weight_pairs(kw_cfg.get("body_positive"), [])
         self.body_negative = self._pref_weight_pairs(kw_cfg.get("body_negative"), [])
-        
-        # 3. Policy & Scoring Thresholds
+
         scoring_cfg = self.prefs.get("scoring", {})
         self.min_score_to_keep = scoring_cfg.get("minimum_score_to_keep", 35)
-        
-        # 4. Compensation & Location (Nested under 'search')
+        adjustments_cfg = scoring_cfg.get("adjustments", {})
+        self.missing_salary_penalty = int(adjustments_cfg.get("missing_salary_penalty", 6))
+        self.salary_at_or_above_target_bonus = int(adjustments_cfg.get("salary_at_or_above_target_bonus", 6))
+        self.salary_meets_floor_bonus = int(adjustments_cfg.get("salary_meets_floor_bonus", 2))
+        self.salary_below_target_penalty = int(adjustments_cfg.get("salary_below_target_penalty", 12))
+        self.contract_role_penalty = int(adjustments_cfg.get("contract_role_penalty", 0))
+        self.contractor_target_bonus = int(adjustments_cfg.get("contractor_target_bonus", 4))
+
         search_cfg = self.prefs.get("search", {})
         comp_cfg = search_cfg.get("compensation", {})
         geo_cfg = search_cfg.get("geography", {})
-        self.min_salary_usd = comp_cfg.get("min_salary_usd", 165000)
+        contractor_cfg = search_cfg.get("contractor", {})
+
+        self.target_salary_usd = float(comp_cfg.get("target_salary_usd", 165000))
+        self.min_salary_usd = float(comp_cfg.get("min_salary_usd", 165000))
+        self.allow_missing_salary = bool(comp_cfg.get("allow_missing_salary", True))
         self.remote_only = comp_cfg.get("remote_only", True)
         self.us_only = bool(geo_cfg.get("us_only", True))
         self.allow_international_remote = bool(geo_cfg.get("allow_international_remote", False))
         self.require_one_positive_keyword = bool(title_cfg.get("require_one_positive_keyword", False))
+
+        self.include_contract_roles = bool(contractor_cfg.get("include_contract_roles", True))
+        self.allow_w2_hourly = bool(contractor_cfg.get("allow_w2_hourly", True))
+        self.allow_1099_hourly = bool(contractor_cfg.get("allow_1099_hourly", True))
+        self.default_hours_per_week = float(contractor_cfg.get("default_hours_per_week", 40))
+        self.default_w2_weeks_per_year = float(contractor_cfg.get("default_w2_weeks_per_year", 50))
+        self.default_1099_weeks_per_year = float(contractor_cfg.get("default_1099_weeks_per_year", 46))
+        self.default_w2_hourly_weeks_per_year = float(contractor_cfg.get("default_w2_hourly_weeks_per_year", self.default_w2_weeks_per_year))
+        self.benefits_replacement_usd = float(contractor_cfg.get("benefits_replacement_usd", 18000))
+        self.w2_benefits_gap_usd = float(contractor_cfg.get("w2_benefits_gap_usd", 6000))
+        self.overhead_1099_pct = float(contractor_cfg.get("overhead_1099_pct", 0.18))
+
         self.partial_title_markers = {
             "architect": 5,
             "product": 3,
@@ -63,33 +85,46 @@ class Scorer:
         if isinstance(raw, dict):
             for key, value in raw.items():
                 phrase = str(key or "").strip().lower()
-                if not phrase: continue
+                if not phrase:
+                    continue
                 try:
-                    weight = int(float(value))
-                    pairs.append((phrase, weight))
-                except (ValueError, TypeError): continue
+                    pairs.append((phrase, int(float(value))))
+                except (ValueError, TypeError):
+                    continue
         elif isinstance(raw, list):
-            # If it's a simple list, assign a default weight of 5
             for item in raw:
                 if isinstance(item, str):
                     pairs.append((item.lower().strip(), 5))
                 elif isinstance(item, dict):
                     phrase = str(item.get("keyword") or item.get("phrase") or "").strip().lower()
-                    if not phrase: continue
-                    weight = int(float(item.get("weight") or item.get("points") or 5))
-                    pairs.append((phrase, weight))
+                    if not phrase:
+                        continue
+                    pairs.append((phrase, int(float(item.get("weight") or item.get("points") or 5))))
         return pairs or default
 
-    def clean(self, value: Optional[str]) -> str:
-        if not value: return ""
-        return re.sub(r'\s+', ' ', str(value)).strip()
+    @staticmethod
+    def clean(value: Optional[str]) -> str:
+        if not value:
+            return ""
+        return re.sub(r"\s+", " ", str(value)).strip()
+
+    @staticmethod
+    def _to_float(value: Any) -> Optional[float]:
+        if value in (None, ""):
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
 
     def _kw_match(self, kw: str, blob: str) -> bool:
-        if not kw or not blob: return False
+        if not kw or not blob:
+            return False
         keyword = self.clean(kw).lower().strip()
         haystack = self.clean(blob).lower()
-        if not keyword or not haystack: return False
-        
+        if not keyword or not haystack:
+            return False
+
         escaped = re.escape(keyword).replace(r"\ ", r"\s+")
         if re.match(r"^\w", keyword) and re.search(r"\w$", keyword):
             pattern = rf"\b{escaped}\b"
@@ -98,133 +133,23 @@ class Scorer:
         return re.search(pattern, haystack, flags=re.IGNORECASE) is not None
 
     def _unique_weighted_hits(self, blob: str, weighted_terms: List[Tuple[str, int]]) -> List[Tuple[str, int]]:
-        hits = []
-        for term, pts in weighted_terms:
-            if self._kw_match(term, blob):
-                hits.append((term, pts))
-        return hits
+        return [(term, pts) for term, pts in weighted_terms if self._kw_match(term, blob)]
 
-    def fit_band(self, score: float) -> str:
-        if score >= 85: return "Strong Match"
-        if score >= 70: return "Good Match"
-        if score >= 50: return "Fair Match"
-        if score >= 35: return "Weak Match"
+    @staticmethod
+    def fit_band(score: float) -> str:
+        if score >= 85:
+            return "Strong Match"
+        if score >= 70:
+            return "Good Match"
+        if score >= 50:
+            return "Fair Match"
+        if score >= 35:
+            return "Weak Match"
         return "Poor Match"
 
     def is_disqualified(self, title: str) -> bool:
-        """Check if a title matches any hard disqualifiers."""
-        t_l = title.lower()
-        for dq in self.negative_disqualifiers:
-            if dq.lower() in t_l:
-                return True
-        return False
-
-    def score_job(self, job_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Full scoring logic synchronized with YAML structure."""
-        title = job_data.get("title", "")
-        description = job_data.get("description", "")
-        company_tier = job_data.get("tier", 4)
-        location = str(job_data.get("location", "") or "")
-        
         title_l = title.lower()
-        jd_blob = description.lower()
-        
-        # 1. Soft-Drop Phase: Hard disqualification
-        if self.is_disqualified(title):
-            return {
-                "score": 0.0,
-                "fit_band": "Disqualified",
-                "matched_keywords": "",
-                "penalized_keywords": "Title Disqualified",
-                "decision_reason": "Hard-Drop: Disqualifier in title",
-                "score_components": {
-                    "base_score": 0.0,
-                    "title_points": 0,
-                    "body_positive_points": 0,
-                "body_negative_points": 0,
-                "tier_bonus": 0,
-                "partial_title_bonus": 0,
-                "positive_keyword_gate_bonus": 0,
-                "location_penalty": 0,
-            },
-        }
-
-        score = 0.0
-        
-        # 2. Title Scoring
-        title_hits = self._unique_weighted_hits(title_l, self.title_positive_weights)
-        title_points = sum(pts for _, pts in title_hits)
-        partial_hits = self._partial_title_hits(title_l, title_hits)
-        partial_title_points = sum(pts for _, pts in partial_hits)
-        title_points += partial_title_points
-        
-        # Apply base score if high-weight title match found (Fast-Track)
-        base_score = 0.0
-        if any(pts >= 8 for _, pts in title_hits):
-            score = 50.0
-            base_score = 50.0
-        elif title_hits:
-            score = max(score, 15.0)
-            base_score = score
-        elif partial_hits:
-            score = max(score, 12.0)
-            base_score = score
-        
-        score += title_points
-        
-        # 3. JD Scoring
-        jd_pos_hits = self._unique_weighted_hits(jd_blob, self.body_positive)
-        jd_neg_hits = self._unique_weighted_hits(jd_blob, self.body_negative)
-        
-        body_positive_points = sum(pts for _, pts in jd_pos_hits)
-        body_negative_points = sum(pts for _, pts in jd_neg_hits)
-        score += body_positive_points
-        score -= body_negative_points
-
-        location_penalty = 0
-        if self.us_only and not self.allow_international_remote and self._is_international_remote(location):
-            location_penalty = 12
-            score -= location_penalty
-            jd_neg_hits.append(("international remote", location_penalty))
-        
-        # 4. Tier bonus
-        tier_bonus = {1: 15, 2: 8, 3: 4}.get(company_tier, 0)
-        score += tier_bonus
-
-        positive_keyword_gate_bonus = 0
-        if self.require_one_positive_keyword and not title_hits and partial_hits:
-            score += 6
-            positive_keyword_gate_bonus = 6
-        
-        # 5. Final constraints & Normalization
-        score = max(0.0, min(100.0, score))
-        
-        matched_str = ", ".join(set(t for t, _ in title_hits + partial_hits + jd_pos_hits))
-        penalized_str = ", ".join(set(t for t, _ in jd_neg_hits))
-        
-        return {
-            "score": score,
-            "fit_band": self.fit_band(score),
-            "matched_keywords": matched_str,
-            "penalized_keywords": penalized_str,
-            "decision_reason": (
-                f"score={score:.1f} base={base_score:.1f} "
-                f"title={title_points} body+={body_positive_points} body-={body_negative_points} "
-                f"tier={tier_bonus} partial={partial_title_points} gate={positive_keyword_gate_bonus} "
-                f"location-={location_penalty} "
-                f"hits={len(title_hits) + len(partial_hits) + len(jd_pos_hits)}"
-            ),
-            "score_components": {
-                "base_score": base_score,
-                "title_points": title_points,
-                "body_positive_points": body_positive_points,
-                "body_negative_points": body_negative_points,
-                "tier_bonus": tier_bonus,
-                "partial_title_bonus": partial_title_points,
-                "positive_keyword_gate_bonus": positive_keyword_gate_bonus,
-                "location_penalty": location_penalty,
-            },
-        }
+        return any(dq.lower() in title_l for dq in self.negative_disqualifiers)
 
     def _partial_title_hits(self, title: str, exact_hits: List[Tuple[str, int]]) -> List[Tuple[str, int]]:
         if exact_hits:
@@ -259,3 +184,244 @@ class Scorer:
         if "remote" not in location_l:
             return False
         return any(marker in location_l for marker in self._non_us_remote_markers)
+
+    def _derive_work_type(self, job_data: Dict[str, Any]) -> str:
+        explicit = self.clean(job_data.get("work_type")).lower()
+        if explicit:
+            return explicit
+        blob = " ".join(
+            [
+                self.clean(job_data.get("title")),
+                self.clean(job_data.get("description")),
+                self.clean(job_data.get("salary_text")),
+            ]
+        ).lower()
+        if any(marker in blob for marker in ["1099", "independent contractor", "self employed", "self-employed"]):
+            return "1099_contract"
+        if any(marker in blob for marker in ["c2c", "corp-to-corp", "corp to corp", "contract-to-hire", "contract to hire"]):
+            return "c2c_contract"
+        if any(marker in blob for marker in ["w2", "w-2", "hourly contract", "contract role", "contract position", "contract opportunity"]):
+            return "w2_contract"
+        if "hourly" in blob:
+            return "w2_contract"
+        return "fte"
+
+    def _compensation_unit(self, job_data: Dict[str, Any], work_type: str) -> str:
+        explicit = self.clean(job_data.get("compensation_unit")).lower()
+        if explicit:
+            return explicit
+        blob = " ".join([self.clean(job_data.get("salary_text")), self.clean(job_data.get("description"))]).lower()
+        if any(marker in blob for marker in ["/hr", "per hour", "hourly", "hr rate", "$/hour"]):
+            return "hourly"
+        if work_type in {"w2_contract", "1099_contract", "c2c_contract"}:
+            return "hourly"
+        return "salary"
+
+    def _derive_hourly_rate(self, job_data: Dict[str, Any], unit: str) -> Optional[float]:
+        explicit = self._to_float(job_data.get("hourly_rate"))
+        if explicit is not None:
+            return explicit
+        if unit != "hourly":
+            return None
+        salary_min = self._to_float(job_data.get("salary_min"))
+        salary_max = self._to_float(job_data.get("salary_max"))
+        if salary_min is not None and salary_max is not None:
+            return (salary_min + salary_max) / 2.0
+        if salary_min is not None:
+            return salary_min
+        text = self.clean(job_data.get("salary_text"))
+        sanitized = re.sub(r"\b(1099|w2|w-2|c2c|corp[-\s]?to[-\s]?corp)\b", " ", text, flags=re.IGNORECASE)
+        matches = [float(match.replace(",", "")) for match in re.findall(r"\$?\s*([0-9]{2,3}(?:,[0-9]{3})*(?:\.\d{1,2})?)", sanitized)]
+        if not matches:
+            return None
+        return sum(matches[:2]) / min(2, len(matches))
+
+    def _normalize_compensation(self, job_data: Dict[str, Any], work_type: str, unit: str) -> Dict[str, Any]:
+        salary_min = self._to_float(job_data.get("salary_min"))
+        salary_max = self._to_float(job_data.get("salary_max"))
+        hourly_rate = self._derive_hourly_rate(job_data, unit)
+
+        hours_per_week = self._to_float(job_data.get("hours_per_week")) or self.default_hours_per_week
+        if work_type == "1099_contract":
+            weeks_per_year = self._to_float(job_data.get("weeks_per_year")) or self.default_1099_weeks_per_year
+        elif work_type in {"w2_contract", "c2c_contract"}:
+            weeks_per_year = self._to_float(job_data.get("weeks_per_year")) or self.default_w2_hourly_weeks_per_year
+        else:
+            weeks_per_year = self._to_float(job_data.get("weeks_per_year")) or 52.0
+
+        gross_annual: Optional[float]
+        normalized: Optional[float]
+        if unit == "hourly" and hourly_rate is not None:
+            gross_annual = hourly_rate * hours_per_week * weeks_per_year
+            if work_type == "1099_contract":
+                normalized = gross_annual * (1.0 - self.overhead_1099_pct) - self.benefits_replacement_usd
+            elif work_type in {"w2_contract", "c2c_contract"}:
+                normalized = gross_annual - self.w2_benefits_gap_usd
+            else:
+                normalized = gross_annual
+        else:
+            gross_annual = None
+            if salary_min is not None and salary_max is not None:
+                normalized = (salary_min + salary_max) / 2.0
+            elif salary_min is not None:
+                normalized = salary_min
+            elif salary_max is not None:
+                normalized = salary_max
+            else:
+                normalized = None
+
+        return {
+            "work_type": work_type,
+            "compensation_unit": unit,
+            "hourly_rate": hourly_rate,
+            "hours_per_week": hours_per_week if unit == "hourly" else None,
+            "weeks_per_year": weeks_per_year if unit == "hourly" else None,
+            "gross_annual_compensation_usd": gross_annual,
+            "normalized_compensation_usd": normalized,
+        }
+
+    def score_job(self, job_data: Dict[str, Any]) -> Dict[str, Any]:
+        title = job_data.get("title", "")
+        description = job_data.get("description", "")
+        company_tier = int(job_data.get("tier", 4) or 4)
+        location = str(job_data.get("location", "") or "")
+
+        title_l = title.lower()
+        jd_blob = description.lower()
+
+        if self.is_disqualified(title):
+            return {
+                "score": 0.0,
+                "fit_band": "Disqualified",
+                "matched_keywords": "",
+                "penalized_keywords": "Title Disqualified",
+                "decision_reason": "Hard-Drop: Disqualifier in title",
+                "score_components": {
+                    "base_score": 0.0,
+                    "title_points": 0,
+                    "body_positive_points": 0,
+                    "body_negative_points": 0,
+                    "tier_bonus": 0,
+                    "partial_title_bonus": 0,
+                    "positive_keyword_gate_bonus": 0,
+                    "location_penalty": 0,
+                    "compensation_adjustment": 0,
+                    "contract_adjustment": 0,
+                },
+                "work_type": self._derive_work_type(job_data),
+                "compensation_unit": self._compensation_unit(job_data, self._derive_work_type(job_data)),
+                "hourly_rate": self._derive_hourly_rate(job_data, self._compensation_unit(job_data, self._derive_work_type(job_data))),
+                "hours_per_week": None,
+                "weeks_per_year": None,
+                "normalized_compensation_usd": None,
+            }
+
+        score = 0.0
+
+        title_hits = self._unique_weighted_hits(title_l, self.title_positive_weights)
+        title_points = sum(pts for _, pts in title_hits)
+        partial_hits = self._partial_title_hits(title_l, title_hits)
+        partial_title_points = sum(pts for _, pts in partial_hits)
+        title_points += partial_title_points
+
+        base_score = 0.0
+        if any(pts >= 8 for _, pts in title_hits):
+            score = 50.0
+            base_score = 50.0
+        elif title_hits:
+            score = max(score, 15.0)
+            base_score = score
+        elif partial_hits:
+            score = max(score, 12.0)
+            base_score = score
+
+        score += title_points
+
+        jd_pos_hits = self._unique_weighted_hits(jd_blob, self.body_positive)
+        jd_neg_hits = self._unique_weighted_hits(jd_blob, self.body_negative)
+        body_positive_points = sum(pts for _, pts in jd_pos_hits)
+        body_negative_points = sum(pts for _, pts in jd_neg_hits)
+        score += body_positive_points
+        score -= body_negative_points
+
+        location_penalty = 0
+        if self.us_only and not self.allow_international_remote and self._is_international_remote(location):
+            location_penalty = 12
+            score -= location_penalty
+            jd_neg_hits.append(("international remote", location_penalty))
+
+        tier_bonus = {1: 15, 2: 8, 3: 4}.get(company_tier, 0)
+        score += tier_bonus
+
+        positive_keyword_gate_bonus = 0
+        if self.require_one_positive_keyword and not title_hits and partial_hits:
+            score += 6
+            positive_keyword_gate_bonus = 6
+
+        comp_data = self._normalize_compensation(
+            job_data,
+            self._derive_work_type(job_data),
+            self._compensation_unit(job_data, self._derive_work_type(job_data)),
+        )
+        compensation_adjustment = 0
+        contract_adjustment = 0
+
+        work_type = comp_data["work_type"]
+        normalized_comp = comp_data["normalized_compensation_usd"]
+
+        if work_type in {"w2_contract", "1099_contract", "c2c_contract"}:
+            if not self.include_contract_roles:
+                contract_adjustment -= 20
+            if work_type == "w2_contract" and not self.allow_w2_hourly:
+                contract_adjustment -= 20
+            if work_type in {"1099_contract", "c2c_contract"} and not self.allow_1099_hourly:
+                contract_adjustment -= 20
+            if self.contract_role_penalty:
+                contract_adjustment -= self.contract_role_penalty
+            if normalized_comp is not None and normalized_comp >= self.target_salary_usd:
+                contract_adjustment += self.contractor_target_bonus
+
+        if normalized_comp is None:
+            if not self.allow_missing_salary:
+                compensation_adjustment -= self.missing_salary_penalty
+        else:
+            if normalized_comp >= self.target_salary_usd:
+                compensation_adjustment += self.salary_at_or_above_target_bonus
+            elif normalized_comp >= self.min_salary_usd:
+                compensation_adjustment += self.salary_meets_floor_bonus
+            else:
+                compensation_adjustment -= self.salary_below_target_penalty
+
+        score += compensation_adjustment + contract_adjustment
+        score = max(0.0, min(100.0, score))
+
+        matched_str = ", ".join(sorted(set(term for term, _ in title_hits + partial_hits + jd_pos_hits)))
+        penalized_str = ", ".join(sorted(set(term for term, _ in jd_neg_hits)))
+
+        return {
+            "score": score,
+            "fit_band": self.fit_band(score),
+            "matched_keywords": matched_str,
+            "penalized_keywords": penalized_str,
+            "decision_reason": (
+                f"score={score:.1f} base={base_score:.1f} "
+                f"title={title_points} body+={body_positive_points} body-={body_negative_points} "
+                f"tier={tier_bonus} partial={partial_title_points} gate={positive_keyword_gate_bonus} "
+                f"location-={location_penalty} comp={compensation_adjustment} contract={contract_adjustment} "
+                f"work_type={work_type} normalized_comp={normalized_comp if normalized_comp is not None else 'na'} "
+                f"hits={len(title_hits) + len(partial_hits) + len(jd_pos_hits)}"
+            ),
+            "score_components": {
+                "base_score": base_score,
+                "title_points": title_points,
+                "body_positive_points": body_positive_points,
+                "body_negative_points": body_negative_points,
+                "tier_bonus": tier_bonus,
+                "partial_title_bonus": partial_title_points,
+                "positive_keyword_gate_bonus": positive_keyword_gate_bonus,
+                "location_penalty": location_penalty,
+                "compensation_adjustment": compensation_adjustment,
+                "contract_adjustment": contract_adjustment,
+            },
+            **comp_data,
+        }

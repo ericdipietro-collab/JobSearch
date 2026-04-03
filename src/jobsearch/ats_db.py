@@ -140,6 +140,12 @@ class Opportunity(BaseModel):
     salary_min: Optional[float] = None
     salary_max: Optional[float] = None
     salary_text: str = ""
+    work_type: str = ""
+    compensation_unit: str = ""
+    hourly_rate: Optional[float] = None
+    hours_per_week: Optional[float] = None
+    weeks_per_year: Optional[float] = None
+    normalized_compensation_usd: Optional[float] = None
     score: float = 0.0
     fit_band: str = ""
     current_stage: str = "New"
@@ -257,6 +263,12 @@ def init_db(conn: sqlite3.Connection) -> None:
             salary_low INTEGER,
             salary_high INTEGER,
             salary_text TEXT,
+            work_type TEXT,
+            compensation_unit TEXT,
+            hourly_rate REAL,
+            hours_per_week REAL,
+            weeks_per_year REAL,
+            normalized_compensation_usd REAL,
             referral TEXT,
             jd_summary TEXT,
             notes TEXT,
@@ -446,6 +458,12 @@ def init_db(conn: sqlite3.Connection) -> None:
             "salary_low": "INTEGER",
             "salary_high": "INTEGER",
             "salary_text": "TEXT",
+            "work_type": "TEXT",
+            "compensation_unit": "TEXT",
+            "hourly_rate": "REAL",
+            "hours_per_week": "REAL",
+            "weeks_per_year": "REAL",
+            "normalized_compensation_usd": "REAL",
             "referral": "TEXT",
             "jd_summary": "TEXT",
             "notes": "TEXT",

@@ -10,7 +10,7 @@ if str(SRC_DIR) not in sys.path:
 from jobsearch.scraper.adapters.base import BaseAdapter, BlockedSiteError
 from jobsearch.scraper.adapters.generic import GenericAdapter
 from jobsearch.scraper.scoring import Scorer
-from jobsearch.app_main import _sidebar_metrics_for_df
+from jobsearch.app_main import _annualized_compensation_preview, _sidebar_metrics_for_df
 from jobsearch.views.tracker_page import _formal_tracker_rows, _summary_metrics_for_rows
 import pandas as pd
 
@@ -77,6 +77,33 @@ class BlockedAndLocationTests(unittest.TestCase):
             adapter._is_probable_job_link("Associate Product Manager, FIC Support", "https://jobs.lever.co/trustly/abc123")
         )
 
+    def test_contractor_board_rejects_category_pages(self):
+        adapter = GenericAdapter()
+        self.assertFalse(
+            adapter._is_probable_job_link(
+                "Project / Program Management Project / Program Management",
+                "https://motionrecruitment.com/tech-jobs/contract?specialties=project-program-management",
+                {"contractor_source": True},
+            )
+        )
+        self.assertFalse(
+            adapter._is_probable_job_link(
+                "Jobs Directory Jobs Directory",
+                "https://www.dice.com/jobs/browse-jobs",
+                {"contractor_source": True},
+            )
+        )
+
+    def test_contractor_board_keeps_detail_links(self):
+        adapter = GenericAdapter()
+        self.assertTrue(
+            adapter._is_probable_job_link(
+                "Associate Product Manager, FIC Support",
+                "https://www.dice.com/job-detail/12345678-abcd-1234-abcd-1234567890ab",
+                {"contractor_source": True},
+            )
+        )
+
     def test_happydance_is_detected_as_blocked(self):
         adapter = _FakeAdapter()
         with self.assertRaises(BlockedSiteError):
@@ -93,7 +120,18 @@ class BlockedAndLocationTests(unittest.TestCase):
         prefs = {
             "search": {
                 "geography": {"us_only": True, "allow_international_remote": True},
-                "compensation": {"min_salary_usd": 165000},
+                "compensation": {"min_salary_usd": 165000, "target_salary_usd": 165000},
+                "contractor": {
+                    "include_contract_roles": True,
+                    "allow_w2_hourly": True,
+                    "allow_1099_hourly": True,
+                    "default_hours_per_week": 40,
+                    "default_w2_weeks_per_year": 50,
+                    "default_1099_weeks_per_year": 46,
+                    "benefits_replacement_usd": 18000,
+                    "w2_benefits_gap_usd": 6000,
+                    "overhead_1099_pct": 0.18,
+                },
             },
             "titles": {"positive_weights": {"solution architect": 8}},
             "keywords": {},
@@ -109,6 +147,87 @@ class BlockedAndLocationTests(unittest.TestCase):
             }
         )
         self.assertEqual(result["score_components"]["location_penalty"], 0)
+
+    def test_w2_hourly_normalizes_to_annual_equivalent(self):
+        prefs = {
+            "search": {
+                "geography": {"us_only": False, "allow_international_remote": True},
+                "compensation": {"min_salary_usd": 165000, "target_salary_usd": 165000, "allow_missing_salary": True},
+                "contractor": {
+                    "include_contract_roles": True,
+                    "allow_w2_hourly": True,
+                    "allow_1099_hourly": True,
+                    "default_hours_per_week": 40,
+                    "default_w2_weeks_per_year": 50,
+                    "default_1099_weeks_per_year": 46,
+                    "benefits_replacement_usd": 18000,
+                    "w2_benefits_gap_usd": 6000,
+                    "overhead_1099_pct": 0.18,
+                },
+            },
+            "titles": {"positive_weights": {"technical product manager": 8}},
+            "keywords": {},
+            "scoring": {"minimum_score_to_keep": 35},
+        }
+        scorer = Scorer(prefs)
+        result = scorer.score_job(
+            {
+                "title": "Technical Product Manager",
+                "description": "W2 contract, hourly role, API integration",
+                "tier": 1,
+                "location": "Remote",
+                "salary_text": "$100/hr W2",
+            }
+        )
+        self.assertEqual(result["work_type"], "w2_contract")
+        self.assertEqual(result["compensation_unit"], "hourly")
+        self.assertAlmostEqual(result["hourly_rate"], 100.0)
+        self.assertAlmostEqual(result["normalized_compensation_usd"], 194000.0)
+
+    def test_1099_hourly_applies_overhead_and_benefits(self):
+        prefs = {
+            "search": {
+                "geography": {"us_only": False, "allow_international_remote": True},
+                "compensation": {"min_salary_usd": 165000, "target_salary_usd": 165000, "allow_missing_salary": True},
+                "contractor": {
+                    "include_contract_roles": True,
+                    "allow_w2_hourly": True,
+                    "allow_1099_hourly": True,
+                    "default_hours_per_week": 40,
+                    "default_w2_weeks_per_year": 50,
+                    "default_1099_weeks_per_year": 46,
+                    "benefits_replacement_usd": 18000,
+                    "w2_benefits_gap_usd": 6000,
+                    "overhead_1099_pct": 0.18,
+                },
+            },
+            "titles": {"positive_weights": {"solution architect": 8}},
+            "keywords": {},
+            "scoring": {"minimum_score_to_keep": 35},
+        }
+        scorer = Scorer(prefs)
+        result = scorer.score_job(
+            {
+                "title": "Senior Solution Architect",
+                "description": "1099 contract role, enterprise architecture",
+                "tier": 1,
+                "location": "Remote",
+                "salary_text": "$120/hr 1099",
+            }
+        )
+        self.assertEqual(result["work_type"], "1099_contract")
+        self.assertAlmostEqual(result["normalized_compensation_usd"], 163056.0)
+
+    def test_compensation_calculator_matches_scoring_assumptions(self):
+        contractor_cfg = {
+            "benefits_replacement_usd": 18000,
+            "w2_benefits_gap_usd": 6000,
+            "overhead_1099_pct": 0.18,
+        }
+        w2 = _annualized_compensation_preview("w2_hourly", 100.0, 40.0, 50.0, contractor_cfg)
+        contract_1099 = _annualized_compensation_preview("1099_hourly", 120.0, 40.0, 46.0, contractor_cfg)
+        self.assertAlmostEqual(w2["normalized_compensation_usd"], 194000.0)
+        self.assertAlmostEqual(contract_1099["normalized_compensation_usd"], 163056.0)
 
 
 if __name__ == "__main__":

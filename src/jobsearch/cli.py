@@ -23,6 +23,24 @@ from jobsearch.scraper.engine import ScraperEngine
 from jobsearch.services.healer_service import ATSHealer
 
 
+def _merge_company_lists(*lists):
+    merged = []
+    seen = set()
+    for companies in lists:
+        for company in companies or []:
+            if not isinstance(company, dict):
+                continue
+            key = (
+                str(company.get("name", "")).strip().lower(),
+                str(company.get("careers_url", "")).strip().lower(),
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            merged.append(company)
+    return merged
+
+
 @click.group()
 def main():
     """JobSearch CLI: manage the job search pipeline."""
@@ -163,12 +181,13 @@ def heal(heal_all, force, deep, workers, deep_timeout):
 @main.command()
 @click.option("--deep-search", is_flag=True, help="Enable deep search using Playwright.")
 @click.option("--test-companies", is_flag=True, help="Use the test company list.")
+@click.option("--contract-sources", is_flag=True, help="Use the contractor-source company list.")
 @click.option("--workers", default=8, help="Number of parallel workers for the scraper.")
 @click.option("--prefs", "--preferences", type=click.Path(exists=True), help="Path to preferences YAML.")
 @click.option("--companies", type=click.Path(exists=True), help="Path to companies YAML.")
 @click.option("--legacy", is_flag=True, help="Use the legacy scraper script if it exists.")
 @click.argument("extra_args", nargs=-1)
-def run(deep_search, test_companies, workers, prefs, companies, legacy, extra_args):
+def run(deep_search, test_companies, contract_sources, workers, prefs, companies, legacy, extra_args):
     """Run the job search pipeline."""
     click.echo("Starting Job Search Pipeline...")
 
@@ -200,7 +219,9 @@ def run(deep_search, test_companies, workers, prefs, companies, legacy, extra_ar
 
     prefs_path = Path(prefs) if prefs else settings.preferences_yaml
     comp_path = Path(companies) if companies else settings.companies_yaml
-    if test_companies and not companies:
+    if contract_sources and not companies:
+        comp_path = settings.contract_companies_yaml
+    elif test_companies and not companies:
         comp_path = BASE_DIR / "config" / "job_search_companies_test.yaml"
 
     if not prefs_path.exists():
@@ -215,6 +236,12 @@ def run(deep_search, test_companies, workers, prefs, companies, legacy, extra_ar
         prefs_data = yaml.safe_load(handle) or {}
     with comp_path.open("r", encoding="utf-8") as handle:
         comp_data = (yaml.safe_load(handle) or {}).get("companies", [])
+    if contract_sources:
+        contract_path = settings.contract_companies_yaml
+        if contract_path.exists() and contract_path != comp_path:
+            with contract_path.open("r", encoding="utf-8") as handle:
+                contract_data = (yaml.safe_load(handle) or {}).get("companies", [])
+            comp_data = _merge_company_lists(comp_data, contract_data)
 
     engine = ScraperEngine(prefs_data, comp_data, deep_search=deep_search)
     engine.run(max_workers=workers)

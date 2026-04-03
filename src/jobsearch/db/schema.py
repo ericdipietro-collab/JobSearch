@@ -32,6 +32,12 @@ CREATE TABLE IF NOT EXISTS applications (
     salary_text        TEXT,
     salary_low         REAL,
     salary_high        REAL,
+    work_type          TEXT,
+    compensation_unit  TEXT,
+    hourly_rate        REAL,
+    hours_per_week     REAL,
+    weeks_per_year     REAL,
+    normalized_compensation_usd REAL,
     referral           TEXT,
     jd_summary         TEXT,
     notes              TEXT,
@@ -299,4 +305,10 @@ def init_db(conn: sqlite3.Connection) -> None:
         ("schema_version", str(SCHEMA_VERSION)),
     )
     _add_column_if_missing(cur, "applications", "tier", "tier INTEGER")
+    _add_column_if_missing(cur, "applications", "work_type", "work_type TEXT")
+    _add_column_if_missing(cur, "applications", "compensation_unit", "compensation_unit TEXT")
+    _add_column_if_missing(cur, "applications", "hourly_rate", "hourly_rate REAL")
+    _add_column_if_missing(cur, "applications", "hours_per_week", "hours_per_week REAL")
+    _add_column_if_missing(cur, "applications", "weeks_per_year", "weeks_per_year REAL")
+    _add_column_if_missing(cur, "applications", "normalized_compensation_usd", "normalized_compensation_usd REAL")
     conn.commit()

@@ -98,6 +98,9 @@ class ScraperEngine:
                         "tier",
                         "score",
                         "fit_band",
+                        "work_type",
+                        "compensation_unit",
+                        "normalized_compensation_usd",
                         "drop_reason",
                         "decision_reason",
                         "matched_keywords",
@@ -208,6 +211,9 @@ class ScraperEngine:
                             "tier",
                             "score",
                             "fit_band",
+                            "work_type",
+                            "compensation_unit",
+                            "normalized_compensation_usd",
                             "drop_reason",
                             "decision_reason",
                             "matched_keywords",
@@ -362,6 +368,14 @@ class ScraperEngine:
                 "description": job.description_excerpt,
                 "tier": int(company.get("tier", 4)),
                 "location": job.location,
+                "salary_min": job.salary_min,
+                "salary_max": job.salary_max,
+                "salary_text": job.salary_text,
+                "work_type": getattr(job, "work_type", ""),
+                "compensation_unit": getattr(job, "compensation_unit", ""),
+                "hourly_rate": getattr(job, "hourly_rate", None),
+                "hours_per_week": getattr(job, "hours_per_week", None),
+                "weeks_per_year": getattr(job, "weeks_per_year", None),
             }
             score_results = self.scorer.score_job(scoring_data)
             job.score = score_results["score"]
@@ -369,6 +383,15 @@ class ScraperEngine:
             job.matched_keywords = score_results["matched_keywords"]
             job.penalized_keywords = score_results["penalized_keywords"]
             job.decision_reason = score_results["decision_reason"]
+            job.work_type = score_results.get("work_type", getattr(job, "work_type", ""))
+            job.compensation_unit = score_results.get("compensation_unit", getattr(job, "compensation_unit", ""))
+            job.hourly_rate = score_results.get("hourly_rate", getattr(job, "hourly_rate", None))
+            job.hours_per_week = score_results.get("hours_per_week", getattr(job, "hours_per_week", None))
+            job.weeks_per_year = score_results.get("weeks_per_year", getattr(job, "weeks_per_year", None))
+            job.normalized_compensation_usd = score_results.get(
+                "normalized_compensation_usd",
+                getattr(job, "normalized_compensation_usd", None),
+            )
             score_values.append(float(job.score or 0.0))
 
             if job.score >= self.scorer.min_score_to_keep:
@@ -392,6 +415,9 @@ class ScraperEngine:
                         "tier": company.get("tier", 4),
                         "score": job.score,
                         "fit_band": job.fit_band,
+                        "work_type": job.work_type,
+                        "compensation_unit": job.compensation_unit,
+                        "normalized_compensation_usd": job.normalized_compensation_usd,
                         "drop_reason": "score_below_threshold",
                         "decision_reason": job.decision_reason,
                         "matched_keywords": job.matched_keywords,

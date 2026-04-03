@@ -54,6 +54,13 @@ class GenericAdapter(BaseAdapter):
         "customer", "product", "solution", "solutions", "technical", "finance", "financial",
         "governance", "integration", "integrations", "investor", "asset",
     }
+    CONTRACT_MARKERS = {
+        "contract", "contractor", "w2", "1099", "c2c", "corp-to-corp", "hourly", "/contract/"
+    }
+    CONTRACT_SOURCE_NOISE = {
+        "jobs directory", "work at dice", "browse jobs", "specialties",
+        "project / program management project / program management",
+    }
 
     def scrape(self, company_config: Dict[str, Any]) -> List[Job]:
         careers_url = company_config.get("careers_url")
@@ -76,7 +83,7 @@ class GenericAdapter(BaseAdapter):
                 for anchor in soup.find_all("a", href=True):
                     href = anchor["href"]
                     title = self._extract_link_text(anchor)
-                    if not self._is_probable_job_link(title, href):
+                    if not self._is_probable_job_link(title, href, company_config):
                         continue
 
                     full_url = urljoin(url, href)
@@ -98,6 +105,7 @@ class GenericAdapter(BaseAdapter):
                             adapter="generic",
                             tier=str(company_config.get("tier", 4)),
                             description_excerpt=title,
+                            work_type="w2_contract" if company_config.get("contractor_source") else "",
                         )
                     )
             except Exception:
@@ -125,11 +133,16 @@ class GenericAdapter(BaseAdapter):
                 parts.append(nearby)
 
         combined = " ".join(part for part in parts if part)
-        return re.sub(r"\s+", " ", combined).strip()
+        combined = re.sub(r"\bview details for\b", "", combined, flags=re.IGNORECASE)
+        combined = re.sub(r"\s+", " ", combined).strip(" -:\u2014")
+        return combined
 
-    def _is_probable_job_link(self, title: str, href: str) -> bool:
+    def _is_probable_job_link(self, title: str, href: str, company_config: Dict[str, Any] | None = None) -> bool:
         title_l = title.lower()
         href_l = href.lower()
+        if company_config and company_config.get("contractor_source"):
+            if not self._is_probable_contractor_link(title_l, href_l):
+                return False
 
         title_blacklist = [
             "pricing", "feature", "blog", "press",
@@ -159,6 +172,22 @@ class GenericAdapter(BaseAdapter):
             return False
 
         return self._looks_like_job_title(title_l)
+
+    def _is_probable_contractor_link(self, title: str, href: str) -> bool:
+        if any(noise in title for noise in self.CONTRACT_SOURCE_NOISE):
+            return False
+        if "browse-jobs" in href or "?specialties=" in href or "specialties=" in href:
+            return False
+        if href.count("/") <= 3 and "/job-detail/" not in href:
+            return False
+        if "/job-detail/" in href:
+            return True
+        if "motionrecruitment.com" in href:
+            if "/tech-jobs/" in href and re.search(r"/tech-jobs/[^/]+/contract/[^/]+/\d+$", href):
+                return True
+            return False
+        has_contract_marker = any(marker in title or marker in href for marker in self.CONTRACT_MARKERS)
+        return has_contract_marker and self._has_structured_job_path(href)
 
     def _has_structured_job_path(self, href: str) -> bool:
         tokens = [token for token in re.split(r"[/_\-?&=]+", href) if token]
