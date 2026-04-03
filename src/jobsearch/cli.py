@@ -1,6 +1,7 @@
 import subprocess
 import sys
 import time
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 if __package__ in (None, ""):
@@ -41,6 +42,69 @@ def _merge_company_lists(*lists):
     return merged
 
 
+def _parse_iso_datetime(value):
+    if not value:
+        return None
+    try:
+        text = str(value).strip().replace("Z", "+00:00")
+        parsed = datetime.fromisoformat(text)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc)
+    except Exception:
+        return None
+
+
+def _healer_cooldown_reason(company, now_utc: datetime) -> str | None:
+    if company.get("manual_only") or str(company.get("status", "")).lower() == "manual_only":
+        return "manual_only"
+    cooldown_until = _parse_iso_datetime(company.get("cooldown_until"))
+    if cooldown_until and cooldown_until > now_utc:
+        return f"cooldown until {cooldown_until.isoformat()}"
+    return None
+
+
+def _reset_heal_failure_state(company):
+    company["heal_failure_streak"] = 0
+    company.pop("cooldown_until", None)
+    company["manual_only_suggested"] = False
+    company.pop("heal_last_failure_detail", None)
+
+
+def _priority_is_high(company) -> bool:
+    priority = str(company.get("priority", "")).lower()
+    try:
+        tier = int(company.get("tier") or 4)
+    except Exception:
+        tier = 4
+    return priority == "high" or tier <= 2
+
+
+def _apply_heal_failure_policy(company, result_status: str, detail: str, now_utc: datetime) -> tuple[bool, str]:
+    streak = int(company.get("heal_failure_streak") or 0) + 1
+    company["heal_failure_streak"] = streak
+    company["heal_last_failure_detail"] = detail
+    company["manual_only_suggested"] = streak >= 3
+
+    if result_status == "BLOCKED":
+        cooldown_days = 7 if streak >= 2 else 2
+    else:
+        cooldown_days = 3 if streak >= 2 else 1
+    company["cooldown_until"] = (now_utc + timedelta(days=cooldown_days)).isoformat()
+
+    promoted = False
+    extra_detail = detail
+    if streak >= 5 and not _priority_is_high(company):
+        company["manual_only"] = True
+        company["active"] = False
+        company["status"] = "manual_only"
+        promoted = True
+        extra_detail = f"{detail} | Auto-marked manual_only after repeated failures"
+    elif result_status not in ("FOUND", "FALLBACK", "VALID"):
+        company["status"] = "broken"
+    return promoted, extra_detail
+
+
 @click.group()
 def main():
     """JobSearch CLI: manage the job search pipeline."""
@@ -65,7 +129,18 @@ def heal(heal_all, force, deep, workers, deep_timeout):
         data = yaml.safe_load(handle) or {}
 
     companies = data.get("companies", [])
-    to_heal = [company for company in companies if heal_all or force or company.get("status") != "active"]
+    now_utc = datetime.now(timezone.utc)
+    to_heal = []
+    skipped = []
+    for company in companies:
+        if not (heal_all or force or company.get("status") != "active"):
+            continue
+        if not force:
+            skip_reason = _healer_cooldown_reason(company, now_utc)
+            if skip_reason:
+                skipped.append((company.get("name", "Unknown"), skip_reason))
+                continue
+        to_heal.append(company)
     if not to_heal:
         click.echo("Done. No companies need healing.")
         return
@@ -74,7 +149,6 @@ def heal(heal_all, force, deep, workers, deep_timeout):
 
     import threading
     from concurrent.futures import ThreadPoolExecutor
-    from datetime import datetime
 
     log_path = settings.results_dir / "ats_heal.log"
     rotate_log_file(log_path)
@@ -91,6 +165,7 @@ def heal(heal_all, force, deep, workers, deep_timeout):
         "status_counts": {},
         "company_times": [],
         "slowest": [],
+        "skipped": len(skipped),
     }
 
     def log_msg(message: str):
@@ -105,6 +180,8 @@ def heal(heal_all, force, deep, workers, deep_timeout):
         f"Heal run start | all={heal_all} force={force} deep={deep} "
         f"workers={workers} deep_timeout_s={deep_timeout}"
     )
+    for name, reason in skipped:
+        log_msg(f"  SKIP {name}: {reason}")
 
     def heal_one(company):
         nonlocal changed_count
@@ -119,6 +196,7 @@ def heal(heal_all, force, deep, workers, deep_timeout):
 
         with lock:
             before = dict(company)
+            transitioned_manual = False
             if result.status in ("FOUND", "FALLBACK"):
                 company["adapter"] = result.adapter or company.get("adapter")
                 if result.adapter_key:
@@ -127,10 +205,28 @@ def heal(heal_all, force, deep, workers, deep_timeout):
                     company.pop("adapter_key", None)
                 company["careers_url"] = result.careers_url or company.get("careers_url")
                 company["status"] = "active"
+                company["active"] = True
+                company["manual_only"] = False
+                _reset_heal_failure_state(company)
             elif result.status == "VALID":
                 company["status"] = "active"
+                company["active"] = True
+                if not company.get("manual_only"):
+                    _reset_heal_failure_state(company)
             else:
-                company["status"] = "broken"
+                transitioned_manual, detail_override = _apply_heal_failure_policy(
+                    company,
+                    result.status,
+                    result.detail,
+                    datetime.now(timezone.utc),
+                )
+                result = type(result)(
+                    adapter=result.adapter,
+                    adapter_key=result.adapter_key,
+                    careers_url=result.careers_url,
+                    status=result.status,
+                    detail=detail_override,
+                )
 
             company["discovery_method"] = result.detail
             company["last_healed"] = datetime.now().isoformat()
@@ -149,7 +245,8 @@ def heal(heal_all, force, deep, workers, deep_timeout):
             elif result.status == "VALID":
                 log_msg(f"  OK {name}: existing URL confirmed | elapsed_ms={elapsed_ms}")
             else:
-                log_msg(f"  FAIL {name}: {result.detail} | elapsed_ms={elapsed_ms}")
+                outcome = "PROMOTE" if transitioned_manual else "FAIL"
+                log_msg(f"  {outcome} {name}: {result.detail} | elapsed_ms={elapsed_ms}")
 
     try:
         with ThreadPoolExecutor(max_workers=workers) as executor:
@@ -172,7 +269,7 @@ def heal(heal_all, force, deep, workers, deep_timeout):
     ) or "none"
     log_msg(
         f"Heal summary | processed={metrics['processed']} changed={changed_count} "
-        f"elapsed_ms={total_elapsed_ms} avg_company_ms={avg_elapsed_ms} statuses=[{status_summary}]"
+        f"elapsed_ms={total_elapsed_ms} avg_company_ms={avg_elapsed_ms} skipped={metrics['skipped']} statuses=[{status_summary}]"
     )
     for elapsed_ms, name, status, adapter in metrics["slowest"]:
         log_msg(f"Heal slowest | company={name} status={status} adapter={adapter} elapsed_ms={elapsed_ms}")

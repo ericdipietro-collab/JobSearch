@@ -58,9 +58,12 @@ Source: "..\requirements.txt";     DestDir: "{app}"; Flags: ignoreversion
 Source: "..\pyproject.toml";       DestDir: "{app}"; Flags: ignoreversion
 Source: "..\src\*";                DestDir: "{app}\src";      Flags: ignoreversion recursesubdirs
 Source: "..\config\job_search_companies.yaml";         DestDir: "{app}\config"; Flags: ignoreversion onlyifdoesntexist
+Source: "..\config\job_search_companies_contract.yaml"; DestDir: "{app}\config"; Flags: ignoreversion onlyifdoesntexist skipifsourcedoesntexist
 Source: "..\config\job_search_preferences.example.yaml"; DestDir: "{app}\config"; Flags: ignoreversion
 ; Preferences only copied if not already present (preserves user edits on reinstall)
 Source: "..\config\job_search_preferences.example.yaml"; DestDir: "{app}\config"; DestName: "job_search_preferences.yaml"; Flags: onlyifdoesntexist
+Source: "..\README.md";            DestDir: "{app}\docs";     Flags: ignoreversion skipifsourcedoesntexist
+Source: "..\GETTING_STARTED.md";   DestDir: "{app}\docs";     Flags: ignoreversion skipifsourcedoesntexist
 Source: "..\deep_search\*";        DestDir: "{app}\deep_search"; Flags: ignoreversion recursesubdirs skipifsourcedoesntexist
 Source: "wheels\*";                DestDir: "{app}\installer\wheels"; Flags: ignoreversion recursesubdirs skipifsourcedoesntexist
 ; Installer icon (for uninstaller display)

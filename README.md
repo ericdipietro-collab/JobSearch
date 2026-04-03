@@ -149,6 +149,7 @@ python -m jobsearch.cli heal --deep --all
 ```
 
 These modes are slower, but they improve coverage on JS-rendered sites. Protected sites may still be routed to manual review.
+Repeated Heal ATS failures now enter a short cooldown automatically, and lower-priority targets can be suggested or promoted to `manual_only` after repeated failures.
 
 ## Data and Logs
 
@@ -210,6 +211,7 @@ If healing is slow:
 
 - inspect `results/ats_heal.log`
 - reduce workers or disable deep heal for maintenance runs
+- repeated failures now cool down automatically; review `manual_only` targets in `Target Companies` before forcing another broad heal run
 
 If a company goes stale:
 

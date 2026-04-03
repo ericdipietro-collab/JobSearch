@@ -45,12 +45,16 @@ The active tabs are:
 - `JD Evaluation`
 - `Scoring & Rescue`
 - `Full YAML Editor`
+- `App Settings`
+- `Base Resume`
 
 Start by setting:
 
 - salary floor
 - location policy
 - title weights
+- Gmail settings if you want live inbox sync
+- your base resume text or uploaded resume file for gap analysis and tailoring
 
 ### Target Companies
 
@@ -61,6 +65,11 @@ The active tabs are:
 - `Heal ATS`
 - `YAML Editor`
 
+The page now supports both:
+
+- `Primary ATS Registry`
+- `Contractor Registry`
+
 Use `Add / Edit` to add or update companies. For each company you usually want:
 
 - `name`
@@ -69,6 +78,8 @@ Use `Add / Edit` to add or update companies. For each company you usually want:
 - `adapter`
 - `adapter_key` when known
 - `tier`
+
+Use `manual_only` for targets you want to keep in the registry but skip in scraping runs.
 
 ### Run Job Search
 
@@ -90,6 +101,24 @@ To combine your normal ATS targets with contractor sources in one run, keep the 
 
 Use `My Applications` to track the pipeline once jobs are saved into the database.
 
+Current workflow highlights:
+
+- live Gmail inbox sync for missed applications, rejections, and interview requests
+- follow-up reminders with quick snooze / sent actions
+- offer comparison and negotiation worksheet
+- interview debrief capture
+- resume tailoring per application from the stored base resume
+- question bank linked to companies and applications
+
+### Analytics
+
+Key analytics currently available:
+
+- resume keyword gap analysis
+- rejection pattern intelligence
+- interview signal / debrief trends
+- pipeline and score analysis
+
 ## Deep Search / Deep Heal
 
 These are optional and slower than the standard static flow.
@@ -103,6 +132,7 @@ Use:
 
 - `Run Job Search` + Deep Search for JavaScript-heavy careers pages
 - `Target Companies` + Heal ATS + Deep for ATS rediscovery and rendered-board detection
+- repeated Heal ATS failures now enter a short cooldown automatically; lower-priority targets can be suggested or promoted to `manual_only` after repeated failures
 
 CLI equivalents:
 
@@ -123,6 +153,13 @@ Your data is local.
 - Personal preferences: `config/job_search_preferences.yaml`
 - Company registry: `config/job_search_companies.yaml`
 - Contractor registry: `config/job_search_companies_contract.yaml`
+
+Additional state stored in the database:
+
+- app settings
+- Gmail sync settings
+- base resume text
+- email signals and interview extraction
 
 To back up the app state, copy:
 
@@ -147,5 +184,16 @@ If a scrape or heal run behaves unexpectedly, inspect:
 - `results/ats_heal.log`
 - `results/job_search_manual_review.txt`
 - `results/job_search_v6_rejected.csv`
+
+If Gmail sync says authentication failed:
+
+- enable 2-Step Verification on the Google account
+- create a Google App Password at `https://myaccount.google.com/apppasswords`
+- save the Gmail address and App Password in `Search Settings -> App Settings`
+
+If resume gap analysis or tailoring is empty:
+
+- upload or paste your master resume in `Search Settings -> Base Resume`
+- make sure the jobs you want to analyze have recent scraper data
 
 If Python is not found on manual install, reinstall Python and make sure it is added to `PATH`.

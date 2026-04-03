@@ -79,6 +79,12 @@ if not exist "config\job_search_preferences.yaml" (
         echo  Done.  Open Search Settings in the app to customise salary and location.
     )
 )
+if not exist "config\job_search_companies_contract.yaml" (
+    if exist "config\job_search_companies_contract_test.yaml" (
+        echo  Copying contractor registry to config\job_search_companies_contract.yaml ...
+        copy /y "config\job_search_companies_contract_test.yaml" "config\job_search_companies_contract.yaml" >nul
+    )
+)
 
 REM ── Create virtual environment on first run ───────────────────────────────────
 if not exist ".venv\Scripts\activate.bat" (

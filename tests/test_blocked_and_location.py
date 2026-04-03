@@ -1,6 +1,6 @@
 import sys
 import unittest
-from datetime import date
+from datetime import date, datetime, timezone
 from email.message import EmailMessage
 from pathlib import Path
 import sqlite3
@@ -20,6 +20,12 @@ from jobsearch.services.email_signal_service import (
     classify_email_signal,
     infer_interview_type,
     signal_resolution_for_existing_application,
+)
+from jobsearch.cli import (
+    _apply_heal_failure_policy,
+    _healer_cooldown_reason,
+    _parse_iso_datetime,
+    _reset_heal_failure_state,
 )
 from jobsearch.services.gmail_sync_service import _parse_imap_message
 from jobsearch.services.opportunity_service import _is_material_jd_change, _jd_fingerprint
@@ -90,6 +96,60 @@ class _FakeDiceAdapter(DiceAdapter):
 
 
 class BlockedAndLocationTests(unittest.TestCase):
+    def test_heal_cooldown_parser_normalizes_naive_datetime_to_utc(self):
+        parsed = _parse_iso_datetime("2026-04-03T12:00:00")
+        self.assertIsNotNone(parsed)
+        self.assertEqual(parsed.tzinfo, timezone.utc)
+
+    def test_heal_failure_policy_sets_cooldown_and_suggests_manual_only(self):
+        company = {"name": "Low Priority Co", "priority": "low", "tier": 4}
+        promoted = False
+        detail = "No board detected"
+        now_utc = datetime(2026, 4, 3, 12, 0, tzinfo=timezone.utc)
+        for _ in range(3):
+            promoted, detail = _apply_heal_failure_policy(company, "NOT_FOUND", detail, now_utc)
+        self.assertFalse(promoted)
+        self.assertTrue(company["manual_only_suggested"])
+        self.assertEqual(company["status"], "broken")
+        self.assertIsNotNone(_healer_cooldown_reason(company, now_utc))
+
+    def test_heal_failure_policy_promotes_low_priority_company_to_manual_only(self):
+        company = {"name": "Low Priority Co", "priority": "low", "tier": 4, "active": True}
+        promoted = False
+        detail = "Blocked by site protection"
+        now_utc = datetime(2026, 4, 3, 12, 0, tzinfo=timezone.utc)
+        for _ in range(5):
+            promoted, detail = _apply_heal_failure_policy(company, "BLOCKED", detail, now_utc)
+        self.assertTrue(promoted)
+        self.assertTrue(company["manual_only"])
+        self.assertFalse(company["active"])
+        self.assertEqual(company["status"], "manual_only")
+        self.assertIn("manual_only", detail)
+
+    def test_heal_failure_policy_does_not_promote_high_priority_company(self):
+        company = {"name": "High Priority Co", "priority": "high", "tier": 1, "active": True}
+        promoted = False
+        detail = "Blocked by site protection"
+        now_utc = datetime(2026, 4, 3, 12, 0, tzinfo=timezone.utc)
+        for _ in range(5):
+            promoted, detail = _apply_heal_failure_policy(company, "BLOCKED", detail, now_utc)
+        self.assertFalse(promoted)
+        self.assertNotEqual(company.get("status"), "manual_only")
+        self.assertTrue(company["manual_only_suggested"])
+
+    def test_heal_failure_state_resets_after_success(self):
+        company = {
+            "heal_failure_streak": 4,
+            "cooldown_until": "2026-04-10T12:00:00+00:00",
+            "manual_only_suggested": True,
+            "heal_last_failure_detail": "Blocked",
+        }
+        _reset_heal_failure_state(company)
+        self.assertEqual(company["heal_failure_streak"], 0)
+        self.assertFalse(company["manual_only_suggested"])
+        self.assertNotIn("cooldown_until", company)
+        self.assertNotIn("heal_last_failure_detail", company)
+
     def test_tracker_summary_excludes_scraper_only_considering_rows(self):
         rows = [
             {"status": "considering"},
