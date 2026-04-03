@@ -32,7 +32,7 @@ class WorkdayAdapter(BaseAdapter):
         if jobs:
             return jobs
 
-        return self._scrape_html_fallback(company_config, careers_url or f"https://{adapter_key}")
+        return self._scrape_html_fallback(company_config, careers_url or f"https://{adapter_key}", self._candidate_contexts(careers_url, adapter_key))
 
     def _candidate_contexts(self, careers_url: str, adapter_key: str) -> List[Tuple[str, str, str]]:
         contexts: List[Tuple[str, str, str]] = []
@@ -79,7 +79,7 @@ class WorkdayAdapter(BaseAdapter):
                 logger.debug("Workday listing failed for %s: %s", endpoint, exc)
                 break
 
-            postings = data.get("jobPostings") if isinstance(data, dict) else None
+            postings = self._extract_postings(data)
             if not isinstance(postings, list) or not postings:
                 break
 
@@ -93,8 +93,12 @@ class WorkdayAdapter(BaseAdapter):
                 if self.scorer and self.scorer.is_disqualified(title):
                     continue
 
-                location = raw.get("locationsText") or raw.get("location") or ""
+                location = raw.get("locationsText") or raw.get("location") or raw.get("bulletFields") or ""
+                if isinstance(location, list):
+                    location = ", ".join(str(item) for item in location if item)
                 external_path = (raw.get("externalPath") or "").lstrip("/")
+                if not external_path:
+                    external_path = (raw.get("externalUrl") or raw.get("url") or "").lstrip("/")
                 if external_path.startswith("job/"):
                     external_path = external_path[4:]
                 if not external_path:
@@ -173,50 +177,86 @@ class WorkdayAdapter(BaseAdapter):
             raise last_error
         raise RuntimeError(f"Workday listing returned no usable payload for {endpoint}")
 
-    def _scrape_html_fallback(self, company_config: Dict[str, Any], careers_url: str) -> List[Job]:
+    def _extract_postings(self, data: Dict[str, Any] | None) -> List[Dict[str, Any]] | None:
+        if not isinstance(data, dict):
+            return None
+        if isinstance(data.get("jobPostings"), list):
+            return data.get("jobPostings")
+        if isinstance(data.get("jobs"), list):
+            return data.get("jobs")
+        if isinstance(data.get("content"), list):
+            return data.get("content")
+        body = data.get("body")
+        if isinstance(body, dict):
+            if isinstance(body.get("jobPostings"), list):
+                return body.get("jobPostings")
+            if isinstance(body.get("jobs"), list):
+                return body.get("jobs")
+        data_block = data.get("data")
+        if isinstance(data_block, dict):
+            if isinstance(data_block.get("jobPostings"), list):
+                return data_block.get("jobPostings")
+            if isinstance(data_block.get("jobs"), list):
+                return data_block.get("jobs")
+        return None
+
+    def _scrape_html_fallback(
+        self,
+        company_config: Dict[str, Any],
+        careers_url: str,
+        contexts: List[Tuple[str, str, str]],
+    ) -> List[Job]:
         if not careers_url:
             return []
-
-        try:
-            html = self.fetch_text(careers_url)
-        except Exception:
-            return []
-
-        soup = BeautifulSoup(html, "html.parser")
         company_name = company_config.get("name", "Unknown")
         jobs: List[Job] = []
         seen_urls = set()
-
-        for anchor in soup.find_all("a", href=True):
-            href = anchor["href"]
-            full_url = urljoin(careers_url, href)
-            if full_url in seen_urls:
-                continue
-            if "myworkdayjobs.com" not in full_url.lower():
-                continue
-            if "/job/" not in full_url.lower():
-                continue
-
-            title = self._extract_title(anchor)
-            if not title:
-                continue
-
-            seen_urls.add(full_url)
-            job_id = hashlib.md5(f"{company_name}{title}{full_url}".encode()).hexdigest()
-            jobs.append(
-                Job(
-                    id=job_id,
-                    company=company_name,
-                    role_title_raw=title,
-                    location="",
-                    url=full_url,
-                    source="Workday HTML",
-                    adapter="workday",
-                    tier=str(company_config.get("tier", 4)),
-                    description_excerpt=title,
-                )
+        candidate_urls = [careers_url]
+        for host, _tenant, site in contexts:
+            candidate_urls.extend(
+                [
+                    f"https://{host}/{site}",
+                    f"https://{host}/en-US/{site}",
+                    f"https://{host}/en-US/{site}/jobs",
+                ]
             )
+        for url in dict.fromkeys(candidate_urls):
+            try:
+                html = self.fetch_text(url)
+            except Exception:
+                continue
+            soup = BeautifulSoup(html, "html.parser")
+            for anchor in soup.find_all("a", href=True):
+                href = anchor["href"]
+                full_url = urljoin(url, href)
+                if full_url in seen_urls:
+                    continue
+                if "myworkdayjobs.com" not in full_url.lower():
+                    continue
+                if "/job/" not in full_url.lower():
+                    continue
 
+                title = self._extract_title(anchor)
+                if not title:
+                    continue
+
+                seen_urls.add(full_url)
+                job_id = hashlib.md5(f"{company_name}{title}{full_url}".encode()).hexdigest()
+                jobs.append(
+                    Job(
+                        id=job_id,
+                        company=company_name,
+                        role_title_raw=title,
+                        location="",
+                        url=full_url,
+                        source="Workday HTML",
+                        adapter="workday",
+                        tier=str(company_config.get("tier", 4)),
+                        description_excerpt=title,
+                    )
+                )
+            if jobs:
+                break
         return jobs
 
     def _extract_title(self, anchor) -> str:

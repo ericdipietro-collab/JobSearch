@@ -93,7 +93,7 @@ EVENT_TYPES = [
 INTERVIEW_TYPES = ["phone_screen", "video", "onsite", "panel", "take_home", "final"]
 INTERVIEW_FORMATS = ["behavioral", "technical", "case_study", "mixed", "other"]
 CONTACT_ROLES = ["recruiter", "hiring_manager", "interviewer", "referral", "network_contact", "other"]
-OUTCOME_OPTIONS = ["pending", "passed", "failed"]
+OUTCOME_OPTIONS = ["pending", "passed", "failed", "cancelled"]
 NETWORK_RELATIONSHIPS = ["former_colleague", "recruiter", "mentor", "referral", "friend", "other"]
 QUESTION_CATEGORIES = ["behavioral", "situational", "leadership", "role-specific", "technical", "other"]
 
@@ -131,6 +131,7 @@ REPORTABLE_EVENT_TYPES = {
 
 EMAIL_SIGNAL_TYPES = ["new_application", "rejection", "interview_request"]
 EMAIL_SIGNAL_STATUSES = ["new", "resolved", "ignored"]
+INTERVIEW_CHANGE_TYPES = ["scheduled", "rescheduled", "cancelled"]
 
 _COMPANY_STOPWORDS = {
     "inc",
@@ -507,9 +508,20 @@ def init_db(conn: sqlite3.Connection) -> None:
             notes TEXT,
             raw_excerpt TEXT,
             interview_scheduled_at TEXT,
+            interview_change_type TEXT,
             interviewer_names TEXT,
             interview_location TEXT,
             interview_duration_mins INTEGER,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS resume_variants (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            application_id INTEGER NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
+            variant_name TEXT NOT NULL,
+            source_resume_name TEXT,
+            content TEXT,
+            notes TEXT,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
@@ -617,6 +629,7 @@ def init_db(conn: sqlite3.Connection) -> None:
         "email_signals",
         {
             "interview_scheduled_at": "TEXT",
+            "interview_change_type": "TEXT",
             "interviewer_names": "TEXT",
             "interview_location": "TEXT",
             "interview_duration_mins": "INTEGER",
@@ -650,6 +663,7 @@ def init_db(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX IF NOT EXISTS idx_apps_status ON applications(status)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_job_observations_app_seen ON job_observations(application_id, seen_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_email_signals_status ON email_signals(signal_status, signal_type)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_resume_variants_application ON resume_variants(application_id, updated_at DESC)")
     seed_default_templates(conn)
     seed_default_questions(conn)
     conn.commit()
@@ -749,6 +763,53 @@ def get_applications(
         """,
         params,
     ).fetchall()
+
+
+def add_resume_variant(
+    conn: sqlite3.Connection,
+    application_id: int,
+    *,
+    variant_name: str,
+    source_resume_name: Optional[str] = None,
+    content: Optional[str] = None,
+    notes: Optional[str] = None,
+) -> int:
+    now = _now()
+    cur = conn.execute(
+        """
+        INSERT INTO resume_variants (
+            application_id, variant_name, source_resume_name, content, notes, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        (application_id, variant_name, source_resume_name, content, notes, now, now),
+    )
+    conn.commit()
+    return cur.lastrowid
+
+
+def update_resume_variant(conn: sqlite3.Connection, variant_id: int, **kwargs) -> None:
+    if not kwargs:
+        return
+    kwargs["updated_at"] = _now()
+    sets = ", ".join(f"{k} = ?" for k in kwargs)
+    conn.execute(f"UPDATE resume_variants SET {sets} WHERE id = ?", [*kwargs.values(), variant_id])
+    conn.commit()
+
+
+def get_resume_variants(conn: sqlite3.Connection, application_id: int) -> List[sqlite3.Row]:
+    return conn.execute(
+        "SELECT * FROM resume_variants WHERE application_id = ? ORDER BY updated_at DESC, id DESC",
+        (application_id,),
+    ).fetchall()
+
+
+def get_resume_variant(conn: sqlite3.Connection, variant_id: int) -> Optional[sqlite3.Row]:
+    return conn.execute("SELECT * FROM resume_variants WHERE id = ?", (variant_id,)).fetchone()
+
+
+def delete_resume_variant(conn: sqlite3.Connection, variant_id: int) -> None:
+    conn.execute("DELETE FROM resume_variants WHERE id = ?", (variant_id,))
+    conn.commit()
 
 
 def delete_application(conn: sqlite3.Connection, app_id: int) -> None:
@@ -1320,6 +1381,7 @@ def upsert_email_signal(
     notes: Optional[str] = None,
     raw_excerpt: Optional[str] = None,
     interview_scheduled_at: Optional[str] = None,
+    interview_change_type: Optional[str] = None,
     interviewer_names: Optional[str] = None,
     interview_location: Optional[str] = None,
     interview_duration_mins: Optional[int] = None,
@@ -1339,6 +1401,7 @@ def upsert_email_signal(
         "notes": notes,
         "raw_excerpt": raw_excerpt,
         "interview_scheduled_at": interview_scheduled_at,
+        "interview_change_type": interview_change_type,
         "interviewer_names": interviewer_names,
         "interview_location": interview_location,
         "interview_duration_mins": interview_duration_mins,
@@ -1356,9 +1419,9 @@ def upsert_email_signal(
         """
         INSERT INTO email_signals (
             message_id, thread_id, sender, subject, received_at, signal_type, company, role,
-            application_id, signal_status, notes, raw_excerpt, interview_scheduled_at,
+            application_id, signal_status, notes, raw_excerpt, interview_scheduled_at, interview_change_type,
             interviewer_names, interview_location, interview_duration_mins, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             message_id,
@@ -1374,6 +1437,7 @@ def upsert_email_signal(
             notes,
             raw_excerpt,
             interview_scheduled_at,
+            interview_change_type,
             interviewer_names,
             interview_location,
             interview_duration_mins,

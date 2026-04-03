@@ -20,6 +20,7 @@ from jobsearch.scraper.adapters.generic import GenericAdapter
 from jobsearch.scraper.scoring import Scorer
 from jobsearch.services.email_signal_service import (
     classify_email_signal,
+    infer_interview_change_type,
     infer_interview_type,
     signal_resolution_for_existing_application,
 )
@@ -400,6 +401,26 @@ class BlockedAndLocationTests(unittest.TestCase):
         self.assertEqual(result["compensation_unit"], "hourly")
         self.assertAlmostEqual(result["hourly_rate"], 100.0)
         self.assertAlmostEqual(result["normalized_compensation_usd"], 194000.0)
+
+    def test_work_type_inference_handles_part_time_temp_and_internship(self):
+        prefs = {
+            "search": {
+                "geography": {"us_only": False, "allow_international_remote": True},
+                "compensation": {"min_salary_usd": 100000, "target_salary_usd": 100000, "allow_missing_salary": True},
+                "contractor": {
+                    "include_contract_roles": True,
+                    "allow_w2_hourly": True,
+                    "allow_1099_hourly": True,
+                },
+            },
+            "titles": {"positive_weights": {"product manager": 8}},
+            "keywords": {},
+            "scoring": {"minimum_score_to_keep": 35},
+        }
+        scorer = Scorer(prefs)
+        self.assertEqual(scorer.score_job({"title": "Product Manager Intern", "description": "", "location": "Remote"})["work_type"], "internship")
+        self.assertEqual(scorer.score_job({"title": "Part-Time Product Manager", "description": "", "location": "Remote"})["work_type"], "part_time")
+        self.assertEqual(scorer.score_job({"title": "Product Manager", "description": "Temporary assignment", "location": "Remote"})["work_type"], "temporary")
 
     def test_1099_hourly_applies_overhead_and_benefits(self):
         prefs = {
@@ -1064,6 +1085,29 @@ class BlockedAndLocationTests(unittest.TestCase):
         self.assertEqual(matched["round_number"], 2)
         conn.close()
 
+    def test_resume_variants_persist_per_application(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        db.init_db(conn)
+        app_id = db.add_application(conn, company="Advisor360", role="Enterprise Solutions Architect", status="applied")
+        variant_id = db.add_resume_variant(
+            conn,
+            app_id,
+            variant_name="Advisor360 tailored",
+            source_resume_name="Master Resume",
+            content="# Variant",
+            notes="Lean into capital markets",
+        )
+        rows = db.get_resume_variants(conn, app_id)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["id"], variant_id)
+        db.update_resume_variant(conn, variant_id, notes="Updated note")
+        updated = db.get_resume_variant(conn, variant_id)
+        self.assertEqual(updated["notes"], "Updated note")
+        db.delete_resume_variant(conn, variant_id)
+        self.assertEqual(db.get_resume_variants(conn, app_id), [])
+        conn.close()
+
     def test_jd_change_detection_flags_material_excerpt_changes(self):
         original = "Build product roadmap for data integrations, API strategy, and platform governance."
         changed = "Lead enterprise architecture for custody conversion, managed accounts, and operating model redesign."
@@ -1228,6 +1272,30 @@ class BlockedAndLocationTests(unittest.TestCase):
         )
         signal_status, _ = signal_resolution_for_existing_application("interview_request", matched["status"])
         self.assertEqual(signal_status, "new")
+
+    def test_interview_change_type_detects_reschedule_and_cancel(self):
+        self.assertEqual(
+            infer_interview_change_type("Interview confirmation", "Your interview has been rescheduled to Monday at 11am"),
+            "rescheduled",
+        )
+        self.assertEqual(
+            infer_interview_change_type("Interview confirmation", "Your interview has been canceled."),
+            "cancelled",
+        )
+
+    def test_classify_email_signal_marks_interview_cancellation(self):
+        signal = classify_email_signal(
+            message_id="msg-cancel",
+            thread_id=None,
+            sender="David Korbel <mail@ats.rippling.com>",
+            subject="[Advisor360] Interview confirmation",
+            body="Your interview has been cancelled. Monday, April 6, 2026 at 11:00 AM MDT",
+            received_at="Thu, 02 Apr 2026 19:40:39 +0000 (UTC)",
+            known_companies=["Advisor360"],
+        )
+        self.assertIsNotNone(signal)
+        self.assertEqual(signal["signal_type"], "interview_request")
+        self.assertEqual(signal["interview_change_type"], "cancelled")
 
     def test_email_signal_company_match_tolerates_name_suffixes(self):
         conn = sqlite3.connect(":memory:")

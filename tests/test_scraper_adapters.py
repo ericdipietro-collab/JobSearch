@@ -70,6 +70,19 @@ class _FakeRipplingAdapter(RipplingAdapter):
         return self.html
 
 
+class _FakeWorkdayAdapter(WorkdayAdapter):
+    def __init__(self, payload=None, html_by_url=None):
+        super().__init__(session=None, scorer=None)
+        self.payload = payload or {}
+        self.html_by_url = html_by_url or {}
+
+    def fetch_json_post(self, url: str, payload, referer=None):
+        return self.payload
+
+    def fetch_text(self, url: str) -> str:
+        return self.html_by_url.get(url, "")
+
+
 class ScraperAdapterRegressionTests(unittest.TestCase):
     def test_engine_maps_adapter_aliases(self):
         self.assertIn("workday_manual", ScraperEngine.ADAPTER_MAP)
@@ -130,6 +143,30 @@ class ScraperAdapterRegressionTests(unittest.TestCase):
         self.assertEqual(contexts[0][0], "alignmenthealthcare.wd12.myworkdayjobs.com")
         self.assertEqual(contexts[0][1], "alignmenthealthcare")
         self.assertEqual(contexts[0][2], "Careers")
+
+    def test_workday_extract_postings_supports_nested_payload_shapes(self):
+        adapter = WorkdayAdapter(session=None, scorer=None)
+        postings = adapter._extract_postings({"data": {"jobPostings": [{"title": "Architect"}]}})
+        self.assertEqual(len(postings), 1)
+
+    def test_workday_html_fallback_checks_candidate_urls(self):
+        adapter = _FakeWorkdayAdapter(
+            payload={},
+            html_by_url={
+                "https://example.wd1.myworkdayjobs.com/en-US/Careers": """
+                <html><body>
+                  <a href="/en-US/Careers/job/Senior-Architect_R123">Senior Architect</a>
+                </body></html>
+                """
+            },
+        )
+        jobs = adapter._scrape_html_fallback(
+            {"name": "ExampleCo", "tier": 2},
+            "https://example.wd1.myworkdayjobs.com/External",
+            [("example.wd1.myworkdayjobs.com", "example", "Careers")],
+        )
+        self.assertEqual(len(jobs), 1)
+        self.assertIn("/job/", jobs[0].url)
 
     def test_smartrecruiters_adapter_builds_public_job_url(self):
         payload = {

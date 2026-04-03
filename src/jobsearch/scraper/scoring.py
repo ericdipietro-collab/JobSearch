@@ -204,11 +204,19 @@ class Scorer:
                 self.clean(job_data.get("salary_text")),
             ]
         ).lower()
+        if any(marker in blob for marker in ["intern", "internship", "co-op", "co op"]):
+            return "internship"
+        if any(marker in blob for marker in ["part-time", "part time"]):
+            return "part_time"
+        if any(marker in blob for marker in ["temporary", "temp-to-hire", "temp to hire", "seasonal"]):
+            return "temporary"
+        if any(marker in blob for marker in ["full-time", "full time", "permanent", "regular full time"]):
+            return "fte"
         if any(marker in blob for marker in ["1099", "independent contractor", "self employed", "self-employed"]):
             return "1099_contract"
         if any(marker in blob for marker in ["c2c", "corp-to-corp", "corp to corp", "contract-to-hire", "contract to hire"]):
             return "c2c_contract"
-        if any(marker in blob for marker in ["w2", "w-2", "hourly contract", "contract role", "contract position", "contract opportunity"]):
+        if any(marker in blob for marker in ["w2", "w-2", "hourly contract", "contract role", "contract position", "contract opportunity", "contract assignment", "contractor role"]):
             return "w2_contract"
         if "hourly" in blob:
             return "w2_contract"

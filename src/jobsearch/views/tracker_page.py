@@ -40,6 +40,9 @@ WORK_TYPE_LABELS = {
     "w2_contract": "W2 hourly",
     "1099_contract": "1099 hourly",
     "c2c_contract": "Corp-to-corp hourly",
+    "part_time": "Part-time",
+    "temporary": "Temporary",
+    "internship": "Internship",
 }
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -227,6 +230,27 @@ def _tailored_resume_summary(app: dict, base_resume: dict) -> str:
     if _record_get(app, "jd_summary"):
         bullets.append("Use the JD summary to tighten the opening summary and top three bullets.")
     return "\n".join(f"- {bullet}" for bullet in bullets)
+
+
+def _default_resume_variant_name(app) -> str:
+    company = str(_record_get(app, "company") or "company").strip().replace(" ", "_")
+    role = str(_record_get(app, "role") or "role").strip().replace(" ", "_")
+    return f"{company}_{role}_tailored"
+
+
+def _build_resume_variant_content(app, base_resume: dict, tailored_keywords: str, tailored_notes: str, tailored_summary: str) -> str:
+    keywords = [kw.strip() for kw in str(tailored_keywords or "").splitlines() if kw.strip()]
+    keyword_block = "\n".join(f"- {keyword}" for keyword in keywords) or "- None captured"
+    notes_block = tailored_notes.strip() or "No additional tailoring notes yet."
+    base_text = str(base_resume.get("text") or "").strip() or "[Paste your resume body here]"
+    return (
+        f"# Resume Variant: {_record_get(app, 'company') or 'Company'} — {_record_get(app, 'role') or 'Role'}\n\n"
+        f"Source Resume: {base_resume.get('name') or 'Base Resume'}\n\n"
+        f"## Tailoring Brief\n{tailored_summary.strip() or 'No tailoring brief yet.'}\n\n"
+        f"## Keywords To Emphasize\n{keyword_block}\n\n"
+        f"## Tailoring Notes\n{notes_block}\n\n"
+        f"## Resume Draft\n{base_text}\n"
+    )
 
 
 def _offer_work_type_defaults(app) -> tuple[str, str, float, float]:
@@ -570,7 +594,10 @@ def _import_email_signals(conn, uploaded_file) -> int:
                 )
                 if existing_interview:
                     signal_status = "resolved"
-                    notes = "Matched existing interview."
+                    if signal.get("interview_change_type") == "cancelled":
+                        notes = "Matched existing interview for cancellation review."
+                    else:
+                        notes = "Matched existing interview."
             else:
                 signal_status, auto_note = signal_resolution_for_existing_application(signal["signal_type"], linked["status"])
                 notes = auto_note or notes
@@ -687,6 +714,34 @@ def _apply_email_signal_action(conn, signal, action: str) -> None:
         db.add_event(conn, app["id"], "conversation", received_day, title="Gmail-detected interview request", notes=signal["subject"])
         db.update_email_signal(conn, signal_id, signal_status="resolved")
         return
+    if action == "cancel_interview":
+        interview = db.find_matching_interview(
+            conn,
+            app["id"],
+            scheduled_at=signal["interview_scheduled_at"] or None,
+            interviewer_names=signal["interviewer_names"] or None,
+            location=signal["interview_location"] or None,
+        ) or db.find_reschedulable_interview(
+            conn,
+            app["id"],
+            scheduled_at=signal["interview_scheduled_at"] or None,
+            interviewer_names=signal["interviewer_names"] or None,
+            location=signal["interview_location"] or None,
+        )
+        if not interview:
+            db.update_email_signal(conn, signal_id, notes="No matching pending interview found", signal_status="new")
+            return
+        db.update_interview(conn, interview["id"], outcome="cancelled")
+        db.add_event(
+            conn,
+            app["id"],
+            "note",
+            received_day,
+            title="Gmail-detected interview cancellation",
+            notes=signal["subject"],
+        )
+        db.update_email_signal(conn, signal_id, signal_status="resolved", notes="Cancelled matching interview.")
+        return
     if action == "create_interview":
         if app["status"] not in ("interviewing", "offer", "accepted", "rejected", "withdrawn"):
             db.update_application(conn, app["id"], status="interviewing")
@@ -720,6 +775,7 @@ def _apply_email_signal_action(conn, signal, action: str) -> None:
                     signal["sender"],
                     signal["interview_location"],
                 ),
+                "outcome": "pending",
             }
             db.update_interview(conn, rescheduled["id"], **update_payload)
             db.add_event(
@@ -775,6 +831,8 @@ def _auto_resolve_existing_email_signals(conn) -> None:
                 location=signal["interview_location"] or None,
             )
             if existing_interview:
+                if str(signal["interview_change_type"] or "scheduled") == "cancelled" and str(existing_interview["outcome"] or "").lower() != "cancelled":
+                    continue
                 db.update_email_signal(
                     conn,
                     signal["id"],
@@ -810,6 +868,8 @@ def _render_email_signal_banner(conn) -> None:
                 )
                 if signal["signal_type"] == "interview_request":
                     details = []
+                    change_type = str(signal["interview_change_type"] or "scheduled").title()
+                    details.append(f"Change: {change_type}")
                     if signal["interview_scheduled_at"]:
                         details.append(f"When: {_fmt_dt(signal['interview_scheduled_at'])}")
                     if signal["interviewer_names"]:
@@ -830,10 +890,16 @@ def _render_email_signal_banner(conn) -> None:
                         _apply_email_signal_action(conn, signal, "mark_rejected")
                         st.rerun()
                 elif signal["signal_type"] == "interview_request":
-                    if signal["application_id"] and (
+                    change_type = str(signal["interview_change_type"] or "scheduled")
+                    if change_type == "cancelled" and signal["application_id"]:
+                        if c1.button("Cancel interview", key=f"email_interview_cancel_{signal['id']}"):
+                            _apply_email_signal_action(conn, signal, "cancel_interview")
+                            st.rerun()
+                    elif signal["application_id"] and (
                         signal["interview_scheduled_at"] or signal["interviewer_names"] or signal["interview_location"]
                     ):
-                        if c1.button("Create interview", key=f"email_interview_create_{signal['id']}"):
+                        button_label = "Update interview" if change_type == "rescheduled" else "Create interview"
+                        if c1.button(button_label, key=f"email_interview_create_{signal['id']}"):
                             _apply_email_signal_action(conn, signal, "create_interview")
                             st.rerun()
                     else:
@@ -1495,7 +1561,7 @@ def _render_interviews(conn, app) -> None:
         return
 
     for iv in interviews:
-        outcome_color = {"pending": "#f59e0b", "passed": "#10b981", "failed": "#ef4444"}.get(
+        outcome_color = {"pending": "#f59e0b", "passed": "#10b981", "failed": "#ef4444", "cancelled": "#6b7280"}.get(
             iv["outcome"] or "pending", "#6b7280"
         )
         st.markdown(
@@ -1713,6 +1779,81 @@ def _render_prep_tab(conn, app) -> None:
                 key=f"export_resume_tailor_{app['id']}",
                 use_container_width=True,
             )
+            st.markdown("**Saved Resume Variants**")
+            existing_variants = db.get_resume_variants(conn, app["id"])
+            variant_options = ["New variant"] + [
+                f"{row['id']}: {row['variant_name']}" for row in existing_variants
+            ]
+            selected_variant_label = st.selectbox(
+                "Choose Variant",
+                variant_options,
+                key=f"resume_variant_picker_{app['id']}",
+            )
+            selected_variant = None
+            if selected_variant_label != "New variant":
+                selected_id = int(selected_variant_label.split(":", 1)[0])
+                selected_variant = db.get_resume_variant(conn, selected_id)
+
+            default_variant_name = selected_variant["variant_name"] if selected_variant else _default_resume_variant_name(app)
+            default_variant_notes = selected_variant["notes"] if selected_variant else tailored_notes
+            default_variant_content = (
+                selected_variant["content"]
+                if selected_variant and selected_variant["content"]
+                else _build_resume_variant_content(app, base_resume, tailored_keywords, tailored_notes, tailored_summary)
+            )
+
+            variant_name = st.text_input(
+                "Variant Name",
+                value=default_variant_name,
+                key=f"resume_variant_name_{app['id']}",
+            )
+            variant_notes = st.text_area(
+                "Variant Notes",
+                value=default_variant_notes or "",
+                height=80,
+                key=f"resume_variant_notes_{app['id']}",
+            )
+            variant_content = st.text_area(
+                "Variant Content",
+                value=default_variant_content,
+                height=280,
+                key=f"resume_variant_content_{app['id']}",
+                help="This is the editable saved resume variant for this application.",
+            )
+            rv1, rv2, rv3 = st.columns(3)
+            if rv1.button("💾 Save Resume Variant", key=f"save_resume_variant_{app['id']}"):
+                if selected_variant:
+                    db.update_resume_variant(
+                        conn,
+                        selected_variant["id"],
+                        variant_name=variant_name.strip() or _default_resume_variant_name(app),
+                        source_resume_name=base_resume.get("name") or None,
+                        notes=variant_notes.strip() or None,
+                        content=variant_content.strip() or None,
+                    )
+                else:
+                    db.add_resume_variant(
+                        conn,
+                        app["id"],
+                        variant_name=variant_name.strip() or _default_resume_variant_name(app),
+                        source_resume_name=base_resume.get("name") or None,
+                        notes=variant_notes.strip() or None,
+                        content=variant_content.strip() or None,
+                    )
+                st.success("Resume variant saved.")
+                st.rerun()
+            rv2.download_button(
+                "⬇️ Export Resume Variant",
+                data=(variant_content or "").encode("utf-8"),
+                file_name=f"{(variant_name or _default_resume_variant_name(app)).replace(' ', '_')}.md",
+                mime="text/markdown",
+                key=f"export_resume_variant_{app['id']}",
+                use_container_width=True,
+            )
+            if selected_variant and rv3.button("🗑 Delete Variant", key=f"delete_resume_variant_{app['id']}"):
+                db.delete_resume_variant(conn, selected_variant["id"])
+                st.success("Resume variant deleted.")
+                st.rerun()
     with st.form(f"prep_form_{app['id']}"):
         prep_company = st.text_area(
             "Company Research",

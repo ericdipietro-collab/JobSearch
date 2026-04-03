@@ -163,7 +163,10 @@ def sync_gmail_email_signals(
                     )
                     if existing_interview:
                         signal_status = "resolved"
-                        notes = "Matched existing interview."
+                        if signal.get("interview_change_type") == "cancelled":
+                            notes = "Matched existing interview for cancellation review."
+                        else:
+                            notes = "Matched existing interview."
                 else:
                     signal_status, auto_note = signal_resolution_for_existing_application(signal["signal_type"], linked["status"])
                     notes = auto_note or notes

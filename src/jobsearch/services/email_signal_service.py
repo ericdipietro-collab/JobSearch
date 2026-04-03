@@ -40,6 +40,25 @@ INTERVIEW_PATTERNS = [
     "intro call",
 ]
 
+INTERVIEW_RESCHEDULE_PATTERNS = [
+    "rescheduled",
+    "reschedule",
+    "updated invitation",
+    "updated invite",
+    "new time",
+    "new interview time",
+    "moved to",
+]
+
+INTERVIEW_CANCELLATION_PATTERNS = [
+    "cancelled",
+    "canceled",
+    "interview has been canceled",
+    "interview has been cancelled",
+    "cancel this interview",
+    "cancellation",
+]
+
 MARKETING_PATTERNS = [
     "unsubscribe",
     "subscribe",
@@ -252,6 +271,15 @@ def infer_interview_type(subject: Optional[str], body: Optional[str], sender: Op
     return "mixed"
 
 
+def infer_interview_change_type(subject: Optional[str], body: Optional[str]) -> str:
+    text = _normalize_text(subject, body)
+    if any(pattern in text for pattern in INTERVIEW_CANCELLATION_PATTERNS):
+        return "cancelled"
+    if any(pattern in text for pattern in INTERVIEW_RESCHEDULE_PATTERNS):
+        return "rescheduled"
+    return "scheduled"
+
+
 def signal_resolution_for_existing_application(signal_type: str, linked_status: Optional[str]) -> tuple[str, Optional[str]]:
     status = str(linked_status or "").lower()
     if not status:
@@ -264,6 +292,8 @@ def signal_resolution_for_existing_application(signal_type: str, linked_status: 
 
 
 def _looks_like_interview_request(text: str, company: Optional[str]) -> bool:
+    if any(pattern in text for pattern in INTERVIEW_CANCELLATION_PATTERNS + INTERVIEW_RESCHEDULE_PATTERNS):
+        return True
     if any(pattern in text for pattern in INTERVIEW_PATTERNS):
         return True
     if any(pattern in text for pattern in MARKETING_PATTERNS):
@@ -320,12 +350,14 @@ def classify_email_signal(
 
     role = _extract_role(text)
     interview_scheduled_at = None
+    interview_change_type = None
     interviewer_names = None
     interview_location = None
     interview_duration_mins = None
     if signal_type == "interview_request":
         source_text = " ".join(part for part in [subject, body] if part)
         interview_scheduled_at = _extract_interview_datetime(source_text, received_at)
+        interview_change_type = infer_interview_change_type(subject, body)
         interviewer_names = _extract_interviewer_names(body or subject, sender)
         interview_location = _extract_meeting_location(body or "")
         interview_duration_mins = _extract_duration_mins(body or "")
@@ -344,6 +376,7 @@ def classify_email_signal(
         "role": role,
         "raw_excerpt": excerpt_source[:500],
         "interview_scheduled_at": interview_scheduled_at,
+        "interview_change_type": interview_change_type,
         "interviewer_names": interviewer_names,
         "interview_location": interview_location,
         "interview_duration_mins": interview_duration_mins,

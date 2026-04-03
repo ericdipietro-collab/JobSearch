@@ -48,6 +48,9 @@ WORK_TYPE_LABELS = {
     "w2_contract": "W2 hourly",
     "1099_contract": "1099 hourly",
     "c2c_contract": "Corp-to-corp",
+    "part_time": "Part-time",
+    "temporary": "Temporary",
+    "internship": "Internship",
     "contract": "Contract",
     "unknown": "Unknown",
 }
@@ -150,6 +153,12 @@ def _normalize_work_type(value: object) -> str:
         return "1099_contract"
     if "c2c" in text or "corp" in text:
         return "c2c_contract"
+    if "part" in text:
+        return "part_time"
+    if "temp" in text or "seasonal" in text:
+        return "temporary"
+    if "intern" in text or "co-op" in text:
+        return "internship"
     if "w2" in text or "contract" in text:
         return "w2_contract"
     if "full" in text or "fte" in text or "salary" in text:
