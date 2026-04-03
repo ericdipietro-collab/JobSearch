@@ -27,6 +27,8 @@ def render_company_profiles(conn) -> None:
             [
                 {
                     "Company": row["company"],
+                    "Leverage": row["leverage_band"],
+                    "Score": row["leverage_score"],
                     "Contacts": row["contacts"],
                     "Reached Out": row["reached_out"],
                     "Referrals": row["referrals"],
@@ -37,7 +39,7 @@ def render_company_profiles(conn) -> None:
             ]
         )
         st.dataframe(map_df, hide_index=True, use_container_width=True)
-        st.caption("Use this to see which target companies have warm contacts, referrals, and overdue networking follow-ups.")
+        st.caption("Use this to see where you have real leverage before applying: warm contacts, referrals, and follow-ups due.")
         st.divider()
 
     # ── Search + Add ───────────────────────────────────────────────────────────
@@ -90,11 +92,17 @@ def _render_profile_detail(conn, profile) -> None:
         st.markdown("  |  ".join(links))
 
     summary = db.get_network_summary_for_company(conn, profile["name"])
-    mc1, mc2, mc3, mc4 = st.columns(4)
-    mc1.metric("Contacts", summary["contacts"])
-    mc2.metric("Reached Out", summary["reached_out"])
-    mc3.metric("Referrals", summary["referrals"])
-    mc4.metric("Follow-up Due", summary["follow_up_due"])
+    mc1, mc2, mc3, mc4, mc5 = st.columns(5)
+    mc1.metric("Leverage", summary["leverage_band"])
+    mc2.metric("Score", summary["leverage_score"])
+    mc3.metric("Contacts", summary["contacts"])
+    mc4.metric("Referrals", summary["referrals"])
+    mc5.metric("Follow-up Due", summary["follow_up_due"])
+
+    if summary["contacts"] > 0 and summary["reached_out"] == 0:
+        st.info("You know people here but have not reached out yet. Warm outreach before applying may materially improve odds.")
+    elif summary["referrals"] > 0:
+        st.success("You have referral-level leverage here. Use it before or early in the application process.")
 
     related_contacts = db.get_network_contacts_for_company(conn, profile["name"])
     if related_contacts:

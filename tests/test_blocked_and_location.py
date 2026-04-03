@@ -807,6 +807,25 @@ class BlockedAndLocationTests(unittest.TestCase):
         self.assertEqual(summary["contacts"], 2)
         self.assertEqual(summary["reached_out"], 1)
         self.assertEqual(summary["referrals"], 1)
+        self.assertGreaterEqual(summary["leverage_score"], 60)
+        self.assertEqual(summary["leverage_band"], "Warm intro ready")
+
+    def test_company_network_summary_flags_reach_out_first(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        db.init_db(conn)
+        db.add_network_contact(
+            conn,
+            name="Warm Contact",
+            company="ReachCo",
+            relationship="former_colleague",
+            follow_up_date="2026-04-10",
+        )
+        summary = db.get_network_summary_for_company(conn, "ReachCo")
+        self.assertEqual(summary["contacts"], 1)
+        self.assertEqual(summary["reached_out"], 0)
+        self.assertEqual(summary["leverage_band"], "Reach out first")
+        self.assertGreater(summary["leverage_score"], 0)
 
     def test_manual_review_line_parser_structures_items(self):
         rows = _parse_manual_review_lines(

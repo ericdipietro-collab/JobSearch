@@ -973,12 +973,31 @@ def get_network_summary_for_company(conn: sqlite3.Connection, company_name: str)
                 due_count += 1
             if next_follow_up is None or follow_up_date < next_follow_up:
                 next_follow_up = follow_up_date
+    leverage_score = min(
+        100,
+        (len(contacts) * 20)
+        + (reached_out * 10)
+        + (referral_count * 20)
+        + (10 if reached_out > 0 else 0)
+        - (due_count * 5),
+    )
+    leverage_score = max(leverage_score, 0)
+    if referral_count > 0:
+        leverage_band = "Warm intro ready"
+    elif reached_out > 0 and len(contacts) >= 2:
+        leverage_band = "Warm network"
+    elif len(contacts) > 0:
+        leverage_band = "Reach out first"
+    else:
+        leverage_band = "No leverage"
     return {
         "contacts": len(contacts),
         "reached_out": reached_out,
         "referrals": referral_count,
         "follow_up_due": due_count,
         "next_follow_up": next_follow_up,
+        "leverage_score": leverage_score,
+        "leverage_band": leverage_band,
     }
 
 

@@ -49,6 +49,34 @@ def render_contacts(conn) -> None:
                 )
         st.divider()
 
+    network_map = db.get_company_network_map(conn)
+    if network_map:
+        st.markdown("**Top leverage targets**")
+        leverage_df = pd.DataFrame(network_map).sort_values(
+            ["leverage_score", "referrals", "contacts", "company"],
+            ascending=[False, False, False, True],
+        ).head(8)
+        st.dataframe(
+            leverage_df.rename(
+                columns={
+                    "company": "Company",
+                    "leverage_band": "Leverage",
+                    "leverage_score": "Score",
+                    "contacts": "Contacts",
+                    "reached_out": "Reached Out",
+                    "referrals": "Referrals",
+                    "follow_up_due": "Follow-up Due",
+                    "next_follow_up": "Next Follow-up",
+                }
+            )[
+                ["Company", "Leverage", "Score", "Contacts", "Reached Out", "Referrals", "Follow-up Due", "Next Follow-up"]
+            ],
+            hide_index=True,
+            use_container_width=True,
+        )
+        st.caption("Use this list to prioritize warm intros and follow-ups before you apply.")
+        st.divider()
+
     # ── Filters + Add button ───────────────────────────────────────────────────
     ff1, ff2, ff3, ff4 = st.columns([2, 2, 2, 2])
     with ff1:
