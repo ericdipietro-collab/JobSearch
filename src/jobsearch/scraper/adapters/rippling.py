@@ -1,6 +1,6 @@
 from typing import List, Dict, Any, Optional
 from .base import BaseAdapter
-from ..models import Job
+from jobsearch.scraper.models import Job
 import hashlib
 import logging
 

@@ -1,6 +1,6 @@
 from typing import List, Dict, Any, Optional
 from .base import BaseAdapter
-from ..models import Job
+from jobsearch.scraper.models import Job
 import hashlib
 
 class LeverAdapter(BaseAdapter):
@@ -11,9 +11,13 @@ class LeverAdapter(BaseAdapter):
             
         url = f"https://api.lever.co/v0/postings/{adapter_key}?mode=json"
         data = self.fetch_json(url)
+        if not isinstance(data, list):
+            return []
         jobs: List[Job] = []
 
         for raw in data:
+            if not isinstance(raw, dict):
+                continue
             lever_location = (raw.get("categories") or {}).get("location", "")
             lever_workplace = (raw.get("workplaceType") or "").lower()
             if lever_workplace == "remote" and "remote" not in lever_location.lower():

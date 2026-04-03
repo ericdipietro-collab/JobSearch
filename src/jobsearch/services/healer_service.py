@@ -13,29 +13,10 @@ from urllib.parse import urljoin, urlparse, parse_qs
 from bs4 import BeautifulSoup
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
+from jobsearch.config.settings import get_headers, get_shared_session, settings
 
 logger = logging.getLogger(__name__)
-
-USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0",
-]
-
-# Global shared session for connection pooling across threads
-_SHARED_SESSION: Optional[requests.Session] = None
-
-def get_shared_session() -> requests.Session:
-    global _SHARED_SESSION
-    if _SHARED_SESSION is None:
-        _SHARED_SESSION = requests.Session()
-        retries = Retry(total=2, backoff_factor=0.1, status_forcelist=[500, 502, 503, 504])
-        # Scaled pool size for high concurrency
-        adapter = HTTPAdapter(max_retries=retries, pool_connections=50, pool_maxsize=50)
-        _SHARED_SESSION.mount("https://", adapter)
-        _SHARED_SESSION.mount("http://", adapter)
-    return _SHARED_SESSION
 
 @dataclass
 class DiscoveryResult:
@@ -46,11 +27,22 @@ class DiscoveryResult:
     detail: str
 
 class ATSHealer:
+    DIRECT_PROBE_TIMEOUTS = {
+        "ashby": 5,
+        "lever": 5,
+        "greenhouse": 4,
+        "smartrecruiters": 5,
+        "workday": 5,
+    }
+
     # Common patterns for direct ATS host detection
     ATS_PATTERNS = {
         "greenhouse": [
             re.compile(r"(?:job-boards|boards)\.greenhouse\.io/([\w.-]+)", re.I),
-            re.compile(r"board=([\w.-]+)", re.I), # Embed param
+            re.compile(r"board=([\w.-]+)", re.I),
+            re.compile(r"for=([\w.-]+)", re.I),
+            re.compile(r"js\?for=([\w.-]+)", re.I), # Catch Greenhouse widget embeds
+            re.compile(r"gh_src=([\w.-]+)", re.I),
         ],
         "lever": [
             re.compile(r"jobs\.lever\.co/([\w.-]+)", re.I),
@@ -90,10 +82,11 @@ class ATSHealer:
         ("generic", "onetrust.com"),
     ]
 
-    def __init__(self, session: Optional[requests.Session] = None):
+    def __init__(self, session: Optional[requests.Session] = None, deep_timeout_s: float = 20.0):
         self.session = session or get_shared_session()
-        self.ua = random.choice(USER_AGENTS)
-        
+        self.deep_timeout_s = deep_timeout_s
+        self._validate_url_cache: Dict[str, bool] = {}
+        self._discovery_validation_cache: Dict[Tuple[str, str, str], bool] = {}
         # Optional Deep Heal integration
         try:
             from deep_search import playwright_adapter
@@ -102,20 +95,60 @@ class ATSHealer:
             self.playwright = None
 
     def _get_headers(self, referer: Optional[str] = None) -> Dict[str, str]:
-        headers = {
-            "User-Agent": self.ua,
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.5",
-            "DNT": "1",
-            "Connection": "keep-alive",
-            "Upgrade-Insecure-Requests": "1",
-        }
-        if referer:
-            headers["Referer"] = referer
-        return headers
+        return get_headers(referer)
 
     def _jitter(self):
+        # Reduced jitter for speed
         time.sleep(random.uniform(0.5, 1.5))
+
+    def _probe_timeout(self, adapter: Optional[str]) -> int:
+        return self.DIRECT_PROBE_TIMEOUTS.get(adapter or "", 5)
+
+    def _domain_suggested_adapter(self, domain: str) -> Optional[str]:
+        domain_l = str(domain or "").lower()
+        for adapter, markers in self.EMBED_MARKERS:
+            if adapter == "generic":
+                continue
+            if any(marker in domain_l for marker in [markers] if marker):
+                return adapter
+        return None
+
+    def _url_suggested_adapter(self, url: str) -> Optional[str]:
+        url_l = str(url or "").lower()
+        for adapter, marker in self.EMBED_MARKERS:
+            if adapter == "generic":
+                continue
+            if marker in url_l:
+                return adapter
+        return None
+
+    def _existing_assignment_suspicious(self, company: Dict[str, Any]) -> bool:
+        adapter = str(company.get("adapter", "") or "").lower()
+        if adapter not in {"ashby", "greenhouse", "lever", "rippling", "smartrecruiters", "workday"}:
+            return False
+
+        domain_hint = self._domain_suggested_adapter(company.get("domain", ""))
+        if domain_hint and domain_hint != adapter:
+            return True
+
+        url_hint = self._url_suggested_adapter(company.get("careers_url", ""))
+        if url_hint and url_hint != adapter:
+            return True
+
+        adapter_key = str(company.get("adapter_key", "") or "").strip().lower()
+        if adapter == "smartrecruiters" and adapter_key in {"fantastic", "_next"}:
+            return True
+        if adapter == "rippling" and adapter_key in {"_next", "fantastic"}:
+            return True
+
+        name = str(company.get("name", "") or "")
+        if adapter == "ashby" and re.fullmatch(r"[A-Z0-9&. ]{2,8}", name):
+            return True
+
+        if company.get("heal_skip") and adapter != "generic":
+            return True
+
+        return False
 
     def discover(self, company: Dict[str, Any], force: bool = False, deep: bool = False) -> DiscoveryResult:
         name = company.get("name", "Unknown")
@@ -126,9 +159,11 @@ class ATSHealer:
             return DiscoveryResult(None, None, existing_url, "VALID", "User-verified (heal_skip)")
 
         # 1. Validation check
-        if not force and existing_url:
-            if self._validate_url(existing_url, name):
-                return DiscoveryResult(None, None, existing_url, "VALID", "Existing URL confirmed")
+        if existing_url and not self._existing_assignment_suspicious(company) and self._validate_existing_assignment(company):
+            detail = "Existing URL confirmed"
+            if force:
+                detail = "Existing URL confirmed (forced check)"
+            return DiscoveryResult(None, None, existing_url, "VALID", detail)
 
         # Create slug candidates
         slug = re.sub(r"[^a-zA-Z0-9]", "", name).lower()
@@ -140,41 +175,52 @@ class ATSHealer:
         domain = company.get("domain", "")
         if not domain:
             domain = slug + ".com"
+        domain_hint = self._domain_suggested_adapter(domain)
 
         # 2. "Company First" - Waterfall Discovery (Find official page)
         res = self._waterfall_discovery(domain, name)
         
-        # 3. Web Search (If Waterfall failed or only found a generic page)
+        # 3. Web Search
         if not res or res.status == "FALLBACK":
             search_res = self._search_discovery(name, domain)
             if search_res and search_res.status == "FOUND":
-                res = search_res # Found a real ATS via search
+                res = search_res
 
-        # 4. If we found a real ATS via official channels, we are done!
         if res and res.status == "FOUND":
             return res
 
         # 5. "Guessing" - Direct Slug Probes (Greenhouse, Lever, Ashby)
+        direct_probe_order = ["greenhouse", "lever", "ashby"]
+        if domain_hint in direct_probe_order:
+            direct_probe_order = [domain_hint] + [adapter for adapter in direct_probe_order if adapter != domain_hint]
+
         for s in slug_candidates:
-            # Greenhouse
-            probe = self._probe_direct(f"https://boards.greenhouse.io/{s}", "greenhouse", s, name)
-            if probe: return probe
-            
-            # Lever
-            probe = self._probe_direct(f"https://api.lever.co/v0/postings/{s}?mode=json", "lever", s, name)
-            if probe: return probe
-            
-            # Ashby
-            probe = self._probe_direct(f"https://api.ashbyhq.com/posting-api/job-board/{s}", "ashby", s, name)
-            if probe: return probe
+            for adapter_name in direct_probe_order:
+                if adapter_name == "greenhouse":
+                    for gh_domain in ["job-boards.greenhouse.io", "boards.greenhouse.io"]:
+                        probe = self._probe_direct(f"https://{gh_domain}/{s}", "greenhouse", s, name)
+                        if probe:
+                            return probe
+                elif adapter_name == "lever":
+                    probe = self._probe_direct(f"https://jobs.lever.co/{s}", "lever", s, name)
+                    if not probe:
+                        probe = self._probe_direct(f"https://api.lever.co/v0/postings/{s}?mode=json", "lever", s, name)
+                    if probe:
+                        return probe
+                elif adapter_name == "ashby":
+                    probe = self._probe_direct(f"https://jobs.ashbyhq.com/{s}", "ashby", s, name)
+                    if not probe:
+                        probe = self._probe_direct(f"https://api.ashbyhq.com/posting-api/job-board/{s}", "ashby", s, name)
+                    if probe:
+                        return probe
 
         # 6. Workday Sweep (Guessing wd1..wd25)
         wd_res = self._probe_workday(slug, name)
         if wd_res: return wd_res
 
-        # 7. Final fallback to whatever Waterfall/Search found (likely "generic")
+        # 7. Final fallback
         if res:
-            if deep and res.status == "FALLBACK" and self.playwright:
+            if deep and res.status in {"FALLBACK", "BLOCKED"} and self.playwright:
                 deep_res = self._deep_heal(res.careers_url or existing_url, name, domain)
                 if deep_res: return deep_res
             return res
@@ -191,7 +237,9 @@ class ATSHealer:
         """Call the playwright adapter for deep discovery."""
         if not self.playwright: return None
         try:
-            raw = self.playwright.deep_heal_company(url, name, comp_domain=domain)
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(self.playwright.deep_heal_company, url, name, comp_domain=domain)
+                raw = future.result(timeout=self.deep_timeout_s)
             if raw:
                 return DiscoveryResult(
                     adapter=raw["adapter"],
@@ -200,6 +248,8 @@ class ATSHealer:
                     status="FOUND",
                     detail=f"Deep heal: {raw.get('detail', '')}"
                 )
+        except TimeoutError:
+            logger.warning("Deep heal timed out for %s after %.1fs", name, self.deep_timeout_s)
         except Exception as e:
             logger.error(f"Deep heal error for {name}: {e}")
         return None
@@ -220,6 +270,7 @@ class ATSHealer:
         def check_one(n, site):
             url = f"https://{slug}.wd{n}.myworkdayjobs.com/{site}"
             try:
+                # Use isolated headers per request
                 resp = self.session.get(url, headers=self._get_headers(), timeout=5, allow_redirects=True)
                 if resp.status_code == 200 and "myworkdayjobs.com" in resp.url:
                     parsed = urlparse(resp.url)
@@ -227,14 +278,14 @@ class ATSHealer:
                     clean_path = re.sub(r"/[a-z]{2}-[A-Z]{2}/?", "/", parsed.path).rstrip("/")
                     key = f"{parsed.netloc}{clean_path}"
                     
-                    res = DiscoveryResult("workday", key, resp.url, "FOUND", f"Workday wd{n} probe")
+                    res = DiscoveryResult("workday", key, resp.url, "FOUND", f"Workday wd{n} probe ({site})")
                     if self._validate_discovery(res, name):
                         return res
             except:
                 pass
             return None
 
-        # Use a small pool for internal company probes to avoid getting blocked
+        # Use a small pool for internal company probes to avoid getting blocked by WD
         with ThreadPoolExecutor(max_workers=5) as executor:
             futures = [executor.submit(check_one, n, site) for n, site in candidates]
             for future in as_completed(futures):
@@ -245,71 +296,108 @@ class ATSHealer:
         return None
 
     def _validate_url(self, url: str, name: str) -> bool:
+        if self._is_blacklisted(url): return False
+        cache_key = f"{name.lower()}|{url}"
+        if cache_key in self._validate_url_cache:
+            return self._validate_url_cache[cache_key]
+
         try:
-            resp = self.session.get(url, headers=self._get_headers(), timeout=12, allow_redirects=True)
-            if resp.status_code != 200: return False
-            
-            content = resp.text.lower()
-            name_l = name.lower()
-            # Heuristic: Name or first word of name must be in content
-            name_words = [w for w in name_l.split() if len(w) > 2]
-            first_word = name_words[0] if name_words else name_l
-            return name_l in content or first_word in content
-        except:
+            resp = self.session.get(url, headers=self._get_headers(), timeout=8, allow_redirects=True)
+            if resp.status_code != 200:
+                self._validate_url_cache[cache_key] = False
+                return False
+
+            is_valid = self._is_probable_careers_page(resp.text, resp.url, name) or self._looks_like_known_ats_url(resp.url)
+            self._validate_url_cache[cache_key] = is_valid
+            return is_valid
+        except Exception:
+            self._validate_url_cache[cache_key] = False
             return False
+
+    def _validate_existing_assignment(self, company: Dict[str, Any]) -> bool:
+        name = str(company.get("name", "Unknown"))
+        existing_url = str(company.get("careers_url", "") or "")
+        if not existing_url:
+            return False
+
+        adapter = str(company.get("adapter", "") or "").lower() or None
+        adapter_key = str(company.get("adapter_key", "") or "").strip() or None
+        if adapter and self._looks_like_known_ats_url(existing_url):
+            result = DiscoveryResult(adapter, adapter_key, existing_url, "VALID", "Stored ATS assignment")
+            return self._validate_discovery(result, name)
+
+        return self._validate_url(existing_url, name)
 
     def _probe_direct(self, url: str, adapter: str, key: str, name: str) -> Optional[DiscoveryResult]:
         try:
-            resp = self.session.get(url, headers=self._get_headers(), timeout=5)
-            if resp.status_code == 200:
-                # Basic verification that the page belongs to the company
-                if name.lower() in resp.text.lower() or adapter == "lever": # Lever API is key-based
-                    return DiscoveryResult(adapter, key, resp.url, "FOUND", f"Direct {adapter} probe")
-        except:
+            resp = self.session.get(
+                url,
+                headers=self._get_headers(),
+                timeout=self._probe_timeout(adapter),
+                allow_redirects=True,
+            )
+            
+            if resp.status_code in (200, 403):
+                res = DiscoveryResult(adapter, key, resp.url, "FOUND", f"Direct {adapter} probe")
+                if self._validate_discovery_response(res, name, resp):
+                    return res
+            elif resp.status_code == 429:
+                time.sleep(1)
+        except Exception:
             pass
         return None
 
     def _waterfall_discovery(self, domain: str, name: str) -> Optional[DiscoveryResult]:
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        
         bases = [f"jobs.{domain}", f"careers.{domain}", f"www.{domain}", domain]
-        # Paths with and without trailing slashes
+        # Expanded paths to catch sites like Coinbase (/positions)
         paths = [
-            "", "/careers", "/jobs", "/en/jobs", "/en-us/jobs", 
-            "/about/careers", "/join-us", "/search-jobs", "/careers/search",
+            "", "/careers", "/jobs", "/positions", "/open-positions", "/all-jobs",
+            "/en/jobs", "/en-us/jobs", "/about/careers", "/join-us", "/search-jobs", 
+            "/careers/search", "/careers/positions", "/careers/openings",
             "/careers/", "/jobs/", "/en/jobs/", "/en-us/jobs/"
         ]
         
         checked_urls = set()
-        
-        for base in bases:
-            for path in paths:
-                url = urljoin(f"https://{base}", path)
-                if url in checked_urls: continue
-                checked_urls.add(url)
-                
-                try:
-                    resp = self.session.get(url, headers=self._get_headers(), timeout=8, allow_redirects=True)
-                    if resp.status_code == 200:
-                        res = self._scan_content(resp.text, resp.url, name)
-                        if res: return res
-                        
-                        # 2. Heuristic: If we hit the main domain, find any "Careers" links and follow them
-                        if base == domain or base == f"www.{domain}" or 'careers.' in base:
-                            found_links = self._find_careers_links(resp.text, resp.url)
-                            for link in found_links:
-                                if link in checked_urls: continue
-                                checked_urls.add(link)
-                                try:
-                                    sub_resp = self.session.get(link, headers=self._get_headers(), timeout=8, allow_redirects=True)
-                                    if sub_resp.status_code == 200:
-                                        res = self._scan_content(sub_resp.text, sub_resp.url, name)
-                                        if res: return res
-                                except: continue
-                                
-                    elif resp.status_code == 403 and "jobs." in base:
-                        # If jobs subdomain returns 403, it's a high-signal candidate for deep heal
-                        return DiscoveryResult("generic", None, url, "FALLBACK", "Potential blocked career page")
-                except:
-                    continue
+        candidates = []
+        for b in bases:
+            for p in paths:
+                url = urljoin(f"https://{b}", p)
+                if url not in checked_urls:
+                    candidates.append((b, url))
+                    checked_urls.add(url)
+
+        def check_url(base, url):
+            try:
+                resp = self.session.get(url, headers=self._get_headers(), timeout=5, allow_redirects=True)
+                if resp.status_code == 200:
+                    res = self._scan_content(resp.text, resp.url, name)
+                    if res: return res
+                    
+                    # Heuristic follow-up for main domains
+                    if base == domain or base == f"www.{domain}" or 'careers.' in base:
+                        found_links = self._find_careers_links(resp.text, resp.url)
+                        for link in found_links:
+                            try:
+                                sub_resp = self.session.get(link, headers=self._get_headers(), timeout=5, allow_redirects=True)
+                                if sub_resp.status_code == 200:
+                                    sub_res = self._scan_content(sub_resp.text, sub_resp.url, name)
+                                    if sub_res: return sub_res
+                            except: continue
+                elif resp.status_code == 403 and any(x in url.lower() for x in ["jobs", "careers", "positions", "openings"]):
+                    return DiscoveryResult("generic", None, url, "FALLBACK", "Potential blocked career page")
+            except:
+                pass
+            return None
+
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            futures = [executor.submit(check_url, b, u) for b, u in candidates]
+            for future in as_completed(futures):
+                res = future.result()
+                if res:
+                    executor.shutdown(wait=False, cancel_futures=True)
+                    return res
         
         # 3.5 Web Search Fallback (Yahoo)
         return self._search_discovery(name, domain)
@@ -321,43 +409,54 @@ class ATSHealer:
         for a in soup.find_all("a", href=True):
             text = a.get_text().lower()
             href = a["href"]
-            if any(x in text for x in ["career", "job", "open position", "join us", "work with"]):
+            # Look for listing-specific signal words
+            if any(x in text for x in ["career", "job", "open position", "join us", "work with", "positions", "openings"]):
                 # Filter out obvious noise
                 if any(x in href.lower() for x in ["linkedin.com", "twitter.com", "facebook.com", "glassdoor.com", "instagram.com"]):
                     continue
                 candidates.append(urljoin(base_url, href))
-        return list(set(candidates))[:5] # Top 5 candidates only
+        return list(set(candidates))[:8] # Top 8 candidates
 
     def _search_discovery(self, name: str, domain: str) -> Optional[DiscoveryResult]:
-        """Search for the careers page using a public search engine."""
+        """Search for the careers page and verify all results concurrently."""
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        
         query = f"{name} careers"
         search_url = f"https://search.yahoo.com/search?p={query}"
         try:
             resp = self.session.get(search_url, headers=self._get_headers(), timeout=10)
-            if resp.status_code == 200:
-                soup = BeautifulSoup(resp.text, "html.parser")
-                # Extract results
-                for a in soup.find_all("a", href=True):
-                    href = a["href"]
-                    # Clean Yahoo redirects if present
-                    if "/RU=" in href:
-                        from urllib.parse import unquote
-                        m = re.search(r"RU=([^/]+)", href)
-                        if m: href = unquote(m.group(1))
-                    
-                    if not href.startswith("http") or "yahoo.com" in href:
-                        continue
-                        
-                    # If result is on the company domain or a known ATS
-                    if domain in href or any(m in href for _, m in self.EMBED_MARKERS):
-                        # Verify the result
-                        try:
-                            v_resp = self.session.get(href, headers=self._get_headers(), timeout=8, allow_redirects=True)
-                            if v_resp.status_code == 200:
-                                res = self._scan_content(v_resp.text, v_resp.url, name)
-                                if res: return res
-                        except:
-                            continue
+            if resp.status_code != 200: return None
+            
+            soup = BeautifulSoup(resp.text, "html.parser")
+            search_links = []
+            for a in soup.find_all("a", href=True):
+                href = a["href"]
+                if "/RU=" in href:
+                    from urllib.parse import unquote
+                    m = re.search(r"RU=([^/]+)", href)
+                    if m: href = unquote(m.group(1))
+                
+                if not href.startswith("http") or "yahoo.com" in href:
+                    continue
+                if domain in href or any(m in href for _, m in self.EMBED_MARKERS):
+                    search_links.append(href)
+
+            def verify_link(url):
+                try:
+                    v_resp = self.session.get(url, headers=self._get_headers(), timeout=6, allow_redirects=True)
+                    if v_resp.status_code == 200:
+                        return self._scan_content(v_resp.text, v_resp.url, name)
+                except:
+                    pass
+                return None
+
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                futures = [executor.submit(verify_link, l) for l in list(set(search_links))[:10]]
+                for future in as_completed(futures):
+                    res = future.result()
+                    if res:
+                        executor.shutdown(wait=False, cancel_futures=True)
+                        return res
         except:
             pass
         return None
@@ -395,7 +494,7 @@ class ATSHealer:
                             return res
 
         # 3. Fallback to generic if page seems valid
-        if name.lower() in html.lower() and ("career" in html.lower() or "job" in html.lower()):
+        if self._is_probable_careers_page(html, url, name):
             return DiscoveryResult("generic", None, url, "FALLBACK", "Generic career page discovered")
             
         return None
@@ -403,33 +502,85 @@ class ATSHealer:
     def _validate_discovery(self, result: DiscoveryResult, name: str) -> bool:
         """Strict verification step for discovered ATS links."""
         if not result.careers_url: return False
+        cache_key = (name.lower(), result.careers_url, result.adapter or "")
+        if cache_key in self._discovery_validation_cache:
+            return self._discovery_validation_cache[cache_key]
+
         try:
-            name_l = name.lower()
-            # Find significant words (longer than 2 chars)
-            sig_words = [w for w in name_l.split() if len(w) > 2]
-            if not sig_words: sig_words = [name_l]
-            
-            resp = self.session.get(result.careers_url, headers=self._get_headers(), timeout=10, allow_redirects=True)
-            if resp.status_code != 200:
-                if resp.status_code == 403 and result.adapter_key:
-                    # If blocked but slug matches exactly, it's likely correct
-                    return sig_words[0] in result.adapter_key.lower()
-                return False
-            
+            resp = self.session.get(
+                result.careers_url,
+                headers=self._get_headers(),
+                timeout=self._probe_timeout(result.adapter),
+                allow_redirects=True,
+            )
+            is_valid = self._validate_discovery_response(result, name, resp)
+            self._discovery_validation_cache[cache_key] = is_valid
+            return is_valid
+        except Exception:
+            self._discovery_validation_cache[cache_key] = False
+            return False
+
+    def _validate_discovery_response(self, result: DiscoveryResult, name: str, resp: requests.Response) -> bool:
+        name_l = name.lower()
+        sig_words = [w for w in name_l.split() if len(w) > 2]
+        if not sig_words:
+            sig_words = [name_l]
+
+        final_url = resp.url or result.careers_url or ""
+        status_code = resp.status_code
+
+        if status_code == 200:
             soup = BeautifulSoup(resp.text, "html.parser")
-            
-            # 1. Check <title> - highest signal
             title_text = (soup.title.string or "").lower() if soup.title else ""
+            body_text = soup.get_text().lower()
+            evidence_matches = sum(1 for w in sig_words if w in title_text or w in body_text)
+
+            if self._looks_like_known_ats_url(final_url):
+                return evidence_matches >= 1
+
             if any(w in title_text for w in sig_words):
                 return True
-                
-            # 2. Check body text - fallback
-            body_text = soup.get_text().lower()
-            # Require at least 2 significant words if possible to reduce false positives
+
+            if self._is_probable_careers_page(resp.text, final_url, name):
+                return True
+
             matches = sum(1 for w in sig_words if w in body_text)
             return matches >= min(len(sig_words), 2)
-        except:
-            return False
+
+        if status_code == 403:
+            if self._looks_like_known_ats_url(final_url):
+                return True
+            if result.adapter_key and sig_words[0] in result.adapter_key.lower():
+                return True
+
+        return False
+
+    def _looks_like_known_ats_url(self, url: str) -> bool:
+        url_l = url.lower()
+        return any(
+            marker in url_l
+            for _, marker in self.EMBED_MARKERS
+            if marker not in {"onetrust.com", "happydance.com"}
+        )
+
+    def _is_probable_careers_page(self, html: str, url: str, name: str) -> bool:
+        text = BeautifulSoup(html, "html.parser").get_text(" ", strip=True).lower()
+        url_l = url.lower()
+        name_l = name.lower()
+        sig_words = [word for word in re.findall(r"[a-z0-9]+", name_l) if len(word) > 2]
+        company_matches = sum(1 for word in sig_words if word in text)
+        careers_signals = ["career", "careers", "job", "jobs", "opening", "openings", "join us", "working at"]
+
+        if self._looks_like_known_ats_url(url):
+            return True
+
+        if company_matches >= min(len(sig_words), 2) and any(signal in text for signal in careers_signals):
+            return True
+
+        if any(signal in url_l for signal in ["/careers", "/jobs", "/positions", "/openings", "/join-us"]):
+            return company_matches >= 1 or any(signal in text for signal in careers_signals)
+
+        return False
 
     def _extract_key(self, text: str, adapter: str) -> Optional[str]:
         patterns = self.ATS_PATTERNS.get(adapter, [])

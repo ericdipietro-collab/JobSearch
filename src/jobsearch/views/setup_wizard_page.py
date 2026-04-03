@@ -4,17 +4,13 @@ hasn't been fully configured yet.
 """
 from __future__ import annotations
 
-from pathlib import Path
-
 import streamlit as st
+from jobsearch.config.settings import settings
 
-_BASE_DIR      = Path(__file__).resolve().parent.parent
-_CONFIG_DIR    = _BASE_DIR / "config"
-_RESULTS_DIR   = _BASE_DIR / "results"
-_PREFS_YAML    = _CONFIG_DIR / "job_search_preferences.yaml"
-_COMPANIES_YAML = _CONFIG_DIR / "job_search_companies.yaml"
-_RESULTS_XLSX  = _RESULTS_DIR / "job_search_v6_results.xlsx"
-_RESULTS_CSV   = _RESULTS_DIR / "job_search_v6_results.csv"
+_PREFS_YAML = settings.prefs_yaml
+_COMPANIES_YAML = settings.companies_yaml
+_RESULTS_XLSX = settings.results_dir / "job_search_v6_results.xlsx"
+_RESULTS_CSV = settings.results_dir / "job_search_v6_results.csv"
 
 
 def _check_prefs_customized() -> tuple[bool, str]:

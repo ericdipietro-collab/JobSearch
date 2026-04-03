@@ -271,6 +271,21 @@ _DDL_STATEMENTS = [
     _CREATE_SCHEMA_META,
 ]
 
+
+def _add_column_if_missing(
+    cur: sqlite3.Cursor,
+    table: str,
+    column: str,
+    ddl: str,
+) -> None:
+    existing = {
+        row[1]
+        for row in cur.execute(f"PRAGMA table_info({table})").fetchall()
+    }
+    if column not in existing:
+        cur.execute(f"ALTER TABLE {table} ADD COLUMN {ddl}")
+
+
 def init_db(conn: sqlite3.Connection) -> None:
     cur = conn.cursor()
     cur.execute("PRAGMA journal_mode=WAL")
@@ -283,4 +298,5 @@ def init_db(conn: sqlite3.Connection) -> None:
         "INSERT OR IGNORE INTO schema_meta (key, value) VALUES (?, ?)",
         ("schema_version", str(SCHEMA_VERSION)),
     )
+    _add_column_if_missing(cur, "applications", "tier", "tier INTEGER")
     conn.commit()

@@ -8,7 +8,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-from services.analytics_service import (
+from jobsearch.services.analytics_service import (
     avg_score_by_stage,
     company_pipeline,
     conversion_rates,

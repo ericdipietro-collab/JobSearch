@@ -10,7 +10,7 @@ from typing import List
 import pandas as pd
 import streamlit as st
 
-import ats_db as db
+from jobsearch import ats_db as db
 
 # ── Human-friendly method labels ───────────────────────────────────────────────
 

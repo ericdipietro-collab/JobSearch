@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-import ats_db as db
+from jobsearch import ats_db as db
 
 _CAT_LABELS = {
     "behavioral":   "Behavioral",

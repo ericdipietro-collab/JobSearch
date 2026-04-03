@@ -10,7 +10,9 @@ from typing import Optional
 import pandas as pd
 import streamlit as st
 
-import ats_db as db
+from jobsearch import ats_db as db
+
+FORMAL_TRACKER_EXCLUDED_STATUSES = {"considering"}
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -69,6 +71,31 @@ EVENT_ICONS = {
     "follow_up_sent":      "📧",
     "note":                "📝",
 }
+
+
+def _formal_tracker_rows(rows):
+    return [
+        row
+        for row in rows
+        if str(row["status"]).lower() not in FORMAL_TRACKER_EXCLUDED_STATUSES
+    ]
+
+
+def _summary_metrics_for_rows(rows):
+    counts = {status: 0 for status in db.STATUSES}
+    for row in rows:
+        status = str(row["status"]).lower()
+        counts[status] = counts.get(status, 0) + 1
+    total = len(rows)
+    active = sum(counts.get(status, 0) for status in ("applied", "screening", "interviewing", "offer"))
+    return {
+        "total": total,
+        "active": active,
+        "interviewing": counts.get("interviewing", 0),
+        "offers": counts.get("offer", 0),
+        "accepted": counts.get("accepted", 0),
+        "rejected": counts.get("rejected", 0),
+    }
 
 
 # ── LinkedIn CSV import ─────────────────────────────────────────────────────────
@@ -247,6 +274,8 @@ def render_tracker(conn) -> None:
         status=None if sel_status == "All statuses" else sel_status,
         entry_type=_entry_filter,
     )
+    # Filter out scraper-only 'considering' matches from the formal tracker.
+    apps = _formal_tracker_rows(apps)
     if search:
         q = search.lower()
         apps = [a for a in apps if q in a["company"].lower() or q in a["role"].lower()]
@@ -420,20 +449,18 @@ def _render_followup_banner(conn) -> None:
 # ── Summary bar ────────────────────────────────────────────────────────────────
 
 def _render_summary_bar(conn) -> None:
-    counts = db.status_counts(conn)
-    total  = sum(counts.values())
-    active = sum(counts.get(s, 0) for s in ("applied", "screening", "interviewing", "offer"))
+    metrics = _summary_metrics_for_rows(_formal_tracker_rows(db.get_applications(conn)))
 
     cols = st.columns(6)
-    metrics = [
-        ("Total",        total,                          None),
-        ("Active",        active,                        None),
-        ("Interviewing",  counts.get("interviewing", 0), None),
-        ("Offers",        counts.get("offer", 0),        None),
-        ("Accepted",      counts.get("accepted", 0),     None),
-        ("Rejected",      counts.get("rejected", 0),     None),
+    cards = [
+        ("Total", metrics["total"], None),
+        ("Active", metrics["active"], None),
+        ("Interviewing", metrics["interviewing"], None),
+        ("Offers", metrics["offers"], None),
+        ("Accepted", metrics["accepted"], None),
+        ("Rejected", metrics["rejected"], None),
     ]
-    for col, (label, val, delta) in zip(cols, metrics):
+    for col, (label, val, delta) in zip(cols, cards):
         col.metric(label, val, delta)
 
     # Upcoming interviews
@@ -976,7 +1003,7 @@ def _render_inline_company_profile(conn, company_name: str) -> None:
     profile = db.get_company_profile(conn, company_name)
     label   = f"🏢 {company_name} — Company Profile" + (" ✏️" if profile else " (no profile yet)")
     with st.expander(label, expanded=False):
-        from views.company_profiles_page import _render_profile_form
+        from jobsearch.views.company_profiles_page import _render_profile_form
         _render_profile_form(conn, profile=profile if profile else None)
         if not profile:
             st.caption(f"This will create a new profile for **{company_name}** shared across all applications to this company.")

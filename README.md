@@ -1,213 +1,152 @@
 # Job Search Automation Platform
 
-A personal job search tool that automatically finds open roles at companies you care about, scores them against your preferences, and helps you track everything from first contact through offer.
-
-Built for anyone actively job searching. No subscriptions, no data sold to recruiters — everything runs locally on your own computer.
-
-[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Donate-orange?style=flat-square&logo=buy-me-a-coffee)](https://www.buymeacoffee.com/ericdipietro)
-
----
-
-![Home Dashboard](docs/Screenshots/Homepage.png)
-
----
+A local job-search dashboard that discovers jobs from target companies, scores them against your preferences, and tracks applications in a single SQLite database.
 
 ## Installation
 
-### Option A — Windows Installer (easiest, recommended)
+### Windows installer
 
-1. Go to the [Releases page](https://github.com/ericdipietro-collab/JobSearch/releases)
-2. Download **`JobSearchSetup.exe`** from the latest release
-3. Run it — Windows may show a **"Windows protected your PC"** SmartScreen warning because the installer isn't code-signed. Click **"More info"** → **"Run anyway"** to proceed. This is normal for indie software.
-4. If Python is not already installed, the installer handles it automatically (no admin rights needed)
-5. Launch from the Desktop or Start Menu shortcut that gets created
-6. Follow the setup checklist on the Home page
+1. Download `JobSearchSetup.exe` from the Releases page.
+2. Run the installer.
+3. Launch from the Desktop or Start Menu shortcut.
 
----
+The installer supports a per-user install, bundles pinned runtime wheels, and pre-warms the runtime environment on first install.
 
-### Option B — Manual / Developer install
+### Manual install
 
-**→ [GETTING_STARTED.md](GETTING_STARTED.md) — full step-by-step guide**
+See [GETTING_STARTED.md](GETTING_STARTED.md).
 
 Short version:
-1. Install [Python 3.9+](https://www.python.org/downloads/) — check "Add Python to PATH"
-2. Download this repo as a ZIP and unzip it
-3. Double-click `launch.bat` (Windows) or `launch.command` (macOS)
-4. Browser opens to the dashboard — follow the setup checklist
 
-**Developer CLI:**
-Once installed via `launch.bat`, you can use the unified CLI:
-```bash
-# Run the scraper
-python src/jobsearch/cli.py run
+1. Install Python 3.9+.
+2. Download or clone this repo.
+3. Run `launch.bat` on Windows, `launch.command` on macOS, or `bash launch.sh` on Linux.
 
-# Launch the dashboard
-python src/jobsearch/cli.py dashboard
-```
+## What It Does
 
----
+- Scrapes company careers pages from ATS providers like Greenhouse, Lever, Ashby, Workday, Rippling, and SmartRecruiters
+- Saves jobs directly into `results/jobsearch.db`
+- Scores jobs using your title, keyword, salary, and tier preferences
+- Lets you manage applications, contacts, journals, templates, training notes, and reports from the dashboard
+- Includes ATS healing to repair or rediscover stale careers URLs
 
-## What it does
+## Current Product Surface
 
-| Feature | What you get |
-|---|---|
-| **Automated job scraping** | Modular engine with multi-threaded support for Greenhouse, Lever, Ashby, and Workday |
-| **Direct Persistence** | Scraped jobs are saved directly to a unified SQLite database — no Excel intermediaries |
-| **Smart scoring** | Ranks jobs by how well they match your background using keyword weights you define |
-| **Home dashboard** | KPIs, pipeline snapshot, activity trend charts, overdue follow-ups, and upcoming interviews at a glance |
-| **Job Matches** | Apply Now / Review Today / Watch buckets with one-click Apply & Track |
-| **My Applications** | Full CRM: timeline, interview log, contacts, prep tab, offer negotiation worksheet |
-| **Unified Data** | All matches and tracking data live in a single `results/jobsearch.db` file |
+Main dashboard pages:
 
----
+- `Home`
+- `Job Matches`
+- `My Applications`
+- `Journal`
+- `Contacts`
+- `Company Profiles`
+- `Training`
+- `Question Bank`
+- `Weekly Report`
+- `Templates`
+- `Pipeline`
+- `Analytics`
+- `Run Job Search`
+- `Search Settings`
+- `Target Companies`
 
-## Screenshots
+### Search Settings tabs
 
-<table>
-  <tr>
-    <td><strong>Job Matches</strong> — scored and bucketed automatically<br><img src="docs/Screenshots/jobmatches.png" alt="Job Matches"/></td>
-    <td><strong>My Applications</strong> — full pipeline CRM<br><img src="docs/Screenshots/myapplications.png" alt="My Applications"/></td>
-  </tr>
-  <tr>
-    <td><strong>Search Settings</strong> — keyword scoring editor<br><img src="docs/Screenshots/searchprefscoring.png" alt="Search Settings"/></td>
-    <td><strong>Weekly Activity Report</strong> — built-in unemployment certification export<br><img src="docs/Screenshots/weeklyactivity.png" alt="Weekly Activity Report"/></td>
-  </tr>
-</table>
+- `Compensation & Location`
+- `Title Evaluation`
+- `JD Evaluation`
+- `Scoring & Rescue`
+- `Full YAML Editor`
 
----
+### Target Companies tabs
 
-## Setup checklist (first run)
+- `List`
+- `Add / Edit`
+- `Heal ATS`
+- `YAML Editor`
 
-The Home page shows a setup checklist that guides you through:
+## CLI
 
-1. **Configure preferences** — set your salary floor and location policy in Search Settings
-2. **Register companies** — add target companies in the Target Companies page
-3. **Run the pipeline** — fetch your first batch of job matches
-4. **Track an application** — add your first entry in My Applications
-
-The checklist disappears once all four steps are complete.
-
----
-
-## Configuring your search
-
-Two config files live in `config/`. Both are gitignored so your personal salary and location data are never uploaded to GitHub.
-
-### `job_search_preferences.yaml`
-
-Controls salary floors, location policy, and the keyword scoring engine. The launcher auto-creates this from the example file on first run. Then open **Search Settings** in the dashboard to customise it — no YAML editing needed.
-
-**Fastest way to fill this out:** use the AI prompts in [docs/AI_SETUP_PROMPTS.md](docs/AI_SETUP_PROMPTS.md) to generate a customised version from your resume.
-
-### `job_search_companies.yaml`
-
-**A starter list of ~450 active companies is already included** — weighted toward FinTech, FinServ, and adjacent tech (wealth management, payments, data platforms, insurtech, banking software, enterprise SaaS). Add, edit, or remove companies from the **Target Companies** page in the dashboard.
-
-Each entry looks like:
-
-```yaml
-- name: Acme Corp
-  domain: acmecorp.com
-  adapter: greenhouse       # greenhouse | lever | ashby | workday | custom_manual
-  adapter_key: acmecorp     # slug used by their ATS
-  careers_url: https://boards.greenhouse.io/acmecorp
-  tier: 1                   # 1 = top priority, 2 = standard, 3 = opportunistic
-  status: active
-```
-
-**Need companies for a different field?** Use Prompt 2 in [docs/AI_SETUP_PROMPTS.md](docs/AI_SETUP_PROMPTS.md).
-
----
-
-## For co-workers sharing this tool
-
-Each person runs their own local copy. Your salary, location, and application data never leave your computer.
-
-**Easiest way to share:** send the link to the [Releases page](https://github.com/ericdipietro-collab/JobSearch/releases) — they download `JobSearchSetup.exe` and run it.
-
-**Manual install:** download as ZIP from GitHub and unzip, then double-click the launcher for your OS.
-
-**What gets shared (in the repo):**
-- The app code and `config/job_search_preferences.example.yaml`
-- `config/job_search_companies.yaml` — starter company list (everyone customises this)
-
-**What stays private (gitignored, never uploaded):**
-- `config/job_search_preferences.yaml` — your salary targets and location
-- `results/` — all scraped jobs, your applications database, and any state files
-
----
-
-## Data & privacy
-
-Everything runs locally. Your database is `results/jobsearch.db` — a single SQLite file on your computer. No account required, no data sent anywhere.
-
-**Back up your data:** Search Settings → Backup & Restore → Create Backup.
-
----
-
-## Deep Search & Deep Heal add-ons (optional)
-
-The standard installer uses lightweight HTTP requests to scrape careers pages. Around 300 companies use JavaScript-heavy pages (React SPAs, dynamic iframes) that the static scraper can't read. The optional **Deep Search** add-on unlocks these using a headless Chromium browser.
-
-> **Not bundled with the installer** — it downloads ~170 MB of browser binaries, so it's a separate install for users who want it.
-
-### Install
-
-**Windows:**
-```
-deep_search\install_deep_search.bat
-```
-**Mac / Linux:**
-```
-bash deep_search/install_deep_search.sh
-```
-
-### What it unlocks
-
-| Add-on | Where | What it does |
-|---|---|---|
-| **Deep Search** | Run Job Search page | Scrapes JS-rendered careers pages (BlackRock, Schwab, S&P Global, any site with `render_required: true`) |
-| **Deep Heal** | Target Companies → Heal ATS tab | Uses Playwright **network interception** to identify ATS providers for companies the static scanner marks as NOT_FOUND or custom_manual — catches JS-constructed iframes and AJAX-mounted job boards |
-
-### Usage
-
-Enable the toggle in the dashboard before running, or pass `--deep-search` / `--deep-heal` on the CLI:
+Run the scraper:
 
 ```bash
-python run_job_search_v6.py --deep-search
-python heal_ats_yaml.py --deep-heal --all
+python -m jobsearch.cli run
 ```
 
----
+Run ATS healing:
 
-## Requirements
+```bash
+python -m jobsearch.cli heal --all
+```
 
-- **Windows Installer:** no prerequisites — Python is bundled if needed
-- **Manual install:** Python 3.9+ (check "Add Python to PATH" during install)
-- All package dependencies are in `requirements.txt` and installed automatically by the launcher
+Launch the dashboard:
 
-Key packages: `streamlit`, `requests`, `PyYAML`, `beautifulsoup4`, `pandas`, `openpyxl`
+```bash
+python -m jobsearch.cli dashboard
+```
 
-**Deep Search / Deep Heal add-on:** `playwright` + Chromium (~170 MB, installed separately via `deep_search/install_deep_search.bat`)
+## Deep Search and Deep Heal
 
----
+The optional `deep_search/` add-on uses Playwright and Chromium for JavaScript-heavy sites.
+
+Install:
+
+- Windows: `deep_search\install_deep_search.bat`
+- macOS / Linux: `bash deep_search/install_deep_search.sh`
+
+Usage:
+
+```bash
+python -m jobsearch.cli run --deep-search
+python -m jobsearch.cli heal --deep --all
+```
+
+These modes are slower, but they improve coverage on JS-rendered sites. Protected sites may still be routed to manual review.
+
+## Data and Logs
+
+Everything stays local.
+
+- Database: `results/jobsearch.db`
+- Scrape log: `results/job_search_v6.log`
+- Heal log: `results/ats_heal.log`
+- Manual-review list: `results/job_search_manual_review.txt`
+- Score-rejected jobs: `results/job_search_v6_rejected.csv`
+- Preferences: `config/job_search_preferences.yaml`
+- Company registry: `config/job_search_companies.yaml`
+
+To back up your state, copy:
+
+- `results/`
+- `config/job_search_preferences.yaml`
+- `config/job_search_companies.yaml`
+
+## Notes
+
+- The current modular app lives under `src/jobsearch/`
+- `app.py` is the Streamlit entrypoint
+- The installer should package `src/` and `deep_search/`, not the old root-level pre-refactor modules
 
 ## Troubleshooting
 
-**"No results" after running the pipeline**
-Your salary floor might be filtering everything out — try lowering `min_salary_usd` in Search Settings, or run **Clear History** in Run Job Search and try again.
+If no results are being kept:
 
-**The launcher says Python not found**
-Re-run the Python installer, choose Modify, and add Python to PATH. Then re-run the launcher.
+- lower the salary floor
+- relax title or keyword weights
+- inspect `results/job_search_v6.log` for adapter timing and score breakdowns
+- inspect `results/job_search_v6_rejected.csv` for score rejects
 
-**macOS blocks launch.command**
-Right-click → Open → Open. You only need to do this once.
+If companies are blocked or require manual follow-up:
 
-**Companies showing as "broken"**
-Run the ATS Healer from the Target Companies page — it automatically finds and fixes most broken URLs.
+- inspect `results/job_search_manual_review.txt`
+- review those targets manually instead of retrying aggressively
 
-**A company's jobs stopped showing up after it was working before**
-Some ATS platforms detect automated requests and temporarily block them. Wait a day and try again, or add that company's jobs manually using **Manual Job Entry** on the Run Job Search page.
+If healing is slow:
 
-**Something else is wrong**
-Check the Scraper Run Log in the Run Job Search page, or open an issue on GitHub.
+- inspect `results/ats_heal.log`
+- reduce workers or disable deep heal for maintenance runs
+
+If a company goes stale:
+
+- use `Target Companies` -> `Heal ATS`
+- use `Deep` when static probing is not enough

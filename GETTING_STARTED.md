@@ -1,216 +1,141 @@
 # Getting Started
 
-Everything you need to go from download to running dashboard in about 5 minutes.
+Everything needed to go from download to a working local dashboard in a few minutes.
 
----
+## Prerequisites
 
-## What you need first
+- Windows installer: no manual setup required
+- Manual install: Python 3.9 or newer
 
-**Python 3.9 or newer.** That's it. The launcher handles everything else automatically.
+If you install Python manually, make sure `python` is on `PATH`.
 
-> **Don't have Python?**
-> 1. Go to [python.org/downloads](https://www.python.org/downloads/) and click the big yellow button
-> 2. Run the installer
-> 3. **Important:** on the first installer screen, check the box that says **"Add Python to PATH"**
-> 4. Finish the install, then come back here
+## Install
 
----
+### Option A: Windows installer
 
-## Step 1 — Download the app
+1. Download `JobSearchSetup.exe` from the Releases page.
+2. Run the installer.
+3. Launch the app from the Desktop or Start Menu shortcut.
 
-**Option A: Download as ZIP (no Git required)**
-1. On this GitHub page, click the green **Code** button
-2. Click **Download ZIP**
-3. Unzip it anywhere you like (Desktop, Documents, etc.)
+The installer pre-warms the runtime environment and can install from bundled wheels, so first launch is faster and less dependent on live package downloads.
 
-**Option B: Clone with Git**
-```
-git clone https://github.com/ericdipietro-collab/JobSearch.git
-```
+### Option B: Manual install
 
----
+1. Download this repo as a ZIP or clone it.
+2. Open the repo folder.
+3. Run `launch.bat` on Windows, `launch.command` on macOS, or `bash launch.sh` on Linux.
 
-## Step 1b — If you used the Windows Installer
+On first launch the app will:
 
-> **SmartScreen warning:** When you run `JobSearchSetup.exe`, Windows may show a
-> **"Windows protected your PC"** screen. This happens because the installer isn't
-> code-signed (common for indie/free software). Click **"More info"** → **"Run anyway"**
-> to proceed. After install, launch from the Desktop or Start Menu shortcut — no terminal
-> window will appear.
+1. create `.venv`
+2. install dependencies
+3. copy `config/job_search_preferences.example.yaml` to `config/job_search_preferences.yaml` if missing
+4. start Streamlit at `http://localhost:8501`
 
----
+## First Run
 
-## Step 2 — Launch the app
+Use the left sidebar to complete the initial setup.
 
-Open the folder you just unzipped/cloned and double-click the launcher for your operating system:
+### Search Settings
 
-| Operating system | File to double-click |
-|---|---|
-| **Windows** | `launch.bat` |
-| **macOS** | `launch.command` |
-| **Linux** | Right-click → Run as Program, or `bash launch.sh` in terminal |
+The active tabs are:
 
-> **macOS note:** The first time you run `launch.command`, macOS may block it with a security warning.
-> Right-click the file → **Open** → **Open** to allow it. You only need to do this once.
+- `Compensation & Location`
+- `Title Evaluation`
+- `JD Evaluation`
+- `Scoring & Rescue`
+- `Full YAML Editor`
 
-**What happens on first launch:**
-1. The launcher checks your Python version
-2. Creates a private `.venv` folder with all dependencies (~1 minute, one-time only)
-3. Copies the example config to `config/job_search_preferences.yaml`
-4. Opens the dashboard in your browser at `http://localhost:8501`
+Start by setting:
 
-Subsequent launches skip straight to step 4 — it's fast.
+- salary floor
+- location policy
+- title weights
 
----
+### Target Companies
 
-## Step 3 — Complete the setup checklist
+The active tabs are:
 
-When the dashboard opens you'll see a **Setup Checklist** at the top of the Home page. It walks you through four steps:
+- `List`
+- `Add / Edit`
+- `Heal ATS`
+- `YAML Editor`
 
-### ① Configure search preferences
+Use `Add / Edit` to add or update companies. For each company you usually want:
 
-Go to **Search Settings** in the left sidebar.
+- `name`
+- `domain`
+- `careers_url`
+- `adapter`
+- `adapter_key` when known
+- `tier`
 
-Under **Compensation & Location**, set:
-- Your **minimum salary** (the floor — jobs below this are filtered out)
-- Whether you want **Remote only** or **Remote or Hybrid**
+### Run Job Search
 
-Hit **Save Compensation & Location**. ✓
+Use `Run Job Search` to start the scraper from the dashboard, or run:
 
-> You can also edit keyword weights, scoring thresholds, and other preferences here,
-> but the defaults work well to start.
-
-### ② Register target companies
-
-Go to **Target Companies** → **Add / Edit Company** tab.
-
-Add the companies whose job pages you want monitored. For each one you need:
-- Company name
-- The URL of their careers page
-- The ATS type (Greenhouse, Lever, Ashby, Workday, or custom)
-
-### ③ Run the job search pipeline
-
-Go to **Run Job Search** and click **Start Pipeline**.
-
-The modular scraper visits each company's careers page and pulls open roles. Results appear
-in **Job Matches** when it finishes. Jobs are saved directly to your local database.
-
-**Developer CLI:**
-You can also run the scraper from your terminal:
 ```bash
-python src/jobsearch/cli.py run
+python -m jobsearch.cli run
 ```
 
-### ④ Track your first application
+### Track Applications
 
-Go to **My Applications** → click **➕ Add** → fill in a company and role.
+Use `My Applications` to track the pipeline once jobs are saved into the database.
 
-You can add applications manually here, or use the **✅ Apply & Track** button on any
-job in the **Job Matches** page to create one automatically.
+## Deep Search / Deep Heal
 
----
+These are optional and slower than the standard static flow.
 
-## Daily workflow
+Install the add-on scripts from the `deep_search/` folder:
 
-| What you want to do | Where to go |
-|---|---|
-| See today's priorities | **Home** — KPIs, overdue follow-ups, this week's interviews |
-| Check new job matches | **Job Matches** → Apply Now tab |
-| Log that you applied somewhere | **My Applications** → open the app → Timeline tab → Add event |
-| Prep for an interview | **My Applications** → open the app → Prep tab |
-| Track a networking conversation | **My Applications** → ➕ Add → choose "Opportunity" |
-| Review your weekly job search activity | **Weekly Report** |
-| Research a company | **Company Profiles** → ➕ New Profile |
-| Practice interview answers | **Question Bank** |
-| Draft a follow-up email | **Templates** |
+- Windows: `deep_search\install_deep_search.bat`
+- macOS / Linux: `bash deep_search/install_deep_search.sh`
 
----
+Use:
 
-## Deep Search & Deep Heal (optional add-ons)
+- `Run Job Search` + Deep Search for JavaScript-heavy careers pages
+- `Target Companies` + Heal ATS + Deep for ATS rediscovery and rendered-board detection
 
-The standard install scrapes careers pages with lightweight HTTP requests. About 300 companies
-use JavaScript-heavy pages (React SPAs, dynamically-loaded iframes) that the static scraper
-can't read. The optional **Deep Search / Deep Heal** add-on unlocks these using a headless
-Chromium browser — it's a separate download because it pulls ~170 MB of browser binaries.
+CLI equivalents:
 
-### Install the add-on
-
-**Windows** — double-click or run in a terminal:
-```
-deep_search\install_deep_search.bat
-```
-
-**macOS / Linux:**
 ```bash
-bash deep_search/install_deep_search.sh
+python -m jobsearch.cli run --deep-search
+python -m jobsearch.cli heal --deep --all
 ```
 
-This installs `playwright` and downloads Chromium. Restart the dashboard afterwards.
+## Data and Backups
 
-### What each mode does
+Your data is local.
 
-**Deep Search** (Run Job Search page)
-- Scrapes careers pages on JavaScript-heavy sites that return nothing with static HTTP
-- Covers BlackRock, Charles Schwab, S&P Global, and any company with `render_required: true`
-- Enable the **Deep Search** toggle before clicking Start Pipeline, or pass `--deep-search` on the CLI
+- Jobs and tracking data: `results/jobsearch.db`
+- Scrape log: `results/job_search_v6.log`
+- Heal log: `results/ats_heal.log`
+- Manual-review list: `results/job_search_manual_review.txt`
+- Score-rejected jobs: `results/job_search_v6_rejected.csv`
+- Personal preferences: `config/job_search_preferences.yaml`
+- Company registry: `config/job_search_companies.yaml`
 
-**Deep Heal** (Target Companies → Heal ATS tab)
-- Identifies *which ATS* a company uses when the static healer can't figure it out
-- Uses Playwright **network request interception** — watches API calls made during page load
-  to catch Greenhouse, Lever, Ashby, Workday API calls invisible to HTML parsing
-- Also detects JS-constructed iframes (where `<iframe src="">` is set by JavaScript at runtime)
-- Only fires for companies the static scan marks NOT_FOUND, FALLBACK, or unresolved custom_manual
-- Enable the **Deep Heal** toggle in the Heal ATS tab, or pass `--deep-heal` on the CLI
+To back up the app state, copy:
 
-> **Performance note:** Deep Search/Heal launches a headless browser per company, so it's
-> slower than standard runs. Use it when you want to maximise coverage, not for every daily run.
-
----
-
-## Keeping your data safe
-
-Your data lives in `results/jobsearch.db` on your own computer — nothing is sent anywhere.
-
-**To back up:** Go to **Search Settings** → **Backup & Restore** tab → **Create Backup**.
-Download the ZIP and store it somewhere safe (Google Drive, external drive, etc.).
-
-**To restore on a new machine:** Follow Steps 1–2, then go to Backup & Restore → upload
-your backup ZIP → click **Restore Files**.
-
----
-
-## Frequently asked questions
-
-**The browser doesn't open automatically.**
-Navigate to `http://localhost:8501` manually.
-
-**I see "No results yet" on Job Matches.**
-You need to run the pipeline first (Step 3 above). If you've run it and still see nothing,
-go to **Run Job Search** → **Clear History**, then run again.
-
-**The app won't start — Python not found.**
-Make sure you checked "Add Python to PATH" during install. If you missed it, re-run the
-Python installer, choose "Modify", and add PATH. Or uninstall and reinstall.
-
-**I want to stop the app.**
-Close the terminal / command prompt window that opened when you launched.
-The browser tab will stop working, but your data is saved.
-
-**Can two people use the same installation?**
-The app is designed for one person — the SQLite database is a single file on your computer.
-Each person should download and run their own copy.
-
-**I already have job search data in a spreadsheet.**
-Go to **My Applications** → expand the **LinkedIn CSV Import** section at the top.
-You can upload a LinkedIn job application export (or any CSV with Company/Role/Date columns).
-
----
+- `results/`
+- `config/job_search_preferences.yaml`
+- `config/job_search_companies.yaml`
 
 ## Troubleshooting
 
-If something goes wrong after a launch, the terminal window shows the full error message.
+If the dashboard does not open automatically, browse to `http://localhost:8501`.
 
-You can also check the scraper log: **Run Job Search** → scroll down → **Scraper Run Log** expander.
+If you get no useful matches:
 
-If you're stuck, open an issue at [github.com/ericdipietro-collab/JobSearch/issues](https://github.com/ericdipietro-collab/JobSearch/issues).
+- lower the salary floor
+- relax title or keyword weights
+- run Heal ATS first if company URLs look stale
+
+If a scrape or heal run behaves unexpectedly, inspect:
+
+- `results/job_search_v6.log`
+- `results/ats_heal.log`
+- `results/job_search_manual_review.txt`
+- `results/job_search_v6_rejected.csv`
+
+If Python is not found on manual install, reinstall Python and make sure it is added to `PATH`.

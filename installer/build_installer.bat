@@ -35,6 +35,23 @@ if not defined ISCC (
 )
 echo  [OK] Inno Setup: %ISCC%
 
+set "BUILD_PY="
+for %%P in (py python python3) do (
+    if not defined BUILD_PY (
+        for /f "delims=" %%V in ('%%P --version 2^>^&1') do (
+            echo %%V | findstr /r "Python 3\.[9-9]\. Python 3\.[1-9][0-9]\." >nul 2>&1
+            if !errorlevel!==0 set "BUILD_PY=%%P"
+        )
+    )
+)
+
+if not defined BUILD_PY (
+    echo  Python 3.9+ is required to prepare the offline wheel bundle.
+    pause
+    exit /b 1
+)
+echo  [OK] Build Python: %BUILD_PY%
+
 REM ── 2. Download Python 3.11.9 installer if missing ───────────────────────────
 set "PY_EXE=downloads\python-3.11.9-amd64.exe"
 set "PY_URL=https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe"
@@ -57,6 +74,18 @@ if exist "%PY_EXE%" (
 
 REM ── 3. Create output directory ────────────────────────────────────────────────
 if not exist "..\dist" mkdir "..\dist"
+if not exist "wheels" mkdir "wheels"
+
+echo.
+echo  Preparing offline wheel bundle ...
+del /q "wheels\*" >nul 2>&1
+%BUILD_PY% -m pip download --only-binary=:all: -r "..\requirements.txt" -d "wheels"
+if errorlevel 1 (
+    echo.
+    echo  ERROR: Failed to download runtime wheels.
+    pause
+    exit /b 1
+)
 
 REM ── 4. Compile the installer ──────────────────────────────────────────────────
 echo.

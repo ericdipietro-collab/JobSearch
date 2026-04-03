@@ -7,7 +7,7 @@ from datetime import date
 
 import streamlit as st
 
-import ats_db as db
+from jobsearch import ats_db as db
 
 _MOODS = ["", "💪 Energized", "😊 Good", "😐 Neutral", "😔 Low", "😤 Frustrated", "🤔 Uncertain"]
 

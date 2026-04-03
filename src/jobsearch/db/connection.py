@@ -1,8 +1,9 @@
 import sqlite3
 from pathlib import Path
 from typing import Optional
-from .schema import init_db
-from ..config.settings import settings
+
+from jobsearch.config.settings import settings
+from jobsearch.db.schema import init_db
 
 def get_connection(db_path: Optional[Path] = None) -> sqlite3.Connection:
     """Get a connection to the unified SQLite database."""

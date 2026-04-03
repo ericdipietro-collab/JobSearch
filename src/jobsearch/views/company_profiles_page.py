@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-import ats_db as db
+from jobsearch import ats_db as db
 
 
 def render_company_profiles(conn) -> None:

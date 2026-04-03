@@ -9,8 +9,8 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-import ats_db as db
-from views.setup_wizard_page import render_setup_checklist
+from jobsearch import ats_db as db
+from jobsearch.views.setup_wizard_page import render_setup_checklist
 
 EVENT_ICONS = {
     "applied":             "📨",

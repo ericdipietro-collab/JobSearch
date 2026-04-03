@@ -65,3 +65,6 @@ Thumbs.db
 
 # ── Installer build artifacts ─────────────────────────────────────────────────
 installer/downloads/
+installer/wheels/
+original_app.py.tmp
+merge_app.py

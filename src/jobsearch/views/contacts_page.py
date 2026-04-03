@@ -9,7 +9,7 @@ from datetime import date
 import pandas as pd
 import streamlit as st
 
-import ats_db as db
+from jobsearch import ats_db as db
 
 _REL_LABELS = {
     "former_colleague": "Former Colleague",

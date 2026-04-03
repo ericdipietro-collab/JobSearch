@@ -101,16 +101,33 @@ REM ── Activate venv ──────────────────�
 call .venv\Scripts\activate.bat
 
 REM ── Install / update dependencies (fast no-op after first run) ───────────────
-echo  Checking dependencies...
-python -m pip install -q --upgrade pip
-python -m pip install -q -r requirements.txt
-python -m pip install -q -e .
-if errorlevel 1 (
-    echo.
-    echo  ERROR: Failed to install dependencies.
-    echo  Check your internet connection and try again.
-    if "%SETUP_ONLY%"=="0" pause
-    exit /b 1
+set "STAMP_FILE=.venv\.deps_installed"
+set "NEEDS_DEPS=0"
+if not exist "%STAMP_FILE%" set "NEEDS_DEPS=1"
+if "%NEEDS_DEPS%"=="0" (
+    python -c "from pathlib import Path; import sys; stamp=Path(r'.venv/.deps_installed'); deps=[Path('requirements.txt'), Path('pyproject.toml')]; sys.exit(0 if stamp.exists() and all((not p.exists()) or p.stat().st_mtime <= stamp.stat().st_mtime for p in deps) else 1)"
+    if errorlevel 1 set "NEEDS_DEPS=1"
+)
+
+if "%NEEDS_DEPS%"=="1" (
+    echo  Installing pinned runtime dependencies...
+    python -m pip install -q --upgrade pip
+    if exist "installer\wheels" (
+        python -m pip install -q --no-index --find-links installer\wheels -r requirements.txt
+    ) else (
+        python -m pip install -q -r requirements.txt
+    )
+    python -m pip install -q -e .
+    if errorlevel 1 (
+        echo.
+        echo  ERROR: Failed to install dependencies.
+        echo  Check your internet connection and try again.
+        if "%SETUP_ONLY%"=="0" pause
+        exit /b 1
+    )
+    > "%STAMP_FILE%" echo dependencies installed
+) else (
+    echo  Runtime environment already prepared.
 )
 
 REM ── Ensure results and config dirs exist ─────────────────────────────────────

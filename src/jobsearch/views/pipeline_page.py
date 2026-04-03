@@ -2,20 +2,39 @@
 
 from __future__ import annotations
 import sqlite3
-from typing import List, Optional
+from datetime import datetime
+from typing import List
 import pandas as pd
 import streamlit as st
 
-import ats_db
-from services.analytics_service import time_in_stage, STAGES
+from jobsearch import ats_db
+from jobsearch.services.analytics_service import time_in_stage
+
+STATUS_OPTIONS = [
+    "Applied",
+    "Screening",
+    "Interviewing",
+    "Offer",
+    "Accepted",
+    "Rejected",
+    "Withdrawn",
+]
+
+STATUS_TO_DB = {
+    "Applied": "applied",
+    "Screening": "screening",
+    "Interviewing": "interviewing",
+    "Offer": "offer",
+    "Accepted": "accepted",
+    "Rejected": "rejected",
+    "Withdrawn": "withdrawn",
+}
 
 # Active stages for default view
 ACTIVE_STAGES = [
     "Applied",
-    "Recruiter Screen",
-    "Hiring Manager",
-    "Panel",
-    "Final Round",
+    "Screening",
+    "Interviewing",
     "Offer",
 ]
 
@@ -32,12 +51,8 @@ def _build_pipeline_df(conn: sqlite3.Connection, stages: List[str], search: str)
     if not stages:
         return pd.DataFrame()
 
-    # Map display stages back to DB status if they differ
-    # For now assume they match or handle case-insensitivity
     placeholders = ",".join("?" * len(stages))
-    
-    # We use lower() to be safe with DB status
-    status_params = [s.lower() for s in stages]
+    status_params = [STATUS_TO_DB[s] for s in stages]
     
     rows = conn.execute(
         f"""
@@ -77,7 +92,10 @@ def _stage_metric_row(conn: sqlite3.Connection) -> None:
     rows = conn.execute(
         "SELECT status, COUNT(*) AS n FROM applications GROUP BY status"
     ).fetchall()
-    counts = {str(r["status"]).capitalize(): r["n"] for r in rows}
+    counts = {
+        label: next((r["n"] for r in rows if r["status"] == db_status), 0)
+        for label, db_status in STATUS_TO_DB.items()
+    }
 
     visible = [s for s in ACTIVE_STAGES if counts.get(s, 0) > 0]
     if not visible:
@@ -136,7 +154,7 @@ def render_pipeline(conn: sqlite3.Connection) -> None:
 
     col_filter, col_search = st.columns([3, 2])
     with col_filter:
-        selected_stages = st.multiselect("Filter by stage", options=STAGES, default=ACTIVE_STAGES)
+        selected_stages = st.multiselect("Filter by stage", options=STATUS_OPTIONS, default=ACTIVE_STAGES)
     with col_search:
         search_query = st.text_input("Search", placeholder="Company, title, or location...", label_visibility="collapsed")
 
