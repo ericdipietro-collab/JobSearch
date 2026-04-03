@@ -791,6 +791,76 @@ def network_contacts_follow_up_due(conn: sqlite3.Connection) -> List[sqlite3.Row
     ).fetchall()
 
 
+def get_network_contacts_for_company(conn: sqlite3.Connection, company_name: str) -> List[sqlite3.Row]:
+    return conn.execute(
+        """
+        SELECT *
+        FROM network_contacts
+        WHERE company IS NOT NULL
+          AND TRIM(company) != ''
+          AND LOWER(company) = LOWER(?)
+        ORDER BY
+            CASE WHEN last_contact_date IS NULL THEN 1 ELSE 0 END,
+            last_contact_date DESC,
+            name ASC
+        """,
+        (company_name,),
+    ).fetchall()
+
+
+def get_network_summary_for_company(conn: sqlite3.Connection, company_name: str) -> Dict[str, Any]:
+    contacts = get_network_contacts_for_company(conn, company_name)
+    due_count = 0
+    reached_out = 0
+    referral_count = 0
+    today = date.today().isoformat()
+    next_follow_up = None
+    for contact in contacts:
+        if contact["last_contact_date"]:
+            reached_out += 1
+        if contact["relationship"] == "referral":
+            referral_count += 1
+        follow_up_date = contact["follow_up_date"]
+        if follow_up_date:
+            if follow_up_date <= today:
+                due_count += 1
+            if next_follow_up is None or follow_up_date < next_follow_up:
+                next_follow_up = follow_up_date
+    return {
+        "contacts": len(contacts),
+        "reached_out": reached_out,
+        "referrals": referral_count,
+        "follow_up_due": due_count,
+        "next_follow_up": next_follow_up,
+    }
+
+
+def get_company_network_map(conn: sqlite3.Connection) -> List[Dict[str, Any]]:
+    company_names = {
+        row["name"]
+        for row in get_all_company_profiles(conn)
+    }
+    company_names.update(
+        row["company"]
+        for row in conn.execute(
+            "SELECT DISTINCT company FROM network_contacts WHERE company IS NOT NULL AND TRIM(company) != ''"
+        ).fetchall()
+    )
+
+    rows: List[Dict[str, Any]] = []
+    for company_name in sorted(company_names):
+        summary = get_network_summary_for_company(conn, company_name)
+        if summary["contacts"] == 0:
+            continue
+        rows.append(
+            {
+                "company": company_name,
+                **summary,
+            }
+        )
+    return rows
+
+
 def add_question(conn: sqlite3.Connection, question: str, category: str = "behavioral", **kwargs) -> int:
     now = _now()
     kwargs["question"] = question

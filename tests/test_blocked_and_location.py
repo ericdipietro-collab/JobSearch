@@ -2,6 +2,7 @@ import sys
 import unittest
 from datetime import date
 from pathlib import Path
+import sqlite3
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 SRC_DIR = BASE_DIR / "src"
@@ -12,6 +13,7 @@ from jobsearch.scraper.adapters.base import BaseAdapter, BlockedSiteError
 from jobsearch.scraper.adapters.generic import GenericAdapter
 from jobsearch.scraper.scoring import Scorer
 from jobsearch.services.opportunity_service import _is_material_jd_change, _jd_fingerprint
+from jobsearch import ats_db as db
 from jobsearch.app_main import _annualized_compensation_preview, _sidebar_metrics_for_df
 from jobsearch.views.tracker_page import (
     _default_follow_up_date,
@@ -316,6 +318,30 @@ class BlockedAndLocationTests(unittest.TestCase):
                 "Remote",
             )
         )
+
+    def test_company_network_summary_counts_contacts_and_referrals(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        db.init_db(conn)
+        db.upsert_company_profile(conn, "TestCo", about="Test company")
+        db.add_network_contact(
+            conn,
+            name="Alice Referrer",
+            company="TestCo",
+            relationship="referral",
+            last_contact_date="2026-04-01",
+            follow_up_date="2026-04-02",
+        )
+        db.add_network_contact(
+            conn,
+            name="Bob Recruiter",
+            company="TestCo",
+            relationship="recruiter",
+        )
+        summary = db.get_network_summary_for_company(conn, "TestCo")
+        self.assertEqual(summary["contacts"], 2)
+        self.assertEqual(summary["reached_out"], 1)
+        self.assertEqual(summary["referrals"], 1)
 
 
 if __name__ == "__main__":

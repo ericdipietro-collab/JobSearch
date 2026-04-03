@@ -4,6 +4,9 @@ shared across all applications to that company.
 """
 from __future__ import annotations
 
+from datetime import date
+
+import pandas as pd
 import streamlit as st
 
 from jobsearch import ats_db as db
@@ -16,6 +19,26 @@ def render_company_profiles(conn) -> None:
         "Research notes that persist across all applications to the same company. "
         "Add a profile here once — it will appear automatically when you open any application to that company."
     )
+
+    network_map = db.get_company_network_map(conn)
+    if network_map:
+        st.markdown("**Network map**")
+        map_df = pd.DataFrame(
+            [
+                {
+                    "Company": row["company"],
+                    "Contacts": row["contacts"],
+                    "Reached Out": row["reached_out"],
+                    "Referrals": row["referrals"],
+                    "Due": row["follow_up_due"],
+                    "Next Follow-up": row["next_follow_up"] or "—",
+                }
+                for row in network_map
+            ]
+        )
+        st.dataframe(map_df, hide_index=True, use_container_width=True)
+        st.caption("Use this to see which target companies have warm contacts, referrals, and overdue networking follow-ups.")
+        st.divider()
 
     # ── Search + Add ───────────────────────────────────────────────────────────
     sc1, sc2 = st.columns([3, 1])
@@ -65,6 +88,33 @@ def _render_profile_detail(conn, profile) -> None:
         links.append(f"[Glassdoor ↗]({profile['glassdoor_url']})")
     if links:
         st.markdown("  |  ".join(links))
+
+    summary = db.get_network_summary_for_company(conn, profile["name"])
+    mc1, mc2, mc3, mc4 = st.columns(4)
+    mc1.metric("Contacts", summary["contacts"])
+    mc2.metric("Reached Out", summary["reached_out"])
+    mc3.metric("Referrals", summary["referrals"])
+    mc4.metric("Follow-up Due", summary["follow_up_due"])
+
+    related_contacts = db.get_network_contacts_for_company(conn, profile["name"])
+    if related_contacts:
+        with st.expander(f"🤝 {len(related_contacts)} linked contact(s)", expanded=False):
+            for contact in related_contacts:
+                st.markdown(
+                    f"**{contact['name']}**"
+                    + (f" — {contact['title']}" if contact["title"] else "")
+                    + (f"  \n_{contact['relationship']}_" if contact["relationship"] else "")
+                    + (f"  \nLast contact: {contact['last_contact_date']}" if contact["last_contact_date"] else "")
+                    + (f"  \nFollow-up: {contact['follow_up_date']}" if contact["follow_up_date"] else ""),
+                )
+                if contact["notes"]:
+                    st.caption(contact["notes"])
+                st.markdown('<hr style="margin:4px 0;border-color:#374151">', unsafe_allow_html=True)
+    else:
+        st.caption("No networking contacts linked to this company yet.")
+
+    with st.expander("➕ Add linked networking contact", expanded=False):
+        _render_company_contact_form(conn, profile["name"])
 
     _render_profile_form(conn, profile=profile)
 
@@ -145,3 +195,39 @@ def _render_profile_form(conn, profile) -> None:
     if deleted:
         db.delete_company_profile(conn, profile["id"])
         st.rerun()
+
+
+def _render_company_contact_form(conn, company_name: str) -> None:
+    with st.form(f"company_contact_{company_name}"):
+        c1, c2 = st.columns(2)
+        name = c1.text_input("Name *")
+        title = c2.text_input("Title")
+        c3, c4 = st.columns(2)
+        relationship = c3.selectbox("Relationship", [""] + db.NETWORK_RELATIONSHIPS)
+        email = c4.text_input("Email")
+        c5, c6 = st.columns(2)
+        linkedin = c5.text_input("LinkedIn URL")
+        follow_up_date = c6.date_input("Follow-up date", value=None)
+        notes = st.text_area(
+            "Notes",
+            height=70,
+            placeholder=f"Why this person matters at {company_name}, what you plan to ask, referral context…",
+        )
+        if st.form_submit_button("Add Contact", type="primary"):
+            if not name.strip():
+                st.error("Name is required.")
+            else:
+                db.add_network_contact(
+                    conn,
+                    name=name.strip(),
+                    company=company_name,
+                    title=title.strip() or None,
+                    email=email.strip() or None,
+                    linkedin_url=linkedin.strip() or None,
+                    relationship=relationship or None,
+                    follow_up_date=follow_up_date.isoformat() if follow_up_date else None,
+                    last_contact_date=date.today().isoformat() if relationship == "referral" else None,
+                    notes=notes.strip() or None,
+                )
+                st.success(f"Added contact for {company_name}.")
+                st.rerun()

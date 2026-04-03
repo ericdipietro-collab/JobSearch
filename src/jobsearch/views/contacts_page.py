@@ -58,6 +58,10 @@ def render_contacts(conn) -> None:
     with ff2:
         search = ff2.text_input("Search", placeholder="name or company…",
                                  label_visibility="collapsed", key="contacts_search")
+    with ff3:
+        companies = sorted({row["company"] for row in db.get_network_contacts(conn) if row["company"]})
+        company_opts = ["All companies"] + companies
+        sel_company = ff3.selectbox("Company", company_opts, label_visibility="collapsed", key="contacts_company_filter")
     with ff4:
         if st.button("➕ Add Contact", key="contacts_add_btn", use_container_width=True):
             st.session_state["contacts_show_add"] = not st.session_state.get("contacts_show_add", False)
@@ -73,6 +77,8 @@ def render_contacts(conn) -> None:
         relationship = None if sel_rel == "All relationships" else sel_rel,
         search       = search or None,
     )
+    if sel_company != "All companies":
+        contacts = [contact for contact in contacts if (contact["company"] or "") == sel_company]
 
     if not contacts:
         st.info("No contacts yet. Add your first one above.")
@@ -94,6 +100,7 @@ def render_contacts(conn) -> None:
             "Company":     c["company"] or "—",
             "Title":       c["title"] or "—",
             "Relationship": _REL_LABELS.get(c["relationship"] or "", c["relationship"] or "—"),
+            "Reached Out": "Yes" if c["last_contact_date"] else "No",
             "Last Contact": c["last_contact_date"] or "—",
             "Follow-up":   fu_label or "—",
         })
@@ -110,6 +117,7 @@ def render_contacts(conn) -> None:
             "Company":      st.column_config.TextColumn("Company",      width="medium"),
             "Title":        st.column_config.TextColumn("Title",        width="medium"),
             "Relationship": st.column_config.TextColumn("Relationship", width="medium"),
+            "Reached Out":  st.column_config.TextColumn("Reached Out",  width="small"),
             "Last Contact": st.column_config.TextColumn("Last Contact", width="small"),
             "Follow-up":    st.column_config.TextColumn("Follow-up",    width="small"),
         },
