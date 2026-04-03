@@ -144,8 +144,8 @@ class ScraperEngine:
                         used_deep_search = scrape_result["used_deep_search"]
                         scrape_status = scrape_result.get("status", "ok")
                         scrape_note = scrape_result.get("note", "")
-                        self._update_scrape_health(company, adapter_name, scrape_status, scrape_ms, scrape_note)
                         persisted, inserted, dropped, evaluated, process_ms, score_stats, company_rejected_rows = self._process_and_save_jobs(company, jobs)
+                        self._update_scrape_health(company, adapter_name, scrape_status, scrape_ms, scrape_note, evaluated)
                         total_evaluated += evaluated
                         total_persisted += persisted
                         total_inserted += inserted
@@ -358,16 +358,29 @@ class ScraperEngine:
             return f"Cooldown until {cooldown_until.isoformat()}"
         return ""
 
-    def _update_scrape_health(self, company: Dict[str, Any], adapter_name: str, scrape_status: str, scrape_ms: float, scrape_note: str) -> None:
+    def _update_scrape_health(
+        self,
+        company: Dict[str, Any],
+        adapter_name: str,
+        scrape_status: str,
+        scrape_ms: float,
+        scrape_note: str,
+        evaluated_count: int,
+    ) -> None:
         if adapter_name != "workday":
             return
         conn = db.get_connection()
         try:
             cooldown_days = 0
-            if scrape_status == "budget_exhausted":
-                existing = db.get_workday_target_health(conn, company.get("name", ""))
-                streak = int(existing["empty_streak"]) if existing else 0
-                if streak + 1 >= settings.workday_empty_cooldown_threshold:
+            existing = db.get_workday_target_health(conn, company.get("name", ""))
+            success_count = int(existing["success_count"]) if existing else 0
+            streak = int(existing["empty_streak"]) if existing else 0
+            if (
+                scrape_status == "budget_exhausted"
+                and evaluated_count == 0
+                and success_count == 0
+                and streak + 1 >= settings.workday_empty_cooldown_threshold
+            ):
                     cooldown_days = settings.workday_empty_cooldown_days
             db.update_workday_target_health(
                 conn,
@@ -375,6 +388,7 @@ class ScraperEngine:
                 careers_url=str(company.get("careers_url", "") or ""),
                 status=scrape_status if scrape_status in {"ok", "empty", "budget_exhausted", "cooldown"} else "ok",
                 elapsed_ms=scrape_ms,
+                evaluated_count=evaluated_count,
                 cooldown_days=cooldown_days,
                 notes=scrape_note,
             )

@@ -190,6 +190,25 @@ class BlockedAndLocationTests(unittest.TestCase):
         finally:
             db.DB_PATH = original_db_path
 
+    def test_workday_target_health_tracks_successful_tenants_without_cooldown(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        db.init_db(conn)
+        db.update_workday_target_health(
+            conn,
+            company="HealthyWorkday",
+            careers_url="https://healthy.wd1.myworkdayjobs.com/External",
+            status="ok",
+            elapsed_ms=12000.0,
+            evaluated_count=42,
+        )
+        row = db.get_workday_target_health(conn, "HealthyWorkday")
+        self.assertEqual(int(row["success_count"]), 1)
+        self.assertEqual(int(row["empty_streak"]), 0)
+        self.assertEqual(int(row["last_evaluated"]), 42)
+        self.assertIsNone(row["cooldown_until"])
+        conn.close()
+
     def test_tracker_summary_excludes_scraper_only_considering_rows(self):
         rows = [
             {"status": "considering"},
