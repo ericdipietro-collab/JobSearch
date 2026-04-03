@@ -138,6 +138,22 @@ class BlockedAndLocationTests(unittest.TestCase):
         unknown_only = _apply_work_type_filter(df, "Unknown Only")
         self.assertEqual(unknown_only["title"].tolist(), ["D"])
 
+    def test_work_type_unknown_rows_are_countable(self):
+        df = pd.DataFrame(
+            [
+                {"effective_bucket": "APPLY NOW", "work_type": ""},
+                {"effective_bucket": "REVIEW TODAY", "work_type": "fte"},
+                {"effective_bucket": "WATCH", "work_type": None},
+                {"effective_bucket": "MANUAL REVIEW", "work_type": "w2"},
+                {"effective_bucket": "Applied", "work_type": "fte"},
+            ]
+        )
+        match_population = df[df["effective_bucket"].isin(["APPLY NOW", "REVIEW TODAY", "WATCH", "MANUAL REVIEW"])].copy()
+        work_type_series = match_population["work_type"].map(_normalize_work_type)
+        self.assertEqual(int((work_type_series == "unknown").sum()), 2)
+        self.assertEqual(int((work_type_series == "fte").sum()), 1)
+        self.assertEqual(int(work_type_series.isin({"w2_contract", "1099_contract", "c2c_contract", "contract"}).sum()), 1)
+
     def test_work_type_filter_leaves_manual_review_rows_without_work_type(self):
         df = pd.DataFrame([{"company": "ADP", "adapter": "generic"}])
         filtered = _apply_work_type_filter(df, "Contract Only")

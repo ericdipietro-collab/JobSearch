@@ -422,13 +422,16 @@ def main():
         vm1.metric("Stale Roles", velocity_summary["stale"])
         vm2.metric("Reposted Roles", velocity_summary["reposted"])
         vm3.metric("Dormant Roles", velocity_summary["dormant"])
-        work_type_series = df_all.get("work_type", pd.Series(["unknown"] * len(df_all), index=df_all.index)).map(_normalize_work_type)
+        match_population = df_all[df_all["effective_bucket"].isin(["APPLY NOW", "REVIEW TODAY", "WATCH", "MANUAL REVIEW"])].copy()
+        work_type_series = match_population.get("work_type", pd.Series(["unknown"] * len(match_population), index=match_population.index)).map(_normalize_work_type)
         contractor_count = int(work_type_series.isin({"w2_contract", "1099_contract", "c2c_contract", "contract"}).sum())
         fte_count = int((work_type_series == "fte").sum())
-        wt1, wt2, wt3 = st.columns([1, 1, 2])
+        unknown_count = int((work_type_series == "unknown").sum())
+        wt1, wt2, wt3, wt4 = st.columns([1, 1, 1, 2])
         wt1.metric("Contract Roles", contractor_count)
         wt2.metric("Full-time Roles", fte_count)
-        work_type_filter = wt3.selectbox(
+        wt3.metric("Unknown Work Type", unknown_count)
+        work_type_filter = wt4.selectbox(
             "Work Type Filter",
             [
                 "All",
@@ -441,6 +444,7 @@ def main():
             ],
             index=0,
         )
+        st.caption("Work type counts reflect the current matches queue only. Many scraped roles do not expose a structured employment type and remain `Unknown`.")
         ann = {r["job_key"]: dict(r) for r in ats_db.get_all_annotations(ats_db.get_connection())}
         tabs = st.tabs(["🔥 Apply Now", "📋 Review Today", "👀 Watch", "🔍 Manual Review", "🚫 Filtered Out"])
         BUCKETS = [("APPLY NOW", tabs[0], ["Applied", "Rejected"]), ("REVIEW TODAY", tabs[1], ["APPLY NOW", "Applied", "WATCH", "Rejected"]), ("WATCH", tabs[2], ["APPLY NOW", "REVIEW TODAY", "Applied", "Rejected"]), ("MANUAL REVIEW", tabs[3], ["APPLY NOW", "Applied", "Rejected"])]
