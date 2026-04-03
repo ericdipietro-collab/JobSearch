@@ -788,6 +788,28 @@ def get_interviews(conn: sqlite3.Connection, application_id: int) -> List[sqlite
     return conn.execute("SELECT * FROM interviews WHERE application_id = ? ORDER BY scheduled_at ASC", (application_id,)).fetchall()
 
 
+def find_matching_interview(
+    conn: sqlite3.Connection,
+    application_id: int,
+    *,
+    scheduled_at: Optional[str] = None,
+    interviewer_names: Optional[str] = None,
+    location: Optional[str] = None,
+) -> Optional[sqlite3.Row]:
+    interviews = get_interviews(conn, application_id)
+    scheduled_key = str(scheduled_at or "")[:16]
+    interviewer_key = str(interviewer_names or "").strip().lower()
+    location_key = str(location or "").strip().lower()
+    for interview in interviews:
+        if scheduled_key and str(interview["scheduled_at"] or "")[:16] == scheduled_key:
+            return interview
+        if interviewer_key and interviewer_key == str(interview["interviewer_names"] or "").strip().lower() and interviewer_key:
+            return interview
+        if location_key and location_key == str(interview["location"] or "").strip().lower() and location_key:
+            return interview
+    return None
+
+
 def delete_interview(conn: sqlite3.Connection, interview_id: int) -> None:
     conn.execute("DELETE FROM interviews WHERE id = ?", (interview_id,))
     conn.commit()

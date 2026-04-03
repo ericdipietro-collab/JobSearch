@@ -15,7 +15,11 @@ import yaml
 from jobsearch import ats_db as db
 from jobsearch.config.settings import settings
 from jobsearch.scraper.scoring import normalize_compensation
-from jobsearch.services.email_signal_service import classify_email_signal, signal_resolution_for_existing_application
+from jobsearch.services.email_signal_service import (
+    classify_email_signal,
+    infer_interview_type,
+    signal_resolution_for_existing_application,
+)
 from jobsearch.services.gmail_sync_service import sync_gmail_email_signals
 
 FORMAL_TRACKER_EXCLUDED_STATUSES = {"considering"}
@@ -393,8 +397,20 @@ def _import_email_signals(conn, uploaded_file) -> int:
         signal_status = "new"
         notes = signal.get("notes")
         if linked:
-            signal_status, auto_note = signal_resolution_for_existing_application(signal["signal_type"], linked["status"])
-            notes = auto_note or notes
+            if signal["signal_type"] == "interview_request":
+                existing_interview = db.find_matching_interview(
+                    conn,
+                    linked["id"],
+                    scheduled_at=signal.get("interview_scheduled_at") or None,
+                    interviewer_names=signal.get("interviewer_names") or None,
+                    location=signal.get("interview_location") or None,
+                )
+                if existing_interview:
+                    signal_status = "resolved"
+                    notes = "Matched existing interview."
+            else:
+                signal_status, auto_note = signal_resolution_for_existing_application(signal["signal_type"], linked["status"])
+                notes = auto_note or notes
         db.upsert_email_signal(
             conn,
             **signal,
@@ -508,11 +524,26 @@ def _apply_email_signal_action(conn, signal, action: str) -> None:
     if action == "create_interview":
         if app["status"] not in ("interviewing", "offer", "accepted", "rejected", "withdrawn"):
             db.update_application(conn, app["id"], status="interviewing")
+        existing = db.find_matching_interview(
+            conn,
+            app["id"],
+            scheduled_at=signal["interview_scheduled_at"] or None,
+            interviewer_names=signal["interviewer_names"] or None,
+            location=signal["interview_location"] or None,
+        )
+        if existing:
+            db.update_email_signal(conn, signal_id, signal_status="resolved", notes="Matched existing interview.")
+            return
         db.add_interview(
             conn,
             app["id"],
             round_number=max((iv["round_number"] or 0 for iv in db.get_interviews(conn, app["id"])), default=0) + 1,
-            interview_type="phone_screen",
+            interview_type=infer_interview_type(
+                signal["subject"],
+                signal["raw_excerpt"],
+                signal["sender"],
+                signal["interview_location"],
+            ),
             format="mixed",
             scheduled_at=signal["interview_scheduled_at"] or None,
             duration_mins=signal["interview_duration_mins"] or None,
@@ -536,6 +567,23 @@ def _auto_resolve_existing_email_signals(conn) -> None:
     for signal in db.get_email_signals(conn, signal_status="new"):
         linked_status = signal["linked_status"]
         if not linked_status:
+            continue
+        if signal["signal_type"] == "interview_request" and signal["application_id"]:
+            existing_interview = db.find_matching_interview(
+                conn,
+                signal["application_id"],
+                scheduled_at=signal["interview_scheduled_at"] or None,
+                interviewer_names=signal["interviewer_names"] or None,
+                location=signal["interview_location"] or None,
+            )
+            if existing_interview:
+                db.update_email_signal(
+                    conn,
+                    signal["id"],
+                    signal_status="resolved",
+                    notes="Matched existing interview.",
+                )
+                dirty = True
             continue
         new_status, note = signal_resolution_for_existing_application(signal["signal_type"], linked_status)
         if new_status != "new":

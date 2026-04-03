@@ -23,6 +23,12 @@ def _decode_header_value(value: Optional[str]) -> str:
 
 
 def _html_to_text(html: str) -> str:
+    html = re.sub(
+        r'<a[^>]+href=["\']([^"\']+)["\'][^>]*>(.*?)</a>',
+        lambda m: f"{re.sub(r'<[^>]+>', ' ', m.group(2))} {m.group(1)}",
+        html or "",
+        flags=re.IGNORECASE | re.DOTALL,
+    )
     text = re.sub(r"<[^>]+>", " ", html or "")
     text = re.sub(r"\s+", " ", text)
     return text.strip()
@@ -58,15 +64,36 @@ def _message_text(msg: Message) -> str:
     return ""
 
 
+def _calendar_text(msg: Message) -> str:
+    if not msg.is_multipart():
+        return ""
+    parts = []
+    for part in msg.walk():
+        if part.get_content_type() != "text/calendar":
+            continue
+        try:
+            payload = part.get_payload(decode=True) or b""
+            charset = part.get_content_charset() or "utf-8"
+            text = payload.decode(charset, errors="ignore").strip()
+        except Exception:
+            text = ""
+        if text:
+            parts.append(text)
+    return "\n".join(parts)
+
+
 def _parse_imap_message(raw_message: bytes) -> dict:
     msg = email.message_from_bytes(raw_message)
+    body = _message_text(msg)
+    calendar_text = _calendar_text(msg)
+    combined_body = "\n".join(part for part in [body, calendar_text] if part).strip()
     return {
         "message_id": _decode_header_value(msg.get("Message-ID")).strip("<>"),
         "thread_id": None,
         "sender": _decode_header_value(msg.get("From")),
         "subject": _decode_header_value(msg.get("Subject")),
         "received_at": _decode_header_value(msg.get("Date")),
-        "body": _message_text(msg),
+        "body": combined_body,
     }
 
 
@@ -126,8 +153,20 @@ def sync_gmail_email_signals(
             signal_status = "new"
             notes = signal.get("notes")
             if linked:
-                signal_status, auto_note = signal_resolution_for_existing_application(signal["signal_type"], linked["status"])
-                notes = auto_note or notes
+                if signal["signal_type"] == "interview_request":
+                    existing_interview = db.find_matching_interview(
+                        conn,
+                        linked["id"],
+                        scheduled_at=signal.get("interview_scheduled_at") or None,
+                        interviewer_names=signal.get("interviewer_names") or None,
+                        location=signal.get("interview_location") or None,
+                    )
+                    if existing_interview:
+                        signal_status = "resolved"
+                        notes = "Matched existing interview."
+                else:
+                    signal_status, auto_note = signal_resolution_for_existing_application(signal["signal_type"], linked["status"])
+                    notes = auto_note or notes
             db.upsert_email_signal(
                 conn,
                 **signal,

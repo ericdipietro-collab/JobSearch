@@ -13,7 +13,11 @@ if str(SRC_DIR) not in sys.path:
 from jobsearch.scraper.adapters.base import BaseAdapter, BlockedSiteError
 from jobsearch.scraper.adapters.generic import GenericAdapter
 from jobsearch.scraper.scoring import Scorer
-from jobsearch.services.email_signal_service import classify_email_signal, signal_resolution_for_existing_application
+from jobsearch.services.email_signal_service import (
+    classify_email_signal,
+    infer_interview_type,
+    signal_resolution_for_existing_application,
+)
 from jobsearch.services.gmail_sync_service import _parse_imap_message
 from jobsearch.services.opportunity_service import _is_material_jd_change, _jd_fingerprint
 from jobsearch import ats_db as db
@@ -435,6 +439,68 @@ class BlockedAndLocationTests(unittest.TestCase):
         self.assertIn("2026-04-07T14:30:00", signal["interview_scheduled_at"])
         self.assertEqual(signal["interview_location"], "https://meet.google.com/example")
 
+    def test_interview_signal_detects_weekday_recruiter_email(self):
+        signal = classify_email_signal(
+            message_id="msg-2",
+            thread_id=None,
+            sender="Recruiter <recruiter@advisor360.com>",
+            subject="Availability for Monday",
+            body=(
+                "I'd like to connect on Monday at 11:00 am. "
+                "Please confirm your availability and join via Microsoft Teams."
+            ),
+            received_at="Fri, 03 Apr 2026 10:00:00 -0000",
+            known_companies=["Advisor360"],
+        )
+        self.assertIsNotNone(signal)
+        self.assertEqual(signal["signal_type"], "interview_request")
+        self.assertEqual(signal["company"], "Advisor360")
+        self.assertIn("2026-04-06T11:00:00", signal["interview_scheduled_at"])
+
+    def test_interview_signal_extracts_meet_link_and_duration_from_range(self):
+        signal = classify_email_signal(
+            message_id="msg-3",
+            thread_id=None,
+            sender="David Korbel <david@example.com>",
+            subject="[Advisor360] Interview confirmation",
+            body=(
+                "Date and time: Monday, April 6, 2026 at 11:00 AM - 11:30 AM MDT\n"
+                "Meeting link: meet.google.com/qsb-jwfi-wae\n"
+                "Schedule\n"
+                "11:00 AM - 11:30 AM MDT: Drew Norell (Director, Solutions Architecture, Client Onboarding)"
+            ),
+            received_at="Thu, 02 Apr 2026 14:40:00 -0000",
+            known_companies=["Advisor360"],
+        )
+        self.assertIsNotNone(signal)
+        self.assertEqual(signal["interview_duration_mins"], 30)
+        self.assertEqual(signal["interview_location"], "https://meet.google.com/qsb-jwfi-wae")
+        self.assertEqual(signal["interviewer_names"], "Drew Norell")
+
+    def test_interview_type_inference_prefers_video_for_meet_links(self):
+        interview_type = infer_interview_type(
+            "[Advisor360] Interview confirmation",
+            "Meeting link: https://meet.google.com/qsb-jwfi-wae",
+            "David Korbel <mail@ats.rippling.com>",
+            "https://meet.google.com/qsb-jwfi-wae",
+        )
+        self.assertEqual(interview_type, "video")
+
+    def test_parse_imap_message_includes_calendar_payload(self):
+        msg = EmailMessage()
+        msg["From"] = "recruiting@stripe.com"
+        msg["Subject"] = "Interview invite"
+        msg["Date"] = "Fri, 03 Apr 2026 10:00:00 -0000"
+        msg["Message-ID"] = "<calendar123@example.com>"
+        msg.set_content("Please see attached invite.")
+        msg.add_attachment(
+            "BEGIN:VCALENDAR\nBEGIN:VEVENT\nDTSTART:20260407T143000Z\nLOCATION:https://meet.google.com/example\nEND:VEVENT\nEND:VCALENDAR",
+            subtype="calendar",
+        )
+        parsed = _parse_imap_message(msg.as_bytes())
+        self.assertIn("DTSTART:20260407T143000Z", parsed["body"])
+        self.assertIn("LOCATION:https://meet.google.com/example", parsed["body"])
+
     def test_parse_imap_message_extracts_headers_and_plain_text(self):
         msg = EmailMessage()
         msg["From"] = "recruiting@stripe.com"
@@ -447,6 +513,42 @@ class BlockedAndLocationTests(unittest.TestCase):
         self.assertEqual(parsed["sender"], "recruiting@stripe.com")
         self.assertEqual(parsed["subject"], "Schedule an interview")
         self.assertIn("Solutions Architect", parsed["body"])
+
+    def test_parse_imap_message_preserves_anchor_hrefs_in_html(self):
+        msg = EmailMessage()
+        msg["From"] = "recruiting@advisor360.com"
+        msg["Subject"] = "[Advisor360] Interview confirmation"
+        msg["Date"] = "Thu, 02 Apr 2026 14:40:00 -0000"
+        msg["Message-ID"] = "<html123@example.com>"
+        msg.add_alternative(
+            '<html><body><p>Meeting Link: <a href="https://meet.google.com/qsb-jwfi-wae">Meeting Link</a></p></body></html>',
+            subtype="html",
+        )
+        parsed = _parse_imap_message(msg.as_bytes())
+        self.assertIn("https://meet.google.com/qsb-jwfi-wae", parsed["body"])
+
+    def test_find_matching_interview_by_schedule(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        db.init_db(conn)
+        app_id = db.add_application(conn, company="Stripe", role="Solutions Architect", status="interviewing", entry_type="application")
+        db.add_interview(
+            conn,
+            app_id,
+            round_number=1,
+            interview_type="phone_screen",
+            scheduled_at="2026-04-07T14:30:00",
+            interviewer_names="Jane Recruiter",
+            location="https://meet.google.com/example",
+        )
+        matched = db.find_matching_interview(
+            conn,
+            app_id,
+            scheduled_at="2026-04-07T14:30:00",
+            interviewer_names="Jane Recruiter",
+            location="https://meet.google.com/example",
+        )
+        self.assertIsNotNone(matched)
 
     def test_gmail_sync_flag_is_boolean(self):
         self.assertIsInstance(settings.gmail_sync_enabled, bool)
@@ -566,6 +668,44 @@ class BlockedAndLocationTests(unittest.TestCase):
         signal_status, note = signal_resolution_for_existing_application("new_application", matched["status"])
         self.assertEqual(signal_status, "resolved")
         self.assertIn("already tracked as rejected", note)
+
+    def test_interview_request_is_not_auto_resolved_just_for_interviewing_status(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        db.init_db(conn)
+        app_id = db.add_application(
+            conn,
+            company="Advisor360",
+            role="Enterprise Solutions Architect",
+            status="interviewing",
+            entry_type="application",
+        )
+        signal = classify_email_signal(
+            message_id="msg-4",
+            thread_id=None,
+            sender="David Korbel <mail@ats.rippling.com>",
+            subject="[Advisor360] Interview confirmation",
+            body=(
+                "Monday, April 6, 2026 at 11:00 AM - 11:30 AM MDT\n"
+                "Meeting link: meet.google.com/qsb-jwfi-wae"
+            ),
+            received_at="Thu, 02 Apr 2026 19:40:39 +0000 (UTC)",
+            known_companies=["Advisor360"],
+        )
+        self.assertIsNotNone(signal)
+        matched = db.find_best_application_match(conn, signal["company"], signal["role"])
+        self.assertEqual(matched["id"], app_id)
+        self.assertIsNone(
+            db.find_matching_interview(
+                conn,
+                app_id,
+                scheduled_at=signal["interview_scheduled_at"],
+                interviewer_names=signal["interviewer_names"],
+                location=signal["interview_location"],
+            )
+        )
+        signal_status, _ = signal_resolution_for_existing_application("interview_request", matched["status"])
+        self.assertEqual(signal_status, "new")
 
     def test_email_signal_company_match_tolerates_name_suffixes(self):
         conn = sqlite3.connect(":memory:")
