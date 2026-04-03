@@ -1,5 +1,6 @@
 import sys
 import unittest
+from datetime import date
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parents[1]
@@ -10,8 +11,15 @@ if str(SRC_DIR) not in sys.path:
 from jobsearch.scraper.adapters.base import BaseAdapter, BlockedSiteError
 from jobsearch.scraper.adapters.generic import GenericAdapter
 from jobsearch.scraper.scoring import Scorer
+from jobsearch.services.opportunity_service import _is_material_jd_change, _jd_fingerprint
 from jobsearch.app_main import _annualized_compensation_preview, _sidebar_metrics_for_df
-from jobsearch.views.tracker_page import _formal_tracker_rows, _summary_metrics_for_rows
+from jobsearch.views.tracker_page import (
+    _default_follow_up_date,
+    _follow_up_template_note,
+    _formal_tracker_rows,
+    _offer_comparison_rows,
+    _summary_metrics_for_rows,
+)
 import pandas as pd
 
 
@@ -43,6 +51,13 @@ class BlockedAndLocationTests(unittest.TestCase):
         self.assertEqual(metrics["active"], 2)
         self.assertEqual(metrics["interviewing"], 1)
         self.assertEqual(metrics["rejected"], 1)
+
+    def test_follow_up_scheduler_defaults(self):
+        self.assertIsNone(_default_follow_up_date("considering"))
+        self.assertEqual(str(_default_follow_up_date("applied", date(2026, 4, 3))), "2026-04-10")
+        self.assertEqual(str(_default_follow_up_date("screening", date(2026, 4, 3))), "2026-04-06")
+        self.assertEqual(str(_default_follow_up_date("interviewing", date(2026, 4, 3))), "2026-04-05")
+        self.assertEqual(_follow_up_template_note("applied"), "Follow up on application status")
 
     def test_sidebar_metrics_are_explicit_and_consistent(self):
         df = pd.DataFrame(
@@ -228,6 +243,79 @@ class BlockedAndLocationTests(unittest.TestCase):
         contract_1099 = _annualized_compensation_preview("1099_hourly", 120.0, 40.0, 46.0, contractor_cfg)
         self.assertAlmostEqual(w2["normalized_compensation_usd"], 194000.0)
         self.assertAlmostEqual(contract_1099["normalized_compensation_usd"], 163056.0)
+
+    def test_offer_comparison_rows_normalize_salary_and_1099(self):
+        rows = _offer_comparison_rows(
+            [
+                {
+                    "company": "SalaryCo",
+                    "role": "Principal Architect",
+                    "work_type": "fte",
+                    "compensation_unit": "salary",
+                    "offer_base": 190000,
+                    "salary_low": None,
+                    "salary_high": None,
+                    "hourly_rate": None,
+                    "hours_per_week": None,
+                    "weeks_per_year": None,
+                    "offer_bonus_pct": 10,
+                    "offer_signing": 15000,
+                    "offer_pto_days": 20,
+                    "offer_k401_match": "4%",
+                    "offer_equity": "RSU",
+                    "offer_remote_policy": "Remote",
+                    "offer_start_date": None,
+                    "offer_expiry_date": None,
+                    "offer_notes": "",
+                },
+                {
+                    "company": "ContractCo",
+                    "role": "Enterprise Solutions Architect",
+                    "work_type": "1099_contract",
+                    "compensation_unit": "hourly",
+                    "offer_base": 0,
+                    "salary_low": None,
+                    "salary_high": None,
+                    "hourly_rate": 120.0,
+                    "hours_per_week": 40.0,
+                    "weeks_per_year": 46.0,
+                    "offer_bonus_pct": 0,
+                    "offer_signing": 0,
+                    "offer_pto_days": 0,
+                    "offer_k401_match": "",
+                    "offer_equity": "",
+                    "offer_remote_policy": "Remote",
+                    "offer_start_date": None,
+                    "offer_expiry_date": None,
+                    "offer_notes": "",
+                },
+            ]
+        )
+        self.assertEqual(len(rows), 2)
+        salary_row = next(row for row in rows if row["Company"] == "SalaryCo")
+        contract_row = next(row for row in rows if row["Company"] == "ContractCo")
+        self.assertEqual(salary_row["Work Type"], "Full-time salary")
+        self.assertAlmostEqual(salary_row["Normalized Annual ($)"], 190000.0)
+        self.assertAlmostEqual(salary_row["First-Year Cash ($)"], 224000.0)
+        self.assertEqual(contract_row["Work Type"], "1099 hourly")
+        self.assertAlmostEqual(contract_row["Normalized Annual ($)"], 163056.0)
+
+    def test_jd_change_detection_flags_material_excerpt_changes(self):
+        original = "Build product roadmap for data integrations, API strategy, and platform governance."
+        changed = "Lead enterprise architecture for custody conversion, managed accounts, and operating model redesign."
+        fingerprint_a = _jd_fingerprint(original, "$180k-$210k", "Remote")
+        fingerprint_b = _jd_fingerprint(changed, "$180k-$210k", "Remote")
+        self.assertNotEqual(fingerprint_a, fingerprint_b)
+        self.assertTrue(
+            _is_material_jd_change(
+                original,
+                changed,
+                "$180k-$210k",
+                "$180k-$210k",
+                "Remote",
+                "Remote",
+            )
+        )
 
 
 if __name__ == "__main__":

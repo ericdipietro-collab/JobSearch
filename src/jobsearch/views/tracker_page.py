@@ -4,15 +4,36 @@ Renders inside the main app.py navigation via render_tracker(conn).
 """
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Optional
 
 import pandas as pd
 import streamlit as st
+import yaml
 
 from jobsearch import ats_db as db
+from jobsearch.config.settings import settings
+from jobsearch.scraper.scoring import normalize_compensation
 
 FORMAL_TRACKER_EXCLUDED_STATUSES = {"considering"}
+AUTO_FOLLOW_UP_DAYS = {
+    "exploring": None,
+    "considering": None,
+    "applied": 7,
+    "screening": 3,
+    "interviewing": 2,
+    "offer": 2,
+    "accepted": None,
+    "rejected": None,
+    "withdrawn": None,
+}
+
+WORK_TYPE_LABELS = {
+    "fte": "Full-time salary",
+    "w2_contract": "W2 hourly",
+    "1099_contract": "1099 hourly",
+    "c2c_contract": "Corp-to-corp hourly",
+}
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -96,6 +117,135 @@ def _summary_metrics_for_rows(rows):
         "accepted": counts.get("accepted", 0),
         "rejected": counts.get("rejected", 0),
     }
+
+
+def _default_follow_up_date(status: str, base_date: Optional[date] = None) -> Optional[date]:
+    base = base_date or date.today()
+    offset = AUTO_FOLLOW_UP_DAYS.get(str(status).lower())
+    if offset is None:
+        return None
+    return base + timedelta(days=offset)
+
+
+def _follow_up_template_note(status: str) -> str:
+    status_l = str(status).lower()
+    if status_l == "applied":
+        return "Follow up on application status"
+    if status_l == "screening":
+        return "Confirm next steps after screening"
+    if status_l == "interviewing":
+        return "Send thank-you / check next interview step"
+    if status_l == "offer":
+        return "Follow up on offer details / timeline"
+    return ""
+
+
+def _load_search_preferences() -> dict:
+    try:
+        return yaml.safe_load(settings.prefs_yaml.read_text(encoding="utf-8")) or {}
+    except Exception:
+        return {}
+
+
+def _offer_work_type_defaults(app) -> tuple[str, str, float, float]:
+    work_type = str(app["work_type"] or "fte")
+    unit = str(app["compensation_unit"] or ("hourly" if "contract" in work_type else "salary"))
+    hours_per_week = float(app["hours_per_week"] or 40.0)
+    if app["weeks_per_year"]:
+        weeks_per_year = float(app["weeks_per_year"])
+    elif work_type == "1099_contract":
+        weeks_per_year = 46.0
+    elif unit == "hourly":
+        weeks_per_year = 50.0
+    else:
+        weeks_per_year = 52.0
+    return work_type, unit, hours_per_week, weeks_per_year
+
+
+def _offer_comparison_rows(offer_apps) -> list[dict]:
+    prefs = _load_search_preferences()
+    rows = []
+    for a in offer_apps:
+        work_type, unit, hours_per_week, weeks_per_year = _offer_work_type_defaults(a)
+        base = float(a["offer_base"] or a["salary_low"] or a["salary_high"] or 0)
+        hourly_rate = float(a["hourly_rate"] or 0)
+        comp = normalize_compensation(
+            prefs,
+            {
+                "work_type": work_type,
+                "compensation_unit": unit,
+                "salary_min": base if unit == "salary" and base else None,
+                "salary_max": base if unit == "salary" and base else None,
+                "hourly_rate": hourly_rate or None,
+                "hours_per_week": hours_per_week if unit == "hourly" else None,
+                "weeks_per_year": weeks_per_year if unit == "hourly" else None,
+                "salary_text": "",
+                "description": a["offer_notes"] or "",
+            },
+        )
+        normalized = float(comp["normalized_compensation_usd"] or 0)
+        bonus_pct = float(a["offer_bonus_pct"] or 0)
+        bonus_cash = normalized * (bonus_pct / 100.0) if normalized and bonus_pct else 0.0
+        signing = float(a["offer_signing"] or 0)
+        first_year = normalized + bonus_cash + signing if normalized else signing
+        rows.append(
+            {
+                "Company": a["company"],
+                "Role": a["role"],
+                "Work Type": WORK_TYPE_LABELS.get(work_type, work_type.replace("_", " ").title()),
+                "Comp Unit": unit.title(),
+                "Base/Rate": f"${base:,.0f}" if unit == "salary" and base else (f"${hourly_rate:,.2f}/hr" if hourly_rate else "—"),
+                "Normalized Annual ($)": normalized,
+                "Bonus Cash ($)": bonus_cash,
+                "Signing ($)": signing,
+                "First-Year Cash ($)": first_year,
+                "PTO Days": float(a["offer_pto_days"] or 0),
+                "401k": a["offer_k401_match"] or "—",
+                "Equity": a["offer_equity"] or "—",
+                "Remote Policy": a["offer_remote_policy"] or "—",
+                "Start Date": a["offer_start_date"] or "—",
+                "Expires": a["offer_expiry_date"] or "—",
+                "Notes": a["offer_notes"] or "",
+            }
+        )
+    return rows
+
+
+def _snooze_follow_up(conn, app_id: int, days: int) -> None:
+    app = db.get_application(conn, app_id)
+    if not app:
+        return
+    current_due = app["follow_up_date"][:10] if app["follow_up_date"] else date.today().isoformat()
+    try:
+        start = date.fromisoformat(current_due)
+    except Exception:
+        start = date.today()
+    new_due = start + timedelta(days=days)
+    db.update_application(conn, app_id, follow_up_date=new_due.isoformat())
+
+
+def _mark_follow_up_sent(conn, app_id: int) -> None:
+    app = db.get_application(conn, app_id)
+    if not app:
+        return
+    today_iso = date.today().isoformat()
+    next_due = _default_follow_up_date(app["status"], date.today())
+    db.add_event(conn, app_id, "follow_up_sent", today_iso, title=f"Followed up with {app['company']}")
+    db.update_application(
+        conn,
+        app_id,
+        follow_up_date=next_due.isoformat() if next_due else None,
+        follow_up_notes=app["follow_up_notes"] or _follow_up_template_note(app["status"]),
+    )
+
+
+def _clear_jd_change_review(conn, app_id: int) -> None:
+    db.update_application(
+        conn,
+        app_id,
+        jd_needs_review=0,
+        jd_change_summary=None,
+    )
 
 
 # ── LinkedIn CSV import ─────────────────────────────────────────────────────────
@@ -226,6 +376,7 @@ def render_tracker(conn) -> None:
     _render_followup_banner(conn)
     _render_summary_bar(conn)
     _render_linkedin_import(conn)
+    _render_jd_change_banner(conn)
 
     offer_apps = db.get_applications_with_offers(conn)
     if len(offer_apps) >= 2:
@@ -305,6 +456,7 @@ def render_tracker(conn) -> None:
             "Status":    a["status"].title(),
             "Applied":   a["date_applied"] or "",
             "Fit":       "⭐" * int(a["fit_stars"]) if a["fit_stars"] else "—",
+            "JD Δ":      "Changed" if a["jd_needs_review"] else "",
             "Follow-up": fu_label,
         })
     df_tbl = pd.DataFrame(rows)
@@ -326,6 +478,7 @@ def render_tracker(conn) -> None:
         "Status":    st.column_config.TextColumn("Status",    width="medium"),
         "Applied":   st.column_config.TextColumn("Applied",   width="small"),
         "Fit":       st.column_config.TextColumn("Fit",       width="small"),
+        "JD Δ":      st.column_config.TextColumn("JD Δ",      width="small"),
         "Follow-up": st.column_config.TextColumn("Follow-up", width="medium"),
     }
 
@@ -425,9 +578,19 @@ def _render_followup_banner(conn) -> None:
                     + (f"  \n_{note}_" if note else ""),
                     unsafe_allow_html=True,
                 )
-                if col2.button("View", key=f"fu_view_{app['id']}"):
+                a1, a2, a3, a4 = col2.columns(4)
+                if a1.button("View", key=f"fu_view_{app['id']}"):
                     st.session_state["tracker_selected_id"] = app["id"]
                     st.session_state["tracker_show_add_form"] = False
+                    st.rerun()
+                if a2.button("+3d", key=f"fu_snooze3_{app['id']}"):
+                    _snooze_follow_up(conn, app["id"], 3)
+                    st.rerun()
+                if a3.button("+7d", key=f"fu_snooze7_{app['id']}"):
+                    _snooze_follow_up(conn, app["id"], 7)
+                    st.rerun()
+                if a4.button("Sent", key=f"fu_sent_{app['id']}"):
+                    _mark_follow_up_sent(conn, app["id"])
                     st.rerun()
 
     if upcoming:
@@ -436,7 +599,8 @@ def _render_followup_banner(conn) -> None:
                 days_left = _days_until(app["follow_up_date"]) or 0
                 contacts  = app["contact_summary"] or ""
                 contact_links = _contact_action_links(app)
-                st.markdown(
+                c1, c2 = st.columns([5, 1])
+                c1.markdown(
                     f"**{app['company']}** — {app['role']}  \n"
                     f"<span style='color:#fbbf24'>Due {app['follow_up_date']}"
                     f" (in {days_left} day{'s' if days_left!=1 else ''})</span>"
@@ -444,6 +608,41 @@ def _render_followup_banner(conn) -> None:
                     + (f"  \n{contact_links}" if contact_links else ""),
                     unsafe_allow_html=True,
                 )
+                u1, u2, u3 = c2.columns(3)
+                if u1.button("View", key=f"fu_up_view_{app['id']}"):
+                    st.session_state["tracker_selected_id"] = app["id"]
+                    st.session_state["tracker_show_add_form"] = False
+                    st.rerun()
+                if u2.button("+3d", key=f"fu_up_snooze3_{app['id']}"):
+                    _snooze_follow_up(conn, app["id"], 3)
+                    st.rerun()
+                if u3.button("Sent", key=f"fu_up_sent_{app['id']}"):
+                    _mark_follow_up_sent(conn, app["id"])
+                    st.rerun()
+
+
+def _render_jd_change_banner(conn) -> None:
+    changed_apps = db.get_jd_changed_applications(conn)
+    if not changed_apps:
+        return
+
+    with st.expander(f"📝 {len(changed_apps)} active application(s) with JD changes", expanded=False):
+        for app in changed_apps[:10]:
+            c1, c2 = st.columns([5, 1])
+            c1.markdown(
+                f"**{app['company']}** — {app['role']}  \n"
+                f"<span style='color:#f59e0b'>Changed {_fmt_dt(app['jd_last_changed_at'])}</span>"
+                + (f"  \n_{app['jd_change_summary']}_" if app['jd_change_summary'] else ""),
+                unsafe_allow_html=True,
+            )
+            b1, b2 = c2.columns(2)
+            if b1.button("View", key=f"jdchg_view_{app['id']}"):
+                st.session_state["tracker_selected_id"] = app["id"]
+                st.session_state["tracker_show_add_form"] = False
+                st.rerun()
+            if b2.button("Reviewed", key=f"jdchg_done_{app['id']}"):
+                _clear_jd_change_review(conn, app["id"])
+                st.rerun()
 
 
 # ── Summary bar ────────────────────────────────────────────────────────────────
@@ -566,6 +765,8 @@ def _render_add_form(conn) -> None:
             if not company.strip() or not role.strip():
                 st.error("Company and Role are required.")
             else:
+                auto_follow_up = follow_up_date or _default_follow_up_date(status, date_app)
+                auto_follow_up_note = follow_up_notes.strip() or _follow_up_template_note(status)
                 app_id = db.add_application(
                     conn,
                     company            = company.strip(),
@@ -582,8 +783,8 @@ def _render_add_form(conn) -> None:
                     jd_summary         = jd_summary.strip() or None,
                     notes              = notes.strip() or None,
                     date_applied       = date_app.isoformat(),
-                    follow_up_date     = follow_up_date.isoformat() if follow_up_date else None,
-                    follow_up_notes    = follow_up_notes.strip() or None,
+                    follow_up_date     = auto_follow_up.isoformat() if auto_follow_up else None,
+                    follow_up_notes    = auto_follow_up_note or None,
                     resume_version     = resume_version.strip() or None,
                     cover_letter_notes = cover_letter_notes.strip() or None,
                     resume_url         = resume_url.strip() or None,
@@ -638,6 +839,15 @@ def _render_detail(conn, app_id: int) -> None:
     if app["job_description"]:
         with st.expander("📄 Full Job Description"):
             st.markdown(app["job_description"])
+    if app["jd_needs_review"]:
+        st.warning(
+            f"JD changed on {_fmt_dt(app['jd_last_changed_at'])}. "
+            + (app["jd_change_summary"] or ""),
+            icon="📝",
+        )
+        if st.button("Mark JD change reviewed", key=f"jd_review_detail_{app['id']}"):
+            _clear_jd_change_review(conn, app["id"])
+            st.rerun()
 
     tab_tl, tab_iv, tab_co, tab_pr, tab_ng, tab_ed = st.tabs(
         ["Timeline", "Interviews", "Contacts", "Prep", "Negotiate", "Edit"]
@@ -1081,14 +1291,33 @@ def _render_edit_form(conn, app) -> None:
                                          placeholder="Paste the full JD here for reference and future search")
 
         st.markdown("**Offer Details**")
-        of1, of2, of3 = st.columns(3)
-        offer_base      = of1.number_input("Base Salary ($)", value=int(app["offer_base"] or 0), step=5000)
-        offer_bonus_pct = of2.number_input("Bonus (%)", value=int(app["offer_bonus_pct"] or 0), step=5)
-        offer_signing   = of3.number_input("Signing Bonus ($)", value=int(app["offer_signing"] or 0), step=1000)
-        of4, of5, of6 = st.columns(3)
-        offer_pto_days    = of4.number_input("PTO Days", value=int(app["offer_pto_days"] or 0), step=1)
-        offer_k401_match  = of5.text_input("401k Match", value=app["offer_k401_match"] or "", placeholder="e.g. 4% match")
-        offer_equity      = of6.text_input("Equity", value=app["offer_equity"] or "", placeholder="e.g. $50k RSU over 4yr")
+        current_work_type, current_unit, current_hours, current_weeks = _offer_work_type_defaults(app)
+        work_type_options = list(WORK_TYPE_LABELS.keys())
+        work_type_idx = work_type_options.index(current_work_type) if current_work_type in work_type_options else 0
+        of0, of1, of2, of3 = st.columns(4)
+        offer_work_type = of0.selectbox(
+            "Comp Model",
+            work_type_options,
+            index=work_type_idx,
+            format_func=lambda value: WORK_TYPE_LABELS.get(value, value),
+        )
+        offer_unit = of1.selectbox(
+            "Comp Unit",
+            ["salary", "hourly"],
+            index=0 if current_unit == "salary" else 1,
+            format_func=lambda value: value.title(),
+        )
+        offer_base      = of2.number_input("Base Salary ($)", value=int(app["offer_base"] or 0), step=5000)
+        hourly_rate     = of3.number_input("Hourly Rate ($/hr)", value=float(app["hourly_rate"] or 0.0), step=5.0)
+        of4, of5, of6, of7 = st.columns(4)
+        offer_bonus_pct = of4.number_input("Bonus (%)", value=int(app["offer_bonus_pct"] or 0), step=5)
+        offer_signing   = of5.number_input("Signing Bonus ($)", value=int(app["offer_signing"] or 0), step=1000)
+        hours_per_week  = of6.number_input("Hours / week", value=float(current_hours), step=1.0)
+        weeks_per_year  = of7.number_input("Weeks / year", value=float(current_weeks), step=1.0)
+        of8, of9, of10 = st.columns(3)
+        offer_pto_days    = of8.number_input("PTO Days", value=int(app["offer_pto_days"] or 0), step=1)
+        offer_k401_match  = of9.text_input("401k Match", value=app["offer_k401_match"] or "", placeholder="e.g. 4% match")
+        offer_equity      = of10.text_input("Equity", value=app["offer_equity"] or "", placeholder="e.g. $50k RSU over 4yr")
         remote_opts = ["", "Remote", "Hybrid", "Onsite"]
         remote_idx  = remote_opts.index(app["offer_remote_policy"]) if app["offer_remote_policy"] in remote_opts else 0
         offer_remote_policy = st.selectbox("Remote Policy", remote_opts, index=remote_idx)
@@ -1110,12 +1339,36 @@ def _render_edit_form(conn, app) -> None:
         offer_expiry_date = od2.date_input("Offer Expires", value=_offer_expiry_date)
         offer_notes = st.text_area("Offer Notes", value=app["offer_notes"] or "", height=60,
                                    placeholder="Benefits details, equity vesting schedule, negotiation notes…")
+        offer_comp = normalize_compensation(
+            _load_search_preferences(),
+            {
+                "work_type": offer_work_type,
+                "compensation_unit": offer_unit,
+                "salary_min": offer_base or None,
+                "salary_max": offer_base or None,
+                "hourly_rate": hourly_rate or None,
+                "hours_per_week": hours_per_week if offer_unit == "hourly" else None,
+                "weeks_per_year": weeks_per_year if offer_unit == "hourly" else None,
+                "salary_text": "",
+                "description": offer_notes or "",
+            },
+        )
+        normalized_offer = offer_comp["normalized_compensation_usd"]
+        if normalized_offer:
+            bonus_cash = normalized_offer * ((offer_bonus_pct or 0) / 100.0)
+            first_year = normalized_offer + bonus_cash + float(offer_signing or 0)
+            st.caption(
+                f"Normalized annual comp: ${normalized_offer:,.0f} | "
+                f"First-year cash: ${first_year:,.0f}"
+            )
 
         sc1, sc2 = st.columns([2, 1])
         saved   = sc1.form_submit_button("💾 Save", type="primary")
         deleted = sc2.form_submit_button("🗑 Delete Application")
 
     if saved:
+        auto_follow_up = follow_up_date or _default_follow_up_date(status)
+        auto_follow_up_note = follow_up_notes.strip() or _follow_up_template_note(status)
         db.update_application(
             conn, app["id"],
             entry_type         = {"Opportunity": "opportunity", "Job Fair": "job_fair"}.get(entry_type_label, "application"),
@@ -1130,13 +1383,19 @@ def _render_edit_form(conn, app) -> None:
             referral           = referral.strip() or None,
             jd_summary         = jd_summary.strip() or None,
             notes              = notes.strip() or None,
-            follow_up_date     = follow_up_date.isoformat() if follow_up_date else None,
-            follow_up_notes    = follow_up_notes.strip() or None,
+            follow_up_date     = auto_follow_up.isoformat() if auto_follow_up else None,
+            follow_up_notes    = auto_follow_up_note or None,
             resume_version     = resume_version.strip() or None,
             cover_letter_notes = cover_letter_notes.strip() or None,
             resume_url         = resume_url.strip() or None,
             cover_letter_url   = cover_letter_url.strip() or None,
             job_description    = job_description.strip() or None,
+            work_type          = offer_work_type,
+            compensation_unit  = offer_unit,
+            hourly_rate        = hourly_rate or None,
+            hours_per_week     = hours_per_week if offer_unit == "hourly" else None,
+            weeks_per_year     = weeks_per_year if offer_unit == "hourly" else None,
+            normalized_compensation_usd = normalized_offer or None,
             offer_base         = offer_base or None,
             offer_bonus_pct    = offer_bonus_pct or None,
             offer_signing      = offer_signing or None,
@@ -1164,26 +1423,28 @@ def _render_offer_comparison(offer_apps) -> None:
     if len(offer_apps) < 2:
         return
 
-    rows = []
-    for a in offer_apps:
-        base = a["offer_base"] or a["salary_low"] or 0
-        bonus = a["offer_bonus_pct"] or 0
-        total = int(base * (1 + bonus / 100)) if base else 0
-        rows.append({
-            "Company":        a["company"],
-            "Role":           a["role"],
-            "Base ($)":       f"${base:,}" if base else "—",
-            "Bonus":          f"{bonus}%" if bonus else "—",
-            "Total ($)":      f"${total:,}" if total else "—",
-            "Signing ($)":    f"${a['offer_signing']:,}" if a["offer_signing"] else "—",
-            "Equity":         a["offer_equity"] or "—",
-            "PTO Days":       str(a["offer_pto_days"]) if a["offer_pto_days"] else "—",
-            "401k":           a["offer_k401_match"] or "—",
-            "Remote Policy":  a["offer_remote_policy"] or "—",
-            "Start Date":     a["offer_start_date"] or "—",
-            "Expires":        a["offer_expiry_date"] or "—",
-            "Notes":          a["offer_notes"] or "",
-        })
+    rows = _offer_comparison_rows(offer_apps)
+    df = pd.DataFrame(rows)
+    if df.empty:
+        return
 
-    df = pd.DataFrame(rows).set_index("Company")
-    st.dataframe(df.T, use_container_width=True)
+    best_norm = df["Normalized Annual ($)"].max()
+    best_first_year = df["First-Year Cash ($)"].max()
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Offers Compared", len(df))
+    c2.metric("Best Normalized Annual", f"${best_norm:,.0f}" if best_norm else "—")
+    c3.metric("Best First-Year Cash", f"${best_first_year:,.0f}" if best_first_year else "—")
+
+    df["Vs Best Annual ($)"] = df["Normalized Annual ($)"].apply(
+        lambda value: f"{value - best_norm:+,.0f}" if value else "—"
+    )
+    df["Vs Best First-Year ($)"] = df["First-Year Cash ($)"].apply(
+        lambda value: f"{value - best_first_year:+,.0f}" if value else "—"
+    )
+    display_df = df.copy()
+    for col in ["Normalized Annual ($)", "Bonus Cash ($)", "Signing ($)", "First-Year Cash ($)", "PTO Days"]:
+        if col in display_df.columns:
+            display_df[col] = display_df[col].apply(lambda value: "—" if not value else f"${value:,.0f}" if "($)" in col else f"{int(value)}")
+
+    st.caption("Annual values are normalized using the same salary/W2/1099 assumptions as the search scorer.")
+    st.dataframe(display_df.set_index("Company"), use_container_width=True)

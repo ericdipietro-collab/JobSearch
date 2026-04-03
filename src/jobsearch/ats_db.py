@@ -87,6 +87,7 @@ EVENT_TYPES = [
     "rejected",
     "withdrawn",
     "follow_up_sent",
+    "jd_changed",
     "note",
 ]
 INTERVIEW_TYPES = ["phone_screen", "video", "onsite", "panel", "take_home", "final"]
@@ -112,6 +113,7 @@ EVENT_LABELS = {
     "rejected": "Received rejection",
     "withdrawn": "Withdrew application",
     "follow_up_sent": "Sent follow-up",
+    "jd_changed": "Job description changed",
     "note": "Note",
 }
 
@@ -309,6 +311,10 @@ def init_db(conn: sqlite3.Connection) -> None:
             penalized_keywords TEXT,
             decision_reason TEXT,
             description_excerpt TEXT,
+            jd_fingerprint TEXT,
+            jd_last_changed_at TEXT,
+            jd_change_summary TEXT,
+            jd_needs_review INTEGER DEFAULT 0,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
@@ -504,6 +510,10 @@ def init_db(conn: sqlite3.Connection) -> None:
             "penalized_keywords": "TEXT",
             "decision_reason": "TEXT",
             "description_excerpt": "TEXT",
+            "jd_fingerprint": "TEXT",
+            "jd_last_changed_at": "TEXT",
+            "jd_change_summary": "TEXT",
+            "jd_needs_review": "INTEGER DEFAULT 0",
         },
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_events_app_date ON events(application_id, event_date)")
@@ -1123,6 +1133,18 @@ def get_training_for_report(conn: sqlite3.Connection, start_date: str, end_date:
 
 def get_applications_with_offers(conn: sqlite3.Connection) -> List[sqlite3.Row]:
     return conn.execute("SELECT * FROM applications WHERE status IN ('offer', 'accepted') ORDER BY updated_at DESC").fetchall()
+
+
+def get_jd_changed_applications(conn: sqlite3.Connection) -> List[sqlite3.Row]:
+    return conn.execute(
+        """
+        SELECT *
+        FROM applications
+        WHERE jd_needs_review = 1
+          AND status IN ('applied', 'screening', 'interviewing', 'offer')
+        ORDER BY COALESCE(jd_last_changed_at, updated_at) DESC
+        """
+    ).fetchall()
 
 
 def bulk_update_status(conn: sqlite3.Connection, app_ids: List[int], status: str) -> int:

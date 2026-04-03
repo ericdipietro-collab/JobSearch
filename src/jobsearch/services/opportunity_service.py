@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 import sqlite3
+import hashlib
 from datetime import datetime, timezone
+from difflib import SequenceMatcher
 from typing import List, Optional, Dict, Any
 from jobsearch.scraper.models import Job
 
@@ -78,17 +80,67 @@ def _normalize_status_and_stage(job: Job) -> tuple[str, str]:
 
     return _STAGE_TO_STATUS.get(raw_stage.lower(), raw_stage.lower()), raw_stage
 
+
+def _normalize_jd_blob(description_excerpt: str, salary_text: str, location: str) -> str:
+    parts = [str(description_excerpt or "").strip().lower(), str(salary_text or "").strip().lower(), str(location or "").strip().lower()]
+    return " | ".join(part for part in parts if part)
+
+
+def _jd_fingerprint(description_excerpt: str, salary_text: str, location: str) -> str:
+    blob = _normalize_jd_blob(description_excerpt, salary_text, location)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest() if blob else ""
+
+
+def _jd_change_summary(old_excerpt: str, new_excerpt: str, old_salary: str, new_salary: str, old_location: str, new_location: str) -> str:
+    notes = []
+    if old_salary != new_salary:
+        notes.append(f"salary: {old_salary or 'n/a'} -> {new_salary or 'n/a'}")
+    if old_location != new_location:
+        notes.append(f"location: {old_location or 'n/a'} -> {new_location or 'n/a'}")
+    if old_excerpt and new_excerpt:
+        ratio = SequenceMatcher(None, old_excerpt, new_excerpt).ratio()
+        if ratio < 0.82:
+            notes.append(f"description changed materially ({ratio:.0%} similarity)")
+    elif old_excerpt != new_excerpt:
+        notes.append("description excerpt changed")
+    return "; ".join(notes) or "job description changed"
+
+
+def _is_material_jd_change(old_excerpt: str, new_excerpt: str, old_salary: str, new_salary: str, old_location: str, new_location: str) -> bool:
+    if old_salary != new_salary or old_location != new_location:
+        return True
+    if not old_excerpt or not new_excerpt:
+        return old_excerpt != new_excerpt
+    ratio = SequenceMatcher(None, old_excerpt, new_excerpt).ratio()
+    return ratio < 0.82
+
+
+def _record_jd_change(conn: sqlite3.Connection, app_id: int, summary: str, timestamp: str) -> None:
+    conn.execute(
+        """
+        INSERT INTO events (application_id, event_type, event_date, title, notes, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (app_id, "jd_changed", timestamp[:10], "Job description changed", summary, timestamp),
+    )
+
 def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
     """
     Insert or update a Job from the scraper.
     Returns (inserted, app_id).
     """
     existing = conn.execute(
-        "SELECT id, status FROM applications WHERE scraper_key = ?", (job.id,)
+        """
+        SELECT id, status, description_excerpt, salary_text, location, jd_fingerprint
+        FROM applications
+        WHERE scraper_key = ?
+        """,
+        (job.id,),
     ).fetchone()
 
     now = _now_iso()
     status, stage_label = _normalize_status_and_stage(job)
+    new_jd_fingerprint = _jd_fingerprint(job.description_excerpt, job.salary_text, job.location)
     
     if existing is None:
         # INSERT
@@ -98,6 +150,7 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
                 company, role, role_normalized, job_url, source, scraper_key,
                 status, score, fit_band, matched_keywords, penalized_keywords,
                 decision_reason, description_excerpt, location, is_remote,
+                jd_fingerprint,
                 salary_text, salary_low, salary_high, work_type, compensation_unit,
                 hourly_rate, hours_per_week, weeks_per_year, normalized_compensation_usd,
                 date_discovered, date_applied,
@@ -105,7 +158,7 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
             ) VALUES (
                 :company, :role, :role_normalized, :url, :source, :id,
                 :status, :score, :fit_band, :matched_keywords, :penalized_keywords,
-                :decision_reason, :description_excerpt, :location, :is_remote,
+                :decision_reason, :description_excerpt, :location, :is_remote, :jd_fingerprint,
                 :salary_text, :salary_min, :salary_max, :work_type, :compensation_unit,
                 :hourly_rate, :hours_per_week, :weeks_per_year, :normalized_compensation_usd,
                 :date_discovered, :date_applied,
@@ -128,6 +181,7 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
                 "description_excerpt": job.description_excerpt,
                 "location": job.location,
                 "is_remote": int(job.is_remote),
+                "jd_fingerprint": new_jd_fingerprint,
                 "salary_text": job.salary_text,
                 "salary_min": job.salary_min,
                 "salary_max": job.salary_max,
@@ -152,6 +206,23 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
     else:
         # UPDATE scraper-owned fields
         app_id = existing["id"]
+        old_excerpt = str(existing["description_excerpt"] or "")
+        old_salary = str(existing["salary_text"] or "")
+        old_location = str(existing["location"] or "")
+        old_fingerprint = str(existing["jd_fingerprint"] or "")
+        tracked_status = str(existing["status"] or "").lower()
+        active_tracked_statuses = {"applied", "screening", "interviewing", "offer"}
+        material_jd_change = (
+            tracked_status in active_tracked_statuses
+            and bool(old_fingerprint)
+            and old_fingerprint != new_jd_fingerprint
+            and _is_material_jd_change(old_excerpt, job.description_excerpt, old_salary, job.salary_text, old_location, job.location)
+        )
+        jd_change_summary = (
+            _jd_change_summary(old_excerpt, job.description_excerpt, old_salary, job.salary_text, old_location, job.location)
+            if material_jd_change
+            else None
+        )
         conn.execute(
             """
             UPDATE applications SET
@@ -161,6 +232,10 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
                 penalized_keywords = :penalized_keywords,
                 decision_reason = :decision_reason,
                 description_excerpt = :description_excerpt,
+                jd_fingerprint = :jd_fingerprint,
+                jd_last_changed_at = CASE WHEN :jd_needs_review = 1 THEN :updated_at ELSE jd_last_changed_at END,
+                jd_change_summary = CASE WHEN :jd_needs_review = 1 THEN :jd_change_summary ELSE jd_change_summary END,
+                jd_needs_review = CASE WHEN :jd_needs_review = 1 THEN 1 ELSE jd_needs_review END,
                 salary_text = :salary_text,
                 salary_low = :salary_min,
                 salary_high = :salary_max,
@@ -181,6 +256,9 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
                 "penalized_keywords": job.penalized_keywords,
                 "decision_reason": job.decision_reason,
                 "description_excerpt": job.description_excerpt,
+                "jd_fingerprint": new_jd_fingerprint,
+                "jd_change_summary": jd_change_summary,
+                "jd_needs_review": 1 if material_jd_change else 0,
                 "salary_text": job.salary_text,
                 "salary_min": job.salary_min,
                 "salary_max": job.salary_max,
@@ -193,4 +271,6 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
                 "updated_at": now,
             }
         )
+        if material_jd_change:
+            _record_jd_change(conn, app_id, jd_change_summary or "job description changed", now)
         return False, app_id

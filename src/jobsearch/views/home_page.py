@@ -88,6 +88,26 @@ def render_home(conn) -> None:
     st.divider()
     st.subheader("Pipeline", anchor=False)
 
+    overdue_followups = db.follow_up_due(conn)
+    upcoming_followups = db.follow_up_upcoming(conn, days=3)
+    if overdue_followups or upcoming_followups:
+        st.caption("**Follow-up queue**")
+        q1, q2 = st.columns(2)
+        with q1:
+            if overdue_followups:
+                st.warning("Overdue")
+                for app in overdue_followups[:5]:
+                    st.markdown(f"- **{app['company']}** â€” {app['role']}  \nDue {app['follow_up_date']}")
+            else:
+                st.caption("No overdue follow-ups.")
+        with q2:
+            if upcoming_followups:
+                st.info("Due in next 3 days")
+                for app in upcoming_followups[:5]:
+                    st.markdown(f"- **{app['company']}** â€” {app['role']}  \nDue {app['follow_up_date']}")
+            else:
+                st.caption("No upcoming follow-ups.")
+
     snapshot = db.pipeline_snapshot(conn)
     active_statuses = ["applied", "screening", "interviewing", "offer"]
     closed_statuses = ["accepted", "rejected", "withdrawn"]

@@ -9,6 +9,14 @@ from typing import Any, Dict, List, Optional, Tuple
 logger = logging.getLogger(__name__)
 
 
+def normalize_compensation(preferences: Dict[str, Any], job_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Public helper for salary/W2/1099 normalization outside the scraper."""
+    scorer = Scorer(preferences)
+    work_type = scorer._derive_work_type(job_data)
+    unit = scorer._compensation_unit(job_data, work_type)
+    return scorer._normalize_compensation(job_data, work_type, unit)
+
+
 class Scorer:
     def __init__(self, preferences: Dict[str, Any]):
         self.prefs = preferences
