@@ -42,6 +42,15 @@ DISPLAY_COLS = [
     "decision_reason",
 ]
 
+WORK_TYPE_LABELS = {
+    "fte": "Full-time",
+    "w2_contract": "W2 hourly",
+    "1099_contract": "1099 hourly",
+    "c2c_contract": "Corp-to-corp",
+    "contract": "Contract",
+    "unknown": "Unknown",
+}
+
 def _safe_render(fn, *args, page_name: str = "", **kwargs):
     try: fn(*args, **kwargs)
     except Exception as e:
@@ -128,6 +137,46 @@ def _role_velocity_summary(df: pd.DataFrame) -> dict[str, int]:
         "reposted": int((velocity == "Reposted").sum()),
         "dormant": int((velocity == "Dormant").sum()),
     }
+
+
+def _normalize_work_type(value: object) -> str:
+    text = str(value or "").strip().lower()
+    if not text:
+        return "unknown"
+    if text in WORK_TYPE_LABELS:
+        return text
+    if "1099" in text:
+        return "1099_contract"
+    if "c2c" in text or "corp" in text:
+        return "c2c_contract"
+    if "w2" in text or "contract" in text:
+        return "w2_contract"
+    if "full" in text or "fte" in text or "salary" in text:
+        return "fte"
+    return text
+
+
+def _work_type_label(value: object) -> str:
+    normalized = _normalize_work_type(value)
+    return WORK_TYPE_LABELS.get(normalized, normalized.replace("_", " ").title())
+
+
+def _apply_work_type_filter(df: pd.DataFrame, selection: str) -> pd.DataFrame:
+    if df.empty or selection == "All":
+        return df
+    if "work_type" not in df.columns:
+        return df
+    work_types = df.get("work_type", pd.Series(["unknown"] * len(df), index=df.index)).map(_normalize_work_type)
+    if selection == "Contract Only":
+        return df[work_types.isin({"w2_contract", "1099_contract", "c2c_contract", "contract"})]
+    if selection == "Full-time Only":
+        return df[work_types == "fte"]
+    if selection == "Unknown Only":
+        return df[work_types == "unknown"]
+    target = next((key for key, label in WORK_TYPE_LABELS.items() if label == selection), None)
+    if target:
+        return df[work_types == target]
+    return df
 
 @st.cache_data(show_spinner=False)
 def _load_jobs_df() -> pd.DataFrame:
@@ -333,6 +382,25 @@ def main():
         vm1.metric("Stale Roles", velocity_summary["stale"])
         vm2.metric("Reposted Roles", velocity_summary["reposted"])
         vm3.metric("Dormant Roles", velocity_summary["dormant"])
+        work_type_series = df_all.get("work_type", pd.Series(["unknown"] * len(df_all), index=df_all.index)).map(_normalize_work_type)
+        contractor_count = int(work_type_series.isin({"w2_contract", "1099_contract", "c2c_contract", "contract"}).sum())
+        fte_count = int((work_type_series == "fte").sum())
+        wt1, wt2, wt3 = st.columns([1, 1, 2])
+        wt1.metric("Contract Roles", contractor_count)
+        wt2.metric("Full-time Roles", fte_count)
+        work_type_filter = wt3.selectbox(
+            "Work Type Filter",
+            [
+                "All",
+                "Contract Only",
+                "Full-time Only",
+                "W2 hourly",
+                "1099 hourly",
+                "Corp-to-corp",
+                "Unknown Only",
+            ],
+            index=0,
+        )
         ann = {r["job_key"]: dict(r) for r in ats_db.get_all_annotations(ats_db.get_connection())}
         tabs = st.tabs(["🔥 Apply Now", "📋 Review Today", "👀 Watch", "🔍 Manual Review", "🚫 Filtered Out"])
         BUCKETS = [("APPLY NOW", tabs[0], ["Applied", "Rejected"]), ("REVIEW TODAY", tabs[1], ["APPLY NOW", "Applied", "WATCH", "Rejected"]), ("WATCH", tabs[2], ["APPLY NOW", "REVIEW TODAY", "Applied", "Rejected"]), ("MANUAL REVIEW", tabs[3], ["APPLY NOW", "Applied", "Rejected"])]
@@ -340,6 +408,7 @@ def main():
         for name, tab, opts in BUCKETS:
             with tab:
                 b_df = df_all[df_all["effective_bucket"] == name].copy()
+                b_df = _apply_work_type_filter(b_df, work_type_filter).copy()
                 if b_df.empty: st.info(f"No jobs in {name}"); continue
                 if name == "APPLY NOW": _render_apply_now_cards(b_df)
                 
@@ -352,6 +421,8 @@ def main():
                 # Convert list types to strings for Arrow
                 for col in ["matched_keywords", "decision_reason"]:
                     disp[col] = disp[col].astype(str)
+                if "work_type" in disp.columns:
+                    disp["work_type"] = disp["work_type"].map(_work_type_label)
                 
                 edited = st.data_editor(
                     disp.drop(columns=["_key"]),
@@ -376,16 +447,29 @@ def main():
                         conn.commit(); conn.close(); _invalidate_data_cache(); st.rerun()
 
         with tabs[3]:
-            if not manual_review_items:
+            filtered_manual_review = _apply_work_type_filter(
+                pd.DataFrame(manual_review_items),
+                work_type_filter,
+            ) if manual_review_items else pd.DataFrame()
+            if filtered_manual_review.empty and not manual_review_items:
                 st.info("No manual-review items recorded for the latest run.")
             else:
+                if not filtered_manual_review.empty:
+                    filtered_items = filtered_manual_review.to_dict("records")
+                    filtered_unresolved = [
+                        item for item in filtered_items
+                        if review_actions.get(item["company"], {}).get("resolution", "new") not in {"resolved", "ignored", "disabled"}
+                    ]
+                else:
+                    filtered_items = []
+                    filtered_unresolved = []
                 st.caption(
-                    f"Manual review queue: {len(unresolved_manual_review)} unresolved of {len(manual_review_items)} total "
+                    f"Manual review queue: {len(filtered_unresolved)} unresolved of {len(filtered_items) if filtered_items else len(manual_review_items)} visible "
                     f"({settings.manual_review_file.name})"
                 )
-                if not unresolved_manual_review:
+                if not filtered_unresolved:
                     st.success("All manual-review items have been handled.")
-                for item in unresolved_manual_review[:50]:
+                for item in filtered_unresolved[:50]:
                     with st.container(border=True):
                         st.markdown(
                             f"**{item['company']}**"
@@ -441,17 +525,20 @@ def main():
                                 st.rerun()
                             else:
                                 st.error(f"Could not find {item['company']} in {settings.companies_yaml.name}.")
-                if len(unresolved_manual_review) > 50:
-                    st.info(f"Showing first 50 of {len(unresolved_manual_review)} unresolved manual-review entries.")
+                if len(filtered_unresolved) > 50:
+                    st.info(f"Showing first 50 of {len(filtered_unresolved)} unresolved manual-review entries.")
 
         with tabs[4]:
-            if rejected_df.empty:
+            filtered_rejected_df = _apply_work_type_filter(rejected_df, work_type_filter).copy()
+            if filtered_rejected_df.empty:
                 st.info("No filtered-out jobs recorded for the latest pipeline run.")
             else:
-                st.caption(f"Filtered out by scoring in latest run: {len(rejected_df)}")
-                show_cols = [c for c in ["company", "title", "score", "fit_band", "work_type", "normalized_compensation_usd", "location", "adapter", "drop_reason", "decision_reason", "url"] if c in rejected_df.columns]
+                st.caption(f"Filtered out by scoring in latest run: {len(filtered_rejected_df)}")
+                show_cols = [c for c in ["company", "title", "score", "fit_band", "work_type", "normalized_compensation_usd", "location", "adapter", "drop_reason", "decision_reason", "url"] if c in filtered_rejected_df.columns]
+                if "work_type" in filtered_rejected_df.columns:
+                    filtered_rejected_df["work_type"] = filtered_rejected_df["work_type"].map(_work_type_label)
                 st.dataframe(
-                    rejected_df[show_cols],
+                    filtered_rejected_df[show_cols],
                     column_config={"url": st.column_config.LinkColumn("URL")},
                     hide_index=True,
                     use_container_width=True,

@@ -24,10 +24,13 @@ from jobsearch import ats_db as db
 from jobsearch.config.settings import settings
 from jobsearch.app_main import (
     _annualized_compensation_preview,
+    _apply_work_type_filter,
     _decorate_role_velocity,
+    _normalize_work_type,
     _parse_manual_review_lines,
     _role_velocity_summary,
     _sidebar_metrics_for_df,
+    _work_type_label,
 )
 from jobsearch.views.analytics_page import _parse_keyword_blob, _title_family
 from jobsearch.views.tracker_page import (
@@ -90,6 +93,27 @@ class BlockedAndLocationTests(unittest.TestCase):
         self.assertEqual(metrics["scraped_leads"], 2)
         self.assertEqual(metrics["tracked"], 3)
         self.assertEqual(metrics["active"], 2)
+
+    def test_work_type_helpers_normalize_and_filter_contract_roles(self):
+        df = pd.DataFrame(
+            [
+                {"title": "A", "work_type": "fte"},
+                {"title": "B", "work_type": "W2"},
+                {"title": "C", "work_type": "1099_contract"},
+                {"title": "D", "work_type": ""},
+            ]
+        )
+        self.assertEqual(_normalize_work_type("W2"), "w2_contract")
+        self.assertEqual(_work_type_label("1099_contract"), "1099 hourly")
+        filtered = _apply_work_type_filter(df, "Contract Only")
+        self.assertEqual(filtered["title"].tolist(), ["B", "C"])
+        unknown_only = _apply_work_type_filter(df, "Unknown Only")
+        self.assertEqual(unknown_only["title"].tolist(), ["D"])
+
+    def test_work_type_filter_leaves_manual_review_rows_without_work_type(self):
+        df = pd.DataFrame([{"company": "ADP", "adapter": "generic"}])
+        filtered = _apply_work_type_filter(df, "Contract Only")
+        self.assertEqual(filtered.to_dict("records"), [{"company": "ADP", "adapter": "generic"}])
 
     def test_generic_adapter_rejects_marketing_and_leadership_links(self):
         adapter = GenericAdapter()
