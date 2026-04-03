@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from typing import List, Optional, Dict, Any
 from jobsearch.scraper.models import Job
+from jobsearch import ats_db
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -124,6 +125,22 @@ def _record_jd_change(conn: sqlite3.Connection, app_id: int, summary: str, times
         (app_id, "jd_changed", timestamp[:10], "Job description changed", summary, timestamp),
     )
 
+
+def _record_job_observation(conn: sqlite3.Connection, app_id: int, job: Job, timestamp: str, jd_fingerprint: str) -> None:
+    latest_seen_at = ats_db.latest_job_observation_date(conn, app_id)
+    if latest_seen_at and latest_seen_at[:10] == timestamp[:10]:
+        return
+    ats_db.add_job_observation(
+        conn,
+        application_id=app_id,
+        seen_at=timestamp,
+        score=job.score,
+        description_excerpt=job.description_excerpt,
+        salary_text=job.salary_text,
+        location=job.location,
+        jd_fingerprint=jd_fingerprint,
+    )
+
 def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
     """
     Insert or update a Job from the scraper.
@@ -201,6 +218,7 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
             }
         )
         app_id = cur.lastrowid
+        _record_job_observation(conn, app_id, job, now, new_jd_fingerprint)
         _insert_stage_history(conn, app_id, None, stage_label, "Scraper discovery")
         return True, app_id
     else:
@@ -271,6 +289,7 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
                 "updated_at": now,
             }
         )
+        _record_job_observation(conn, app_id, job, now, new_jd_fingerprint)
         if material_jd_change:
             _record_jd_change(conn, app_id, jd_change_summary or "job description changed", now)
         return False, app_id

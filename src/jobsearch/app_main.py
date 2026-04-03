@@ -26,7 +26,21 @@ from jobsearch.views.analytics_page         import render_analytics
 
 # ── Constants ──
 KNOWN_ADAPTERS = ["greenhouse", "lever", "ashby", "workday", "rippling", "smartrecruiters", "custom_manual", "generic"]
-DISPLAY_COLS = ["company", "url", "title", "score", "fit_band", "location", "age_days", "tier", "matched_keywords", "decision_reason"]
+DISPLAY_COLS = [
+    "company",
+    "url",
+    "title",
+    "score",
+    "fit_band",
+    "location",
+    "age_days",
+    "seen_count",
+    "open_days",
+    "velocity",
+    "tier",
+    "matched_keywords",
+    "decision_reason",
+]
 
 def _safe_render(fn, *args, page_name: str = "", **kwargs):
     try: fn(*args, **kwargs)
@@ -50,6 +64,71 @@ def _sidebar_metrics_for_df(df: pd.DataFrame) -> dict[str, int]:
         "active": int(statuses.isin(["applied", "screening", "interviewing", "offer"]).sum()),
     }
 
+
+def _coerce_timestamp_series(series: pd.Series) -> pd.Series:
+    return pd.to_datetime(series, errors="coerce", utc=False)
+
+
+def _velocity_label(open_days: int, seen_count: int, days_since_seen: int) -> str:
+    if days_since_seen > 7:
+        return "Dormant"
+    if open_days >= 60 and seen_count >= 3:
+        return "Reposted"
+    if open_days >= 45:
+        return "Stale"
+    if seen_count >= 3:
+        return "Recurring"
+    if open_days <= 7:
+        return "New"
+    return "Active"
+
+
+def _decorate_role_velocity(df: pd.DataFrame) -> pd.DataFrame:
+    if df.empty:
+        return df
+    out = df.copy()
+    now = datetime.now()
+    first_seen = _coerce_timestamp_series(
+        out.get("first_seen_at", pd.Series([None] * len(out), index=out.index))
+    )
+    last_seen = _coerce_timestamp_series(
+        out.get("last_seen_at", pd.Series([None] * len(out), index=out.index))
+    )
+    discovered = _coerce_timestamp_series(
+        out.get("date_discovered", pd.Series([None] * len(out), index=out.index))
+    )
+    created = _coerce_timestamp_series(
+        out.get("created_at", pd.Series([None] * len(out), index=out.index))
+    )
+
+    first_seen = first_seen.fillna(discovered).fillna(created)
+    last_seen = last_seen.fillna(discovered).fillna(created)
+
+    out["seen_count"] = pd.to_numeric(out.get("seen_count"), errors="coerce").fillna(0).astype(int)
+    out.loc[(out["seen_count"] <= 0) & first_seen.notna(), "seen_count"] = 1
+    out["open_days"] = first_seen.map(lambda ts: (now - ts.to_pydatetime()).days if pd.notna(ts) else 0)
+    out["days_since_seen"] = last_seen.map(lambda ts: (now - ts.to_pydatetime()).days if pd.notna(ts) else 0)
+    out["velocity"] = out.apply(
+        lambda row: _velocity_label(
+            int(row.get("open_days", 0) or 0),
+            int(row.get("seen_count", 0) or 0),
+            int(row.get("days_since_seen", 0) or 0),
+        ),
+        axis=1,
+    )
+    return out
+
+
+def _role_velocity_summary(df: pd.DataFrame) -> dict[str, int]:
+    if df.empty:
+        return {"stale": 0, "reposted": 0, "dormant": 0}
+    velocity = df.get("velocity", pd.Series([], dtype=str)).astype(str)
+    return {
+        "stale": int((velocity == "Stale").sum()),
+        "reposted": int((velocity == "Reposted").sum()),
+        "dormant": int((velocity == "Dormant").sum()),
+    }
+
 @st.cache_data(show_spinner=False)
 def _load_jobs_df() -> pd.DataFrame:
     conn = ats_db.get_connection()
@@ -59,6 +138,7 @@ def _load_jobs_df() -> pd.DataFrame:
         if df.empty: return df
         
         df = df.rename(columns={"role": "title", "job_url": "url", "scraper_key": "_key"})
+        df = _decorate_role_velocity(df)
         
         now = datetime.now()
         df["age_days"] = df["date_discovered"].apply(
@@ -201,6 +281,11 @@ def main():
         if df_all.empty and rejected_df.empty and not manual_review_lines:
             st.info("No jobs yet. Run the pipeline.")
             return
+        velocity_summary = _role_velocity_summary(df_all)
+        vm1, vm2, vm3 = st.columns(3)
+        vm1.metric("Stale Roles", velocity_summary["stale"])
+        vm2.metric("Reposted Roles", velocity_summary["reposted"])
+        vm3.metric("Dormant Roles", velocity_summary["dormant"])
         ann = {r["job_key"]: dict(r) for r in ats_db.get_all_annotations(ats_db.get_connection())}
         tabs = st.tabs(["🔥 Apply Now", "📋 Review Today", "👀 Watch", "🔍 Manual Review", "🚫 Filtered Out"])
         BUCKETS = [("APPLY NOW", tabs[0], ["Applied", "Rejected"]), ("REVIEW TODAY", tabs[1], ["APPLY NOW", "Applied", "WATCH", "Rejected"]), ("WATCH", tabs[2], ["APPLY NOW", "REVIEW TODAY", "Applied", "Rejected"]), ("MANUAL REVIEW", tabs[3], ["APPLY NOW", "Applied", "Rejected"])]

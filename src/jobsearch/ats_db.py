@@ -428,6 +428,16 @@ def init_db(conn: sqlite3.Connection) -> None:
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS job_observations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            application_id INTEGER NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
+            seen_at TEXT NOT NULL,
+            score REAL,
+            description_excerpt TEXT,
+            salary_text TEXT,
+            location TEXT,
+            jd_fingerprint TEXT
+        );
         CREATE TABLE IF NOT EXISTS company_profiles (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
@@ -519,6 +529,7 @@ def init_db(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX IF NOT EXISTS idx_events_app_date ON events(application_id, event_date)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_interviews_app_date ON interviews(application_id, scheduled_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_apps_status ON applications(status)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_job_observations_app_seen ON job_observations(application_id, seen_at)")
     seed_default_templates(conn)
     seed_default_questions(conn)
     conn.commit()
@@ -559,11 +570,23 @@ def update_application(conn: sqlite3.Connection, app_id: int, **kwargs) -> None:
 def get_application(conn: sqlite3.Connection, app_id: int) -> Optional[sqlite3.Row]:
     return conn.execute(
         """
-        SELECT *,
+        SELECT a.*,
                COALESCE(fit_stars, user_priority, 0) AS fit_stars,
-               COALESCE(user_priority, fit_stars, 0) AS user_priority
-        FROM applications
-        WHERE id = ?
+               COALESCE(user_priority, fit_stars, 0) AS user_priority,
+               vel.seen_count,
+               vel.first_seen_at,
+               vel.last_seen_at
+        FROM applications a
+        LEFT JOIN (
+            SELECT
+                application_id,
+                COUNT(*) AS seen_count,
+                MIN(seen_at) AS first_seen_at,
+                MAX(seen_at) AS last_seen_at
+            FROM job_observations
+            GROUP BY application_id
+        ) vel ON vel.application_id = a.id
+        WHERE a.id = ?
         """,
         (app_id,),
     ).fetchone()
@@ -585,12 +608,24 @@ def get_applications(
     where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
     return conn.execute(
         f"""
-        SELECT *,
+        SELECT a.*,
                COALESCE(fit_stars, user_priority, 0) AS fit_stars,
-               COALESCE(user_priority, fit_stars, 0) AS user_priority
-        FROM applications
+               COALESCE(user_priority, fit_stars, 0) AS user_priority,
+               vel.seen_count,
+               vel.first_seen_at,
+               vel.last_seen_at
+        FROM applications a
+        LEFT JOIN (
+            SELECT
+                application_id,
+                COUNT(*) AS seen_count,
+                MIN(seen_at) AS first_seen_at,
+                MAX(seen_at) AS last_seen_at
+            FROM job_observations
+            GROUP BY application_id
+        ) vel ON vel.application_id = a.id
         {where}
-        ORDER BY COALESCE(date_applied, date_discovered, created_at) DESC, updated_at DESC
+        ORDER BY COALESCE(a.date_applied, a.date_discovered, a.created_at) DESC, a.updated_at DESC
         """,
         params,
     ).fetchall()
@@ -974,6 +1009,34 @@ def get_all_annotations(conn: sqlite3.Connection) -> List[sqlite3.Row]:
 def delete_annotation(conn: sqlite3.Connection, job_key: str) -> None:
     conn.execute("DELETE FROM job_annotations WHERE job_key = ?", (job_key,))
     conn.commit()
+
+
+def add_job_observation(
+    conn: sqlite3.Connection,
+    application_id: int,
+    seen_at: str,
+    score: Optional[float] = None,
+    description_excerpt: Optional[str] = None,
+    salary_text: Optional[str] = None,
+    location: Optional[str] = None,
+    jd_fingerprint: Optional[str] = None,
+) -> None:
+    conn.execute(
+        """
+        INSERT INTO job_observations (
+            application_id, seen_at, score, description_excerpt, salary_text, location, jd_fingerprint
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        (application_id, seen_at, score, description_excerpt, salary_text, location, jd_fingerprint),
+    )
+
+
+def latest_job_observation_date(conn: sqlite3.Connection, application_id: int) -> Optional[str]:
+    row = conn.execute(
+        "SELECT MAX(seen_at) AS seen_at FROM job_observations WHERE application_id = ?",
+        (application_id,),
+    ).fetchone()
+    return row["seen_at"] if row and row["seen_at"] else None
 
 
 def get_company_profile(conn: sqlite3.Connection, name: str) -> Optional[sqlite3.Row]:

@@ -14,7 +14,12 @@ from jobsearch.scraper.adapters.generic import GenericAdapter
 from jobsearch.scraper.scoring import Scorer
 from jobsearch.services.opportunity_service import _is_material_jd_change, _jd_fingerprint
 from jobsearch import ats_db as db
-from jobsearch.app_main import _annualized_compensation_preview, _sidebar_metrics_for_df
+from jobsearch.app_main import (
+    _annualized_compensation_preview,
+    _decorate_role_velocity,
+    _role_velocity_summary,
+    _sidebar_metrics_for_df,
+)
 from jobsearch.views.tracker_page import (
     _default_follow_up_date,
     _follow_up_template_note,
@@ -245,6 +250,66 @@ class BlockedAndLocationTests(unittest.TestCase):
         contract_1099 = _annualized_compensation_preview("1099_hourly", 120.0, 40.0, 46.0, contractor_cfg)
         self.assertAlmostEqual(w2["normalized_compensation_usd"], 194000.0)
         self.assertAlmostEqual(contract_1099["normalized_compensation_usd"], 163056.0)
+
+    def test_role_velocity_labels_and_summary(self):
+        df = pd.DataFrame(
+            [
+                {
+                    "date_discovered": "2026-03-28",
+                    "first_seen_at": "2026-03-28T00:00:00",
+                    "last_seen_at": "2026-04-03T00:00:00",
+                    "seen_count": 1,
+                },
+                {
+                    "date_discovered": "2026-02-20",
+                    "first_seen_at": "2026-02-20T00:00:00",
+                    "last_seen_at": "2026-04-03T00:00:00",
+                    "seen_count": 4,
+                },
+                {
+                    "date_discovered": "2026-01-15",
+                    "first_seen_at": "2026-01-15T00:00:00",
+                    "last_seen_at": "2026-04-03T00:00:00",
+                    "seen_count": 5,
+                },
+                {
+                    "date_discovered": "2026-02-10",
+                    "first_seen_at": "2026-02-10T00:00:00",
+                    "last_seen_at": "2026-03-20T00:00:00",
+                    "seen_count": 2,
+                },
+            ]
+        )
+        decorated = _decorate_role_velocity(df)
+        self.assertEqual(list(decorated["velocity"]), ["New", "Recurring", "Reposted", "Dormant"])
+        summary = _role_velocity_summary(decorated)
+        self.assertEqual(summary["stale"], 0)
+        self.assertEqual(summary["reposted"], 1)
+        self.assertEqual(summary["dormant"], 1)
+
+    def test_job_observation_aggregation_is_returned(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        db.init_db(conn)
+        app_id = db.add_application(
+            conn,
+            company="VelocityCo",
+            role="Platform Architect",
+            status="considering",
+            scraper_key="velocity-1",
+            date_discovered="2026-03-01",
+            created_at="2026-03-01T00:00:00",
+            updated_at="2026-03-01T00:00:00",
+        )
+        db.add_job_observation(conn, app_id, "2026-03-01T12:00:00", score=72.0)
+        db.add_job_observation(conn, app_id, "2026-03-10T12:00:00", score=75.0)
+        conn.commit()
+
+        row = db.get_application(conn, app_id)
+        self.assertEqual(row["seen_count"], 2)
+        self.assertEqual(row["first_seen_at"], "2026-03-01T12:00:00")
+        self.assertEqual(row["last_seen_at"], "2026-03-10T12:00:00")
+        conn.close()
 
     def test_offer_comparison_rows_normalize_salary_and_1099(self):
         rows = _offer_comparison_rows(
