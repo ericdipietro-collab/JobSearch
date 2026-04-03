@@ -20,6 +20,7 @@ from jobsearch.app_main import (
     _role_velocity_summary,
     _sidebar_metrics_for_df,
 )
+from jobsearch.views.analytics_page import _parse_keyword_blob, _title_family
 from jobsearch.views.tracker_page import (
     _default_follow_up_date,
     _follow_up_template_note,
@@ -310,6 +311,13 @@ class BlockedAndLocationTests(unittest.TestCase):
         self.assertEqual(row["first_seen_at"], "2026-03-01T12:00:00")
         self.assertEqual(row["last_seen_at"], "2026-03-10T12:00:00")
         conn.close()
+
+    def test_rejection_pattern_helpers(self):
+        self.assertEqual(_title_family("Senior Enterprise Architect"), "Architect")
+        self.assertEqual(_title_family("Lead Product Manager"), "Product")
+        self.assertEqual(_title_family("Business Systems Analyst"), "Analyst")
+        self.assertEqual(_parse_keyword_blob("['mortgage', 'consumer lending']"), ["mortgage", "consumer lending"])
+        self.assertEqual(_parse_keyword_blob("mortgage, consumer lending"), ["mortgage", "consumer lending"])
 
     def test_offer_comparison_rows_normalize_salary_and_1099(self):
         rows = _offer_comparison_rows(

@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import ast
 import sqlite3
+from collections import Counter
 
 import altair as alt
 import pandas as pd
 import streamlit as st
 
+from jobsearch.config.settings import settings
 from jobsearch.services.analytics_service import (
     avg_score_by_stage,
     company_pipeline,
@@ -20,6 +23,50 @@ from jobsearch.services.analytics_service import (
 
 # Days-in-stage threshold for "stuck" highlight
 _STUCK_THRESHOLD_DAYS = 7
+
+
+def _load_rejected_jobs() -> pd.DataFrame:
+    path = settings.rejected_csv
+    if not path.exists():
+        return pd.DataFrame()
+    try:
+        return pd.read_csv(path)
+    except Exception:
+        return pd.DataFrame()
+
+
+def _parse_keyword_blob(value) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+    text = str(value).strip()
+    if not text or text.lower() in {"nan", "none", "[]"}:
+        return []
+    try:
+        parsed = ast.literal_eval(text)
+        if isinstance(parsed, list):
+            return [str(item).strip() for item in parsed if str(item).strip()]
+    except Exception:
+        pass
+    return [item.strip() for item in text.split(",") if item.strip()]
+
+
+def _title_family(title: str) -> str:
+    text = str(title or "").lower()
+    checks = [
+        ("Architect", ["architect"]),
+        ("Product", ["product manager", "product owner", "product lead", "product"]),
+        ("Analyst", ["analyst", "business systems"]),
+        ("Consulting", ["consultant", "solutions engineer", "solution engineer"]),
+        ("Program/Project", ["program manager", "project manager", "pmo"]),
+        ("Leadership", ["director", "vp", "head of", "chief"]),
+        ("Engineering", ["engineer", "developer", "devops", "sre"]),
+    ]
+    for family, needles in checks:
+        if any(needle in text for needle in needles):
+            return family
+    return "Other"
 
 
 def _metric_or_dash(value, fmt: str = "{}") -> str:
@@ -215,18 +262,99 @@ def _render_score_vs_outcome(conn: sqlite3.Connection) -> None:
         )
 
 
+def _render_rejection_patterns(conn: sqlite3.Connection) -> None:
+    st.subheader("Rejection Pattern Analysis")
+
+    rejected_df = _load_rejected_jobs()
+    if rejected_df.empty:
+        st.info("No rejected-job file available yet. Run the pipeline first.")
+        return
+
+    apps_df = pd.DataFrame([dict(r) for r in conn.execute("SELECT company, role, status, score FROM applications").fetchall()])
+    applied_df = apps_df[apps_df["status"].isin(["applied", "screening", "interviewing", "offer", "accepted"])] if not apps_df.empty else pd.DataFrame()
+
+    rejected_df = rejected_df.copy()
+    rejected_df["title_family"] = rejected_df["title"].map(_title_family)
+    rejected_df["score"] = pd.to_numeric(rejected_df.get("score"), errors="coerce")
+    if not applied_df.empty:
+        applied_df = applied_df.copy()
+        applied_df["title_family"] = applied_df["role"].map(_title_family)
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Rejected in Latest Run", len(rejected_df))
+    col2.metric("Rejected Companies", rejected_df["company"].nunique())
+    col3.metric("Rejected Title Families", rejected_df["title_family"].nunique())
+
+    company_counts = (
+        rejected_df.groupby("company")
+        .agg(rejected_count=("company", "size"), avg_score=("score", "mean"))
+        .reset_index()
+        .sort_values(["rejected_count", "avg_score"], ascending=[False, False])
+    )
+    family_counts = (
+        rejected_df.groupby("title_family")
+        .size()
+        .reset_index(name="rejected_count")
+        .sort_values("rejected_count", ascending=False)
+    )
+
+    keyword_counter = Counter()
+    for value in rejected_df.get("penalized_keywords", pd.Series(dtype=object)):
+        keyword_counter.update(_parse_keyword_blob(value))
+    keyword_df = pd.DataFrame(
+        [{"keyword": keyword, "count": count} for keyword, count in keyword_counter.most_common(10)]
+    )
+
+    top_left, top_right = st.columns(2)
+    with top_left:
+        st.markdown("**Top Rejected Companies**")
+        st.dataframe(company_counts.head(10), hide_index=True, use_container_width=True)
+    with top_right:
+        st.markdown("**Rejected Title Families**")
+        st.dataframe(family_counts, hide_index=True, use_container_width=True)
+
+    if not keyword_df.empty:
+        st.markdown("**Most Common Penalty Signals**")
+        st.altair_chart(
+            alt.Chart(keyword_df).mark_bar(color="#E57373").encode(
+                x=alt.X("count:Q", title="Rejected Jobs"),
+                y=alt.Y("keyword:N", sort="-x", title=None),
+                tooltip=["keyword", "count"],
+            ).properties(height=260),
+            use_container_width=True,
+        )
+
+    if not applied_df.empty:
+        applied_family = (
+            applied_df.groupby("title_family").size().reset_index(name="applied_count")
+        )
+        family_compare = family_counts.merge(applied_family, on="title_family", how="outer").fillna(0)
+        family_compare["gap"] = family_compare["rejected_count"] - family_compare["applied_count"]
+        st.markdown("**Title Family Blind Spots**")
+        st.dataframe(
+            family_compare.sort_values("gap", ascending=False),
+            hide_index=True,
+            use_container_width=True,
+        )
+
+    with st.expander("Inspect latest rejected rows"):
+        show_cols = [c for c in ["company", "title", "score", "title_family", "drop_reason", "decision_reason", "penalized_keywords"] if c in rejected_df.columns]
+        st.dataframe(rejected_df[show_cols], hide_index=True, use_container_width=True)
+
+
 # ── Main page renderer ────────────────────────────────────────────────────────
 
 def render_analytics(conn: sqlite3.Connection) -> None:
     """Entry point called from app.py."""
     st.title("Analytics")
 
-    tab_funnel, tab_score, tab_health, tab_company, tab_outcome = st.tabs([
+    tab_funnel, tab_score, tab_health, tab_company, tab_outcome, tab_reject = st.tabs([
         "Funnel",
         "Score Analysis",
         "Pipeline Health",
         "By Company",
         "Score vs Outcome",
+        "Rejection Patterns",
     ])
 
     with tab_funnel:
@@ -243,3 +371,6 @@ def render_analytics(conn: sqlite3.Connection) -> None:
 
     with tab_outcome:
         _render_score_vs_outcome(conn)
+
+    with tab_reject:
+        _render_rejection_patterns(conn)
