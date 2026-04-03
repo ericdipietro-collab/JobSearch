@@ -404,6 +404,8 @@ class ATSHealer:
 
     def _find_careers_links(self, html: str, base_url: str) -> List[str]:
         """Find non-standard career links on a page."""
+        if not self._looks_like_html(html):
+            return []
         soup = BeautifulSoup(html, "html.parser")
         candidates = []
         for a in soup.find_all("a", href=True):
@@ -462,6 +464,8 @@ class ATSHealer:
         return None
 
     def _scan_content(self, html: str, url: str, name: str) -> Optional[DiscoveryResult]:
+        if not self._looks_like_html(html):
+            return None
         soup = BeautifulSoup(html, "html.parser")
         
         # 1. Search for script tags or data attributes commonly used by embeds
@@ -563,7 +567,17 @@ class ATSHealer:
             if marker not in {"onetrust.com", "happydance.com"}
         )
 
+    def _looks_like_html(self, text: str) -> bool:
+        if not text:
+            return False
+        sample = text.lstrip()[:256].lower()
+        if sample.startswith(("http://", "https://", "www.")):
+            return False
+        return "<html" in sample or "<body" in sample or "<script" in sample or "<a " in sample or "<!doctype" in sample
+
     def _is_probable_careers_page(self, html: str, url: str, name: str) -> bool:
+        if not self._looks_like_html(html):
+            return False
         text = BeautifulSoup(html, "html.parser").get_text(" ", strip=True).lower()
         url_l = url.lower()
         name_l = name.lower()

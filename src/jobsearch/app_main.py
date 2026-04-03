@@ -185,7 +185,16 @@ def main():
                 for col in ["matched_keywords", "decision_reason"]:
                     disp[col] = disp[col].astype(str)
                 
-                edited = st.data_editor(disp.drop(columns=["_key"]), column_config={"user_status": st.column_config.SelectboxColumn("Move To", options=[""]+opts), "url": st.column_config.LinkColumn("URL")}, hide_index=True, width="stretch", key=f"ed_{name}")
+                edited = st.data_editor(
+                    disp.drop(columns=["_key"]),
+                    column_config={
+                        "user_status": st.column_config.SelectboxColumn("Move To", options=[""] + opts),
+                        "url": st.column_config.LinkColumn("URL"),
+                    },
+                    hide_index=True,
+                    use_container_width=True,
+                    key=f"ed_{name}",
+                )
                 
                 for i, row in edited.iterrows():
                     key = disp.iloc[list(disp.index).index(i)]["_key"]
@@ -215,7 +224,7 @@ def main():
                     rejected_df[show_cols],
                     column_config={"url": st.column_config.LinkColumn("URL")},
                     hide_index=True,
-                    width="stretch",
+                    use_container_width=True,
                 )
 
     elif page == "Search Settings":
@@ -367,8 +376,8 @@ def main():
         with t1:
             df_companies = pd.DataFrame(cos)
             if not df_companies.empty:
-                df_companies = df_companies.applymap(_normalize_editor_value)
-            st.data_editor(df_companies, width="stretch", hide_index=True)
+                df_companies = df_companies.apply(lambda col: col.map(_normalize_editor_value))
+            st.data_editor(df_companies, use_container_width=True, hide_index=True)
         with t2:
             company_names = [company.get("name", "") for company in cos if isinstance(company, dict)]
             mode = st.radio("Mode", ["Add New", "Edit Existing"], horizontal=True)
