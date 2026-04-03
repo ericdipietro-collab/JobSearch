@@ -1153,8 +1153,9 @@ companies:
   notes: Custom indexing platform; requires deep portfolio hierarchy
   sub_industry: Custom Indexing
   careers_url: https://franklintempleton.wd1.myworkdayjobs.com
-  active: true
-  status: active
+  active: false
+  manual_only: true
+  status: manual_only
   discovery_method: 'Deep heal: JS iframe → workday (https://franklintempleton.wd1.myworkdayjobs.com/)'
   last_healed: '2026-04-02T23:33:06.379599'
 - name: Capco
@@ -2979,8 +2980,9 @@ companies:
   notes: Transaction banking arm functions like an agile fintech inside a massive
   sub_industry: Banking / Tech
   careers_url: https://goldmansachs.wd1.myworkdayjobs.com
-  active: true
-  status: active
+  active: false
+  manual_only: true
+  status: manual_only
   discovery_method: 'Deep heal: JS iframe → workday (https://goldmansachs.wd1.myworkdayjobs.com/)'
   last_healed: '2026-04-02T23:59:08.037297'
 - name: Gotransverse
@@ -4738,8 +4740,9 @@ companies:
   notes: Re-emphasizing) Mass data aggregation and portfolio
   sub_industry: WealthTech(
   careers_url: https://empower.wd1.myworkdayjobs.com
-  active: true
-  status: active
+  active: false
+  manual_only: true
+  status: manual_only
   discovery_method: 'Deep heal: JS iframe → workday (https://empower.wd1.myworkdayjobs.com/)'
   last_healed: '2026-04-03T00:26:17.557493'
 - name: Pie Insurance
@@ -5849,8 +5852,9 @@ companies:
   notes: Enterprise data fabric; requires deep understanding of multi-source
   sub_industry: Data Integration
   careers_url: https://qlik.wd1.myworkdayjobs.com
-  active: true
-  status: active
+  active: false
+  manual_only: true
+  status: manual_only
   discovery_method: 'Deep heal: JS iframe → workday (https://qlik.wd1.myworkdayjobs.com/)'
   last_healed: '2026-04-03T00:39:04.062854'
 - name: Talos
@@ -6022,8 +6026,9 @@ companies:
   notes: Real-time bidding platforms function exactly like high-frequency trading
   sub_industry: AdTech (Fin-adjacent)
   careers_url: https://thetradedesk.wd1.myworkdayjobs.com
-  active: true
-  status: active
+  active: false
+  manual_only: true
+  status: manual_only
   discovery_method: 'Deep heal: JS iframe → workday (https://thetradedesk.wd1.myworkdayjobs.com/)'
   last_healed: '2026-04-03T00:42:29.864591'
 - name: TradePMR
@@ -6261,8 +6266,9 @@ companies:
     his IDW work.
   sub_industry: Quant Trading
   careers_url: https://twosigma.wd5.myworkdayjobs.com/Twosigma
-  active: true
-  status: active
+  active: false
+  manual_only: true
+  status: manual_only
   discovery_method: Workday wd5 probe (Twosigma)
   last_healed: '2026-04-03T00:43:59.148820'
 - name: Tyfone
@@ -6289,8 +6295,9 @@ companies:
     APIs.
   sub_industry: Banking / Custody
   careers_url: https://usbank.wd1.myworkdayjobs.com/Usbank
-  active: true
-  status: active
+  active: false
+  manual_only: true
+  status: manual_only
   adapter_key: usbank.wd1.myworkdayjobs.com/Usbank
   discovery_method: Workday wd1 probe (Usbank)
   last_healed: '2026-04-03T00:43:34.757651'
@@ -6386,8 +6393,9 @@ companies:
   notes: AI lending platform needing rigorous data ingestion and pipeline mapping.
   sub_industry: Digital Lending
   careers_url: https://upstart.wd1.myworkdayjobs.com/Upstart
-  active: true
-  status: active
+  active: false
+  manual_only: true
+  status: manual_only
   discovery_method: Workday wd1 probe (Upstart)
   last_healed: '2026-04-03T00:44:31.189937'
 - name: Vanguard
@@ -6401,8 +6409,9 @@ companies:
   notes: Massive ongoing tech modernization moving off legacy mainframes to
   sub_industry: Asset Management
   careers_url: https://vanguard.wd5.myworkdayjobs.com/Vanguard
-  active: true
-  status: active
+  active: false
+  manual_only: true
+  status: manual_only
   discovery_method: Workday wd5 probe (Vanguard)
   last_healed: '2026-04-03T00:45:05.145068'
 - name: Vanilla
@@ -6471,9 +6480,10 @@ companies:
   notes: Cloud-based financial crime management needing massive data aggregation.
   sub_industry: Fraud & AML
   careers_url: https://nasdaq.wd1.myworkdayjobs.com
-  active: true
+  active: false
+  manual_only: true
   adapter_key: nasdaq.wd1.myworkdayjobs.com
-  status: active
+  status: manual_only
   discovery_method: 'Deep heal: JS iframe → workday (https://nasdaq.wd1.myworkdayjobs.com/)'
   last_healed: '2026-04-03T00:47:59.533519'
 - name: Versapay
@@ -6615,8 +6625,9 @@ companies:
     systems.
   sub_industry: Wealth / Retirement
   careers_url: https://godirect.wd5.myworkdayjobs.com
-  active: true
-  status: active
+  active: false
+  manual_only: true
+  status: manual_only
   adapter_key: godirect.wd5.myworkdayjobs.com
   discovery_method: 'Deep heal: rendered source → workday'
   last_healed: '2026-04-03T00:49:18.201326'
@@ -6887,8 +6898,9 @@ companies:
   notes: ''
   sub_industry: Health FinTechHealthcare payments and pricing
   careers_url: https://zelis.wd1.myworkdayjobs.com/Zelis
-  active: true
-  status: active
+  active: false
+  manual_only: true
+  status: manual_only
   discovery_method: Workday wd1 probe (Zelis)
   last_healed: '2026-04-03T00:52:11.145549'
 - name: Zest AI
