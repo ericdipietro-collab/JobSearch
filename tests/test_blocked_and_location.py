@@ -47,6 +47,7 @@ from jobsearch.views.tracker_page import (
     _default_follow_up_date,
     _follow_up_template_note,
     _formal_tracker_rows,
+    _negotiation_counter_draft,
     _negotiation_playbook_lines,
     _offer_comparison_rows,
     _summary_metrics_for_rows,
@@ -797,6 +798,21 @@ class BlockedAndLocationTests(unittest.TestCase):
         self.assertIn("Equity is part of the package", rendered)
         self.assertIn("There is already a sign-on component", rendered)
         self.assertIn("Offer is below your market range", rendered)
+
+    def test_negotiation_counter_draft_includes_target_and_context(self):
+        app = {
+            "company": "Advisor360",
+            "role": "Enterprise Solutions Architect",
+            "offer_base": 175000,
+            "offer_remote_policy": "Hybrid",
+            "offer_equity": "RSU",
+        }
+        draft = _negotiation_counter_draft(app, target_base=190000, market_low=185000, market_high=215000)
+        self.assertIn("Advisor360", draft)
+        self.assertIn("Enterprise Solutions Architect", draft)
+        self.assertIn("$190,000", draft)
+        self.assertIn("market range for comparable roles", draft)
+        self.assertIn("Hybrid", draft)
 
     def test_gmail_sync_flag_is_boolean(self):
         self.assertIsInstance(settings.gmail_sync_enabled, bool)

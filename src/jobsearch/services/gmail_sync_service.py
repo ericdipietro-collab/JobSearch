@@ -114,7 +114,7 @@ def sync_gmail_email_signals(
 
     known_companies = [str(r["company"]) for r in db.get_applications(conn)] + [str(r["name"]) for r in db.get_all_company_profiles(conn)]
     cutoff = (date.today() - timedelta(days=days)).strftime("%d-%b-%Y")
-    stats = {"scanned": 0, "classified": 0, "stored": 0}
+    stats = {"scanned": 0, "classified": 0, "stored": 0, "new": 0, "resolved": 0}
 
     mailbox = imaplib.IMAP4_SSL(imap_host)
     try:
@@ -175,6 +175,7 @@ def sync_gmail_email_signals(
                 notes=notes,
             )
             stats["stored"] += 1
+            stats[signal_status] = stats.get(signal_status, 0) + 1
         return stats
     finally:
         try:

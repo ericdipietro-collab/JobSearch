@@ -250,6 +250,39 @@ def _negotiation_playbook_lines(app: dict, target_base: float, walkaway_base: fl
     return playbook
 
 
+def _negotiation_counter_draft(app: dict, target_base: float, market_low: float, market_high: float) -> str:
+    company = app.get("company") or "the company"
+    role = app.get("role") or "the role"
+    offer_base = float(app.get("offer_base") or 0)
+    remote_policy = app.get("offer_remote_policy") or ""
+    reasons: list[str] = []
+    if market_low and target_base and target_base >= market_low:
+        reasons.append("the market range for comparable roles")
+    if remote_policy:
+        reasons.append(f"the `{remote_policy}` working model")
+    if app.get("offer_equity"):
+        reasons.append("the equity structure")
+    if not reasons:
+        reasons.append("the scope and impact of the role")
+    reason_text = ", ".join(reasons[:-1]) + (f", and {reasons[-1]}" if len(reasons) > 1 else reasons[0])
+
+    if offer_base and target_base and target_base > offer_base:
+        ask_line = f"Based on the conversations so far, I’d like to explore a base salary of ${target_base:,.0f}."
+    elif target_base:
+        ask_line = f"I’d like to target a base salary around ${target_base:,.0f}."
+    else:
+        ask_line = "I’d like to discuss the compensation structure in a bit more detail."
+
+    return (
+        f"Hi [Recruiter Name],\n\n"
+        f"Thank you again for the offer for the {role} role at {company}. I’m excited about the opportunity and the team.\n\n"
+        f"{ask_line} After reviewing the package against {reason_text}, I believe that level would better reflect the opportunity.\n\n"
+        f"If base is constrained, I’d also be open to discussing other levers such as sign-on, equity, or flexibility in the overall package.\n\n"
+        f"Thanks again,\n"
+        f"[Your Name]"
+    )
+
+
 def _snooze_follow_up(conn, app_id: int, days: int) -> None:
     app = db.get_application(conn, app_id)
     if not app:
@@ -481,7 +514,8 @@ def _render_email_signal_import(conn) -> None:
                         imap_host=gmail_cfg["imap_host"],
                     )
                     st.success(
-                        f"Scanned {stats['scanned']} message(s), classified {stats['classified']}, stored {stats['stored']} signal(s)."
+                        f"Scanned {stats['scanned']} message(s), classified {stats['classified']}, "
+                        f"stored {stats['stored']} signal(s) | new {stats.get('new', 0)} | auto-resolved {stats.get('resolved', 0)}."
                     )
                     st.rerun()
                 except Exception as exc:
@@ -512,6 +546,8 @@ def _render_email_signal_import(conn) -> None:
             return
         st.success(f"Imported {imported} email signal(s). Review them below.")
         st.rerun()
+
+        st.divider()
 
 
 def _apply_email_signal_action(conn, signal, action: str) -> None:
@@ -627,60 +663,80 @@ def _auto_resolve_existing_email_signals(conn) -> None:
 def _render_email_signal_banner(conn) -> None:
     _auto_resolve_existing_email_signals(conn)
     signals = db.get_email_signals(conn, signal_status="new")
-    if not signals:
-        return
-    counts = {}
-    for signal in signals:
-        counts[signal["signal_type"]] = counts.get(signal["signal_type"], 0) + 1
-    summary = ", ".join(f"{count} {kind.replace('_', ' ')}" for kind, count in counts.items())
-    st.caption(f"**Inbox signals** — {summary}")
-    for signal in signals[:10]:
-        company = signal["company"] or signal["linked_company"] or "Unknown company"
-        role = signal["role"] or signal["linked_role"] or "Unknown role"
-        with st.container(border=True):
-            st.markdown(
-                f"**{signal['signal_type'].replace('_', ' ').title()}** — **{company}** — {role}  \n"
-                f"{signal['subject']}  \n"
-                f"From: {signal['sender'] or 'Unknown'} | Received: {_fmt_dt(signal['received_at'])}"
+    if signals:
+        counts = {}
+        for signal in signals:
+            counts[signal["signal_type"]] = counts.get(signal["signal_type"], 0) + 1
+        summary = ", ".join(f"{count} {kind.replace('_', ' ')}" for kind, count in counts.items())
+        st.caption(f"**Inbox signals** — {summary}")
+        for signal in signals[:10]:
+            company = signal["company"] or signal["linked_company"] or "Unknown company"
+            role = signal["role"] or signal["linked_role"] or "Unknown role"
+            with st.container(border=True):
+                st.markdown(
+                    f"**{signal['signal_type'].replace('_', ' ').title()}** — **{company}** — {role}  \n"
+                    f"{signal['subject']}  \n"
+                    f"From: {signal['sender'] or 'Unknown'} | Received: {_fmt_dt(signal['received_at'])}"
+                )
+                if signal["signal_type"] == "interview_request":
+                    details = []
+                    if signal["interview_scheduled_at"]:
+                        details.append(f"When: {_fmt_dt(signal['interview_scheduled_at'])}")
+                    if signal["interviewer_names"]:
+                        details.append(f"With: {signal['interviewer_names']}")
+                    if signal["interview_duration_mins"]:
+                        details.append(f"Duration: {signal['interview_duration_mins']} mins")
+                    if signal["interview_location"]:
+                        details.append(f"Link/Location: {signal['interview_location']}")
+                    if details:
+                        st.caption(" | ".join(details))
+                c1, c2, c3 = st.columns(3)
+                if signal["signal_type"] == "new_application":
+                    if c1.button("Add to tracker", key=f"email_add_{signal['id']}"):
+                        _apply_email_signal_action(conn, signal, "add_to_tracker")
+                        st.rerun()
+                elif signal["signal_type"] == "rejection":
+                    if c1.button("Mark rejected", key=f"email_reject_{signal['id']}"):
+                        _apply_email_signal_action(conn, signal, "mark_rejected")
+                        st.rerun()
+                elif signal["signal_type"] == "interview_request":
+                    if signal["application_id"] and (
+                        signal["interview_scheduled_at"] or signal["interviewer_names"] or signal["interview_location"]
+                    ):
+                        if c1.button("Create interview", key=f"email_interview_create_{signal['id']}"):
+                            _apply_email_signal_action(conn, signal, "create_interview")
+                            st.rerun()
+                    else:
+                        if c1.button("Mark interviewing", key=f"email_interview_{signal['id']}"):
+                            _apply_email_signal_action(conn, signal, "mark_interviewing")
+                            st.rerun()
+                if c2.button("Resolve", key=f"email_resolve_{signal['id']}"):
+                    _apply_email_signal_action(conn, signal, "resolve")
+                    st.rerun()
+                if c3.button("Ignore", key=f"email_ignore_{signal['id']}"):
+                    _apply_email_signal_action(conn, signal, "ignore")
+                    st.rerun()
+    else:
+        st.caption("No pending Gmail inbox signals.")
+    with st.expander("Recent Gmail Signal Activity", expanded=False):
+        audit_rows = db.get_email_signals(conn)[:15]
+        if not audit_rows:
+            st.caption("No Gmail signal history yet.")
+        else:
+            audit_df = pd.DataFrame(
+                [
+                    {
+                        "Received": _fmt_dt(row["received_at"]),
+                        "Type": str(row["signal_type"]).replace("_", " ").title(),
+                        "Company": row["company"] or row["linked_company"] or "Unknown",
+                        "Role": row["role"] or row["linked_role"] or "Unknown",
+                        "Status": row["signal_status"],
+                        "Notes": row["notes"] or "",
+                    }
+                    for row in audit_rows
+                ]
             )
-            if signal["signal_type"] == "interview_request":
-                details = []
-                if signal["interview_scheduled_at"]:
-                    details.append(f"When: {_fmt_dt(signal['interview_scheduled_at'])}")
-                if signal["interviewer_names"]:
-                    details.append(f"With: {signal['interviewer_names']}")
-                if signal["interview_duration_mins"]:
-                    details.append(f"Duration: {signal['interview_duration_mins']} mins")
-                if signal["interview_location"]:
-                    details.append(f"Link/Location: {signal['interview_location']}")
-                if details:
-                    st.caption(" | ".join(details))
-            c1, c2, c3 = st.columns(3)
-            if signal["signal_type"] == "new_application":
-                if c1.button("Add to tracker", key=f"email_add_{signal['id']}"):
-                    _apply_email_signal_action(conn, signal, "add_to_tracker")
-                    st.rerun()
-            elif signal["signal_type"] == "rejection":
-                if c1.button("Mark rejected", key=f"email_reject_{signal['id']}"):
-                    _apply_email_signal_action(conn, signal, "mark_rejected")
-                    st.rerun()
-            elif signal["signal_type"] == "interview_request":
-                if signal["application_id"] and (
-                    signal["interview_scheduled_at"] or signal["interviewer_names"] or signal["interview_location"]
-                ):
-                    if c1.button("Create interview", key=f"email_interview_create_{signal['id']}"):
-                        _apply_email_signal_action(conn, signal, "create_interview")
-                        st.rerun()
-                else:
-                    if c1.button("Mark interviewing", key=f"email_interview_{signal['id']}"):
-                        _apply_email_signal_action(conn, signal, "mark_interviewing")
-                        st.rerun()
-            if c2.button("Resolve", key=f"email_resolve_{signal['id']}"):
-                _apply_email_signal_action(conn, signal, "resolve")
-                st.rerun()
-            if c3.button("Ignore", key=f"email_ignore_{signal['id']}"):
-                _apply_email_signal_action(conn, signal, "ignore")
-                st.rerun()
+            st.dataframe(audit_df, hide_index=True, use_container_width=True)
 
 
 # ── Main entry point ───────────────────────────────────────────────────────────
@@ -1605,6 +1661,12 @@ def _render_negotiate_tab(conn, app) -> None:
         st.caption("Suggested cadence")
         for line in cadence:
             st.markdown(f"- {line}")
+
+        with st.expander("Suggested Counter Email", expanded=False):
+            st.code(
+                _negotiation_counter_draft(app, target_base, market_low, market_high),
+                language="markdown",
+            )
 
 
 # ── Inline company profile ──────────────────────────────────────────────────────

@@ -429,6 +429,14 @@ def _render_rejection_patterns(conn: sqlite3.Connection) -> None:
         [{"keyword": keyword, "count": count} for keyword, count in keyword_counter.most_common(10)]
     )
 
+    recommendations: list[str] = []
+    if not keyword_df.empty:
+        top_keyword = keyword_df.iloc[0]
+        recommendations.append(
+            f"Penalty hotspot: `{top_keyword['keyword']}` appears in {int(top_keyword['count'])} rejected roles. "
+            "Review whether this should stay a hard negative in preferences or be softened for adjacent roles."
+        )
+
     top_left, top_right = st.columns(2)
     with top_left:
         st.markdown("**Top Rejected Companies**")
@@ -460,6 +468,26 @@ def _render_rejection_patterns(conn: sqlite3.Connection) -> None:
             hide_index=True,
             use_container_width=True,
         )
+        if not family_compare.empty:
+            top_gap = family_compare.sort_values("gap", ascending=False).iloc[0]
+            if int(top_gap["gap"]) > 0:
+                recommendations.append(
+                    f"Blind spot: `{top_gap['title_family']}` roles are being rejected more often than you advance them. "
+                    "Compare recent rejects in this family against your stronger applications and tighten title/keyword targeting."
+                )
+
+    if not company_counts.empty:
+        top_company = company_counts.iloc[0]
+        if int(top_company["rejected_count"]) >= 3:
+            recommendations.append(
+                f"Company pattern: `{top_company['company']}` produced {int(top_company['rejected_count'])} rejects in the latest run. "
+                "Check if this target is systematically outside your fit or if the registry needs a cleaner source."
+            )
+
+    if recommendations:
+        st.markdown("**Recommended Actions**")
+        for line in recommendations:
+            st.markdown(f"- {line}")
 
     with st.expander("Inspect latest rejected rows"):
         show_cols = [c for c in ["company", "title", "score", "title_family", "drop_reason", "decision_reason", "penalized_keywords"] if c in rejected_df.columns]
