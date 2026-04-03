@@ -11,6 +11,7 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from jobsearch.scraper.adapters.base import BaseAdapter, BlockedSiteError
+from jobsearch.scraper.adapters.dice import DiceAdapter
 from jobsearch.scraper.adapters.generic import GenericAdapter
 from jobsearch.scraper.scoring import Scorer
 from jobsearch.services.email_signal_service import (
@@ -53,6 +54,15 @@ class _Resp:
         self.text = text
         self.status_code = status_code
         self.url = url
+
+
+class _FakeDiceAdapter(DiceAdapter):
+    def __init__(self, html: str):
+        super().__init__(session=None, scorer=None)
+        self._html = html
+
+    def fetch_text(self, url: str) -> str:
+        return self._html
 
 
 class BlockedAndLocationTests(unittest.TestCase):
@@ -159,6 +169,29 @@ class BlockedAndLocationTests(unittest.TestCase):
                 {"contractor_source": True},
             )
         )
+
+    def test_dice_adapter_extracts_job_detail_cards(self):
+        html = """
+        <html><body>
+          <a href="/job-detail/12345678-abcd-1234-abcd-1234567890ab">View Details for Senior Technical Product Manager</a>
+          <div>Remote</div>
+          <a href="/jobs/browse-jobs">Browse Jobs</a>
+        </body></html>
+        """
+        adapter = _FakeDiceAdapter(html)
+        jobs = adapter.scrape(
+            {
+                "name": "Dice Contract",
+                "careers_url": "https://www.dice.com/jobs/jtype-Contracts--jobs",
+                "tier": 4,
+            }
+        )
+        self.assertEqual(len(jobs), 1)
+        self.assertEqual(jobs[0].adapter, "dice")
+        self.assertEqual(jobs[0].source, "Dice")
+        self.assertEqual(jobs[0].work_type, "w2_contract")
+        self.assertIn("/job-detail/", jobs[0].url)
+        self.assertEqual(jobs[0].role_title_raw, "Senior Technical Product Manager")
 
     def test_happydance_is_detected_as_blocked(self):
         adapter = _FakeAdapter()

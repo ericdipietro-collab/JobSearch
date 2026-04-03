@@ -15,10 +15,10 @@ companies:
     active: true
     priority: low
     tier: 4
-    adapter: generic
+    adapter: dice
     contractor_source: true
     careers_url: https://www.dice.com/jobs/jtype-Contracts--jobs
     domain: dice.com
     industry: job board | contract
     status: active
-    notes: High-noise contract source; keep isolated to the contractor test lane.
+    notes: Contractor source with dedicated Dice adapter for job-detail extraction.

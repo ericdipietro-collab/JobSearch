@@ -12,6 +12,7 @@ from jobsearch.config.settings import BASE_DIR, get_shared_session, rotate_log_f
 from jobsearch.db.connection import get_connection
 from jobsearch.scraper.adapters.ashby import AshbyAdapter
 from jobsearch.scraper.adapters.base import BaseAdapter, BlockedSiteError
+from jobsearch.scraper.adapters.dice import DiceAdapter
 from jobsearch.scraper.adapters.generic import GenericAdapter
 from jobsearch.scraper.adapters.greenhouse import GreenhouseAdapter
 from jobsearch.scraper.adapters.lever import LeverAdapter
@@ -33,6 +34,7 @@ class ScraperEngine:
         "workday_manual": WorkdayAdapter,
         "rippling": RipplingAdapter,
         "smartrecruiters": SmartRecruitersAdapter,
+        "dice": DiceAdapter,
         "generic": GenericAdapter,
         "custom_manual": GenericAdapter,
         "custom_blackrock": GenericAdapter,
