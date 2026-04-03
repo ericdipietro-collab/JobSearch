@@ -66,7 +66,7 @@ def _sidebar_metrics_for_df(df: pd.DataFrame) -> dict[str, int]:
 
 
 def _coerce_timestamp_series(series: pd.Series) -> pd.Series:
-    return pd.to_datetime(series, errors="coerce", utc=False)
+    return pd.to_datetime(series, errors="coerce", utc=True)
 
 
 def _velocity_label(open_days: int, seen_count: int, days_since_seen: int) -> str:
@@ -87,7 +87,7 @@ def _decorate_role_velocity(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
         return df
     out = df.copy()
-    now = datetime.now()
+    now = pd.Timestamp.now(tz="UTC")
     first_seen = _coerce_timestamp_series(
         out.get("first_seen_at", pd.Series([None] * len(out), index=out.index))
     )
@@ -106,8 +106,8 @@ def _decorate_role_velocity(df: pd.DataFrame) -> pd.DataFrame:
 
     out["seen_count"] = pd.to_numeric(out.get("seen_count"), errors="coerce").fillna(0).astype(int)
     out.loc[(out["seen_count"] <= 0) & first_seen.notna(), "seen_count"] = 1
-    out["open_days"] = first_seen.map(lambda ts: (now - ts.to_pydatetime()).days if pd.notna(ts) else 0)
-    out["days_since_seen"] = last_seen.map(lambda ts: (now - ts.to_pydatetime()).days if pd.notna(ts) else 0)
+    out["open_days"] = first_seen.map(lambda ts: (now - ts).days if pd.notna(ts) else 0)
+    out["days_since_seen"] = last_seen.map(lambda ts: (now - ts).days if pd.notna(ts) else 0)
     out["velocity"] = out.apply(
         lambda row: _velocity_label(
             int(row.get("open_days", 0) or 0),
@@ -351,7 +351,7 @@ def main():
     elif page == "Search Settings":
         st.title("Search Settings")
         prefs = load_yaml(settings.prefs_yaml)
-        t1, t2, t3, t4, t5 = st.tabs(["Compensation & Location", "Title Evaluation", "JD Evaluation", "Scoring & Rescue", "Full YAML Editor"])
+        t1, t2, t3, t4, t5, t6 = st.tabs(["Compensation & Location", "Title Evaluation", "JD Evaluation", "Scoring & Rescue", "Full YAML Editor", "App Settings"])
         
         with t1:
             s = prefs.setdefault("search", {}); c = s.setdefault("compensation", {})
@@ -551,6 +551,49 @@ def main():
             raw = settings.prefs_yaml.read_text(encoding="utf-8") if settings.prefs_yaml.exists() else ""
             new_raw = st.text_area("YAML", value=raw, height=600)
             if st.button("Save YAML"): settings.prefs_yaml.write_text(new_raw, encoding="utf-8"); st.success("Saved.")
+
+        with t6:
+            conn = ats_db.get_connection()
+            try:
+                weekly_goal = int(ats_db.get_setting(conn, "weekly_activity_goal", default="3") or "3")
+                gmail_address = ats_db.get_setting(conn, "gmail_address", default=settings.gmail_address)
+                gmail_app_password = ats_db.get_setting(conn, "gmail_app_password", default=settings.gmail_app_password)
+                gmail_imap_host = ats_db.get_setting(conn, "gmail_imap_host", default=settings.gmail_imap_host)
+
+                st.markdown("#### Dashboard Settings")
+                app_weekly_goal = st.number_input("Weekly Activity Goal", min_value=1, max_value=50, value=weekly_goal, step=1)
+
+                st.markdown("#### Gmail Sync")
+                st.caption("Stored locally in the app settings table. Gmail app passwords are recommended over your normal account password.")
+                with st.expander("How to set up a Gmail App Password", expanded=False):
+                    st.markdown(
+                        "\n".join(
+                            [
+                                "1. Turn on Google 2-Step Verification for the account you want to sync.",
+                                "2. Open `https://myaccount.google.com/apppasswords` while signed into that account.",
+                                "3. Create a new App Password with a label like `JobSearch Dashboard`.",
+                                "4. Paste the generated 16-character password into `Gmail App Password` below.",
+                                "5. Save settings, then use `Sync Gmail Inbox` from `My Applications`.",
+                            ]
+                        )
+                    )
+                    st.info(
+                        "Use a Google App Password, not your regular Gmail password. "
+                        "If `App passwords` is missing, the account may be managed by an organization "
+                        "or protected by a policy that disables IMAP app passwords."
+                    )
+                app_gmail_address = st.text_input("Gmail Address", value=gmail_address)
+                app_gmail_password = st.text_input("Gmail App Password", value=gmail_app_password, type="password")
+                app_gmail_host = st.text_input("IMAP Host", value=gmail_imap_host or "imap.gmail.com")
+
+                if st.button("Save App Settings"):
+                    ats_db.set_setting(conn, "weekly_activity_goal", str(int(app_weekly_goal)))
+                    ats_db.set_setting(conn, "gmail_address", app_gmail_address.strip())
+                    ats_db.set_setting(conn, "gmail_app_password", app_gmail_password.strip())
+                    ats_db.set_setting(conn, "gmail_imap_host", app_gmail_host.strip() or "imap.gmail.com")
+                    st.success("App settings saved.")
+            finally:
+                conn.close()
 
     elif page == "Target Companies":
         st.title("Target Companies")

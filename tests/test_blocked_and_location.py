@@ -1,6 +1,7 @@
 import sys
 import unittest
 from datetime import date
+from email.message import EmailMessage
 from pathlib import Path
 import sqlite3
 
@@ -13,8 +14,10 @@ from jobsearch.scraper.adapters.base import BaseAdapter, BlockedSiteError
 from jobsearch.scraper.adapters.generic import GenericAdapter
 from jobsearch.scraper.scoring import Scorer
 from jobsearch.services.email_signal_service import classify_email_signal
+from jobsearch.services.gmail_sync_service import _parse_imap_message
 from jobsearch.services.opportunity_service import _is_material_jd_change, _jd_fingerprint
 from jobsearch import ats_db as db
+from jobsearch.config.settings import settings
 from jobsearch.app_main import (
     _annualized_compensation_preview,
     _decorate_role_velocity,
@@ -386,6 +389,22 @@ class BlockedAndLocationTests(unittest.TestCase):
         self.assertEqual(signals[0]["id"], signal_id)
         self.assertEqual(signals[0]["linked_company"], "Stripe")
         conn.close()
+
+    def test_parse_imap_message_extracts_headers_and_plain_text(self):
+        msg = EmailMessage()
+        msg["From"] = "recruiting@stripe.com"
+        msg["Subject"] = "Schedule an interview"
+        msg["Date"] = "Fri, 03 Apr 2026 10:00:00 -0000"
+        msg["Message-ID"] = "<abc123@example.com>"
+        msg.set_content("Please share your availability for the Solutions Architect role.")
+        parsed = _parse_imap_message(msg.as_bytes())
+        self.assertEqual(parsed["message_id"], "abc123@example.com")
+        self.assertEqual(parsed["sender"], "recruiting@stripe.com")
+        self.assertEqual(parsed["subject"], "Schedule an interview")
+        self.assertIn("Solutions Architect", parsed["body"])
+
+    def test_gmail_sync_flag_is_boolean(self):
+        self.assertIsInstance(settings.gmail_sync_enabled, bool)
 
     def test_offer_comparison_rows_normalize_salary_and_1099(self):
         rows = _offer_comparison_rows(

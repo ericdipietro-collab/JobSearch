@@ -16,6 +16,7 @@ from jobsearch import ats_db as db
 from jobsearch.config.settings import settings
 from jobsearch.scraper.scoring import normalize_compensation
 from jobsearch.services.email_signal_service import classify_email_signal
+from jobsearch.services.gmail_sync_service import sync_gmail_email_signals
 
 FORMAL_TRACKER_EXCLUDED_STATUSES = {"considering"}
 AUTO_FOLLOW_UP_DAYS = {
@@ -394,8 +395,45 @@ def _import_email_signals(conn, uploaded_file) -> int:
     return imported
 
 
+def _gmail_sync_config(conn) -> dict[str, str]:
+    return {
+        "address": db.get_setting(conn, "gmail_address", default=settings.gmail_address).strip(),
+        "app_password": db.get_setting(conn, "gmail_app_password", default=settings.gmail_app_password).strip(),
+        "imap_host": db.get_setting(conn, "gmail_imap_host", default=settings.gmail_imap_host).strip() or "imap.gmail.com",
+    }
+
+
 def _render_email_signal_import(conn) -> None:
     with st.expander("📬 Import Gmail email signals", expanded=False):
+        gmail_cfg = _gmail_sync_config(conn)
+        if gmail_cfg["address"] and gmail_cfg["app_password"]:
+            st.caption(f"Live Gmail sync is enabled for `{gmail_cfg['address']}`.")
+            c1, c2, c3 = st.columns(3)
+            sync_days = c1.number_input("Recent days", min_value=1, max_value=90, value=14, step=1, key="gmail_sync_days")
+            sync_limit = c2.number_input("Max messages", min_value=10, max_value=500, value=100, step=10, key="gmail_sync_limit")
+            if c3.button("Sync Gmail Inbox", key="gmail_sync_btn", use_container_width=True):
+                try:
+                    stats = sync_gmail_email_signals(
+                        conn,
+                        days=int(sync_days),
+                        max_messages=int(sync_limit),
+                        address=gmail_cfg["address"],
+                        app_password=gmail_cfg["app_password"],
+                        imap_host=gmail_cfg["imap_host"],
+                    )
+                    st.success(
+                        f"Scanned {stats['scanned']} message(s), classified {stats['classified']}, stored {stats['stored']} signal(s)."
+                    )
+                    st.rerun()
+                except Exception as exc:
+                    st.error(f"Live Gmail sync failed: {exc}")
+        else:
+            st.caption(
+                "Live Gmail sync is disabled. Add Gmail credentials in Search Settings → App Settings "
+                "or set `JOBSEARCH_GMAIL_ADDRESS` and `JOBSEARCH_GMAIL_APP_PASSWORD` in the environment."
+            )
+
+        st.divider()
         st.caption(
             "Upload a CSV export of Gmail messages with columns like From, Subject, Date, Snippet/Body. "
             "The tracker will detect missed applications, rejection emails, and interview requests."

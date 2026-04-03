@@ -1,5 +1,6 @@
 """src/jobsearch/config/settings.py — Central source of truth for paths and environment."""
 
+import os
 from pathlib import Path
 from typing import Dict, Any
 
@@ -27,6 +28,9 @@ class Settings:
         self.rejected_csv = self.results_dir / "job_search_v6_rejected.csv"
         self.log_file = self.results_dir / "job_search_v6.log"
         self.manual_review_file = self.results_dir / "job_search_manual_review.txt"
+        self.gmail_address = os.getenv("JOBSEARCH_GMAIL_ADDRESS", "").strip()
+        self.gmail_app_password = os.getenv("JOBSEARCH_GMAIL_APP_PASSWORD", "").strip()
+        self.gmail_imap_host = os.getenv("JOBSEARCH_GMAIL_IMAP_HOST", "imap.gmail.com").strip() or "imap.gmail.com"
 
         # Ensure directories exist
         self.results_dir.mkdir(parents=True, exist_ok=True)
@@ -35,6 +39,10 @@ class Settings:
     @property
     def preferences_yaml(self) -> Path:
         return self.prefs_yaml
+
+    @property
+    def gmail_sync_enabled(self) -> bool:
+        return bool(self.gmail_address and self.gmail_app_password)
 
     @property
     def shared_session_pool_size(self) -> int:
