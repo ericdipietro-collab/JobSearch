@@ -1,201 +1,151 @@
-# Getting Started — v2.0
+# Getting Started v2.0
 
-Everything needed to go from download to a working local dashboard in a few minutes.
+This is the fastest path from download to a working local dashboard.
+
+## Recommended install path
+
+Use the source-first path.
+
+Why:
+- Windows Smart App Control may block unsigned installers and downloaded launch scripts
+- running from source is the most reliable zero-cost install path right now
 
 ## Prerequisites
 
-- Windows installer: no manual setup required
-- Manual install: Python 3.9 or newer
+- Windows
+- Python 3.9 or newer
+- Git optional but recommended
 
-If you install Python manually, make sure `python` is on `PATH`.
+Install Python from:
+- https://www.python.org/downloads/
 
-## Install
+Make sure Python is available on `PATH`.
 
-### Option A: Windows installer
+## Option A: clone with Git
 
-1. Download `JobSearchSetup.exe` from the Releases page.
-2. Run the installer.
-3. Launch the app from the Desktop or Start Menu shortcut.
+```powershell
+git clone https://github.com/ericdipietro-collab/JobSearch.git
+cd JobSearch
+.\launch.bat
+```
 
-The installer pre-warms the runtime environment and can install from bundled wheels, so first launch is faster and less dependent on live package downloads.
+## Option B: download source ZIP
 
-### Option B: Manual install
+1. Download the source ZIP from GitHub
+2. Extract it
+3. Open the extracted folder in File Explorer
+4. Run:
 
-1. Download this repo as a ZIP or clone it.
-2. Open the repo folder.
-3. Run `launch.bat` on Windows, `launch.command` on macOS, or `bash launch.sh` on Linux.
+```powershell
+.\launch.bat
+```
 
-On first launch the app will:
+## What happens on first launch
 
-1. create `.venv`
-2. install dependencies
-3. copy `config/job_search_preferences.example.yaml` to `config/job_search_preferences.yaml` if missing
-4. start Streamlit at `http://localhost:8501`
+The launcher will:
+- find Python
+- create a virtual environment
+- install dependencies
+- seed default config if missing
+- migrate older install-local config/database forward if present
+- create runtime state under `%LOCALAPPDATA%\JobSearchDashboardData`
+- start Streamlit at `http://localhost:8501`
 
-## First Run
+## Runtime data location
 
-Use the left sidebar to complete the initial setup.
+The app now stores writable state here:
+
+```text
+%LOCALAPPDATA%\JobSearchDashboardData
+```
+
+Important paths:
+- `%LOCALAPPDATA%\JobSearchDashboardData\config`
+- `%LOCALAPPDATA%\JobSearchDashboardData\results`
+- `%LOCALAPPDATA%\JobSearchDashboardData\data`
+- `%LOCALAPPDATA%\JobSearchDashboardData\.venv`
+
+## Initial setup in the app
 
 ### Search Settings
 
-The active tabs are:
-
-- `Compensation & Location`
-- `Job Title Settings`
-- `Job Description Keywords`
-- `Scoring Settings`
-- `Advanced Editor`
-- `App Settings`
-- `Base Resume`
-
-Start by setting:
-
-- salary floor and target
-- work location policy (remote only, hybrid, or both)
-- job title keywords and weights
-- Gmail settings if you want live inbox sync
-- your base resume text or uploaded resume file for gap analysis and tailoring
+Set:
+- compensation and location preferences
+- job title preferences
+- JD keyword preferences
+- Gmail settings if using inbox sync
+- your base resume text or uploaded file
 
 ### Target Companies
 
-The active tabs are:
-
-- `List`
-- `Add / Edit`
-- `Fix Job Listings` — automatically rediscovers broken or stale job board URLs
-- `Advanced Editor`
-- `Scraper Health` — shows which companies have gone dark and how long they have been returning no results
-
-Switch between the **Main Company List** and the **Contractor Company List** using the selector at the top of the page.
-
-Use `Add / Edit` to add or update companies. For each company you usually want:
-
-- `Company Name`
-- `Website Domain`
-- `Careers Page URL`
-- `Job Board Type` (Greenhouse, Lever, Ashby, Workday, etc.)
-- `Job Board Identifier` when known
-- `Priority Tier (1 = highest)`
-
-Enable `Search Manually (skip automatic scraping)` for targets you want to keep in the list but handle yourself.
+Review:
+- primary ATS registry
+- contractor registry
+- scraper health
+- ATS healer
 
 ### Run Job Search
 
-Use `Run Job Search` to start the scraper from the dashboard, or run:
+Start with:
+- `Deep Search`: off
+- your primary companies file selected
+- `Use Contractor Sources`: optional
 
-```bash
-python -m jobsearch.cli run
+## Optional advanced paths
+
+### Unsigned installer
+
+You may also see release assets like `JobSearchSetup.exe` or a portable zip.
+
+Important:
+- they are unsigned
+- Windows Smart App Control may block them with no bypass option
+- if that happens, use the source-first install path instead
+
+### If you choose to disable Smart App Control
+
+Only do this if you understand the security tradeoff and trust the download source.
+
+Path:
+- Windows Security
+- `App & browser control`
+- `Smart App Control`
+
+After changing the setting, rerun the installer or launcher.
+
+### Deep Search / Deep Heal
+
+Install the optional deep-search add-on:
+
+```powershell
+deep_search\install_deep_search.bat
 ```
 
-For contract-focused discovery, enable `Use Contractor Sources` in the dashboard or run:
+Then use:
 
-```bash
-python -m jobsearch.cli run --contract-sources
-```
-
-To combine your normal ATS targets with contractor sources in one run, keep the primary companies file selected and enable `Use Contractor Sources`.
-
-### Track Applications
-
-Use `My Applications` to track the pipeline once jobs are saved into the database.
-
-Current workflow highlights:
-
-- live Gmail inbox sync for missed applications, rejections, and interview requests
-- follow-up reminders with quick snooze / sent actions
-- offer comparison and negotiation worksheet
-- interview debrief capture
-- resume tailoring per application from the stored base resume
-- question bank linked to companies and applications
-
-### Analytics
-
-Key analytics currently available:
-
-- funnel overview (discovered → applied → interviewed → offers)
-- score distribution by pipeline stage
-- resume keyword gap analysis — shows terms that appear in high-scoring roles but are missing from your stored resume
-- rejection pattern intelligence
-- interview signal / debrief trends
-- score vs. outcome correlation
-
-## Deep Search / Deep Heal
-
-These are optional and slower than the standard static flow.
-
-Install the add-on scripts from the `deep_search/` folder:
-
-- Windows: `deep_search\install_deep_search.bat`
-- macOS / Linux: `bash deep_search/install_deep_search.sh`
-
-Use:
-
-- `Run Job Search` → enable **Deep Search (slower — uses browser)** for JavaScript-heavy careers pages
-- `Target Companies` → `Fix Job Listings` → enable **Deep Search** for ATS rediscovery and rendered-board detection
-- Repeated failures enter a short cooldown automatically; lower-priority targets can be promoted to manual-only after repeated failures
-- Check `Target Companies` → `Scraper Health` to see which companies are dark and for how long
-
-CLI equivalents:
-
-```bash
+```powershell
 python -m jobsearch.cli run --deep-search
 python -m jobsearch.cli heal --deep --all
 ```
 
-## Data and Backups
-
-Your data is local.
-
-- Jobs and tracking data: `results/jobsearch.db`
-- Scrape log: `results/job_search_v6.log`
-- Heal log: `results/ats_heal.log`
-- Manual-review list: `results/job_search_manual_review.txt`
-- Score-rejected jobs: `results/job_search_v6_rejected.csv`
-- Personal preferences: `config/job_search_preferences.yaml`
-- Company registry: `config/job_search_companies.yaml`
-- Contractor registry: `config/job_search_companies_contract.yaml`
-
-Additional state stored in the database:
-
-- app settings
-- Gmail sync settings
-- base resume text
-- email signals and interview extraction
-
-To back up the app state, copy:
-
-- `results/`
-- `config/job_search_preferences.yaml`
-- `config/job_search_companies.yaml`
-- `config/job_search_companies_contract.yaml`
+Use deep runs sparingly. Static scraping should be the default.
 
 ## Troubleshooting
 
-If the dashboard does not open automatically, browse to `http://localhost:8501`.
+**Python not found**
+- reinstall Python
+- make sure `Add Python to PATH` was selected
+- reopen PowerShell and rerun `.\launch.bat`
 
-If you get no useful matches:
+**Gmail sync fails**
+- use a Google App Password
+- create one at `https://myaccount.google.com/apppasswords`
 
+**No useful jobs are being kept**
 - lower the salary floor
-- relax title or keyword weights
-- run Heal ATS first if company URLs look stale
+- relax title/JD keyword settings
+- inspect the rejected CSV and score details
 
-If a scrape or heal run behaves unexpectedly, inspect:
-
-- `results/job_search_v6.log`
-- `results/ats_heal.log`
-- `results/job_search_manual_review.txt`
-- `results/job_search_v6_rejected.csv`
-- `Target Companies` → `Scraper Health` for companies returning zero results
-
-If Gmail sync says authentication failed:
-
-- enable 2-Step Verification on the Google account
-- create a Google App Password at `https://myaccount.google.com/apppasswords`
-- save the Gmail address and App Password in `Search Settings -> App Settings`
-
-If resume gap analysis or tailoring is empty:
-
-- upload or paste your master resume in `Search Settings -> Base Resume`
-- make sure the jobs you want to analyze have recent scraper data
-
-If Python is not found on manual install, reinstall Python and make sure it is added to `PATH`.
+**Companies are stale or blocked**
+- use `Target Companies -> Heal ATS`
+- review `Target Companies -> Scraper Health`

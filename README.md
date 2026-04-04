@@ -1,169 +1,163 @@
-# Job Search Automation Platform — v2.0
+# Job Search Automation Platform v2.0
 
-A local job-search dashboard that discovers jobs from target companies, scores them against your preferences, and tracks your entire search in a single SQLite database — all on your own machine.
+A local job-search dashboard that discovers jobs from target companies, scores them against your preferences, and tracks your search in a single SQLite database on your own machine.
 
-**[→ Full User Guide](USER_GUIDE.md)** — step-by-step walkthrough of every feature
-
----
-
-## Screenshots
-
-### Home — activity summary and pipeline at a glance
-![Home](docs/Screenshots/Homepage.png)
-
-### Job Matches — scored roles with keyword breakdown
-![Job Matches](docs/Screenshots/jobmatches.png)
-
-### Scoring — see exactly why a role ranked where it did
-![Scoring](docs/Screenshots/Scoring.png)
-
-### My Applications — full pipeline with Gmail sync
-![My Applications](docs/Screenshots/myapplications.png)
-
-### Application Detail — interview timeline, offer comparison, negotiation notes
-![Application Detail](docs/Screenshots/applicationdetail.png)
-
-### Pipeline — kanban view across all active applications
-![Pipeline](docs/Screenshots/Pipeline.png)
-
-### Analytics — rejection patterns, keyword gaps, network leverage
-![Analytics](docs/Screenshots/analytics.png)
-
-### Resume Keyword Gap Analysis
-![Keyword Gaps](docs/Screenshots/gaps.png)
-
-### Weekly Activity Report
-![Weekly Activity](docs/Screenshots/weeklyactivity.png)
-
-### Run Job Search — live scraper output
-![Run Job Search](docs/Screenshots/jobsearch.png)
-
-### Search Preferences & Scoring Settings
-![Search Preferences](docs/Screenshots/searchprefscoring.png)
-
-### Target Companies — company registry and scraper health
-![Target Companies](docs/Screenshots/targets.png)
-
-### Fix Job Listings — ATS healer
-![Fix Job Listings](docs/Screenshots/healats.png)
-
-### Question Bank
-![Question Bank](docs/Screenshots/questionbank.png)
-
-### Rejection Analysis
-![Rejection Analysis](docs/Screenshots/rejection.png)
+**[Full User Guide](USER_GUIDE.md)** for the full walkthrough.
 
 ---
 
 ## Installation
 
-### Windows (recommended)
+### Source-first install (recommended)
 
-1. Download `JobSearchSetup.exe` from the [Releases](../../releases) page.
-2. Run the installer — no admin rights needed, installs per-user.
-3. Launch from the Desktop or Start Menu shortcut.
+This is the recommended public install path right now.
 
-The installer bundles a Python runtime, pre-warms the virtual environment on first install, and handles upgrades cleanly from v1.6.
+Why:
+- Windows Smart App Control may block unsigned installers, batch files, and portable launchers downloaded from GitHub
+- the source workflow avoids shipping a reputationless binary as the primary install method
 
-### Manual install
+1. Install Python 3.9 or newer from https://www.python.org/downloads/
+2. Clone the repo:
 
-See [GETTING_STARTED.md](GETTING_STARTED.md).
-
+```powershell
+git clone https://github.com/ericdipietro-collab/JobSearch.git
+cd JobSearch
 ```
-1. Install Python 3.9+
-2. Clone or download this repo
-3. Run launch.bat (Windows) or bash launch.sh (macOS/Linux)
+
+3. Run the launcher:
+
+```powershell
+.\launch.bat
 ```
+
+On first launch the app will:
+- create a virtual environment
+- install dependencies
+- create runtime state under `%LOCALAPPDATA%\JobSearchDashboardData`
+- start the dashboard at `http://localhost:8501`
+
+If you prefer not to use Git, download the source ZIP from GitHub, extract it, open the extracted folder, and run `launch.bat`.
+
+### Windows installer and portable zip
+
+The release may also include:
+- `JobSearchSetup.exe`
+- `JobSearchDashboard-portable-<version>.zip`
+
+Important:
+- these artifacts are unsigned
+- Windows Smart App Control may block them with no bypass option
+- if that happens, use the source-first install path above instead
+
+### If you choose to disable Smart App Control
+
+Only do this if you understand the security tradeoff and trust the download source.
+
+Path:
+- Windows Security
+- `App & browser control`
+- `Smart App Control`
+
+After changing the setting, rerun the installer or launcher.
 
 ---
 
 ## What It Does
 
-- Scrapes ~450 company careers pages across Greenhouse, Lever, Ashby, Workday, Rippling, and SmartRecruiters
+- Scrapes target company careers pages across Greenhouse, Lever, Ashby, Workday, Rippling, and SmartRecruiters
 - Supports a contractor sourcing lane with Dice and Motion Recruitment
-- Scores jobs with a configurable model: ~25% title match, ~75% job description keyword alignment, with salary, location, and tier adjustments
-- Shows a keyword breakdown on every job card so you know exactly why a role ranked where it did
+- Scores jobs with configurable title, JD, salary, location, and tier weighting
 - Tracks applications, contacts, interviews, offers, and rejections
-- Syncs Gmail signals to detect missed interviews and application outcomes
-- Stores your base resume for keyword gap analysis and per-application tailoring
+- Syncs Gmail signals for missed applications, rejections, and interview scheduling
+- Stores your base resume for keyword-gap analysis and per-application tailoring
 - Includes offer comparison, negotiation planning, and interview debrief tools
-- Automatically repairs stale company careers URLs via the ATS Healer
+- Repairs stale company careers URLs with the ATS Healer
 
-For a full walkthrough of every feature, see the **[User Guide](USER_GUIDE.md)**.
+---
+
+## Quick Start
+
+1. Launch the app with `.\launch.bat`
+2. Open `Search Settings`
+3. Set:
+- compensation and location preferences
+- job title preferences
+- JD keywords
+- Gmail settings if desired
+- your base resume
+4. Review `Target Companies`
+5. Run `Run Job Search`
 
 ---
 
 ## CLI
 
 ```bash
-# Run the scraper
 python -m jobsearch.cli run
-
-# Include contractor sources
 python -m jobsearch.cli run --contract-sources
-
-# Run ATS healing
 python -m jobsearch.cli heal --all
-
-# Launch the dashboard
 python -m jobsearch.cli dashboard
 ```
 
 ---
 
-## Deep Search (optional)
+## Deep Search
 
-The `deep_search/` add-on uses Playwright and Chromium for JavaScript-heavy sites that the static scraper cannot reach.
+Optional browser-assisted scraping and healing for JS-heavy sites:
 
 ```bash
-# Windows install
 deep_search\install_deep_search.bat
-
-# Usage
 python -m jobsearch.cli run --deep-search
 python -m jobsearch.cli heal --deep --all
 ```
 
+Use deep runs sparingly. The static pipeline should be your default.
+
 ---
 
-## Data and Logs
+## Data Location
 
-Everything stays local — nothing is sent to external services.
+Runtime state now lives under:
 
-| File | Contents |
-|---|---|
-| `results/jobsearch.db` | All jobs, applications, contacts, resume, settings |
-| `config/job_search_preferences.yaml` | Scoring preferences |
-| `config/job_search_companies.yaml` | Target company registry |
-| `config/job_search_companies_contract.yaml` | Contractor source registry |
-| `results/job_search_v6.log` | Scrape run log |
-| `results/ats_heal.log` | Healer run log |
-| `results/job_search_v6_rejected.csv` | Score-rejected jobs |
-| `results/job_search_manual_review.txt` | Bot-blocked companies for manual review |
+```text
+%LOCALAPPDATA%\JobSearchDashboardData
+```
 
-**Backup:** copy `results/` and `config/job_search_*.yaml` to preserve all state.
+Important files:
+- `config\job_search_preferences.yaml`
+- `config\job_search_companies.yaml`
+- `config\job_search_companies_contract.yaml`
+- `results\jobsearch.db`
+- `results\job_search_v6.log`
+- `results\ats_heal.log`
+- `results\job_search_v6_rejected.csv`
+- `results\job_search_manual_review.txt`
+
+This keeps state outside the install or extracted app folder, which is safer for upgrades and portable use.
 
 ---
 
 ## Troubleshooting
 
-**No results are being kept**
-- Lower the salary floor in `Search Settings → Compensation & Location`
-- Relax title or keyword weights in `Search Settings → Job Title Settings`
-- Inspect `results/job_search_v6_rejected.csv` to see what is being filtered and why
+**Windows blocks the installer or launcher**
+- This is usually Smart App Control or SmartScreen reacting to an unsigned download
+- The recommended workaround is to install from source instead
+
+**No useful matches are being kept**
+- Lower the salary floor in `Search Settings`
+- Relax title or JD keyword weights
+- Inspect the rejected CSV and scoring details
 
 **Gmail sync fails**
-- Use a Google App Password rather than your main account password
-- Manage App Passwords at `https://myaccount.google.com/apppasswords`
-- Enter credentials in `Search Settings → App Settings`
+- Use a Google App Password, not your main password
+- Create one at `https://myaccount.google.com/apppasswords`
 
 **Resume gap analysis is empty**
-- Upload your resume in `Search Settings → Base Resume`
+- Upload or paste your resume in `Search Settings -> Base Resume`
 - Rerun the scraper so matched keywords are current
 
 **Companies are blocked or stale**
-- Open `Target Companies → Fix Job Listings` to run the ATS healer
-- Review `Target Companies → Scraper Health` to see consecutive-failure counts
-- Check `results/job_search_manual_review.txt` for confirmed bot-blocked sites
+- Run `Target Companies -> Heal ATS`
+- Review `Target Companies -> Scraper Health`
 
-See **[USER_GUIDE.md](USER_GUIDE.md)** for detailed guidance on all workflows.
+See [GETTING_STARTED.md](GETTING_STARTED.md) for the step-by-step setup flow.

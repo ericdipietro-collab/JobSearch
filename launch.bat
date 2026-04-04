@@ -52,16 +52,27 @@ if not defined PYTHON (
     echo  ============================================================
     echo   Python 3.9 or newer is required but was not found.
     echo.
-    echo   If you installed using JobSearchSetup.exe, try rebooting
-    echo   once and launching again -- the PATH update takes effect
-    echo   after a restart.
-    echo.
-    echo   Or download Python free from:  https://www.python.org/downloads/
-    echo   During install, check "Add Python to PATH", then re-launch.
+    if exist "installer\downloads\python-3.11.9-amd64.exe" (
+        echo   A bundled Python installer is available and can be started now.
+        echo   After Python finishes installing, relaunch Job Search Dashboard.
+    ) else (
+        echo   If you installed using JobSearchSetup.exe, try rebooting
+        echo   once and launching again -- the PATH update takes effect
+        echo   after a restart.
+        echo.
+        echo   Or download Python free from:  https://www.python.org/downloads/
+        echo   During install, check "Add Python to PATH", then re-launch.
+    )
     echo  ============================================================
     echo.
     if "%SETUP_ONLY%"=="0" pause
-    if "%SETUP_ONLY%"=="0" start https://www.python.org/downloads/
+    if "%SETUP_ONLY%"=="0" (
+        if exist "installer\downloads\python-3.11.9-amd64.exe" (
+            start "" "installer\downloads\python-3.11.9-amd64.exe"
+        ) else (
+            start https://www.python.org/downloads/
+        )
+    )
     exit /b 1
 )
 
