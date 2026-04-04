@@ -271,6 +271,15 @@ def heal(heal_all, force, deep, workers, deep_timeout):
                 company["status"] = "manual_only"
                 company["active"] = True
                 company["manual_only"] = True
+            elif result.status == "BLOCKED":
+                # BLOCKED = unsupported ATS vendor or confirmed bot-wall.
+                # Set manual_only=True permanently; do NOT increment the failure streak
+                # since this is a known state, not a transient error.
+                company["status"] = "manual_only"
+                company["active"] = True
+                company["manual_only"] = True
+                if result.careers_url:
+                    company["careers_url"] = result.careers_url
             elif result.status == "VALID":
                 company["status"] = "active"
                 company["active"] = True
@@ -309,6 +318,8 @@ def heal(heal_all, force, deep, workers, deep_timeout):
                 log_msg(f"  OK {name}: {result.adapter} ({result.detail}) | elapsed_ms={elapsed_ms}")
             elif result.status == "FALLBACK":
                 log_msg(f"  MANUAL {name}: blocked page recorded as manual_only ({result.detail}) | elapsed_ms={elapsed_ms}")
+            elif result.status == "BLOCKED":
+                log_msg(f"  BLOCKED {name}: unsupported ATS — manual_only ({result.detail}) | elapsed_ms={elapsed_ms}")
             elif result.status == "VALID":
                 log_msg(f"  OK {name}: existing URL confirmed | elapsed_ms={elapsed_ms}")
             else:

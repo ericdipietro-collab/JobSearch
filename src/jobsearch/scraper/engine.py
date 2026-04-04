@@ -666,7 +666,7 @@ class ScraperEngine:
                         "work_type": job.work_type,
                         "compensation_unit": job.compensation_unit,
                         "normalized_compensation_usd": job.normalized_compensation_usd,
-                        "drop_reason": "score_below_threshold",
+                        "drop_reason": "disqualified" if job.fit_band == "Disqualified" else "score_below_threshold",
                         "decision_reason": job.decision_reason,
                         "matched_keywords": job.matched_keywords,
                         "penalized_keywords": job.penalized_keywords,

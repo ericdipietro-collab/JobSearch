@@ -31,14 +31,18 @@ class _FakeLeverAdapter(LeverAdapter):
 
 
 class _FakeSmartRecruitersAdapter(SmartRecruitersAdapter):
-    def __init__(self, payload):
-        super().__init__(session=None, scorer=None)
+    def __init__(self, payload, scorer=None, html_by_url=None):
+        super().__init__(session=None, scorer=scorer)
         self.payload = payload
+        self.html_by_url = html_by_url or {}
 
     def fetch_json(self, url: str):
         if callable(self.payload):
             return self.payload(url)
         return self.payload
+
+    def fetch_text(self, url: str) -> str:
+        return self.html_by_url.get(url, "")
 
 
 class _FakeAshbyAdapter(AshbyAdapter):
@@ -63,17 +67,28 @@ class _FakeMotionRecruitmentAdapter(MotionRecruitmentAdapter):
 
 
 class _FakeRipplingAdapter(RipplingAdapter):
-    def __init__(self, payload_by_slug=None, html: str = ""):
-        super().__init__(session=None, scorer=None)
+    def __init__(self, payload_by_slug=None, html: str = "", scorer=None, html_by_url=None):
+        super().__init__(session=None, scorer=scorer)
         self.payload_by_slug = payload_by_slug or {}
         self.html = html
+        self.html_by_url = html_by_url or {}
 
     def fetch_json(self, url: str):
         slug = parse_qs(urlparse(url).query).get("company_slug", [""])[0]
         return self.payload_by_slug.get(slug, {})
 
     def fetch_text(self, url: str) -> str:
-        return self.html
+        return self.html_by_url.get(url, self.html)
+
+
+class _StubScorer:
+    min_score_to_keep = 35
+
+    def score_job(self, job_data):
+        title = str(job_data.get("title") or "").lower()
+        if any(token in title for token in ("product", "architect", "manager", "analyst")):
+            return {"score": 14}
+        return {"score": 0}
 
 
 class _FakeWorkdayAdapter(WorkdayAdapter):
@@ -272,6 +287,28 @@ class ScraperAdapterRegressionTests(unittest.TestCase):
         self.assertEqual(jobs[0].location, "Denver, CO")
         self.assertEqual(jobs[0].description_excerpt, "Department: Solutions")
 
+    def test_smartrecruiters_fetches_detail_for_plausible_titles(self):
+        payload = {
+            "content": [
+                {
+                    "id": "123456",
+                    "name": "Senior Product Manager",
+                    "location": {"city": "Denver", "region": "CO"},
+                    "department": {"label": "Solutions"},
+                }
+            ]
+        }
+        adapter = _FakeSmartRecruitersAdapter(
+            payload,
+            scorer=_StubScorer(),
+            html_by_url={
+                "https://jobs.smartrecruiters.com/Visa/123456": "<html><body><div>API platform integrations and roadmap ownership</div></body></html>"
+            },
+        )
+        jobs = adapter.scrape({"name": "Visa", "adapter_key": "Visa", "tier": 2})
+        self.assertEqual(len(jobs), 1)
+        self.assertIn("integrations", jobs[0].description_excerpt.lower())
+
     def test_smartrecruiters_adapter_paginates(self):
         def payload(url: str):
             query = parse_qs(urlparse(url).query)
@@ -345,6 +382,36 @@ class ScraperAdapterRegressionTests(unittest.TestCase):
         self.assertEqual(len(jobs), 1)
         self.assertEqual(jobs[0].adapter, "rippling")
         self.assertIn("/vouch-inc/jobs/abc123", jobs[0].url)
+
+    def test_rippling_fetches_detail_for_plausible_titles(self):
+        adapter = _FakeRipplingAdapter(
+            payload_by_slug={
+                "joinroot": {
+                    "results": [
+                        {
+                            "id": "abc123",
+                            "title": "Product Manager, Partnerships",
+                            "location": "",
+                            "description": "",
+                        }
+                    ]
+                }
+            },
+            scorer=_StubScorer(),
+            html_by_url={
+                "https://ats.rippling.com/joinroot/jobs/abc123": "<html><body><section>Remote role focused on integrations and platform partnerships.</section></body></html>"
+            },
+        )
+        jobs = adapter.scrape(
+            {
+                "name": "Root Insurance",
+                "adapter_key": "joinroot",
+                "careers_url": "https://ats.rippling.com/joinroot/jobs",
+                "tier": 2,
+            }
+        )
+        self.assertEqual(len(jobs), 1)
+        self.assertIn("integrations", jobs[0].description_excerpt.lower())
 
     def test_rippling_adapter_falls_back_to_html_job_links(self):
         adapter = _FakeRipplingAdapter(

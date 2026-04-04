@@ -68,8 +68,61 @@ class ATSHealer:
 
     BLACKLISTED_SUBDOMAINS = ["support.", "help.", "docs.", "developers.", "api.", "community.", "hc."]
 
+    # ATS domains that require an account / API key or use an unsupported vendor.
+    # Companies whose careers_url resolves to one of these are routed to manual_only
+    # immediately rather than burning the waterfall budget.
+    KNOWN_UNSUPPORTED_ATS_MARKERS = [
+        "eightfold.ai",
+        "icims.com",
+        "bamboohr.com",
+        "taleo.net",
+        "successfactors.",
+        "myworkday.com/wday/authgwy",  # auth-gated Workday
+        "workday.com/en-us/applications",
+    ]
+
+    # Generic ATS homepages that are not company-specific job boards.
+    # A careers_url matching one of these is stale and should trigger re-discovery.
+    GENERIC_ATS_HOMEPAGES = {
+        "www.greenhouse.com/careers",
+        "www.greenhouse.io",
+        "greenhouse.io",
+        "lever.co",
+        "jobs.ashbyhq.com",
+        "boards.greenhouse.io",
+        "job-boards.greenhouse.io",
+        "app.ashbyhq.com",
+    }
+
     def _is_blacklisted(self, url: str) -> bool:
         return any(b in url.lower() for b in self.BLACKLISTED_SUBDOMAINS)
+
+    def _url_has_ats_signal(self, url: str) -> bool:
+        """Return True if the URL contains a path that suggests an ATS-specific endpoint
+        rather than just a company homepage or generic marketing page."""
+        url_l = str(url or "").lower()
+        ats_indicators = [
+            "greenhouse", "lever", "ashby", "workday", "myworkdayjobs",
+            "rippling", "smartrecruiters", "icims", "eightfold",
+            "/jobs", "/careers/", "/open-positions", "/job-search",
+        ]
+        return any(ind in url_l for ind in ats_indicators)
+
+    def _url_is_generic_ats_homepage(self, url: str) -> bool:
+        """Return True if careers_url points to the generic ATS vendor homepage (not a company board)."""
+        try:
+            parsed = urlparse(url)
+            canonical = f"{parsed.netloc}{parsed.path}".rstrip("/").lower()
+            if canonical in {h.lower() for h in self.GENERIC_ATS_HOMEPAGES}:
+                return True
+        except Exception:
+            pass
+        return False
+
+    def _url_is_unsupported_ats(self, url: str) -> bool:
+        """Return True if the URL belongs to an ATS vendor we cannot scrape."""
+        url_l = str(url or "").lower()
+        return any(marker in url_l for marker in self.KNOWN_UNSUPPORTED_ATS_MARKERS)
 
     # Enhanced detection markers for embedded boards
     EMBED_MARKERS = [
@@ -306,12 +359,36 @@ class ATSHealer:
                     health_skip_reason,
                 )
 
-        # 1. Validation check
+        # 1a. Unsupported ATS fast-exit — mark manual_only immediately, no waterfall waste.
+        if existing_url and self._url_is_unsupported_ats(existing_url):
+            logger.info("%s: careers_url uses unsupported ATS (%s) — marking manual_only", name, existing_url)
+            return DiscoveryResult(
+                company.get("adapter"), company.get("adapter_key"),
+                existing_url, "BLOCKED",
+                f"Unsupported ATS vendor: {existing_url}",
+            )
+
+        # 1b. Adapter mismatch auto-correct — if the URL clearly belongs to a different ATS,
+        # update the adapter field before validating so the right scraper is used.
+        if existing_url:
+            url_adapter = self._url_suggested_adapter(existing_url)
+            current_adapter = str(company.get("adapter", "") or "").lower()
+            if url_adapter and current_adapter and url_adapter != current_adapter:
+                logger.info(
+                    "%s: adapter mismatch — stored '%s' but URL suggests '%s'; correcting",
+                    name, current_adapter, url_adapter,
+                )
+                company = {**company, "adapter": url_adapter}
+
+        # 1c. Validation check
         if existing_url and not self._existing_assignment_suspicious(company) and self._validate_existing_assignment(company):
             detail = "Existing URL confirmed"
             if force:
                 detail = "Existing URL confirmed (forced check)"
-            return DiscoveryResult(None, None, existing_url, "VALID", detail)
+            return DiscoveryResult(
+                company.get("adapter"), company.get("adapter_key"),
+                existing_url, "VALID", detail,
+            )
 
         # Create slug candidates
         slug = re.sub(r"[^a-zA-Z0-9]", "", name).lower()
@@ -326,8 +403,19 @@ class ATSHealer:
         domain_hint = self._domain_suggested_adapter(domain)
 
         # 2. "Company First" - Waterfall Discovery (Find official page)
-        res = self._waterfall_discovery(domain, name, deadline)
-        
+        # Skip straight to search if the existing URL has no ATS signal — crawling a
+        # marketing homepage wastes the entire waterfall budget for nothing.
+        existing_url_has_signal = existing_url and self._url_has_ats_signal(existing_url)
+        if not existing_url_has_signal and not existing_url:
+            # No URL at all — waterfall may find something, run it.
+            res = self._waterfall_discovery(domain, name, deadline)
+        elif not existing_url_has_signal:
+            # URL exists but it's a marketing page — skip to search.
+            logger.debug("%s: existing URL has no ATS signal, skipping waterfall → search", name)
+            res = None
+        else:
+            res = self._waterfall_discovery(domain, name, deadline)
+
         # 3. Web Search
         if not res or res.status == "FALLBACK":
             search_res = self._search_discovery(name, domain, deadline)
@@ -368,8 +456,8 @@ class ATSHealer:
                     if probe:
                         return probe
 
-        # 6. Workday Sweep (Guessing wd1..wd25)
-        wd_res = self._probe_workday(slug, name, deadline)
+        # 6. Workday Sweep (Guessing wd1..wd25 + outliers)
+        wd_res = self._probe_workday(slug, name, deadline, adapter_key=str(company.get("adapter_key") or ""))
         if wd_res: return wd_res
 
         # 7. Final fallback
@@ -413,25 +501,41 @@ class ATSHealer:
             logger.error(f"Deep heal error for {name}: {e}")
         return None
 
-    def _probe_workday(self, slug: str, name: str, deadline: Optional[float] = None) -> Optional[DiscoveryResult]:
-        """Sweep wd1..wd25 for Workday tenants in priority batches.
+    def _probe_workday(self, slug: str, name: str, deadline: Optional[float] = None, adapter_key: str = "") -> Optional[DiscoveryResult]:
+        """Sweep wd1..wd25 (plus outlier numbers) for Workday tenants in priority batches.
 
         Tries the most common wd-numbers first (wd1-5) with the two most common
         site names before falling back to the full sweep, saving ~80% of probes
         when the tenant is found in the first batch.
+
+        If the existing adapter_key or careers_url contains a specific wd-number
+        (e.g. ``wd108``, ``wd501``), that number is probed first so companies that
+        already used an out-of-range tenant are recovered without burning the full sweep.
         """
         from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FuturesTimeout
 
         common_sites = ["External", "Careers"]
         all_sites = ["External", "Careers", "Jobs", slug.capitalize()]
 
-        # Priority batch: wd1-5 × common sites (10 probes).
-        # Full sweep: remaining numbers × all sites, submitted only if batch misses.
-        priority_candidates = [(n, s) for n in range(1, 6) for s in common_sites]
-        remaining_candidates = [
-            (n, s) for n in ([10, 12, 25] + [n for n in range(6, 26) if n not in (10, 12, 25)])
-            for s in all_sites
-        ]
+        # Extract any hint number from the existing adapter_key (e.g. "slug.wd501.myworkdayjobs.com/External")
+        hint_nums: List[int] = []
+        hint_match = re.search(r"\.wd(\d+)\.", str(adapter_key or ""), re.I)
+        if hint_match:
+            hint_n = int(hint_match.group(1))
+            if hint_n not in range(1, 6):  # already in priority batch
+                hint_nums = [hint_n]
+
+        # Known outlier numbers beyond wd25 seen in the wild
+        outlier_nums = [50, 100, 108, 200, 201, 500, 501, 503]
+
+        # Priority batch: hint numbers first, then wd1-5 × common sites.
+        hint_candidates = [(n, s) for n in hint_nums for s in all_sites]
+        priority_candidates = hint_candidates + [(n, s) for n in range(1, 6) for s in common_sites]
+        # Full sweep: wd6-25 × all sites + outlier numbers × common sites, submitted only if batch misses.
+        remaining_candidates = (
+            [(n, s) for n in ([10, 12, 25] + [n for n in range(6, 26) if n not in (10, 12, 25)]) for s in all_sites]
+            + [(n, s) for n in outlier_nums if n not in hint_nums for s in common_sites]
+        )
 
         def check_one(n, site):
             if self._timed_out(deadline):
@@ -502,8 +606,42 @@ class ATSHealer:
         if not existing_url:
             return False
 
+        # Reject generic ATS vendor homepages — they are stale and should be re-discovered.
+        if self._url_is_generic_ats_homepage(existing_url):
+            logger.info("%s: careers_url is a generic ATS homepage (%s) — forcing re-discovery", name, existing_url)
+            return False
+
+        # Reject root-domain / no-ATS-signal URLs immediately so the waterfall can skip
+        # straight to search discovery instead of crawling a marketing homepage.
+        if not self._url_has_ats_signal(existing_url):
+            parsed = urlparse(existing_url)
+            path = parsed.path.strip("/")
+            if not path or path in {"careers", "jobs"}:
+                logger.debug("%s: careers_url has no ATS signal and no specific path (%s) — skipping validation", name, existing_url)
+                return False
+
         adapter = str(company.get("adapter", "") or "").lower() or None
         adapter_key = str(company.get("adapter_key", "") or "").strip() or None
+
+        # For Ashby, probe the posting API directly — a 404 means the slug is dead.
+        if adapter == "ashby" and adapter_key:
+            try:
+                api_url = f"https://api.ashbyhq.com/posting-api/job-board/{adapter_key}"
+                resp = self.session.get(
+                    api_url,
+                    headers=self._get_headers(),
+                    timeout=5,
+                    allow_redirects=False,
+                )
+                if resp.status_code == 404:
+                    logger.info("%s: Ashby slug '%s' returned 404 — forcing re-discovery", name, adapter_key)
+                    return False
+                if resp.status_code == 200:
+                    return True
+            except Exception as exc:
+                logger.debug("%s: Ashby API probe failed for slug '%s': %s", name, adapter_key, exc)
+            # Fall through to normal URL validation on unexpected status codes
+
         if adapter and self._looks_like_known_ats_url(existing_url):
             result = DiscoveryResult(adapter, adapter_key, existing_url, "VALID", "Stored ATS assignment")
             return self._validate_discovery(result, name)

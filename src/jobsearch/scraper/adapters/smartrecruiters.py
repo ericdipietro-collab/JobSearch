@@ -3,10 +3,43 @@ from .base import BaseAdapter
 from jobsearch.scraper.models import Job
 import hashlib
 import logging
+import re
+
+from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
 
 class SmartRecruitersAdapter(BaseAdapter):
+    def _should_fetch_detail(self, company_config: Dict[str, Any], title: str, location: str) -> bool:
+        if not self.scorer:
+            return False
+        try:
+            pre = self.scorer.score_job(
+                {
+                    "title": title,
+                    "description": "",
+                    "tier": int(company_config.get("tier", 4) or 4),
+                    "location": str(location or ""),
+                }
+            )
+            return float(pre.get("score") or 0.0) >= float(self.scorer.min_score_to_keep) * 0.3
+        except Exception:
+            return False
+
+    def _fetch_detail_description(self, job_url: str) -> str:
+        try:
+            html = self.fetch_text(job_url)
+        except Exception:
+            return ""
+        if not html:
+            return ""
+        soup = BeautifulSoup(html[:500_000], "html.parser")
+        for tag in soup(["script", "style", "noscript"]):
+            tag.decompose()
+        text = soup.get_text(" ", strip=True)
+        text = re.sub(r"\s+", " ", text).strip()
+        return text[:8000]
+
     def scrape(self, company_config: Dict[str, Any]) -> List[Job]:
         adapter_key = company_config.get("adapter_key")
         if adapter_key is None or not str(adapter_key).strip():
@@ -37,6 +70,11 @@ class SmartRecruitersAdapter(BaseAdapter):
                     job_id = hashlib.md5(f"{company_name}{title}{job_url}".encode()).hexdigest()
 
                     department = raw.get("department", {}).get("label", "N/A")
+                    description = f"Department: {department}"
+                    if self._should_fetch_detail(company_config, title, location):
+                        detail_text = self._fetch_detail_description(job_url)
+                        if detail_text:
+                            description = detail_text
 
                     job = Job(
                         id=job_id,
@@ -47,7 +85,7 @@ class SmartRecruitersAdapter(BaseAdapter):
                         source="SmartRecruiters",
                         adapter="smartrecruiters",
                         tier=str(company_config.get("tier", 4)),
-                        description_excerpt=f"Department: {department}",
+                        description_excerpt=description,
                     )
                     jobs.append(job)
 

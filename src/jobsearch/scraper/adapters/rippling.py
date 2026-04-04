@@ -6,10 +6,48 @@ import logging
 import re
 from urllib.parse import urljoin, urlparse
 
+from bs4 import BeautifulSoup
+
 logger = logging.getLogger(__name__)
 
 class RipplingAdapter(BaseAdapter):
     INVALID_ADAPTER_KEYS = {"", "_next", "jobs", "job", "careers", "career", "apply", "positions", "position"}
+
+    def _should_fetch_detail(self, company_config: Dict[str, Any], title: str, location: str) -> bool:
+        if not self.scorer:
+            return False
+        try:
+            pre = self.scorer.score_job(
+                {
+                    "title": title,
+                    "description": "",
+                    "tier": int(company_config.get("tier", 4) or 4),
+                    "location": str(location or ""),
+                }
+            )
+            return float(pre.get("score") or 0.0) >= float(self.scorer.min_score_to_keep) * 0.3
+        except Exception:
+            return False
+
+    def _fetch_detail_html(self, job_url: str) -> tuple[str, str]:
+        try:
+            html = self.fetch_text(job_url)
+        except Exception:
+            return "", ""
+        if not html:
+            return "", ""
+        soup = BeautifulSoup(html[:500_000], "html.parser")
+        for tag in soup(["script", "style", "noscript"]):
+            tag.decompose()
+        text = re.sub(r"\s+", " ", soup.get_text(" ", strip=True)).strip()[:8000]
+        location = ""
+        meta = soup.find("meta", attrs={"property": "og:description"})
+        if meta and meta.get("content"):
+            text = str(meta.get("content")).strip() or text
+        location_node = soup.find(string=re.compile(r"remote|united states|new york|san francisco|denver", re.I))
+        if location_node:
+            location = re.sub(r"\s+", " ", str(location_node)).strip()[:120]
+        return text, location
 
     def scrape(self, company_config: Dict[str, Any]) -> List[Job]:
         careers_url = str(company_config.get("careers_url") or "").strip()
@@ -130,6 +168,12 @@ class RipplingAdapter(BaseAdapter):
             or raw.get("summary")
             or ""
         )
+        if self._should_fetch_detail(company_config, title, location):
+            detail_text, detail_location = self._fetch_detail_html(job_url)
+            if detail_text:
+                description = detail_text
+            if detail_location and not location:
+                location = detail_location
 
         return Job(
             id=job_id,
