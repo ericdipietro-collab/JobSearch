@@ -1,226 +1,169 @@
 # Job Search Automation Platform — v2.0
 
-A local job-search dashboard that discovers jobs from target companies, scores them against your preferences, and tracks applications in a single SQLite database.
+A local job-search dashboard that discovers jobs from target companies, scores them against your preferences, and tracks your entire search in a single SQLite database — all on your own machine.
 
-**[→ User Guide](USER_GUIDE.md)** — full walkthrough of every feature
+**[→ Full User Guide](USER_GUIDE.md)** — step-by-step walkthrough of every feature
+
+---
+
+## Screenshots
+
+### Home — activity summary and pipeline at a glance
+![Home](docs/Screenshots/Homepage.png)
+
+### Job Matches — scored roles with keyword breakdown
+![Job Matches](docs/Screenshots/jobmatches.png)
+
+### Scoring — see exactly why a role ranked where it did
+![Scoring](docs/Screenshots/Scoring.png)
+
+### My Applications — full pipeline with Gmail sync
+![My Applications](docs/Screenshots/myapplications.png)
+
+### Application Detail — interview timeline, offer comparison, negotiation notes
+![Application Detail](docs/Screenshots/applicationdetail.png)
+
+### Pipeline — kanban view across all active applications
+![Pipeline](docs/Screenshots/Pipeline.png)
+
+### Analytics — rejection patterns, keyword gaps, network leverage
+![Analytics](docs/Screenshots/analytics.png)
+
+### Resume Keyword Gap Analysis
+![Keyword Gaps](docs/Screenshots/gaps.png)
+
+### Weekly Activity Report
+![Weekly Activity](docs/Screenshots/weeklyactivity.png)
+
+### Run Job Search — live scraper output
+![Run Job Search](docs/Screenshots/jobsearch.png)
+
+### Search Preferences & Scoring Settings
+![Search Preferences](docs/Screenshots/searchprefscoring.png)
+
+### Target Companies — company registry and scraper health
+![Target Companies](docs/Screenshots/targets.png)
+
+### Fix Job Listings — ATS healer
+![Fix Job Listings](docs/Screenshots/healats.png)
+
+### Question Bank
+![Question Bank](docs/Screenshots/questionbank.png)
+
+### Rejection Analysis
+![Rejection Analysis](docs/Screenshots/rejection.png)
+
+---
 
 ## Installation
 
-### Windows installer
+### Windows (recommended)
 
-1. Download `JobSearchSetup.exe` from the Releases page.
-2. Run the installer.
+1. Download `JobSearchSetup.exe` from the [Releases](../../releases) page.
+2. Run the installer — no admin rights needed, installs per-user.
 3. Launch from the Desktop or Start Menu shortcut.
 
-The installer supports a per-user install, bundles pinned runtime wheels, and pre-warms the runtime environment on first install.
+The installer bundles a Python runtime, pre-warms the virtual environment on first install, and handles upgrades cleanly from v1.6.
 
 ### Manual install
 
 See [GETTING_STARTED.md](GETTING_STARTED.md).
 
-Short version:
+```
+1. Install Python 3.9+
+2. Clone or download this repo
+3. Run launch.bat (Windows) or bash launch.sh (macOS/Linux)
+```
 
-1. Install Python 3.9+.
-2. Download or clone this repo.
-3. Run `launch.bat` on Windows, `launch.command` on macOS, or `bash launch.sh` on Linux.
+---
 
 ## What It Does
 
-- Scrapes company careers pages from ATS providers like Greenhouse, Lever, Ashby, Workday, Rippling, and SmartRecruiters
-- Supports an optional contractor lane using curated external contract-oriented sources
-- Saves jobs directly into `results/jobsearch.db`
-- Scores jobs using a configurable model: ~25% title match, ~75% job description keyword alignment, with salary, tier, and location adjustments
-- Surfaces a human-readable score breakdown on every job card so you can see exactly why a role ranked where it did
-- Alerts you to potentially ghosted applications (applied 14+ days ago, no interview or follow-up on record)
-- Shows a scraper health panel so you can see which companies have gone dark and need attention
-- Lets you manage applications, contacts, journals, templates, training notes, and reports from the dashboard
-- Syncs Gmail signals to detect missed applications, rejections, and interview requests
-- Stores a base resume locally for keyword-gap analysis and per-application tailoring
-- Includes offer comparison, negotiation planning, interview debriefs, and network leverage views
-- Includes automatic job board healing to repair or rediscover stale careers URLs
+- Scrapes ~450 company careers pages across Greenhouse, Lever, Ashby, Workday, Rippling, and SmartRecruiters
+- Supports a contractor sourcing lane with Dice and Motion Recruitment
+- Scores jobs with a configurable model: ~25% title match, ~75% job description keyword alignment, with salary, location, and tier adjustments
+- Shows a keyword breakdown on every job card so you know exactly why a role ranked where it did
+- Tracks applications, contacts, interviews, offers, and rejections
+- Syncs Gmail signals to detect missed interviews and application outcomes
+- Stores your base resume for keyword gap analysis and per-application tailoring
+- Includes offer comparison, negotiation planning, and interview debrief tools
+- Automatically repairs stale company careers URLs via the ATS Healer
 
-## Current Product Surface
+For a full walkthrough of every feature, see the **[User Guide](USER_GUIDE.md)**.
 
-Main dashboard pages:
-
-- `Home`
-- `Job Matches`
-- `My Applications`
-- `Journal`
-- `Contacts`
-- `Company Profiles`
-- `Training`
-- `Question Bank`
-- `Weekly Report`
-- `Templates`
-- `Pipeline`
-- `Analytics`
-- `Run Job Search`
-- `Search Settings`
-- `Target Companies`
-
-### Search Settings tabs
-
-- `Compensation & Location`
-- `Job Title Settings`
-- `Job Description Keywords`
-- `Scoring Settings`
-- `Advanced Editor`
-- `App Settings`
-- `Base Resume`
-
-### Target Companies tabs
-
-- `List`
-- `Add / Edit`
-- `Fix Job Listings`
-- `Advanced Editor`
-- `Scraper Health`
-
-### High-leverage workflows
-
-- `My Applications`
-  - Gmail inbox signal import / live sync
-  - follow-up scheduler with ghosted-application alerts
-  - offer comparison
-  - negotiation playbook
-  - interview debriefs
-  - resume tailoring per application
-- `Analytics`
-  - resume keyword gap analysis
-  - rejection pattern intelligence
-  - interview signal correlations
-- `Company Profiles` / `Contacts`
-  - network leverage scoring by company
-- `Job Matches`
-  - role velocity indicators
-  - contractor/full-time filtering
-  - keyword search across all match tabs
-  - score breakdown per role
-  - structured manual review queue
+---
 
 ## CLI
 
-Run the scraper:
-
 ```bash
+# Run the scraper
 python -m jobsearch.cli run
-```
 
-Run the contractor lane:
-
-```bash
+# Include contractor sources
 python -m jobsearch.cli run --contract-sources
-```
 
-Run ATS and contractor sources together:
-
-```bash
-python -m jobsearch.cli run --contract-sources --companies config/job_search_companies.yaml
-```
-
-Run ATS healing:
-
-```bash
+# Run ATS healing
 python -m jobsearch.cli heal --all
-```
 
-Launch the dashboard:
-
-```bash
+# Launch the dashboard
 python -m jobsearch.cli dashboard
 ```
 
-If running from a raw checkout without installing the package, the checkout-safe entrypoints are:
+---
+
+## Deep Search (optional)
+
+The `deep_search/` add-on uses Playwright and Chromium for JavaScript-heavy sites that the static scraper cannot reach.
 
 ```bash
-python src/jobsearch/cli.py dashboard
-python src/jobsearch/cli.py run
-```
+# Windows install
+deep_search\install_deep_search.bat
 
-## Deep Search and Deep Heal
-
-The optional `deep_search/` add-on uses Playwright and Chromium for JavaScript-heavy sites.
-
-Install:
-
-- Windows: `deep_search\install_deep_search.bat`
-- macOS / Linux: `bash deep_search/install_deep_search.sh`
-
-Usage:
-
-```bash
+# Usage
 python -m jobsearch.cli run --deep-search
 python -m jobsearch.cli heal --deep --all
 ```
 
-These modes are slower, but they improve coverage on JS-rendered sites. Protected sites may still be routed to manual review.
-Repeated Heal ATS failures now enter a short cooldown automatically, and lower-priority targets can be suggested or promoted to `manual_only` after repeated failures.
+---
 
 ## Data and Logs
 
-Everything stays local.
+Everything stays local — nothing is sent to external services.
 
-- Database: `results/jobsearch.db`
-- Scrape log: `results/job_search_v6.log`
-- Heal log: `results/ats_heal.log`
-- Manual-review list: `results/job_search_manual_review.txt`
-- Score-rejected jobs: `results/job_search_v6_rejected.csv`
-- Preferences: `config/job_search_preferences.yaml`
-- Company registry: `config/job_search_companies.yaml`
-- Contractor registry: `config/job_search_companies_contract.yaml`
+| File | Contents |
+|---|---|
+| `results/jobsearch.db` | All jobs, applications, contacts, resume, settings |
+| `config/job_search_preferences.yaml` | Scoring preferences |
+| `config/job_search_companies.yaml` | Target company registry |
+| `config/job_search_companies_contract.yaml` | Contractor source registry |
+| `results/job_search_v6.log` | Scrape run log |
+| `results/ats_heal.log` | Healer run log |
+| `results/job_search_v6_rejected.csv` | Score-rejected jobs |
+| `results/job_search_manual_review.txt` | Bot-blocked companies for manual review |
 
-Additional local state:
+**Backup:** copy `results/` and `config/job_search_*.yaml` to preserve all state.
 
-- Base resume and app settings are stored in `results/jobsearch.db`
-- Gmail sync settings are stored locally in the app settings table
-
-To back up your state, copy:
-
-- `results/`
-- `config/job_search_preferences.yaml`
-- `config/job_search_companies.yaml`
-- `config/job_search_companies_contract.yaml`
-
-## Notes
-
-- The current modular app lives under `src/jobsearch/`
-- `app.py` is the Streamlit entrypoint
-- The installer should package `src/` and `deep_search/`, not the old root-level pre-refactor modules
+---
 
 ## Troubleshooting
 
-If no results are being kept:
+**No results are being kept**
+- Lower the salary floor in `Search Settings → Compensation & Location`
+- Relax title or keyword weights in `Search Settings → Job Title Settings`
+- Inspect `results/job_search_v6_rejected.csv` to see what is being filtered and why
 
-- lower the salary floor
-- relax title or keyword weights
-- inspect `results/job_search_v6.log` for adapter timing and score breakdowns
-- inspect `results/job_search_v6_rejected.csv` for score rejects
+**Gmail sync fails**
+- Use a Google App Password rather than your main account password
+- Manage App Passwords at `https://myaccount.google.com/apppasswords`
+- Enter credentials in `Search Settings → App Settings`
 
-If Gmail sync fails:
+**Resume gap analysis is empty**
+- Upload your resume in `Search Settings → Base Resume`
+- Rerun the scraper so matched keywords are current
 
-- for Gmail accounts, use a Google App Password rather than your main account password
-- App Passwords are managed at `https://myaccount.google.com/apppasswords`
-- store Gmail settings in `Search Settings -> App Settings`
+**Companies are blocked or stale**
+- Open `Target Companies → Fix Job Listings` to run the ATS healer
+- Review `Target Companies → Scraper Health` to see consecutive-failure counts
+- Check `results/job_search_manual_review.txt` for confirmed bot-blocked sites
 
-If the resume gap analysis is empty:
-
-- add your master resume in `Search Settings -> Base Resume`
-- rerun the scraper so matched keywords are current
-
-If companies are blocked or require manual follow-up:
-
-- inspect `results/job_search_manual_review.txt`
-- review those targets manually instead of retrying aggressively
-
-If healing is slow:
-
-- inspect `results/ats_heal.log`
-- reduce workers or disable deep heal for maintenance runs
-- repeated failures now cool down automatically; review `manual_only` targets in `Target Companies` before forcing another broad heal run
-
-If a company goes stale:
-
-- use `Target Companies` → `Fix Job Listings`
-- check `Target Companies` → `Scraper Health` to see how many consecutive empty runs it has had
-- enable `Deep Search (slower — uses browser)` when static probing is not enough
+See **[USER_GUIDE.md](USER_GUIDE.md)** for detailed guidance on all workflows.
