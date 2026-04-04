@@ -86,6 +86,13 @@ if errorlevel 1 (
     pause
     exit /b 1
 )
+%BUILD_PY% -m pip download --only-binary=:all: hatchling -d "wheels"
+if errorlevel 1 (
+    echo.
+    echo  ERROR: Failed to download build backend wheel (hatchling).
+    pause
+    exit /b 1
+)
 
 REM ── 4. Compile the installer ──────────────────────────────────────────────────
 echo.

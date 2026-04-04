@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "jobsearch"
-version = "1.6.0"
+version = "2.0.0"
 description = "Automated job search pipeline and application tracker"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -19,6 +19,7 @@ dependencies = [
     "pydantic==2.9.2",
     "pydantic-settings==2.5.2",
     "click==8.1.7",
+    "pypdf==5.4.0",
 ]
 
 [project.scripts]

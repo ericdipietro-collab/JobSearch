@@ -59,6 +59,8 @@ Source: "..\pyproject.toml";       DestDir: "{app}"; Flags: ignoreversion
 Source: "..\src\*";                DestDir: "{app}\src";      Flags: ignoreversion recursesubdirs
 Source: "..\config\job_search_companies.yaml";         DestDir: "{app}\config"; Flags: ignoreversion onlyifdoesntexist
 Source: "..\config\job_search_companies_contract.yaml"; DestDir: "{app}\config"; Flags: ignoreversion onlyifdoesntexist skipifsourcedoesntexist
+; Always ship the latest curated primary registry alongside user-preserved config for upgrade review/import.
+Source: "..\config\job_search_companies.yaml"; DestDir: "{app}\config"; DestName: "job_search_companies.upgrade_defaults.yaml"; Flags: ignoreversion
 Source: "..\config\job_search_preferences.example.yaml"; DestDir: "{app}\config"; Flags: ignoreversion
 ; Preferences only copied if not already present (preserves user edits on reinstall)
 Source: "..\config\job_search_preferences.example.yaml"; DestDir: "{app}\config"; DestName: "job_search_preferences.yaml"; Flags: onlyifdoesntexist

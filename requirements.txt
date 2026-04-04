@@ -7,3 +7,4 @@ streamlit==1.37.1
 pydantic==2.9.2
 pydantic-settings==2.5.2
 click==8.1.7
+pypdf==5.4.0

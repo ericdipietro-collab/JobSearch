@@ -120,6 +120,7 @@ if "%NEEDS_DEPS%"=="1" (
     python -m pip install -q --upgrade pip
     if exist "installer\wheels" (
         python -m pip install -q --no-index --find-links installer\wheels -r requirements.txt
+        python -m pip install -q --no-index --find-links installer\wheels hatchling
     ) else (
         python -m pip install -q -r requirements.txt
     )
