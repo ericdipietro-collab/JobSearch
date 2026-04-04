@@ -4,6 +4,8 @@ A local job-search dashboard that discovers jobs from target companies, scores t
 
 **[Full User Guide](USER_GUIDE.md)** for the full walkthrough.
 
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Donate-orange?style=flat-square&logo=buy-me-a-coffee)](https://www.buymeacoffee.com/ericdipietro)
+
 ---
 
 ## Installation

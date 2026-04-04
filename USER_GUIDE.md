@@ -42,6 +42,10 @@ The dashboard is a self-hosted job search system that combines three things most
 
 Everything stays local. No data leaves your machine.
 
+If the dashboard has been useful in your search, you can support ongoing development here:
+
+[Buy Me a Coffee](https://www.buymeacoffee.com/ericdipietro)
+
 ---
 
 ## 2. Installation and Launch

@@ -476,6 +476,7 @@ def main():
     with st.sidebar:
         st.title("💼 Job Search")
         st.caption(f"v{__version__}")
+        st.markdown("[☕ Buy Me a Coffee](https://www.buymeacoffee.com/ericdipietro)")
         st.markdown("<div style='margin-bottom: 1.5rem;'></div>", unsafe_allow_html=True)
         
         nav = ["Home", "Job Matches", "My Applications", "Journal", "Contacts", "Company Profiles", "Training", "Question Bank", "Weekly Report", "Templates", "Pipeline", "Analytics", "Run Job Search", "Search Settings", "Target Companies"]
