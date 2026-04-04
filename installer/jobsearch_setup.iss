@@ -77,6 +77,41 @@ Source: "..\docs\*";               DestDir: "{app}\docs";     Flags: ignoreversi
 ; ── Bundled Python installer ──────────────────────────────────────────────────
 Source: "downloads\{#PythonExe}";  DestDir: "{tmp}"; Flags: deleteafterinstall; Check: NeedsPython
 
+[InstallDelete]
+; ── Remove v1.6 flat-layout artifacts before v2.0 files land ─────────────────
+; v1.6 kept all Python modules at the app root and in top-level db/, services/,
+; views/ folders.  v2.0 consolidates everything under src/jobsearch/.  Leaving
+; the old files in place can cause import shadowing and general confusion.
+;
+; User data (results/, config/) is never touched — those dirs carry
+; uninsneveruninstall in [Dirs] and are not listed here.
+
+; Root-level Python scripts replaced by the src package + CLI
+Type: files; Name: "{app}\ats_db.py"
+Type: files; Name: "{app}\heal_ats_yaml.py"
+Type: files; Name: "{app}\job_search_v6.py"
+Type: files; Name: "{app}\run_job_search_v6.py"
+Type: files; Name: "{app}\scoring.py"
+Type: files; Name: "{app}\scraper.py"
+Type: files; Name: "{app}\models.py"
+
+; Old top-level package directories (now live under src/jobsearch/)
+Type: filesandordirs; Name: "{app}\db"
+Type: filesandordirs; Name: "{app}\services"
+Type: filesandordirs; Name: "{app}\views"
+Type: filesandordirs; Name: "{app}\scraper"
+
+; Stale bytecode caches from the old layout
+Type: filesandordirs; Name: "{app}\__pycache__"
+Type: filesandordirs; Name: "{app}\db\__pycache__"
+Type: filesandordirs; Name: "{app}\services\__pycache__"
+Type: filesandordirs; Name: "{app}\views\__pycache__"
+Type: filesandordirs; Name: "{app}\scraper\__pycache__"
+
+; Old venv — must be rebuilt against the new src/ editable install.
+; launch.bat will recreate it during the post-install --setup-only run.
+Type: filesandordirs; Name: "{app}\.venv"
+
 [Dirs]
 Name: "{app}\results"; Flags: uninsneveruninstall
 Name: "{app}\config";  Flags: uninsneveruninstall
