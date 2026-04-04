@@ -24,6 +24,46 @@ from jobsearch.scraper.engine import ScraperEngine
 from jobsearch.services.healer_service import ATSHealer
 
 
+# Fields that constitute a meaningful change to a company record.
+# last_healed and discovery_method are operational metadata — excluded so the
+# changed_count and YAML-rewrite decision are not inflated on every run.
+_SUBSTANTIVE_HEAL_FIELDS = frozenset({
+    "adapter", "adapter_key", "careers_url", "status", "active", "manual_only",
+    "heal_failure_streak", "cooldown_until", "manual_only_suggested",
+})
+
+
+def _sync_heal_cooldown_to_db(company: dict, cooldown_days: int) -> None:
+    """Mirror the healer's YAML cooldown into the scraper health DB tables.
+
+    Without this, the scraper would still attempt companies that the healer
+    has marked as broken, wasting time and inflating failure counts.
+    """
+    from jobsearch import ats_db as db
+    name = company.get("name", "")
+    adapter = str(company.get("adapter", "") or "").lower()
+    careers_url = str(company.get("careers_url", "") or "")
+    conn = db.get_connection()
+    try:
+        if adapter in {"workday", "workday_manual"}:
+            db.update_workday_target_health(
+                conn, company=name, careers_url=careers_url,
+                status="blocked", elapsed_ms=0.0, evaluated_count=0,
+                cooldown_days=cooldown_days, notes="Healer failure cooldown",
+            )
+        elif adapter in {"generic", ""} or not adapter:
+            db.update_generic_target_health(
+                conn, company=name, careers_url=careers_url,
+                status="blocked", elapsed_ms=0.0, evaluated_count=0,
+                cooldown_days=cooldown_days, notes="Healer failure cooldown",
+            )
+        conn.commit()
+    except Exception:
+        pass
+    finally:
+        conn.close()
+
+
 def _merge_company_lists(*lists):
     merged = []
     seen = set()
@@ -91,6 +131,9 @@ def _apply_heal_failure_policy(company, result_status: str, detail: str, now_utc
     else:
         cooldown_days = 3 if streak >= 2 else 1
     company["cooldown_until"] = (now_utc + timedelta(days=cooldown_days)).isoformat()
+
+    # Mirror the cooldown into the scraper DB so the scraper also skips this company.
+    _sync_heal_cooldown_to_db(company, cooldown_days)
 
     promoted = False
     extra_detail = detail
@@ -168,13 +211,24 @@ def heal(heal_all, force, deep, workers, deep_timeout):
         "skipped": len(skipped),
     }
 
+    # Single healer instance shared across all threads — caches URL validations
+    # so the same ATS endpoint is never fetched twice within one heal run.
+    healer = ATSHealer(deep_timeout_s=deep_timeout)
+
+    log_handle = None
+    try:
+        log_handle = log_path.open("a", encoding="utf-8")
+    except Exception:
+        pass
+
     def log_msg(message: str):
         click.echo(message)
-        try:
-            with log_path.open("a", encoding="utf-8") as handle:
-                handle.write(f"{datetime.now().strftime('%H:%M:%S')} | {message}\n")
-        except Exception:
-            pass
+        if log_handle:
+            try:
+                log_handle.write(f"{datetime.now().strftime('%H:%M:%S')} | {message}\n")
+                log_handle.flush()
+            except Exception:
+                pass
 
     log_msg(
         f"Heal run start | all={heal_all} force={force} deep={deep} "
@@ -190,14 +244,14 @@ def heal(heal_all, force, deep, workers, deep_timeout):
             log_msg(f"Checking {name}...")
 
         started_at = time.perf_counter()
-        healer = ATSHealer(deep_timeout_s=deep_timeout)
         result = healer.discover(company, force=force, deep=deep)
         elapsed_ms = round((time.perf_counter() - started_at) * 1000, 1)
 
         with lock:
-            before = dict(company)
+            before = {f: company.get(f) for f in _SUBSTANTIVE_HEAL_FIELDS}
             transitioned_manual = False
-            if result.status in ("FOUND", "FALLBACK"):
+
+            if result.status == "FOUND":
                 company["adapter"] = result.adapter or company.get("adapter")
                 if result.adapter_key:
                     company["adapter_key"] = result.adapter_key
@@ -208,6 +262,15 @@ def heal(heal_all, force, deep, workers, deep_timeout):
                 company["active"] = True
                 company["manual_only"] = False
                 _reset_heal_failure_state(company)
+            elif result.status == "FALLBACK":
+                # FALLBACK = 403 blocked page; record the URL but keep manual_only
+                # so the scraper does not attempt it automatically.
+                company["adapter"] = result.adapter or company.get("adapter")
+                company.pop("adapter_key", None)
+                company["careers_url"] = result.careers_url or company.get("careers_url")
+                company["status"] = "manual_only"
+                company["active"] = True
+                company["manual_only"] = True
             elif result.status == "VALID":
                 company["status"] = "active"
                 company["active"] = True
@@ -231,7 +294,9 @@ def heal(heal_all, force, deep, workers, deep_timeout):
             company["discovery_method"] = result.detail
             company["last_healed"] = datetime.now().isoformat()
 
-            if company != before:
+            # Count as changed only when a substantive field differs.
+            after = {f: company.get(f) for f in _SUBSTANTIVE_HEAL_FIELDS}
+            if after != before:
                 changed_count += 1
 
             metrics["processed"] += 1
@@ -240,8 +305,10 @@ def heal(heal_all, force, deep, workers, deep_timeout):
             metrics["slowest"].append((elapsed_ms, name, result.status, result.adapter or "-"))
             metrics["slowest"] = sorted(metrics["slowest"], reverse=True)[:10]
 
-            if result.status in ("FOUND", "FALLBACK"):
+            if result.status == "FOUND":
                 log_msg(f"  OK {name}: {result.adapter} ({result.detail}) | elapsed_ms={elapsed_ms}")
+            elif result.status == "FALLBACK":
+                log_msg(f"  MANUAL {name}: blocked page recorded as manual_only ({result.detail}) | elapsed_ms={elapsed_ms}")
             elif result.status == "VALID":
                 log_msg(f"  OK {name}: existing URL confirmed | elapsed_ms={elapsed_ms}")
             else:
@@ -273,6 +340,23 @@ def heal(heal_all, force, deep, workers, deep_timeout):
     )
     for elapsed_ms, name, status, adapter in metrics["slowest"]:
         log_msg(f"Heal slowest | company={name} status={status} adapter={adapter} elapsed_ms={elapsed_ms}")
+
+    # Surface chronic failures so the operator knows which companies to remove.
+    chronic = sorted(
+        [(c.get("name", "?"), int(c.get("heal_failure_streak") or 0))
+         for c in companies if int(c.get("heal_failure_streak") or 0) >= 3],
+        key=lambda x: -x[1],
+    )
+    if chronic:
+        log_msg(f"Chronic failures (streak >= 3): {len(chronic)} companies — consider marking manual_only or removing")
+        for cname, streak in chronic[:20]:
+            log_msg(f"  Chronic | {cname}: streak={streak}")
+
+    if log_handle:
+        try:
+            log_handle.close()
+        except Exception:
+            pass
 
 
 @main.command()

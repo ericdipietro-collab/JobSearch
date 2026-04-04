@@ -414,47 +414,67 @@ class ATSHealer:
         return None
 
     def _probe_workday(self, slug: str, name: str, deadline: Optional[float] = None) -> Optional[DiscoveryResult]:
-        """Sweep wd1..wd25 for Workday tenants concurrently."""
-        from concurrent.futures import ThreadPoolExecutor, as_completed
-        
-        sites = ["External", "Careers", "Jobs", slug.capitalize()]
-        # Common WD numbers to try
-        wd_numbers = [1, 2, 3, 4, 5, 10, 12, 25] + [n for n in range(1, 26) if n not in [1, 2, 3, 4, 5, 10, 12, 25]]
-        
-        candidates = []
-        for n in wd_numbers:
-            for site in sites:
-                candidates.append((n, site))
+        """Sweep wd1..wd25 for Workday tenants in priority batches.
+
+        Tries the most common wd-numbers first (wd1-5) with the two most common
+        site names before falling back to the full sweep, saving ~80% of probes
+        when the tenant is found in the first batch.
+        """
+        from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FuturesTimeout
+
+        common_sites = ["External", "Careers"]
+        all_sites = ["External", "Careers", "Jobs", slug.capitalize()]
+
+        # Priority batch: wd1-5 × common sites (10 probes).
+        # Full sweep: remaining numbers × all sites, submitted only if batch misses.
+        priority_candidates = [(n, s) for n in range(1, 6) for s in common_sites]
+        remaining_candidates = [
+            (n, s) for n in ([10, 12, 25] + [n for n in range(6, 26) if n not in (10, 12, 25)])
+            for s in all_sites
+        ]
 
         def check_one(n, site):
             if self._timed_out(deadline):
                 return None
             url = f"https://{slug}.wd{n}.myworkdayjobs.com/{site}"
             try:
-                # Use isolated headers per request
-                resp = self.session.get(url, headers=self._get_headers(), timeout=self._request_timeout("workday", deadline), allow_redirects=True)
+                resp = self.session.get(
+                    url,
+                    headers=self._get_headers(),
+                    timeout=self._request_timeout("workday", deadline),
+                    allow_redirects=True,
+                )
                 if resp.status_code == 200 and "myworkdayjobs.com" in resp.url:
                     parsed = urlparse(resp.url)
-                    # Key normalization: remove lang codes like /en-US
                     clean_path = re.sub(r"/[a-z]{2}-[a-z]{2}/?", "/", parsed.path, flags=re.I).rstrip("/")
                     key = f"{parsed.netloc}{clean_path}"
-                    
                     res = DiscoveryResult("workday", key, resp.url, "FOUND", f"Workday wd{n} probe ({site})")
                     if self._validate_discovery(res, name):
                         return res
-            except:
-                pass
+            except Exception:
+                logger.debug("Workday probe failed for %s wd%d/%s", slug, n, site)
             return None
 
-        # Use a small pool for internal company probes to avoid getting blocked by WD
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            futures = [executor.submit(check_one, n, site) for n, site in candidates]
-            for future in as_completed(futures):
-                res = future.result()
-                if res:
+        def _run_batch(candidates):
+            remaining = max(1.0, self._remaining_budget_s(deadline))
+            with ThreadPoolExecutor(max_workers=3) as executor:
+                futures = [executor.submit(check_one, n, site) for n, site in candidates]
+                try:
+                    for future in as_completed(futures, timeout=remaining):
+                        res = future.result()
+                        if res:
+                            executor.shutdown(wait=False, cancel_futures=True)
+                            return res
+                except FuturesTimeout:
                     executor.shutdown(wait=False, cancel_futures=True)
-                    return res
-        return None
+            return None
+
+        result = _run_batch(priority_candidates)
+        if result:
+            return result
+        if not self._timed_out(deadline):
+            result = _run_batch(remaining_candidates)
+        return result
 
     def _validate_url(self, url: str, name: str) -> bool:
         if self._is_blacklisted(url): return False
@@ -512,17 +532,16 @@ class ATSHealer:
         return None
 
     def _waterfall_discovery(self, domain: str, name: str, deadline: Optional[float] = None) -> Optional[DiscoveryResult]:
-        from concurrent.futures import ThreadPoolExecutor, as_completed
-        
+        from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FuturesTimeout
+
         bases = [f"jobs.{domain}", f"careers.{domain}", f"www.{domain}", domain]
-        # Expanded paths to catch sites like Coinbase (/positions)
         paths = [
             "", "/careers", "/jobs", "/positions", "/open-positions", "/all-jobs",
-            "/en/jobs", "/en-us/jobs", "/about/careers", "/join-us", "/search-jobs", 
+            "/en/jobs", "/en-us/jobs", "/about/careers", "/join-us", "/search-jobs",
             "/careers/search", "/careers/positions", "/careers/openings",
             "/careers/", "/jobs/", "/en/jobs/", "/en-us/jobs/"
         ]
-        
+
         checked_urls = set()
         candidates = []
         for b in bases:
@@ -536,39 +555,53 @@ class ATSHealer:
             if self._timed_out(deadline):
                 return None
             try:
-                resp = self.session.get(url, headers=self._get_headers(), timeout=self._request_timeout(None, deadline, default=5), allow_redirects=True)
+                resp = self.session.get(
+                    url,
+                    headers=self._get_headers(),
+                    timeout=self._request_timeout(None, deadline, default=5),
+                    allow_redirects=True,
+                )
                 if resp.status_code == 200:
                     res = self._scan_content(resp.text, resp.url, name)
-                    if res: return res
-                    
-                    # Heuristic follow-up for main domains
-                    if base == domain or base == f"www.{domain}" or 'careers.' in base:
+                    if res:
+                        return res
+                    if base == domain or base == f"www.{domain}" or "careers." in base:
                         follow_deadline = self._phase_deadline(deadline, settings.heal_waterfall_follow_budget_ms)
-                        found_links = self._find_careers_links(resp.text, resp.url)
-                        for link in found_links:
+                        for link in self._find_careers_links(resp.text, resp.url):
                             if self._timed_out(follow_deadline):
                                 return None
                             try:
-                                sub_resp = self.session.get(link, headers=self._get_headers(), timeout=self._request_timeout(None, follow_deadline, default=5), allow_redirects=True)
+                                sub_resp = self.session.get(
+                                    link,
+                                    headers=self._get_headers(),
+                                    timeout=self._request_timeout(None, follow_deadline, default=5),
+                                    allow_redirects=True,
+                                )
                                 if sub_resp.status_code == 200:
                                     sub_res = self._scan_content(sub_resp.text, sub_resp.url, name)
-                                    if sub_res: return sub_res
-                            except: continue
+                                    if sub_res:
+                                        return sub_res
+                            except Exception:
+                                continue
                 elif resp.status_code == 403 and any(x in url.lower() for x in ["jobs", "careers", "positions", "openings"]):
                     return DiscoveryResult("generic", None, url, "FALLBACK", "Potential blocked career page")
-            except:
-                pass
+            except Exception:
+                logger.debug("Waterfall probe failed for %s at %s", name, url)
             return None
 
-        with ThreadPoolExecutor(max_workers=8) as executor:
+        # Reduced inner pool (4) so 5 outer workers → max 20 concurrent connections
+        remaining = max(1.0, self._remaining_budget_s(deadline))
+        with ThreadPoolExecutor(max_workers=4) as executor:
             futures = [executor.submit(check_url, b, u) for b, u in candidates]
-            for future in as_completed(futures):
-                res = future.result()
-                if res:
-                    executor.shutdown(wait=False, cancel_futures=True)
-                    return res
-        
-        # 3.5 Web Search Fallback (Yahoo)
+            try:
+                for future in as_completed(futures, timeout=remaining):
+                    res = future.result()
+                    if res:
+                        executor.shutdown(wait=False, cancel_futures=True)
+                        return res
+            except FuturesTimeout:
+                executor.shutdown(wait=False, cancel_futures=True)
+
         if self._timed_out(deadline):
             return None
         return self._search_discovery(name, domain, deadline)
@@ -590,52 +623,113 @@ class ATSHealer:
                 candidates.append(urljoin(base_url, href))
         return list(set(candidates))[:8] # Top 8 candidates
 
-    def _search_discovery(self, name: str, domain: str, deadline: Optional[float] = None) -> Optional[DiscoveryResult]:
-        """Search for the careers page and verify all results concurrently."""
-        from concurrent.futures import ThreadPoolExecutor, as_completed
-        
-        query = f"{name} careers"
-        search_url = f"https://search.yahoo.com/search?p={query}"
-        if self._timed_out(deadline):
-            return None
+    def _search_links_duckduckgo(self, name: str, domain: str, deadline: Optional[float]) -> List[str]:
+        """Fetch candidate career page URLs from DuckDuckGo HTML search (no API key required)."""
+        from urllib.parse import quote, unquote
+        query = quote(f"{name} careers jobs")
+        url = f"https://html.duckduckgo.com/html/?q={query}&kl=us-en"
         try:
-            resp = self.session.get(search_url, headers=self._get_headers(), timeout=self._request_timeout(None, deadline, default=10), allow_redirects=True)
-            if resp.status_code != 200: return None
-            
+            resp = self.session.get(
+                url,
+                headers={**self._get_headers(), "Accept": "text/html,application/xhtml+xml"},
+                timeout=self._request_timeout(None, deadline, default=10),
+                allow_redirects=True,
+            )
+            if resp.status_code != 200:
+                return []
             soup = BeautifulSoup(resp.text, "html.parser")
-            search_links = []
+            links = []
+            for a in soup.find_all("a", href=True):
+                href = a["href"]
+                # DDG wraps result links in /l/?uddg=<encoded-url> redirects
+                if "uddg=" in href:
+                    m = re.search(r"uddg=([^&]+)", href)
+                    if m:
+                        href = unquote(m.group(1))
+                if not href.startswith("http") or "duckduckgo.com" in href:
+                    continue
+                if domain in href or any(marker in href for _, marker in self.EMBED_MARKERS):
+                    links.append(href)
+            return list(dict.fromkeys(links))[:10]
+        except Exception:
+            logger.debug("DuckDuckGo search failed for %s", name)
+            return []
+
+    def _search_links_yahoo(self, name: str, domain: str, deadline: Optional[float]) -> List[str]:
+        """Fetch candidate career page URLs from Yahoo web search."""
+        from urllib.parse import quote, unquote
+        query = quote(f"{name} careers")
+        url = f"https://search.yahoo.com/search?p={query}"
+        try:
+            resp = self.session.get(
+                url,
+                headers=self._get_headers(),
+                timeout=self._request_timeout(None, deadline, default=10),
+                allow_redirects=True,
+            )
+            if resp.status_code != 200:
+                return []
+            soup = BeautifulSoup(resp.text, "html.parser")
+            links = []
             for a in soup.find_all("a", href=True):
                 href = a["href"]
                 if "/RU=" in href:
-                    from urllib.parse import unquote
                     m = re.search(r"RU=([^/]+)", href)
-                    if m: href = unquote(m.group(1))
-                
+                    if m:
+                        href = unquote(m.group(1))
                 if not href.startswith("http") or "yahoo.com" in href:
                     continue
-                if domain in href or any(m in href for _, m in self.EMBED_MARKERS):
-                    search_links.append(href)
+                if domain in href or any(marker in href for _, marker in self.EMBED_MARKERS):
+                    links.append(href)
+            return list(dict.fromkeys(links))[:10]
+        except Exception:
+            logger.debug("Yahoo search failed for %s", name)
+            return []
 
-            def verify_link(url):
-                if self._timed_out(deadline):
-                    return None
-                try:
-                    v_resp = self.session.get(url, headers=self._get_headers(), timeout=self._request_timeout(None, deadline, default=6), allow_redirects=True)
-                    if v_resp.status_code == 200:
-                        return self._scan_content(v_resp.text, v_resp.url, name)
-                except:
-                    pass
+    def _search_discovery(self, name: str, domain: str, deadline: Optional[float] = None) -> Optional[DiscoveryResult]:
+        """Search for the careers page using DDG (primary) then Yahoo (fallback).
+
+        Verifies all candidate links concurrently with a deadline-aware timeout
+        on as_completed() so a hung verification never blocks the heal thread.
+        """
+        from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FuturesTimeout
+
+        if self._timed_out(deadline):
+            return None
+
+        links = self._search_links_duckduckgo(name, domain, deadline)
+        if not links and not self._timed_out(deadline):
+            links = self._search_links_yahoo(name, domain, deadline)
+        if not links:
+            return None
+
+        def verify_link(url):
+            if self._timed_out(deadline):
                 return None
+            try:
+                v_resp = self.session.get(
+                    url,
+                    headers=self._get_headers(),
+                    timeout=self._request_timeout(None, deadline, default=6),
+                    allow_redirects=True,
+                )
+                if v_resp.status_code == 200:
+                    return self._scan_content(v_resp.text, v_resp.url, name)
+            except Exception:
+                logger.debug("Search verification failed for %s: %s", name, url)
+            return None
 
-            with ThreadPoolExecutor(max_workers=5) as executor:
-                futures = [executor.submit(verify_link, l) for l in list(set(search_links))[:10]]
-                for future in as_completed(futures):
+        remaining = max(1.0, self._remaining_budget_s(deadline))
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            futures = [executor.submit(verify_link, l) for l in links]
+            try:
+                for future in as_completed(futures, timeout=remaining):
                     res = future.result()
                     if res:
                         executor.shutdown(wait=False, cancel_futures=True)
                         return res
-        except:
-            pass
+            except FuturesTimeout:
+                executor.shutdown(wait=False, cancel_futures=True)
         return None
 
     def _scan_content(self, html: str, url: str, name: str) -> Optional[DiscoveryResult]:
