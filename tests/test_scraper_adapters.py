@@ -125,6 +125,23 @@ class ScraperAdapterRegressionTests(unittest.TestCase):
         self.assertIn("custom_blackrock", ScraperEngine.ADAPTER_MAP)
         self.assertIn("dice", ScraperEngine.ADAPTER_MAP)
 
+    def test_engine_resolves_adapter_from_careers_url(self):
+        engine = ScraperEngine(preferences={}, companies=[{"name": "ExampleCo", "active": True}])
+        self.assertEqual(
+            engine._resolve_adapter_name({"adapter": "custom_manual", "careers_url": "https://jobs.lever.co/example"}),
+            "lever",
+        )
+        self.assertEqual(
+            engine._resolve_adapter_name({"adapter": "", "careers_url": "https://boards.greenhouse.io/example"}),
+            "greenhouse",
+        )
+
+    def test_engine_builds_adapter_semaphores_from_settings(self):
+        engine = ScraperEngine(preferences={}, companies=[{"name": "ExampleCo", "active": True}])
+        self.assertIn("workday", engine._adapter_semaphores)
+        self.assertIn("generic", engine._adapter_semaphores)
+        self.assertIn("deep_search", engine._adapter_semaphores)
+
     def test_engine_skips_manual_only_companies(self):
         engine = ScraperEngine(
             preferences={},

@@ -153,8 +153,9 @@ class ATSHealer:
         return get_headers(referer)
 
     def _jitter(self):
-        # Reduced jitter for speed
-        time.sleep(random.uniform(0.5, 1.5))
+        min_jitter = min(settings.heal_jitter_min_ms, settings.heal_jitter_max_ms) / 1000.0
+        max_jitter = max(settings.heal_jitter_min_ms, settings.heal_jitter_max_ms) / 1000.0
+        time.sleep(random.uniform(min_jitter, max_jitter))
 
     def _probe_timeout(self, adapter: Optional[str]) -> int:
         return self.DIRECT_PROBE_TIMEOUTS.get(adapter or "", 5)
