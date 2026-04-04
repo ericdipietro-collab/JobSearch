@@ -3,10 +3,12 @@
 import csv
 import logging
 import random
+import re
 import time
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Type
+from urllib.parse import urlparse
 
 from jobsearch.config.settings import BASE_DIR, get_shared_session, rotate_log_file, settings
 from jobsearch import ats_db as db
@@ -25,6 +27,37 @@ from jobsearch.scraper.scoring import Scorer
 from jobsearch.services.opportunity_service import upsert_job
 
 logger = logging.getLogger(__name__)
+
+GENERIC_POSITIVE_URL_MARKERS = (
+    "/careers",
+    "/career",
+    "/jobs",
+    "/job-search",
+    "/join-us",
+    "/openings",
+    "/positions",
+    "/work-with-us",
+)
+GENERIC_NEGATIVE_URL_MARKERS = (
+    "/about",
+    "/leadership",
+    "/company",
+    "/solutions",
+    "/solution",
+    "/platform",
+    "/products",
+    "/product",
+    "/integrations",
+    "/integration",
+    "/segments",
+    "/segment",
+    "/investor",
+    "/news",
+    "/blog",
+    "/press",
+    "/customers",
+    "/contact",
+)
 
 
 class ScraperEngine:
@@ -263,6 +296,26 @@ class ScraperEngine:
                 "status": "cooldown",
                 "note": workday_skip_reason,
             }
+        generic_low_signal_reason = self._generic_low_signal_reason(company)
+        if generic_low_signal_reason:
+            return {
+                "jobs": [],
+                "adapter": "generic",
+                "scrape_ms": 0.0,
+                "used_deep_search": False,
+                "status": "low_signal",
+                "note": generic_low_signal_reason,
+            }
+        generic_skip_reason = self._generic_cooldown_reason(company)
+        if generic_skip_reason:
+            return {
+                "jobs": [],
+                "adapter": "generic",
+                "scrape_ms": 0.0,
+                "used_deep_search": False,
+                "status": "cooldown",
+                "note": generic_skip_reason,
+            }
         try:
             jobs, adapter_name, adapter_status, adapter_note = self._scrape_company(company)
             if not jobs and self.deep_search:
@@ -358,6 +411,51 @@ class ScraperEngine:
             return f"Cooldown until {cooldown_until.isoformat()}"
         return ""
 
+    def _generic_cooldown_reason(self, company: Dict[str, Any]) -> str:
+        careers_url = str(company.get("careers_url", "") or "")
+        adapter_name = str(company.get("adapter", "") or "").lower()
+        if adapter_name != "generic" and "myworkdayjobs.com" in careers_url.lower():
+            return ""
+        if adapter_name != "generic":
+            return ""
+        conn = db.get_connection()
+        try:
+            row = db.get_generic_target_health(conn, company.get("name", ""))
+        finally:
+            conn.close()
+        if not row or not row["cooldown_until"]:
+            return ""
+        try:
+            cooldown_until = datetime.fromisoformat(str(row["cooldown_until"]))
+        except Exception:
+            return ""
+        if cooldown_until.tzinfo is None:
+            cooldown_until = cooldown_until.replace(tzinfo=timezone.utc)
+        if cooldown_until > datetime.now(timezone.utc):
+            return f"Cooldown until {cooldown_until.isoformat()}"
+        return ""
+
+    def _generic_low_signal_reason(self, company: Dict[str, Any]) -> str:
+        careers_url = str(company.get("careers_url", "") or "").strip()
+        adapter_name = str(company.get("adapter", "") or "").lower()
+        if adapter_name != "generic" or not careers_url:
+            return ""
+        if company.get("contractor_source"):
+            return ""
+
+        url_l = careers_url.lower()
+        if any(marker in url_l for marker in GENERIC_POSITIVE_URL_MARKERS):
+            return ""
+        if any(marker in url_l for marker in GENERIC_NEGATIVE_URL_MARKERS):
+            return "Low-signal generic URL"
+
+        parsed = urlparse(careers_url)
+        path = parsed.path or "/"
+        clean_path = re.sub(r"/+", "/", path).rstrip("/") or "/"
+        if clean_path == "/":
+            return "Generic URL points to site root"
+        return ""
+
     def _update_scrape_health(
         self,
         company: Dict[str, Any],
@@ -368,6 +466,8 @@ class ScraperEngine:
         evaluated_count: int,
     ) -> None:
         if adapter_name != "workday":
+            if adapter_name == "generic":
+                self._update_generic_scrape_health(company, scrape_status, scrape_ms, scrape_note, evaluated_count)
             return
         conn = db.get_connection()
         try:
@@ -387,6 +487,50 @@ class ScraperEngine:
                 company=company.get("name", ""),
                 careers_url=str(company.get("careers_url", "") or ""),
                 status=scrape_status if scrape_status in {"ok", "empty", "budget_exhausted", "cooldown"} else "ok",
+                elapsed_ms=scrape_ms,
+                evaluated_count=evaluated_count,
+                cooldown_days=cooldown_days,
+                notes=scrape_note,
+            )
+        finally:
+            conn.close()
+
+    def _update_generic_scrape_health(
+        self,
+        company: Dict[str, Any],
+        scrape_status: str,
+        scrape_ms: float,
+        scrape_note: str,
+        evaluated_count: int,
+    ) -> None:
+        conn = db.get_connection()
+        try:
+            cooldown_days = 0
+            existing = db.get_generic_target_health(conn, company.get("name", ""))
+            success_count = int(existing["success_count"]) if existing else 0
+            streak = int(existing["empty_streak"]) if existing else 0
+            low_priority = str(company.get("priority", "") or "").lower() in {"low", "medium", ""}
+            if (
+                scrape_status == "empty"
+                and evaluated_count == 0
+                and scrape_ms >= settings.generic_slow_empty_ms
+                and success_count == 0
+                and streak + 1 >= settings.generic_empty_cooldown_threshold
+                and low_priority
+            ):
+                cooldown_days = settings.generic_empty_cooldown_days
+            elif (
+                scrape_status == "low_signal"
+                and evaluated_count == 0
+                and success_count == 0
+                and low_priority
+            ):
+                cooldown_days = settings.generic_low_signal_cooldown_days
+            db.update_generic_target_health(
+                conn,
+                company=company.get("name", ""),
+                careers_url=str(company.get("careers_url", "") or ""),
+                status=scrape_status if scrape_status in {"ok", "empty", "cooldown", "low_signal"} else "ok",
                 elapsed_ms=scrape_ms,
                 evaluated_count=evaluated_count,
                 cooldown_days=cooldown_days,

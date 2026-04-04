@@ -545,6 +545,18 @@ def init_db(conn: sqlite3.Connection) -> None:
             notes TEXT,
             updated_at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS generic_target_health (
+            company TEXT PRIMARY KEY,
+            careers_url TEXT,
+            empty_streak INTEGER NOT NULL DEFAULT 0,
+            success_count INTEGER NOT NULL DEFAULT 0,
+            last_evaluated INTEGER NOT NULL DEFAULT 0,
+            cooldown_until TEXT,
+            last_status TEXT,
+            last_elapsed_ms REAL,
+            notes TEXT,
+            updated_at TEXT NOT NULL
+        );
         CREATE TABLE IF NOT EXISTS company_profiles (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
@@ -677,9 +689,18 @@ def init_db(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX IF NOT EXISTS idx_email_signals_status ON email_signals(signal_status, signal_type)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_resume_variants_application ON resume_variants(application_id, updated_at DESC)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_workday_target_health_cooldown ON workday_target_health(cooldown_until)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_generic_target_health_cooldown ON generic_target_health(cooldown_until)")
     _add_columns_if_missing(
         conn,
         "workday_target_health",
+        {
+            "success_count": "INTEGER NOT NULL DEFAULT 0",
+            "last_evaluated": "INTEGER NOT NULL DEFAULT 0",
+        },
+    )
+    _add_columns_if_missing(
+        conn,
+        "generic_target_health",
         {
             "success_count": "INTEGER NOT NULL DEFAULT 0",
             "last_evaluated": "INTEGER NOT NULL DEFAULT 0",
@@ -1434,6 +1455,62 @@ def update_workday_target_health(
         conn.execute(
             """
             INSERT INTO workday_target_health
+            (company, careers_url, empty_streak, success_count, last_evaluated, cooldown_until, last_status, last_elapsed_ms, notes, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (company, careers_url, empty_streak, success_count, int(evaluated_count), cooldown_until, normalized_status, elapsed_ms, notes, now),
+        )
+    conn.commit()
+
+
+def get_generic_target_health(conn: sqlite3.Connection, company: str) -> Optional[sqlite3.Row]:
+    return conn.execute(
+        "SELECT * FROM generic_target_health WHERE company = ?",
+        (company,),
+    ).fetchone()
+
+
+def update_generic_target_health(
+    conn: sqlite3.Connection,
+    company: str,
+    careers_url: str,
+    status: str,
+    elapsed_ms: float,
+    *,
+    evaluated_count: int = 0,
+    cooldown_days: int = 0,
+    notes: str = "",
+) -> None:
+    now = _now()
+    existing = get_generic_target_health(conn, company)
+    empty_streak = int(existing["empty_streak"]) if existing else 0
+    success_count = int(existing["success_count"]) if existing else 0
+    cooldown_until = None
+    normalized_status = str(status or "").lower()
+
+    if normalized_status == "ok" and evaluated_count > 0:
+        empty_streak = 0
+        success_count += 1
+    elif normalized_status in {"empty", "cooldown", "low_signal"} and evaluated_count == 0:
+        empty_streak += 1
+        if cooldown_days > 0:
+            cooldown_until = (datetime.now(timezone.utc) + timedelta(days=cooldown_days)).isoformat()
+    elif normalized_status == "skipped":
+        cooldown_until = existing["cooldown_until"] if existing else None
+
+    if existing:
+        conn.execute(
+            """
+            UPDATE generic_target_health
+            SET careers_url = ?, empty_streak = ?, success_count = ?, last_evaluated = ?, cooldown_until = ?, last_status = ?, last_elapsed_ms = ?, notes = ?, updated_at = ?
+            WHERE company = ?
+            """,
+            (careers_url, empty_streak, success_count, int(evaluated_count), cooldown_until, normalized_status, elapsed_ms, notes, now, company),
+        )
+    else:
+        conn.execute(
+            """
+            INSERT INTO generic_target_health
             (company, careers_url, empty_streak, success_count, last_evaluated, cooldown_until, last_status, last_elapsed_ms, notes, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,

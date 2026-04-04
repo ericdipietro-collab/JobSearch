@@ -1432,6 +1432,33 @@ class BlockedAndLocationTests(unittest.TestCase):
         self.assertEqual(row["empty_streak"], 0)
         self.assertEqual(row["success_count"], 1)
 
+    def test_generic_target_health_low_signal_enters_cooldown(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        db.init_db(conn)
+        db.update_generic_target_health(
+            conn,
+            company="LowSignalCo",
+            careers_url="https://example.com/",
+            status="low_signal",
+            elapsed_ms=0,
+            evaluated_count=0,
+            cooldown_days=14,
+            notes="Generic URL points to site root",
+        )
+        row = db.get_generic_target_health(conn, "LowSignalCo")
+        self.assertEqual(str(row["last_status"]), "low_signal")
+        self.assertTrue(row["cooldown_until"])
+
+    def test_engine_skips_low_signal_generic_root_url(self):
+        engine = ScraperEngine(
+            preferences={},
+            companies=[{"name": "RootCo", "adapter": "generic", "careers_url": "https://rootco.example/", "active": True}],
+        )
+        result = engine._scrape_company_with_retry(engine.companies[0])
+        self.assertEqual(result["status"], "low_signal")
+        self.assertIn("site root", result["note"].lower())
+
 
 if __name__ == "__main__":
     unittest.main()

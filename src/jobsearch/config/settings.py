@@ -38,6 +38,7 @@ class Settings:
         self.generic_empty_cooldown_days = int(os.getenv("JOBSEARCH_GENERIC_EMPTY_COOLDOWN_DAYS", "7"))
         self.generic_empty_cooldown_threshold = int(os.getenv("JOBSEARCH_GENERIC_EMPTY_COOLDOWN_THRESHOLD", "3"))
         self.generic_slow_empty_ms = int(os.getenv("JOBSEARCH_GENERIC_SLOW_EMPTY_MS", "15000"))
+        self.generic_low_signal_cooldown_days = int(os.getenv("JOBSEARCH_GENERIC_LOW_SIGNAL_COOLDOWN_DAYS", "14"))
 
         # Ensure directories exist
         self.results_dir.mkdir(parents=True, exist_ok=True)
