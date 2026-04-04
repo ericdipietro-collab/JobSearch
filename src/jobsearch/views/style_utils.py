@@ -26,10 +26,8 @@ def set_custom_style():
             font-family: 'Inter', sans-serif;
         }
 
-        /* Hide main menu and footer for a cleaner look */
-        #MainMenu {visibility: hidden;}
+        /* Keep Streamlit header/menu visible so users can access settings and theme controls */
         footer {visibility: hidden;}
-        header {visibility: hidden;}
 
         /* Sidebar styling */
         section[data-testid="stSidebar"] {

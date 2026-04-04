@@ -1,4 +1,4 @@
-# Getting Started
+# Getting Started — v2.0
 
 Everything needed to go from download to a working local dashboard in a few minutes.
 
@@ -41,18 +41,18 @@ Use the left sidebar to complete the initial setup.
 The active tabs are:
 
 - `Compensation & Location`
-- `Title Evaluation`
-- `JD Evaluation`
-- `Scoring & Rescue`
-- `Full YAML Editor`
+- `Job Title Settings`
+- `Job Description Keywords`
+- `Scoring Settings`
+- `Advanced Editor`
 - `App Settings`
 - `Base Resume`
 
 Start by setting:
 
-- salary floor
-- location policy
-- title weights
+- salary floor and target
+- work location policy (remote only, hybrid, or both)
+- job title keywords and weights
 - Gmail settings if you want live inbox sync
 - your base resume text or uploaded resume file for gap analysis and tailoring
 
@@ -62,24 +62,22 @@ The active tabs are:
 
 - `List`
 - `Add / Edit`
-- `Heal ATS`
-- `YAML Editor`
+- `Fix Job Listings` — automatically rediscovers broken or stale job board URLs
+- `Advanced Editor`
+- `Scraper Health` — shows which companies have gone dark and how long they have been returning no results
 
-The page now supports both:
-
-- `Primary ATS Registry`
-- `Contractor Registry`
+Switch between the **Main Company List** and the **Contractor Company List** using the selector at the top of the page.
 
 Use `Add / Edit` to add or update companies. For each company you usually want:
 
-- `name`
-- `domain`
-- `careers_url`
-- `adapter`
-- `adapter_key` when known
-- `tier`
+- `Company Name`
+- `Website Domain`
+- `Careers Page URL`
+- `Job Board Type` (Greenhouse, Lever, Ashby, Workday, etc.)
+- `Job Board Identifier` when known
+- `Priority Tier (1 = highest)`
 
-Use `manual_only` for targets you want to keep in the registry but skip in scraping runs.
+Enable `Search Manually (skip automatic scraping)` for targets you want to keep in the list but handle yourself.
 
 ### Run Job Search
 
@@ -114,10 +112,12 @@ Current workflow highlights:
 
 Key analytics currently available:
 
-- resume keyword gap analysis
+- funnel overview (discovered → applied → interviewed → offers)
+- score distribution by pipeline stage
+- resume keyword gap analysis — shows terms that appear in high-scoring roles but are missing from your stored resume
 - rejection pattern intelligence
 - interview signal / debrief trends
-- pipeline and score analysis
+- score vs. outcome correlation
 
 ## Deep Search / Deep Heal
 
@@ -130,9 +130,10 @@ Install the add-on scripts from the `deep_search/` folder:
 
 Use:
 
-- `Run Job Search` + Deep Search for JavaScript-heavy careers pages
-- `Target Companies` + Heal ATS + Deep for ATS rediscovery and rendered-board detection
-- repeated Heal ATS failures now enter a short cooldown automatically; lower-priority targets can be suggested or promoted to `manual_only` after repeated failures
+- `Run Job Search` → enable **Deep Search (slower — uses browser)** for JavaScript-heavy careers pages
+- `Target Companies` → `Fix Job Listings` → enable **Deep Search** for ATS rediscovery and rendered-board detection
+- Repeated failures enter a short cooldown automatically; lower-priority targets can be promoted to manual-only after repeated failures
+- Check `Target Companies` → `Scraper Health` to see which companies are dark and for how long
 
 CLI equivalents:
 
@@ -184,6 +185,7 @@ If a scrape or heal run behaves unexpectedly, inspect:
 - `results/ats_heal.log`
 - `results/job_search_manual_review.txt`
 - `results/job_search_v6_rejected.csv`
+- `Target Companies` → `Scraper Health` for companies returning zero results
 
 If Gmail sync says authentication failed:
 

@@ -1,4 +1,4 @@
-# Job Search Automation Platform
+# Job Search Automation Platform — v2.0
 
 A local job-search dashboard that discovers jobs from target companies, scores them against your preferences, and tracks applications in a single SQLite database.
 
@@ -29,12 +29,15 @@ Short version:
 - Scrapes company careers pages from ATS providers like Greenhouse, Lever, Ashby, Workday, Rippling, and SmartRecruiters
 - Supports an optional contractor lane using curated external contract-oriented sources
 - Saves jobs directly into `results/jobsearch.db`
-- Scores jobs using your title, keyword, salary, and tier preferences
+- Scores jobs using a configurable model: ~25% title match, ~75% job description keyword alignment, with salary, tier, and location adjustments
+- Surfaces a human-readable score breakdown on every job card so you can see exactly why a role ranked where it did
+- Alerts you to potentially ghosted applications (applied 14+ days ago, no interview or follow-up on record)
+- Shows a scraper health panel so you can see which companies have gone dark and need attention
 - Lets you manage applications, contacts, journals, templates, training notes, and reports from the dashboard
 - Syncs Gmail signals to detect missed applications, rejections, and interview requests
 - Stores a base resume locally for keyword-gap analysis and per-application tailoring
 - Includes offer comparison, negotiation planning, interview debriefs, and network leverage views
-- Includes ATS healing to repair or rediscover stale careers URLs
+- Includes automatic job board healing to repair or rediscover stale careers URLs
 
 ## Current Product Surface
 
@@ -59,10 +62,10 @@ Main dashboard pages:
 ### Search Settings tabs
 
 - `Compensation & Location`
-- `Title Evaluation`
-- `JD Evaluation`
-- `Scoring & Rescue`
-- `Full YAML Editor`
+- `Job Title Settings`
+- `Job Description Keywords`
+- `Scoring Settings`
+- `Advanced Editor`
 - `App Settings`
 - `Base Resume`
 
@@ -70,14 +73,15 @@ Main dashboard pages:
 
 - `List`
 - `Add / Edit`
-- `Heal ATS`
-- `YAML Editor`
+- `Fix Job Listings`
+- `Advanced Editor`
+- `Scraper Health`
 
 ### High-leverage workflows
 
 - `My Applications`
   - Gmail inbox signal import / live sync
-  - follow-up scheduler
+  - follow-up scheduler with ghosted-application alerts
   - offer comparison
   - negotiation playbook
   - interview debriefs
@@ -89,8 +93,10 @@ Main dashboard pages:
 - `Company Profiles` / `Contacts`
   - network leverage scoring by company
 - `Job Matches`
-  - role velocity
+  - role velocity indicators
   - contractor/full-time filtering
+  - keyword search across all match tabs
+  - score breakdown per role
   - structured manual review queue
 
 ## CLI
@@ -215,5 +221,6 @@ If healing is slow:
 
 If a company goes stale:
 
-- use `Target Companies` -> `Heal ATS`
-- use `Deep` when static probing is not enough
+- use `Target Companies` → `Fix Job Listings`
+- check `Target Companies` → `Scraper Health` to see how many consecutive empty runs it has had
+- enable `Deep Search (slower — uses browser)` when static probing is not enough

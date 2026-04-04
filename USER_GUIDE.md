@@ -1,6 +1,8 @@
-# User Guide
+# User Guide — v2.0
 
 This guide covers daily use of the Job Search dashboard — from first-time setup through running searches, tracking applications, prepping for interviews, and analyzing your results.
+
+**What's new in v2.0:** Score breakdowns on every job card, ghosted application alerts on the home dashboard, a Scraper Health panel showing which companies have gone dark, keyword search across all Job Matches tabs, and YAML-driven bucket thresholds so your Search Settings preferences control the Apply Now / Review Today / Watch cutoffs directly.
 
 ---
 
@@ -79,20 +81,20 @@ Open **Search Settings** in the left sidebar. There are five tabs:
 - Choose `remote_only` or `us_only` as appropriate.
 - **Contractor Preferences** — if you're open to contract roles, enable them here and set your default hours/week, benefits gap, and 1099 overhead percentage. The scorer uses these to normalize hourly rates to an annual equivalent so you can compare contract and FTE roles on equal footing.
 
-**Title Evaluation**
+**Job Title Settings**
 - Add positive title keywords with weights (e.g. `solutions architect: 10`, `staff engineer: 8`).
 - Add `negative_disqualifiers` — titles containing these are dropped before scoring (e.g. `product`, `meet the staff`, `blog`).
 - Set `must_have_modifiers` if you only want senior-level roles.
 
-**JD Evaluation**
-- `body_positive` — keywords in the job description that raise your score (e.g. `api design`, `platform`, `fintech`).
-- `body_negative` — keywords that lower your score (e.g. `javascript`, `ruby`, `excel`).
+**Job Description Keywords**
+- `Keywords That Boost Score` — keywords in the job description that raise your score (e.g. `api design`, `platform`, `fintech`).
+- `Keywords That Reduce Score` — keywords that lower your score (e.g. `javascript`, `ruby`, `excel`).
 
-**Scoring & Rescue**
+**Scoring Settings**
 - `minimum_score_to_keep` — jobs scoring below this go to the rejected CSV. Start at 35 and adjust after your first run.
 - Adjustment parameters for missing salary, salary bonuses, and contract role penalties.
 
-**Full YAML Editor**
+**Advanced Editor**
 - Direct access to the raw preferences YAML for power users.
 
 ### Step 2 — Add Target Companies
@@ -105,15 +107,15 @@ At minimum, provide:
 |---|---|
 | `name` | Company name |
 | `careers_url` | Direct link to their jobs board |
-| `adapter` | ATS type: `greenhouse`, `lever`, `ashby`, `workday`, `rippling`, `smartrecruiters`, `generic` |
-| `adapter_key` | The unique slug used by the ATS (e.g. `stripe` for `jobs.ashbyhq.com/stripe`) |
+| `Job Board Type` | ATS type: `greenhouse`, `lever`, `ashby`, `workday`, `rippling`, `smartrecruiters`, `generic` |
+| `Job Board Identifier` | The unique slug used by the ATS (e.g. `stripe` for `jobs.ashbyhq.com/stripe`) |
 | `tier` | 1 = top target, 2 = strong, 3 = good, 4 = stretch |
 
-If you don't know the adapter or key, set the adapter to `generic` and run **Heal ATS** — it will probe the page and try to identify the correct ATS automatically.
+If you don't know the adapter or key, set the adapter to `generic` and run **Fix Job Listings** — it will probe the page and try to identify the correct ATS automatically.
 
-### Step 3 — Run Heal ATS
+### Step 3 — Run Fix Job Listings
 
-Before your first search, go to **Target Companies** → **Heal ATS** and run it on all companies. This verifies that careers URLs are live and corrects any misclassified adapters. Companies with broken boards are marked inactive and added to `results/job_search_manual_review.txt` for manual follow-up.
+Before your first search, go to **Target Companies** → **Fix Job Listings** and run it on all companies. This verifies that careers URLs are live and corrects any misclassified adapters. Companies with broken boards are marked inactive and added to `results/job_search_manual_review.txt` for manual follow-up.
 
 ### Step 4 — Run Your First Search
 
@@ -129,7 +131,7 @@ Every job goes through a funnel:
 
 1. **Soft-drop** — titles matching `negative_disqualifiers` are discarded immediately.
 2. **Title scoring** — your `title_positive_weights` keywords are matched against the job title. A weight ≥ 8 triggers a Fast-Track base score of 50 points.
-3. **JD scoring** — `body_positive` and `body_negative` keywords are matched against the full description.
+3. **JD scoring** — `Keywords That Boost Score` and `Keywords That Reduce Score` keywords are matched against the full description.
 4. **Tier bonus** — Tier 1 companies add 15 pts, Tier 2 adds 8 pts, Tier 3 adds 4 pts.
 5. **Location penalty** — international remote roles lose 12 pts.
 6. **Compensation adjustment** — salary at or above target adds pts; salary below floor deducts pts; missing salary is configurable.
@@ -147,7 +149,7 @@ Scores map to fit bands: **Strong Match** (85+), **Good Match** (70+), **Fair Ma
 
 ### ATS Healing
 
-Run **Heal ATS** periodically (weekly is usually enough) to catch companies that have changed their board URL or moved ATS providers. The healer probes each company and attempts to repair stale entries automatically. Companies it cannot resolve are routed to manual review.
+Run **Fix Job Listings** periodically (weekly is usually enough) to catch companies that have changed their board URL or moved ATS providers. The healer probes each company and attempts to repair stale entries automatically. Companies it cannot resolve are routed to manual review.
 
 ---
 
@@ -471,8 +473,8 @@ Select a date range and export the table directly. All event types are translate
 |---|---|---|
 | `name` | Yes | Display name |
 | `careers_url` | Yes | Direct link to the jobs board |
-| `adapter` | Yes | ATS type (see below) |
-| `adapter_key` | Recommended | ATS-specific slug for API-first scrapers |
+| `Job Board Type` | Yes | ATS type (see below) |
+| `Job Board Identifier` | Recommended | ATS-specific slug for API-first scrapers |
 | `domain` | Recommended | Used for domain-matching in generic scrapes |
 | `tier` | Yes | 1–4 priority (1 = top target) |
 | `active` | — | Set to `false` to pause scraping without deleting |
@@ -490,14 +492,14 @@ Select a date range and export the table directly. All event types are translate
 | `smartrecruiters` | SmartRecruiters |
 | `generic` | Any careers page without a supported ATS |
 
-### Heal ATS
+### Fix Job Listings
 
-![Heal ATS — configuration options before running a heal pass](docs/Screenshots/healats.png)
+![Fix Job Listings — configuration options before running a heal pass](docs/Screenshots/healats.png)
 
 The healer probes each company's careers URL and attempts to:
 - Confirm the board is live
 - Identify the correct ATS type
-- Correct the `adapter` and `adapter_key` if wrong
+- Correct the `adapter` and `Job Board Identifier` if wrong
 - Deactivate companies whose boards are dead or blocked
 
 Companies flagged as **blocked** (Cloudflare or similar anti-bot pages) are routed to `results/job_search_manual_review.txt` — check these manually rather than retrying automatically.
@@ -545,7 +547,7 @@ python -m jobsearch.cli dashboard
 ### Suggested Weekly Routine
 
 1. Run the scraper — or schedule it via the CLI.
-2. Run **Heal ATS** to catch stale boards.
+2. Run **Fix Job Listings** to catch stale boards.
 3. Review the **Analytics** funnel — are conversion rates moving?
 4. Check **High-score, not applied** in Analytics for roles you've been sitting on.
 5. Generate a **Weekly Report** if you need to document activity.
@@ -555,9 +557,9 @@ python -m jobsearch.cli dashboard
 
 If your first run returns few results:
 - Lower `min_salary_usd` and `minimum_score_to_keep` temporarily.
-- Add more `body_positive` keywords from job descriptions of roles you liked.
+- Add more `Keywords That Boost Score` keywords from job descriptions of roles you liked.
 - Reduce the weight threshold on `title_positive_weights`.
-- Run Heal ATS first — stale board URLs return zero results.
+- Run Fix Job Listings first — stale board URLs return zero results.
 
 ### Tuning Scoring Over Time
 
@@ -585,16 +587,16 @@ Browse directly to `http://localhost:8501`.
 ### No matches after a run
 - Check `results/job_search_v6_rejected.csv` — jobs may be scoring out. Lower `minimum_score_to_keep`.
 - Check `results/job_search_v6.log` for adapter errors or zero-result companies.
-- Run Heal ATS — stale board URLs silently return nothing.
+- Run Fix Job Listings — stale board URLs silently return nothing.
 
 ### Companies keep going inactive
 The healer deactivates companies when their board returns no results or appears blocked. Check `results/job_search_manual_review.txt` for details. For companies you know are active, set `heal_skip: true` in the company entry and verify manually.
 
 ### A company's jobs aren't being scraped correctly
-Try switching to a different adapter or providing the correct `adapter_key`. Run Heal ATS on that company individually. If the site uses JavaScript rendering, enable Deep Search for that run.
+Try switching to a different adapter or providing the correct `Job Board Identifier`. Run Fix Job Listings on that company individually. If the site uses JavaScript rendering, enable Deep Search for that run.
 
 ### Scraper is slow
-Standard runs across 100+ companies take 5–15 minutes depending on network conditions. Deep Search runs take significantly longer. For maintenance, run Heal ATS without `--deep` first to isolate which companies need deep probing.
+Standard runs across 100+ companies take 5–15 minutes depending on network conditions. Deep Search runs take significantly longer. For maintenance, run Fix Job Listings without `--deep` first to isolate which companies need deep probing.
 
 ### Python not found (manual install)
 Reinstall Python and ensure "Add Python to PATH" is checked during installation. Then re-run the launcher.
