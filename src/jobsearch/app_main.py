@@ -1234,6 +1234,17 @@ def main():
                             "careers_url",
                         ]
                     ],
+                    column_config={
+                        "adapter_family":  st.column_config.TextColumn("Job Board Type"),
+                        "last_status":     st.column_config.TextColumn("Last Result"),
+                        "empty_streak":    st.column_config.NumberColumn("Consecutive Empty Runs", help="How many recent scrape runs returned zero jobs for this company."),
+                        "success_count":   st.column_config.NumberColumn("Successful Runs"),
+                        "last_evaluated":  st.column_config.NumberColumn("Runs Since Last Check"),
+                        "cooldown_until":  st.column_config.TextColumn("Paused Until"),
+                        "last_elapsed_ms": st.column_config.NumberColumn("Last Run Time (ms)"),
+                        "dark_for_7d":     st.column_config.CheckboxColumn("Dark 7d+", help="Company has returned no jobs for 3 or more consecutive runs."),
+                        "careers_url":     st.column_config.LinkColumn("Careers Page"),
+                    },
                     hide_index=True,
                     use_container_width=True,
                 )
