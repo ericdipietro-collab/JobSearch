@@ -154,7 +154,7 @@ Type: filesandordirs; Name: "{app}\__pycache__"
 // ── Python detection ──────────────────────────────────────────────────────────
 //
 // Strategy (most-to-least reliable):
-//  1. Registry — HKCU/HKLM Software\Python\PythonCore\3.x  (official installer)
+//  1. Registry — HKCU/HKLM Software\Python\PythonCore\3.11  (official installer)
 //  2. py --version — Python Launcher, immune to App Execution Aliases
 //  3. python --version — last resort, can be fooled by Win11 Store stub
 //
@@ -164,10 +164,10 @@ Type: filesandordirs; Name: "{app}\__pycache__"
 
 function _VersionOk(Major, Minor: Integer): Boolean;
 begin
-  Result := (Major > 3) or ((Major = 3) and (Minor >= 9));
+  Result := (Major = 3) and (Minor = 11);
 end;
 
-// Check HKCU then HKLM for PythonCore\3.x keys written by the official installer.
+// Check HKCU then HKLM for PythonCore\3.11 written by the official installer.
 function _PythonInRegistry(var Major, Minor: Integer): Boolean;
 var
   i: Integer;
@@ -180,23 +180,17 @@ begin
   Roots[1] := HKEY_LOCAL_MACHINE;
   for i := 0 to 1 do begin
     KeyBase := 'Software\Python\PythonCore';
-    // Enumerate subkeys named like "3.11", "3.12", etc.
-    // Inno Setup doesn't have EnumRegKeys so we probe the 9 most likely minors.
-    // Minor 9..13 covers Python 3.9 through 3.13.
-    Minor := 13;
-    while Minor >= 9 do begin
-      VerStr := '3.' + IntToStr(Minor);
-      if RegKeyExists(Roots[i], KeyBase + '\' + VerStr) then begin
-        Major := 3;
-        Result := True;
-        Exit;
-      end;
-      Minor := Minor - 1;
+    VerStr := '3.11';
+    if RegKeyExists(Roots[i], KeyBase + '\' + VerStr) then begin
+      Major := 3;
+      Minor := 11;
+      Result := True;
+      Exit;
     end;
   end;
 end;
 
-// Try "py --version" (Python Launcher — never an App Execution Alias).
+// Try "py -3.11 --version" (Python Launcher — never an App Execution Alias).
 function _PythonViaLauncher(var Major, Minor: Integer): Boolean;
 var
   Output: AnsiString;
@@ -207,18 +201,18 @@ begin
   Major := 0; Minor := 0;
   TmpFile := ExpandConstant('{tmp}\pyver_launcher.txt');
   Exec('cmd.exe',
-       '/c py --version > "' + TmpFile + '" 2>&1',
+       '/c py -3.11 --version > "' + TmpFile + '" 2>&1',
        '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   if ResultCode = 0 then
     if LoadStringFromFile(TmpFile, Output) then
-      if Pos('Python 3.', Output) > 0 then begin
+      if Pos('Python 3.11.', Output) > 0 then begin
         Major := 3;
-        Minor := StrToIntDef(Copy(Output, Pos('Python 3.', Output) + 9, 2), 0);
+        Minor := 11;
         Result := True;
       end;
 end;
 
-// Last resort: "python --version".
+// Last resort: "python --version", but only accept Python 3.11.
 function _PythonViaCli(var Major, Minor: Integer): Boolean;
 var
   Output: AnsiString;
@@ -233,9 +227,9 @@ begin
        '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   if ResultCode = 0 then
     if LoadStringFromFile(TmpFile, Output) then
-      if Pos('Python 3.', Output) > 0 then begin
+      if Pos('Python 3.11.', Output) > 0 then begin
         Major := 3;
-        Minor := StrToIntDef(Copy(Output, Pos('Python 3.', Output) + 9, 2), 0);
+        Minor := 11;
         Result := True;
       end;
 end;

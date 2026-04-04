@@ -6,40 +6,40 @@ REM Detect setup-only mode early (installer runs us hidden - no pause allowed)
 set "SETUP_ONLY=0"
 if /i "%~1"=="--setup-only" set "SETUP_ONLY=1"
 
-REM Locate Python 3.9+
+REM Locate supported Python runtime.
+REM Release artifacts bundle wheels for Python 3.11 only, so prefer and require 3.11.
 set "PYTHON="
+set "FOUND_OTHER_PYTHON=0"
 
-REM 1. Try PATH-based commands (py launcher is most reliable on Windows)
+REM 1. Prefer the Python launcher targeting 3.11 explicitly.
+if not defined PYTHON (
+    for /f "delims=" %%V in ('py -3.11 --version 2^>^&1') do (
+        echo %%V | findstr /r "Python 3\.11\." >nul 2>&1
+        if !errorlevel!==0 set "PYTHON=py -3.11"
+    )
+)
+
+REM 2. Detect unsupported PATH-based Python so we can explain the issue clearly.
 for %%P in (py python python3) do (
     if not defined PYTHON (
         for /f "delims=" %%V in ('%%P --version 2^>^&1') do (
-            echo %%V | findstr /r "Python 3\.[9-9]\. Python 3\.[1-9][0-9]\." >nul 2>&1
-            if !errorlevel!==0 set "PYTHON=%%P"
+            echo %%V | findstr /r "Python 3\." >nul 2>&1
+            if !errorlevel!==0 set "FOUND_OTHER_PYTHON=1"
         )
     )
 )
 
-REM 2. Fallback: search common per-user and system install locations directly.
+REM 3. Fallback: search common Python 3.11 install locations directly.
 if not defined PYTHON (
     for %%D in (
-        "%LOCALAPPDATA%\Programs\Python\Python313\python.exe"
-        "%LOCALAPPDATA%\Programs\Python\Python312\python.exe"
         "%LOCALAPPDATA%\Programs\Python\Python311\python.exe"
-        "%LOCALAPPDATA%\Programs\Python\Python310\python.exe"
-        "%LOCALAPPDATA%\Programs\Python\Python39\python.exe"
-        "C:\Python313\python.exe"
-        "C:\Python312\python.exe"
         "C:\Python311\python.exe"
-        "C:\Python310\python.exe"
-        "C:\Python39\python.exe"
-        "%ProgramFiles%\Python313\python.exe"
-        "%ProgramFiles%\Python312\python.exe"
         "%ProgramFiles%\Python311\python.exe"
     ) do (
         if not defined PYTHON (
             if exist %%D (
                 for /f "delims=" %%V in ('%%~D --version 2^>^&1') do (
-                    echo %%V | findstr /r "Python 3\.[9-9]\. Python 3\.[1-9][0-9]\." >nul 2>&1
+                    echo %%V | findstr /r "Python 3\.11\." >nul 2>&1
                     if !errorlevel!==0 set "PYTHON=%%~D"
                 )
             )
@@ -50,17 +50,20 @@ if not defined PYTHON (
 if not defined PYTHON (
     echo.
     echo  ============================================================
-    echo   Python 3.9 or newer is required but was not found.
+    echo   Python 3.11 is required by this packaged release but was not found.
     echo.
+    if "%FOUND_OTHER_PYTHON%"=="1" (
+        echo   Another Python version was detected, but the packaged dependency
+        echo   bundle is built for Python 3.11 only. Using 3.12/3.13 can force
+        echo   source builds that look for Visual Studio tools such as vswhere.exe.
+        echo.
+    )
     if exist "installer\downloads\python-3.11.9-amd64.exe" (
-        echo   A bundled Python installer is available and can be started now.
+        echo   A bundled Python 3.11 installer is available and can be started now.
         echo   After Python finishes installing, relaunch Job Search Dashboard.
     ) else (
-        echo   If you installed using JobSearchSetup.exe, try rebooting
-        echo   once and launching again -- the PATH update takes effect
-        echo   after a restart.
-        echo.
-        echo   Or download Python free from:  https://www.python.org/downloads/
+        echo   Install Python 3.11 from:
+        echo   https://www.python.org/downloads/release/python-3119/
         echo   During install, check "Add Python to PATH", then re-launch.
     )
     echo  ============================================================
@@ -163,9 +166,9 @@ if "%NEEDS_DEPS%"=="1" (
     if exist "installer\wheels" (
         REM --find-links prefers the bundled wheels for speed; no --no-index so pip
         REM can fall back to PyPI for any transitive deps missing from the bundle.
-        python -m pip install -q --find-links installer\wheels -r requirements.txt
+        python -m pip install -q --only-binary=:all: --find-links installer\wheels -r requirements.txt
     ) else (
-        python -m pip install -q -r requirements.txt
+        python -m pip install -q --only-binary=:all: -r requirements.txt
     )
     REM compat mode adds a .pth file - no C compiler or vswhere.exe needed.
     set SETUPTOOLS_EDITABLE_MODE=compat
@@ -173,7 +176,8 @@ if "%NEEDS_DEPS%"=="1" (
     if errorlevel 1 (
         echo.
         echo  ERROR: Failed to install dependencies.
-        echo  Check your internet connection and try again.
+        echo  This release requires prebuilt wheels and a supported Python 3.11 runtime.
+        echo  Check your internet connection and verify Python 3.11 is installed, then try again.
         if "%SETUP_ONLY%"=="0" pause
         exit /b 1
     )

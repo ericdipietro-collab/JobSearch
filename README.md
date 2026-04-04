@@ -16,7 +16,7 @@ Why:
 - Windows Smart App Control may block unsigned installers, batch files, and portable launchers downloaded from GitHub
 - the source workflow avoids shipping a reputationless binary as the primary install method
 
-1. Install Python 3.9 or newer from https://www.python.org/downloads/
+1. Install Python 3.11 from https://www.python.org/downloads/release/python-3119/
 2. Clone the repo:
 
 ```powershell
@@ -31,12 +31,16 @@ cd JobSearch
 ```
 
 On first launch the app will:
-- create a virtual environment
+- create a Python 3.11 virtual environment
 - install dependencies
 - create runtime state under `%LOCALAPPDATA%\JobSearchDashboardData`
 - start the dashboard at `http://localhost:8501`
 
 If you prefer not to use Git, download the source ZIP from GitHub, extract it, open the extracted folder, and run `launch.bat`.
+
+Important:
+- release artifacts and the bundled wheel cache are built for Python 3.11
+- other Python versions such as 3.12 or 3.13 may trigger source builds for native dependencies and fail while looking for Visual Studio tools
 
 ### Windows installer and portable zip
 

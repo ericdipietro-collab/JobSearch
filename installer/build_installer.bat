@@ -36,17 +36,32 @@ if not defined ISCC (
 echo  [OK] Inno Setup: %ISCC%
 
 set "BUILD_PY="
-for %%P in (py python python3) do (
+for /f "delims=" %%V in ('py -3.11 --version 2^>^&1') do (
     if not defined BUILD_PY (
-        for /f "delims=" %%V in ('%%P --version 2^>^&1') do (
-            echo %%V | findstr /r "Python 3\.[9-9]\. Python 3\.[1-9][0-9]\." >nul 2>&1
-            if !errorlevel!==0 set "BUILD_PY=%%P"
+        echo %%V | findstr /r "Python 3\.11\." >nul 2>&1
+        if !errorlevel!==0 set "BUILD_PY=py -3.11"
+    )
+)
+
+if not defined BUILD_PY (
+    for %%D in (
+        "%LOCALAPPDATA%\Programs\Python\Python311\python.exe"
+        "C:\Python311\python.exe"
+        "%ProgramFiles%\Python311\python.exe"
+    ) do (
+        if not defined BUILD_PY (
+            if exist %%D (
+                for /f "delims=" %%V in ('%%~D --version 2^>^&1') do (
+                    echo %%V | findstr /r "Python 3\.11\." >nul 2>&1
+                    if !errorlevel!==0 set "BUILD_PY=%%~D"
+                )
+            )
         )
     )
 )
 
 if not defined BUILD_PY (
-    echo  Python 3.9+ is required to prepare the offline wheel bundle.
+    echo  Python 3.11 is required to prepare the offline wheel bundle.
     pause
     exit /b 1
 )

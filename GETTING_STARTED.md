@@ -13,11 +13,11 @@ Why:
 ## Prerequisites
 
 - Windows
-- Python 3.9 or newer
+- Python 3.11
 - Git optional but recommended
 
-Install Python from:
-- https://www.python.org/downloads/
+Install Python 3.11 from:
+- https://www.python.org/downloads/release/python-3119/
 
 Make sure Python is available on `PATH`.
 
@@ -132,10 +132,15 @@ Use deep runs sparingly. Static scraping should be the default.
 
 ## Troubleshooting
 
-**Python not found**
+**Python 3.11 not found**
 - reinstall Python
 - make sure `Add Python to PATH` was selected
 - reopen PowerShell and rerun `.\launch.bat`
+
+**Python 3.12 or 3.13 is installed but setup still fails**
+- the release wheel bundle is built for Python 3.11
+- install Python 3.11 and rerun `.\launch.bat`
+- otherwise pip may try to build packages from source and look for Visual Studio tools such as `vswhere.exe`
 
 **Gmail sync fails**
 - use a Google App Password
