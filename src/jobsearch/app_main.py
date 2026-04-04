@@ -486,9 +486,8 @@ def main():
         df_all = _load_jobs_df()
         if not df_all.empty:
             sidebar_metrics = _sidebar_metrics_for_df(df_all)
-            c1, c2 = st.columns(2)
-            c1.metric("Leads", sidebar_metrics["scraped_leads"])
-            c2.metric("Active", sidebar_metrics["active"])
+            st.metric("Leads", sidebar_metrics["scraped_leads"])
+            st.metric("Active", sidebar_metrics["active"])
     
     if page == "Home":
         conn = ats_db.get_connection(); _safe_render(render_home, conn, page_name="Home")
