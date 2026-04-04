@@ -79,6 +79,26 @@ After changing the setting, rerun the installer or launcher.
 
 ---
 
+## Screenshots
+
+### Home dashboard
+
+![Home dashboard](docs/Screenshots/Homepage.png)
+
+### Job matches
+
+![Job matches](docs/Screenshots/jobmatches.png)
+
+### My Applications
+
+![My Applications](docs/Screenshots/myapplications.png)
+
+### Analytics
+
+![Analytics](docs/Screenshots/analytics.png)
+
+---
+
 ## Quick Start
 
 1. Launch the app with `.\launch.bat`
