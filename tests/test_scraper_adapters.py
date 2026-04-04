@@ -1,6 +1,7 @@
 import sys
 import time
 import unittest
+import re
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -16,6 +17,7 @@ from jobsearch.scraper.adapters.rippling import RipplingAdapter
 from jobsearch.scraper.adapters.smartrecruiters import SmartRecruitersAdapter
 from jobsearch.scraper.adapters.workday import WorkdayAdapter
 from jobsearch.scraper.engine import ScraperEngine
+from jobsearch.scraper.models import Job
 from jobsearch.services.healer_service import ATSHealer
 
 
@@ -34,6 +36,8 @@ class _FakeSmartRecruitersAdapter(SmartRecruitersAdapter):
         self.payload = payload
 
     def fetch_json(self, url: str):
+        if callable(self.payload):
+            return self.payload(url)
         return self.payload
 
 
@@ -85,7 +89,37 @@ class _FakeWorkdayAdapter(WorkdayAdapter):
         return self.html_by_url.get(url, "")
 
 
+class _BudgetedWorkdayAdapter(WorkdayAdapter):
+    def __init__(self):
+        super().__init__(session=None, scorer=None)
+
+    def _scrape_endpoint(self, company_config, host, tenant, site, endpoint, referer, seen_urls, started_at, budget_ms):
+        self.last_status = "budget_exhausted"
+        self.last_note = "API budget exhausted"
+        return []
+
+    def _scrape_html_fallback(self, company_config, careers_url, contexts, started_at, budget_ms):
+        return [
+            Job(
+                id="html-fallback",
+                company=company_config.get("name", "Unknown"),
+                role_title_raw="Recovered via HTML",
+                location="Remote",
+                url="https://example.wd1.myworkdayjobs.com/en-US/Careers/job/recovered",
+                source="Workday HTML",
+                adapter="workday",
+                tier=str(company_config.get("tier", 4)),
+                description_excerpt="Recovered description",
+            )
+        ]
+
+
 class ScraperAdapterRegressionTests(unittest.TestCase):
+    def test_healer_signal_words_keep_short_company_names(self):
+        healer = ATSHealer(session=None)
+        self.assertEqual(healer._signal_words("ADP"), ["adp"])
+        self.assertEqual(healer._signal_words("3M"), ["3m"])
+
     def test_engine_maps_adapter_aliases(self):
         self.assertIn("workday_manual", ScraperEngine.ADAPTER_MAP)
         self.assertIn("custom_blackrock", ScraperEngine.ADAPTER_MAP)
@@ -146,6 +180,11 @@ class ScraperAdapterRegressionTests(unittest.TestCase):
         self.assertEqual(contexts[0][1], "alignmenthealthcare")
         self.assertEqual(contexts[0][2], "Careers")
 
+    def test_healer_workday_key_normalization_is_case_insensitive(self):
+        parsed_url = "https://example.wd1.myworkdayjobs.com/EN-us/Careers"
+        clean_path = re.sub(r"/[a-z]{2}-[a-z]{2}/?", "/", urlparse(parsed_url).path, flags=re.I).rstrip("/")
+        self.assertEqual(clean_path, "/Careers")
+
     def test_workday_extract_postings_supports_nested_payload_shapes(self):
         adapter = WorkdayAdapter(session=None, scorer=None)
         postings = adapter._extract_postings({"data": {"jobPostings": [{"title": "Architect"}]}})
@@ -185,6 +224,19 @@ class ScraperAdapterRegressionTests(unittest.TestCase):
         self.assertEqual(jobs, [])
         self.assertEqual(adapter.last_status, "budget_exhausted")
 
+    def test_workday_budget_exhaustion_can_still_use_html_fallback(self):
+        adapter = _BudgetedWorkdayAdapter()
+        jobs = adapter.scrape(
+            {
+                "name": "HTML Fallback Workday",
+                "careers_url": "https://example.wd1.myworkdayjobs.com/External",
+                "adapter_key": "https://example.wd1.myworkdayjobs.com/Careers",
+                "tier": 2,
+            }
+        )
+        self.assertEqual(len(jobs), 1)
+        self.assertEqual(adapter.last_status, "ok")
+
     def test_smartrecruiters_adapter_builds_public_job_url(self):
         payload = {
             "content": [
@@ -201,6 +253,20 @@ class ScraperAdapterRegressionTests(unittest.TestCase):
         self.assertEqual(len(jobs), 1)
         self.assertEqual(jobs[0].url, "https://jobs.smartrecruiters.com/Visa/123456")
         self.assertEqual(jobs[0].location, "Denver, CO")
+
+    def test_smartrecruiters_adapter_paginates(self):
+        def payload(url: str):
+            query = parse_qs(urlparse(url).query)
+            offset = int(query.get("offset", ["0"])[0])
+            if offset == 0:
+                return {"content": [{"id": f"job-{i}", "name": f"Role {i}", "location": {"city": "Denver", "region": "CO"}} for i in range(100)]}
+            if offset == 100:
+                return {"content": [{"id": "job-100", "name": "Role 100", "location": {"city": "Austin", "region": "TX"}}]}
+            return {"content": []}
+
+        adapter = _FakeSmartRecruitersAdapter(payload)
+        jobs = adapter.scrape({"name": "Visa", "adapter_key": "Visa"})
+        self.assertEqual(len(jobs), 101)
 
     def test_motionrecruitment_adapter_extracts_contract_detail_links(self):
         html = """

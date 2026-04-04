@@ -33,14 +33,17 @@ class WorkdayAdapter(BaseAdapter):
         started_at = time.perf_counter()
         budget_override = company_config.get("scrape_budget_ms")
         budget_ms = int(settings.workday_scrape_budget_ms if budget_override is None else budget_override)
+        html_reserve_ms = min(settings.workday_html_fallback_budget_ms, max(budget_ms, 0))
+        api_budget_ms = max(budget_ms - html_reserve_ms, 0)
+        api_started_at = time.perf_counter()
 
         for host, tenant, site in self._candidate_contexts(careers_url, adapter_key):
-            if self._budget_exhausted(started_at, budget_ms):
+            if self._budget_exhausted(api_started_at, api_budget_ms):
                 self.last_status = "budget_exhausted"
-                self.last_note = f"Budget exhausted before listing fetch ({budget_ms} ms)"
+                self.last_note = f"API budget exhausted before listing fetch ({api_budget_ms} ms)"
                 break
             endpoint = f"https://{host}/wday/cxs/{tenant}/{site}/jobs"
-            site_jobs = self._scrape_endpoint(company_config, host, tenant, site, endpoint, careers_url, seen_urls, started_at, budget_ms)
+            site_jobs = self._scrape_endpoint(company_config, host, tenant, site, endpoint, careers_url, seen_urls, api_started_at, api_budget_ms)
             if site_jobs:
                 jobs.extend(site_jobs)
                 break
@@ -50,18 +53,19 @@ class WorkdayAdapter(BaseAdapter):
             self.last_note = ""
             return jobs
 
-        if self.last_status == "budget_exhausted":
-            return []
-
         html_jobs = self._scrape_html_fallback(
             company_config,
             careers_url or f"https://{adapter_key}",
             self._candidate_contexts(careers_url, adapter_key),
-            started_at,
-            budget_ms,
+            time.perf_counter(),
+            html_reserve_ms,
         )
+        if html_jobs:
+            self.last_status = "ok"
+            self.last_note = ""
+            return html_jobs
         if not html_jobs:
-            if self._budget_exhausted(started_at, budget_ms):
+            if self.last_status == "budget_exhausted" or self._budget_exhausted(started_at, budget_ms):
                 self.last_status = "budget_exhausted"
                 self.last_note = f"Budget exhausted after HTML fallback ({budget_ms} ms)"
             else:
@@ -168,7 +172,7 @@ class WorkdayAdapter(BaseAdapter):
                         source="Workday",
                         adapter="workday",
                         tier=str(company_config.get("tier", 4)),
-                        description_excerpt=description[:1000],
+                        description_excerpt=description,
                     )
                 )
 

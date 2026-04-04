@@ -33,10 +33,11 @@ from jobsearch.cli import (
     _reset_heal_failure_state,
 )
 from jobsearch.services.gmail_sync_service import _parse_imap_message
-from jobsearch.services.opportunity_service import _is_material_jd_change, _jd_fingerprint
+from jobsearch.services.opportunity_service import _is_material_jd_change, _jd_fingerprint, upsert_job
 from jobsearch.services.healer_service import ATSHealer
 from jobsearch import ats_db as db
 from jobsearch.config.settings import settings
+from jobsearch.scraper.models import Job
 from jobsearch.app_main import (
     _annualized_compensation_preview,
     _apply_work_type_filter,
@@ -102,6 +103,34 @@ class _FakeDiceAdapter(DiceAdapter):
 
 
 class BlockedAndLocationTests(unittest.TestCase):
+    def test_blocked_site_error_uses_deep_search_when_enabled(self):
+        class _BlockedEngine(ScraperEngine):
+            def _scrape_company(self, company):
+                raise BlockedSiteError("https://example.com", "Cloudflare block page")
+
+            def _deep_scrape(self, company):
+                return [
+                    Job(
+                        id="1",
+                        company=company["name"],
+                        role_title_raw="Recovered",
+                        url="https://example.com/job",
+                        source="Deep Search",
+                        adapter="deep_search",
+                        tier="4",
+                        description_excerpt="Recovered",
+                    )
+                ]
+
+        engine = _BlockedEngine(
+            preferences={},
+            companies=[{"name": "BlockedCo", "active": True, "adapter": "generic", "careers_url": "https://example.com/careers"}],
+            deep_search=True,
+        )
+        result = engine._scrape_company_with_retry(engine.companies[0])
+        self.assertTrue(result["used_deep_search"])
+        self.assertEqual(result["adapter"], "deep_search")
+
     def test_heal_cooldown_parser_normalizes_naive_datetime_to_utc(self):
         parsed = _parse_iso_datetime("2026-04-03T12:00:00")
         self.assertIsNotNone(parsed)
@@ -342,6 +371,27 @@ class BlockedAndLocationTests(unittest.TestCase):
         self.assertEqual(int((work_type_series == "unknown").sum()), 2)
         self.assertEqual(int((work_type_series == "fte").sum()), 1)
         self.assertEqual(int(work_type_series.isin({"w2_contract", "1099_contract", "c2c_contract", "contract"}).sum()), 1)
+
+    def test_single_digit_hourly_rate_is_normalized(self):
+        scorer = Scorer(
+            {
+                "titles": {},
+                "keywords": {},
+                "scoring": {"minimum_score_to_keep": 35, "adjustments": {}},
+                "search": {"compensation": {}, "geography": {}, "contractor": {}},
+            }
+        )
+        result = scorer.score_job(
+            {
+                "title": "Contract Analyst",
+                "description": "Hourly contract role",
+                "salary_text": "$9/hr W2",
+                "location": "Remote",
+                "tier": 4,
+            }
+        )
+        self.assertEqual(result["compensation_unit"], "hourly")
+        self.assertIsNotNone(result["normalized_compensation_usd"])
 
     def test_work_type_filter_leaves_manual_review_rows_without_work_type(self):
         df = pd.DataFrame([{"company": "ADP", "adapter": "generic"}])
@@ -738,6 +788,53 @@ class BlockedAndLocationTests(unittest.TestCase):
             ignored_keywords=["Data Vault"],
         )
         self.assertEqual(gap_df["keyword"].tolist(), ["capital markets systems"])
+
+    def test_upsert_job_preserves_existing_compensation_when_new_scrape_is_empty(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        db.init_db(conn)
+        first = Job(
+            id="job-1",
+            company="ExampleCo",
+            role_title_raw="Architect",
+            url="https://example.com/job/1",
+            source="Workday",
+            adapter="workday",
+            tier=2,
+            description_excerpt="Full description",
+            salary_text="$180,000 - $200,000",
+            salary_min=180000,
+            salary_max=200000,
+            normalized_compensation_usd=190000,
+        )
+        inserted, app_id = upsert_job(conn, first)
+        self.assertTrue(inserted)
+
+        second = Job(
+            id="job-1",
+            company="ExampleCo",
+            role_title_raw="Architect",
+            url="https://example.com/job/1",
+            source="Workday",
+            adapter="workday",
+            tier=2,
+            description_excerpt="Updated description",
+            salary_text="",
+            salary_min=None,
+            salary_max=None,
+            normalized_compensation_usd=None,
+        )
+        inserted, _ = upsert_job(conn, second)
+        self.assertFalse(inserted)
+        row = conn.execute(
+            "SELECT salary_text, salary_low, salary_high, normalized_compensation_usd FROM applications WHERE id = ?",
+            (app_id,),
+        ).fetchone()
+        self.assertEqual(row["salary_text"], "$180,000 - $200,000")
+        self.assertEqual(row["salary_low"], 180000)
+        self.assertEqual(row["salary_high"], 200000)
+        self.assertEqual(row["normalized_compensation_usd"], 190000)
+        conn.close()
 
     def test_resume_upload_extractor_supports_txt_and_docx(self):
         txt_file = _UploadedFileStub("master_resume.txt", b"API integration\nData lineage\n")

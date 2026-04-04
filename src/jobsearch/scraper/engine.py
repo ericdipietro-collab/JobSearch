@@ -212,7 +212,6 @@ class ScraperEngine:
                                 "deep": used_deep_search,
                             }
                         )
-                        slowest_companies = sorted(slowest_companies, key=lambda item: item["elapsed_ms"], reverse=True)[:10]
                         log_msg(
                             f"[{done_companies}/{total_companies}] OK {company.get('name', 'Unknown'):<24} "
                             f"| adapter={adapter_name:<15} evaluated={evaluated:<3} persisted={persisted:<3} "
@@ -235,6 +234,7 @@ class ScraperEngine:
                 f"evaluated={int(bucket['evaluated'])} persisted={int(bucket['persisted'])} "
                 f"scrape_ms={bucket['scrape_ms']:.1f} process_ms={bucket['process_ms']:.1f}"
             )
+        slowest_companies = sorted(slowest_companies, key=lambda item: item["elapsed_ms"], reverse=True)[:10]
         for item in slowest_companies:
             log_msg(
                 f"Slowest company | company={item['name']} adapter={item['adapter']} "
@@ -337,6 +337,16 @@ class ScraperEngine:
                 "note": adapter_note,
             }
         except BlockedSiteError as exc:
+            if self.deep_search:
+                deep_jobs = self._deep_scrape(company)
+                return {
+                    "jobs": deep_jobs,
+                    "adapter": "deep_search" if deep_jobs else str(company.get("adapter", "unknown")),
+                    "scrape_ms": round((time.perf_counter() - started_at) * 1000, 1),
+                    "used_deep_search": bool(deep_jobs),
+                    "status": "ok" if deep_jobs else "blocked",
+                    "note": "" if deep_jobs else exc.reason,
+                }
             return {
                 "jobs": [],
                 "adapter": str(company.get("adapter", "unknown")),
@@ -583,7 +593,7 @@ class ScraperEngine:
                         source=raw.get("source", "Deep Search"),
                         adapter="deep_search",
                         tier=str(company.get("tier", 4)),
-                        description_excerpt=raw.get("description", "")[:1000],
+                        description_excerpt=raw.get("description", ""),
                     )
                 )
             return jobs

@@ -6,7 +6,7 @@ import hashlib
 class LeverAdapter(BaseAdapter):
     def scrape(self, company_config: Dict[str, Any]) -> List[Job]:
         adapter_key = company_config.get("adapter_key")
-        if not adapter_key:
+        if adapter_key is None or not str(adapter_key).strip():
             return []
             
         url = f"https://api.lever.co/v0/postings/{adapter_key}?mode=json"
@@ -38,7 +38,7 @@ class LeverAdapter(BaseAdapter):
                 source="Lever",
                 adapter="lever",
                 tier=str(company_config.get("tier", 4)),
-                description_excerpt=raw.get("descriptionPlain", "")[:1000]
+                description_excerpt=raw.get("descriptionPlain", "")
             )
             jobs.append(job)
 

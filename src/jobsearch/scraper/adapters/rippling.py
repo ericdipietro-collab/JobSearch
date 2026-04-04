@@ -140,7 +140,7 @@ class RipplingAdapter(BaseAdapter):
             source="Rippling",
             adapter="rippling",
             tier=str(company_config.get("tier", 4)),
-            description_excerpt=str(description)[:1000],
+            description_excerpt=str(description),
         )
 
     def _normalize_location(self, location: Any) -> str:

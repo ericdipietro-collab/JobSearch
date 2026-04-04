@@ -148,7 +148,9 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
     """
     existing = conn.execute(
         """
-        SELECT id, status, description_excerpt, salary_text, location, jd_fingerprint
+        SELECT id, status, description_excerpt, salary_text, location, jd_fingerprint,
+               salary_low, salary_high, work_type, compensation_unit,
+               hourly_rate, hours_per_week, weeks_per_year, normalized_compensation_usd
         FROM applications
         WHERE scraper_key = ?
         """,
@@ -241,6 +243,20 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
             if material_jd_change
             else None
         )
+        merged_salary_text = job.salary_text or old_salary
+        merged_salary_min = job.salary_min if job.salary_min is not None else existing["salary_low"]
+        merged_salary_max = job.salary_max if job.salary_max is not None else existing["salary_high"]
+        merged_work_type = job.work_type or existing["work_type"]
+        merged_compensation_unit = job.compensation_unit or existing["compensation_unit"]
+        merged_hourly_rate = job.hourly_rate if job.hourly_rate is not None else existing["hourly_rate"]
+        merged_hours_per_week = job.hours_per_week if job.hours_per_week is not None else existing["hours_per_week"]
+        merged_weeks_per_year = job.weeks_per_year if job.weeks_per_year is not None else existing["weeks_per_year"]
+        merged_normalized_comp = (
+            job.normalized_compensation_usd
+            if job.normalized_compensation_usd is not None
+            else existing["normalized_compensation_usd"]
+        )
+
         conn.execute(
             """
             UPDATE applications SET
@@ -277,15 +293,15 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
                 "jd_fingerprint": new_jd_fingerprint,
                 "jd_change_summary": jd_change_summary,
                 "jd_needs_review": 1 if material_jd_change else 0,
-                "salary_text": job.salary_text,
-                "salary_min": job.salary_min,
-                "salary_max": job.salary_max,
-                "work_type": job.work_type,
-                "compensation_unit": job.compensation_unit,
-                "hourly_rate": job.hourly_rate,
-                "hours_per_week": job.hours_per_week,
-                "weeks_per_year": job.weeks_per_year,
-                "normalized_compensation_usd": job.normalized_compensation_usd,
+                "salary_text": merged_salary_text,
+                "salary_min": merged_salary_min,
+                "salary_max": merged_salary_max,
+                "work_type": merged_work_type,
+                "compensation_unit": merged_compensation_unit,
+                "hourly_rate": merged_hourly_rate,
+                "hours_per_week": merged_hours_per_week,
+                "weeks_per_year": merged_weeks_per_year,
+                "normalized_compensation_usd": merged_normalized_comp,
                 "updated_at": now,
             }
         )

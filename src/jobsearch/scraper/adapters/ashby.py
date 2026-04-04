@@ -88,7 +88,7 @@ class AshbyAdapter(BaseAdapter):
                         source="Ashby",
                         adapter="ashby",
                         tier=str(company_config.get("tier", 4)),
-                        description_excerpt=description[:1000],
+                        description_excerpt=description,
                     )
                 )
 

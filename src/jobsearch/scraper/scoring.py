@@ -247,7 +247,7 @@ class Scorer:
             return salary_min
         text = self.clean(job_data.get("salary_text"))
         sanitized = re.sub(r"\b(1099|w2|w-2|c2c|corp[-\s]?to[-\s]?corp)\b", " ", text, flags=re.IGNORECASE)
-        matches = [float(match.replace(",", "")) for match in re.findall(r"\$?\s*([0-9]{2,3}(?:,[0-9]{3})*(?:\.\d{1,2})?)", sanitized)]
+        matches = [float(match.replace(",", "")) for match in re.findall(r"\$?\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.\d{1,2})?)", sanitized)]
         if not matches:
             return None
         return sum(matches[:2]) / min(2, len(matches))

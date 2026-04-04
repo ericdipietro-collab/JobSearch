@@ -1,3 +1,4 @@
+import hashlib
 from typing import List, Dict, Any, Optional
 from .base import BaseAdapter
 from jobsearch.scraper.models import Job
@@ -5,7 +6,7 @@ from jobsearch.scraper.models import Job
 class GreenhouseAdapter(BaseAdapter):
     def scrape(self, company_config: Dict[str, Any]) -> List[Job]:
         adapter_key = company_config.get("adapter_key")
-        if not adapter_key:
+        if adapter_key is None or not str(adapter_key).strip():
             return []
             
         url = f"https://boards-api.greenhouse.io/v1/boards/{adapter_key}/jobs?content=true"
@@ -18,8 +19,6 @@ class GreenhouseAdapter(BaseAdapter):
             company_name = company_config.get("name", "Unknown")
             title = raw.get("title", "")
             
-            # Simple unique ID generation for the job
-            import hashlib
             job_id = hashlib.md5(f"{company_name}{title}{job_url}".encode()).hexdigest()
             
             job = Job(
@@ -31,7 +30,7 @@ class GreenhouseAdapter(BaseAdapter):
                 source="Greenhouse",
                 adapter="greenhouse",
                 tier=str(company_config.get("tier", 4)),
-                description_excerpt=raw.get("content", "")[:1000] # Excerpt for summary
+                description_excerpt=raw.get("content", "")
             )
             jobs.append(job)
 

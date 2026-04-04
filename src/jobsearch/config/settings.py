@@ -34,6 +34,7 @@ class Settings:
         self.heal_discovery_budget_ms = int(os.getenv("JOBSEARCH_HEAL_DISCOVERY_BUDGET_MS", "60000"))
         self.heal_waterfall_follow_budget_ms = int(os.getenv("JOBSEARCH_HEAL_WATERFALL_FOLLOW_BUDGET_MS", "12000"))
         self.workday_scrape_budget_ms = int(os.getenv("JOBSEARCH_WORKDAY_SCRAPE_BUDGET_MS", "60000"))
+        self.workday_html_fallback_budget_ms = int(os.getenv("JOBSEARCH_WORKDAY_HTML_FALLBACK_BUDGET_MS", "10000"))
         self.workday_empty_cooldown_days = int(os.getenv("JOBSEARCH_WORKDAY_EMPTY_COOLDOWN_DAYS", "7"))
         self.workday_empty_cooldown_threshold = int(os.getenv("JOBSEARCH_WORKDAY_EMPTY_COOLDOWN_THRESHOLD", "2"))
         self.generic_empty_cooldown_days = int(os.getenv("JOBSEARCH_GENERIC_EMPTY_COOLDOWN_DAYS", "7"))
