@@ -116,7 +116,7 @@ def _render_detail_panel(conn: sqlite3.Connection, app_id: int) -> None:
 
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Score", f"{app['score']:.1f}")
-    col2.metric("Fit Band", app['fit_band'] or "—")
+    col2.metric("Fit Level", app['fit_band'] or "—")
     col3.metric("Status", str(app['status']).capitalize())
     col4.metric("Priority", app['user_priority'])
 

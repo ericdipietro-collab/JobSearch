@@ -358,13 +358,13 @@ def _annualized_compensation_preview(
 def _companies_file_label(path: Path) -> str:
     name = path.name
     if name == settings.companies_yaml.name:
-        return f"{name} (primary ATS lane)"
+        return f"{name} (main list)"
     if name == "job_search_companies_test.yaml":
-        return f"{name} (test ATS lane)"
+        return f"{name} (test list)"
     if name == settings.contract_companies_yaml.name:
-        return f"{name} (contractor lane)"
+        return f"{name} (contractor list)"
     if name == "job_search_companies_contract_test.yaml":
-        return f"{name} (legacy contractor test lane)"
+        return f"{name} (legacy test list)"
     return name
 
 
@@ -416,9 +416,9 @@ def main():
     df_all = _load_jobs_df()
     if not df_all.empty:
         sidebar_metrics = _sidebar_metrics_for_df(df_all)
-        st.sidebar.metric("Scraped Leads", sidebar_metrics["scraped_leads"])
-        st.sidebar.metric("Tracked", sidebar_metrics["tracked"])
-        st.sidebar.metric("Active", sidebar_metrics["active"])
+        st.sidebar.metric("New Job Leads", sidebar_metrics["scraped_leads"])
+        st.sidebar.metric("In Tracker", sidebar_metrics["tracked"])
+        st.sidebar.metric("Active Applications", sidebar_metrics["active"])
     
     if page == "Home":
         conn = ats_db.get_connection(); _safe_render(render_home, conn, page_name="Home")
@@ -446,9 +446,9 @@ def main():
             return
         velocity_summary = _role_velocity_summary(df_all)
         vm1, vm2, vm3 = st.columns(3)
-        vm1.metric("Stale Roles", velocity_summary["stale"])
-        vm2.metric("Reposted Roles", velocity_summary["reposted"])
-        vm3.metric("Dormant Roles", velocity_summary["dormant"])
+        vm1.metric("Older Postings", velocity_summary["stale"])
+        vm2.metric("Reposted Jobs", velocity_summary["reposted"])
+        vm3.metric("No Longer Listed", velocity_summary["dormant"])
         match_population = df_all[df_all["effective_bucket"].isin(["APPLY NOW", "REVIEW TODAY", "WATCH", "MANUAL REVIEW"])].copy()
         work_type_series = match_population.get("work_type", pd.Series(["unknown"] * len(match_population), index=match_population.index)).map(_normalize_work_type)
         contractor_count = int(work_type_series.isin({"w2_contract", "1099_contract", "c2c_contract", "contract"}).sum())
@@ -457,9 +457,9 @@ def main():
         wt1, wt2, wt3, wt4 = st.columns([1, 1, 1, 2])
         wt1.metric("Contract Roles", contractor_count)
         wt2.metric("Full-time Roles", fte_count)
-        wt3.metric("Unknown Work Type", unknown_count)
+        wt3.metric("Employment Type Unknown", unknown_count)
         work_type_filter = wt4.selectbox(
-            "Work Type Filter",
+            "Filter by Employment Type",
             [
                 "All",
                 "Contract Only",
@@ -471,7 +471,7 @@ def main():
             ],
             index=0,
         )
-        st.caption("Work type counts reflect the current matches queue only. Many scraped roles do not expose a structured employment type and remain `Unknown`.")
+        st.caption("Employment type counts are shown for current matches only. Many job postings don't specify a work type, so they appear as Unknown.")
         ann = {r["job_key"]: dict(r) for r in ats_db.get_all_annotations(ats_db.get_connection())}
         tabs = st.tabs(["🔥 Apply Now", "📋 Review Today", "👀 Watch", "🔍 Manual Review", "🚫 Filtered Out"])
         BUCKETS = [("APPLY NOW", tabs[0], ["Applied", "Rejected"]), ("REVIEW TODAY", tabs[1], ["APPLY NOW", "Applied", "WATCH", "Rejected"]), ("WATCH", tabs[2], ["APPLY NOW", "REVIEW TODAY", "Applied", "Rejected"]), ("MANUAL REVIEW", tabs[3], ["APPLY NOW", "Applied", "Rejected"])]
@@ -500,6 +500,15 @@ def main():
                     column_config={
                         "user_status": st.column_config.SelectboxColumn("Move To", options=[""] + opts),
                         "url": st.column_config.LinkColumn("URL"),
+                        "score": st.column_config.NumberColumn("Match Score"),
+                        "fit_band": st.column_config.TextColumn("Fit Level"),
+                        "age_days": st.column_config.NumberColumn("Days Old"),
+                        "seen_count": st.column_config.NumberColumn("Times Seen"),
+                        "open_days": st.column_config.NumberColumn("Days Posted"),
+                        "velocity": st.column_config.TextColumn("Posting Status"),
+                        "tier": st.column_config.NumberColumn("Priority Tier"),
+                        "matched_keywords": st.column_config.TextColumn("Matched Keywords"),
+                        "decision_reason": st.column_config.TextColumn("Scoring Details"),
                     },
                     hide_index=True,
                     use_container_width=True,
@@ -544,7 +553,7 @@ def main():
                     with st.container(border=True):
                         st.markdown(
                             f"**{item['company']}**"
-                            + (f"  \nAdapter: `{item.get('adapter')}`" if item.get("adapter") else "")
+                            + (f"  \nSource: `{item.get('adapter')}`" if item.get("adapter") else "")
                             + (f"  \nReason: {item.get('note')}" if item.get("note") else "")
                         )
                         if item.get("url"):
@@ -588,7 +597,7 @@ def main():
                                         adapter=item.get("adapter"),
                                         url=item.get("url"),
                                         resolution="disabled",
-                                        notes="Disabled in primary ATS registry from manual review queue.",
+                                        notes="Company disabled from automatic job search.",
                                     )
                                 finally:
                                     conn.close()
@@ -604,13 +613,21 @@ def main():
             if filtered_rejected_df.empty:
                 st.info("No filtered-out jobs recorded for the latest pipeline run.")
             else:
-                st.caption(f"Filtered out by scoring in latest run: {len(filtered_rejected_df)}")
+                st.caption(f"Filtered out by the scoring system in the latest search: {len(filtered_rejected_df)}")
                 show_cols = [c for c in ["company", "title", "score", "fit_band", "work_type", "normalized_compensation_usd", "location", "adapter", "drop_reason", "decision_reason", "url"] if c in filtered_rejected_df.columns]
                 if "work_type" in filtered_rejected_df.columns:
                     filtered_rejected_df["work_type"] = filtered_rejected_df["work_type"].map(_work_type_label)
                 st.dataframe(
                     filtered_rejected_df[show_cols],
-                    column_config={"url": st.column_config.LinkColumn("URL")},
+                    column_config={
+                        "url": st.column_config.LinkColumn("URL"),
+                        "score": st.column_config.NumberColumn("Match Score"),
+                        "fit_band": st.column_config.TextColumn("Fit Level"),
+                        "normalized_compensation_usd": st.column_config.NumberColumn("Annualized Pay (USD)", format="$%.0f"),
+                        "adapter": st.column_config.TextColumn("Source"),
+                        "drop_reason": st.column_config.TextColumn("Reason Filtered"),
+                        "decision_reason": st.column_config.TextColumn("Scoring Details"),
+                    },
                     hide_index=True,
                     use_container_width=True,
                 )
@@ -618,7 +635,7 @@ def main():
     elif page == "Search Settings":
         st.title("Search Settings")
         prefs = load_yaml(settings.prefs_yaml)
-        t1, t2, t3, t4, t5, t6, t7 = st.tabs(["Compensation & Location", "Title Evaluation", "JD Evaluation", "Scoring & Rescue", "Full YAML Editor", "App Settings", "Base Resume"])
+        t1, t2, t3, t4, t5, t6, t7 = st.tabs(["Compensation & Location", "Job Title Settings", "Job Description Keywords", "Scoring Settings", "Advanced Editor", "App Settings", "Base Resume"])
         
         with t1:
             s = prefs.setdefault("search", {}); c = s.setdefault("compensation", {})
@@ -627,38 +644,38 @@ def main():
             local_hybrid = s.setdefault("location_preferences", {}).setdefault("local_hybrid", {})
             remote_us = s.setdefault("location_preferences", {}).setdefault("remote_us", {})
             recency = s.setdefault("recency", {})
-            f_min = st.number_input("Global Min", value=int(c.get("min_salary_usd", 165000)))
-            f_target = st.number_input("Target Salary", value=int(c.get("target_salary_usd", 165000)))
-            f_rem = st.number_input("Remote Min", value=int(c.get("preferred_remote_min_salary_usd", c.get("min_salary_usd", 170000))))
+            f_min = st.number_input("Minimum Salary (USD)", value=int(c.get("min_salary_usd", 165000)))
+            f_target = st.number_input("Target Salary (USD)", value=int(c.get("target_salary_usd", 165000)))
+            f_rem = st.number_input("Remote Minimum Salary (USD)", value=int(c.get("preferred_remote_min_salary_usd", c.get("min_salary_usd", 170000))))
             policy_opts = ["remote_only", "hybrid_only", "remote_or_hybrid"]
-            f_pol = st.selectbox("Policy", policy_opts, index=policy_opts.index(s.get("location_policy", "remote_only")))
-            f_enforce_salary = st.checkbox("Enforce Min Salary", value=bool(c.get("enforce_min_salary", True)))
-            f_allow_missing = st.checkbox("Allow Missing Salary", value=bool(c.get("allow_missing_salary", True)))
-            f_salary_basis = st.selectbox("Salary Floor Basis", ["midpoint", "low_end", "high_end"], index=["midpoint", "low_end", "high_end"].index(c.get("salary_floor_basis", "midpoint")) if c.get("salary_floor_basis", "midpoint") in ["midpoint", "low_end", "high_end"] else 0)
-            f_neg_buffer = st.number_input("Negotiation Buffer %", min_value=0.0, max_value=1.0, value=float(c.get("negotiation_buffer_pct", 0.05)), step=0.01, format="%.2f")
+            f_pol = st.selectbox("Work Location Policy", policy_opts, index=policy_opts.index(s.get("location_policy", "remote_only")))
+            f_enforce_salary = st.checkbox("Enforce Minimum Salary", value=bool(c.get("enforce_min_salary", True)))
+            f_allow_missing = st.checkbox("Show Jobs With No Salary Listed", value=bool(c.get("allow_missing_salary", True)))
+            f_salary_basis = st.selectbox("Compare Posted Salary Using", ["midpoint", "low_end", "high_end"], index=["midpoint", "low_end", "high_end"].index(c.get("salary_floor_basis", "midpoint")) if c.get("salary_floor_basis", "midpoint") in ["midpoint", "low_end", "high_end"] else 0)
+            f_neg_buffer = st.number_input("Negotiation Buffer (%)", min_value=0.0, max_value=1.0, value=float(c.get("negotiation_buffer_pct", 0.05)), step=0.01, format="%.2f")
             f_us_only = st.checkbox("US Only", value=bool(geography.get("us_only", True)))
-            f_allow_international_remote = st.checkbox("Allow International Remote", value=bool(geography.get("allow_international_remote", False)))
-            f_remote_enabled = st.checkbox("Remote US Enabled", value=bool(remote_us.get("enabled", True)))
-            f_remote_bonus = st.number_input("Remote Bonus", min_value=0, max_value=50, value=int(remote_us.get("bonus", 14)))
-            f_hybrid_enabled = st.checkbox("Local Hybrid Enabled", value=bool(local_hybrid.get("enabled", True)))
-            f_zip = st.text_input("Primary ZIP", value=str(local_hybrid.get("primary_zip", "80504")))
-            f_radius = st.number_input("Hybrid Radius Miles", min_value=1, max_value=250, value=int(local_hybrid.get("radius_miles", 30)))
-            f_hybrid_bonus = st.number_input("Hybrid Bonus", min_value=0, max_value=50, value=int(local_hybrid.get("bonus", 4)))
-            f_hybrid_salary = st.number_input("Hybrid Allow If Salary At Least", min_value=0, value=int(local_hybrid.get("allow_if_salary_at_least_usd", 170000)))
-            f_markers = st.text_area("Hybrid Location Markers", value="\n".join(local_hybrid.get("markers", [])))
-            f_recency_enabled = st.checkbox("Enforce Job Age", value=bool(recency.get("enforce_job_age", True)))
-            f_max_age = st.number_input("Max Job Age Days", min_value=1, max_value=365, value=int(recency.get("max_job_age_days", 21)))
+            f_allow_international_remote = st.checkbox("Allow International Remote Jobs", value=bool(geography.get("allow_international_remote", False)))
+            f_remote_enabled = st.checkbox("Include Remote US Jobs", value=bool(remote_us.get("enabled", True)))
+            f_remote_bonus = st.number_input("Remote Job Score Bonus", min_value=0, max_value=50, value=int(remote_us.get("bonus", 14)))
+            f_hybrid_enabled = st.checkbox("Include Local Hybrid Jobs", value=bool(local_hybrid.get("enabled", True)))
+            f_zip = st.text_input("Your ZIP Code", value=str(local_hybrid.get("primary_zip", "80504")))
+            f_radius = st.number_input("Local Hybrid Radius (miles)", min_value=1, max_value=250, value=int(local_hybrid.get("radius_miles", 30)))
+            f_hybrid_bonus = st.number_input("Local Hybrid Score Bonus", min_value=0, max_value=50, value=int(local_hybrid.get("bonus", 4)))
+            f_hybrid_salary = st.number_input("Show Hybrid Jobs Only If Salary Is At Least (USD)", min_value=0, value=int(local_hybrid.get("allow_if_salary_at_least_usd", 170000)))
+            f_markers = st.text_area("Cities / Areas Near You (one per line)", value="\n".join(local_hybrid.get("markers", [])))
+            f_recency_enabled = st.checkbox("Filter Out Old Job Postings", value=bool(recency.get("enforce_job_age", True)))
+            f_max_age = st.number_input("Maximum Job Posting Age (days)", min_value=1, max_value=365, value=int(recency.get("max_job_age_days", 21)))
             st.markdown("#### Contractor Preferences")
             f_include_contract = st.checkbox("Include Contract Roles", value=bool(contractor.get("include_contract_roles", True)))
-            f_allow_w2 = st.checkbox("Allow W2 Hourly", value=bool(contractor.get("allow_w2_hourly", True)))
-            f_allow_1099 = st.checkbox("Allow 1099 / C2C", value=bool(contractor.get("allow_1099_hourly", True)))
-            f_hours = st.number_input("Default Hours / Week", min_value=1.0, max_value=80.0, value=float(contractor.get("default_hours_per_week", 40)), step=1.0)
-            f_w2_weeks = st.number_input("Default W2 Weeks / Year", min_value=1.0, max_value=52.0, value=float(contractor.get("default_w2_weeks_per_year", 50)), step=1.0)
-            f_1099_weeks = st.number_input("Default 1099 Weeks / Year", min_value=1.0, max_value=52.0, value=float(contractor.get("default_1099_weeks_per_year", 46)), step=1.0)
-            f_benefits = st.number_input("1099 Benefits Replacement USD", min_value=0.0, value=float(contractor.get("benefits_replacement_usd", 18000)), step=1000.0)
-            f_w2_gap = st.number_input("W2 Hourly Benefits Gap USD", min_value=0.0, value=float(contractor.get("w2_benefits_gap_usd", 6000)), step=500.0)
-            f_1099_overhead = st.number_input("1099 Overhead %", min_value=0.0, max_value=0.75, value=float(contractor.get("overhead_1099_pct", 0.18)), step=0.01, format="%.2f")
-            if st.button("Save Comp"):
+            f_allow_w2 = st.checkbox("Allow W2 Hourly Contracts", value=bool(contractor.get("allow_w2_hourly", True)))
+            f_allow_1099 = st.checkbox("Allow 1099 / Corp-to-Corp Contracts", value=bool(contractor.get("allow_1099_hourly", True)))
+            f_hours = st.number_input("Contract Hours Per Week", min_value=1.0, max_value=80.0, value=float(contractor.get("default_hours_per_week", 40)), step=1.0)
+            f_w2_weeks = st.number_input("W2 Contract: Weeks Worked Per Year", min_value=1.0, max_value=52.0, value=float(contractor.get("default_w2_weeks_per_year", 50)), step=1.0)
+            f_1099_weeks = st.number_input("1099 Contract: Weeks Worked Per Year", min_value=1.0, max_value=52.0, value=float(contractor.get("default_1099_weeks_per_year", 46)), step=1.0)
+            f_benefits = st.number_input("1099: Estimated Annual Benefits Cost (USD)", min_value=0.0, value=float(contractor.get("benefits_replacement_usd", 18000)), step=1000.0, help="Annual cost of health insurance and benefits you'd need to cover yourself as a 1099 contractor.")
+            f_w2_gap = st.number_input("W2 Hourly: Benefits Gap vs. Salaried (USD)", min_value=0.0, value=float(contractor.get("w2_benefits_gap_usd", 6000)), step=500.0, help="Estimated annual value of benefits you lose on a W2 hourly contract vs. a salaried role.")
+            f_1099_overhead = st.number_input("1099: Self-Employment Overhead Rate (%)", min_value=0.0, max_value=0.75, value=float(contractor.get("overhead_1099_pct", 0.18)), step=0.01, format="%.2f", help="Percentage deducted for self-employment tax and other 1099 overhead costs.")
+            if st.button("Save Compensation & Location Settings"):
                 c.update({
                     "min_salary_usd": int(f_min),
                     "target_salary_usd": int(f_target),
@@ -696,7 +713,7 @@ def main():
                 save_yaml(settings.prefs_yaml, prefs); st.success("Saved.")
 
             with st.expander("Compensation Calculator", expanded=False):
-                calc_type = st.selectbox("Comp Type", ["salary", "w2_hourly", "1099_hourly"])
+                calc_type = st.selectbox("Calculate For", ["salary", "w2_hourly", "1099_hourly"])
                 calc_amount_label = "Annual Salary USD" if calc_type == "salary" else "Hourly Rate USD"
                 calc_amount = st.number_input(calc_amount_label, min_value=0.0, value=float(f_target if calc_type == "salary" else 95.0), step=5.0)
                 calc_hours = st.number_input(
@@ -726,28 +743,28 @@ def main():
                 breakeven_w2 = (float(f_target) + float(f_w2_gap)) / max(float(f_hours) * float(f_w2_weeks), 1.0)
                 breakeven_1099 = (float(f_target) + float(f_benefits)) / max((1.0 - float(f_1099_overhead)) * float(f_hours) * float(f_1099_weeks), 1.0)
                 c_calc1, c_calc2, c_calc3 = st.columns(3)
-                c_calc1.metric("Gross Annualized", f"${calc_preview['gross_annual_usd']:,.0f}")
-                c_calc2.metric("Normalized Equivalent", f"${calc_preview['normalized_compensation_usd']:,.0f}")
+                c_calc1.metric("Gross Annual Value", f"${calc_preview['gross_annual_usd']:,.0f}")
+                c_calc2.metric("Take-Home Equivalent", f"${calc_preview['normalized_compensation_usd']:,.0f}")
                 c_calc3.metric("Target Salary", f"${float(f_target):,.0f}")
                 st.caption(
-                    f"Break-even hourly vs target salary: W2 ${breakeven_w2:,.2f}/hr | "
-                    f"1099 ${breakeven_1099:,.2f}/hr"
+                    f"Break-even hourly rate to match your salary target — W2: ${breakeven_w2:,.2f}/hr | "
+                    f"1099: ${breakeven_1099:,.2f}/hr"
                 )
         
         with t2:
             t = prefs.setdefault("titles", {})
             constraints = t.setdefault("constraints", {})
-            f_keywords = st.text_area("Positive Keywords", value="\n".join(t.get("positive_keywords", [])))
-            f_pos = st.text_area("Weights (phrase: weight)", value="\n".join([f"{k}: {v}" for k,v in t.get("positive_weights", {}).items()]))
-            f_require_positive = st.checkbox("Require One Positive Keyword", value=bool(t.get("require_one_positive_keyword", True)))
-            f_fast_track = st.number_input("Fast Track Base Score", min_value=0, max_value=100, value=int(t.get("fast_track_base_score", 50)))
-            f_fast_track_weight = st.number_input("Fast Track Min Weight", min_value=0, max_value=20, value=int(t.get("fast_track_min_weight", 8)))
-            f_mods = st.text_area("Product Manager Allowed Modifiers", value="\n".join(constraints.get("product_manager_allowed_modifiers", [])))
-            f_arch_mods = st.text_area("Architect Allowed Modifiers", value="\n".join(constraints.get("architect_allowed_modifiers", [])))
-            f_ba_mods = st.text_area("Business Analyst Allowed Modifiers", value="\n".join(constraints.get("business_analyst_allowed_modifiers", [])))
-            f_consult_mods = st.text_area("Consultant Allowed Modifiers", value="\n".join(constraints.get("consultant_allowed_modifiers", [])))
-            f_neg = st.text_area("Hard Disqualifiers", value="\n".join(t.get("negative_disqualifiers", [])))
-            if st.button("Save Titles"):
+            f_keywords = st.text_area("Job Title Keywords (one per line)", value="\n".join(t.get("positive_keywords", [])), help="Job titles or keywords that indicate a good role match. Listed here without a score — use the Weighted Keywords field below to assign scores.")
+            f_pos = st.text_area("Weighted Title Keywords (keyword: score)", value="\n".join([f"{k}: {v}" for k,v in t.get("positive_weights", {}).items()]), help="Each keyword and the score it adds to the match. Higher scores = stronger title signal.")
+            f_require_positive = st.checkbox("Only Show Jobs With a Matching Title Keyword", value=bool(t.get("require_one_positive_keyword", True)))
+            f_fast_track = st.number_input("Fast-Track Starting Score", min_value=0, max_value=100, value=int(t.get("fast_track_base_score", 0)), help="If a high-weight title keyword matches, start the score at this value instead of 0. Set to 0 to disable (recommended — lets job description keywords drive the score).")
+            f_fast_track_weight = st.number_input("Fast-Track Minimum Keyword Weight", min_value=0, max_value=20, value=int(t.get("fast_track_min_weight", 8)), help="Only apply the fast-track starting score if the matched title keyword has at least this weight.")
+            f_mods = st.text_area("Product Manager: Required Modifiers (one per line)", value="\n".join(constraints.get("product_manager_allowed_modifiers", [])), help="A job title with 'Product Manager' will only pass if it also contains one of these words.")
+            f_arch_mods = st.text_area("Architect: Required Modifiers (one per line)", value="\n".join(constraints.get("architect_allowed_modifiers", [])), help="A job title with 'Architect' will only pass if it also contains one of these words.")
+            f_ba_mods = st.text_area("Business Analyst: Required Modifiers (one per line)", value="\n".join(constraints.get("business_analyst_allowed_modifiers", [])), help="A job title with 'Business Analyst' will only pass if it also contains one of these words.")
+            f_consult_mods = st.text_area("Consultant: Required Modifiers (one per line)", value="\n".join(constraints.get("consultant_allowed_modifiers", [])), help="A job title with 'Consultant' will only pass if it also contains one of these words.")
+            f_neg = st.text_area("Job Title Disqualifiers (one per line)", value="\n".join(t.get("negative_disqualifiers", [])), help="Job titles containing any of these phrases will be automatically filtered out, regardless of score.")
+            if st.button("Save Job Title Settings"):
                 new_w = {l.split(":")[0].strip(): int(l.split(":")[1]) for l in f_pos.splitlines() if ":" in l}
                 t["positive_keywords"] = [line.strip() for line in f_keywords.splitlines() if line.strip()]
                 t["positive_weights"] = new_w
@@ -765,12 +782,12 @@ def main():
             k = prefs.setdefault("keywords", {})
             scoring = prefs.setdefault("scoring", {})
             matching = scoring.setdefault("keyword_matching", {})
-            f_bp = st.text_area("Body Positive", value="\n".join([f"{ki}: {vi}" for ki,vi in k.get("body_positive", {}).items()]))
-            f_bn = st.text_area("Body Negative", value="\n".join([f"{ki}: {vi}" for ki,vi in k.get("body_negative", {}).items()]))
-            f_unique = st.checkbox("Count Unique Matches Only", value=bool(matching.get("count_unique_matches_only", True)))
-            f_pos_cap = st.number_input("Positive Keyword Cap", min_value=0, max_value=200, value=int(matching.get("positive_keyword_cap", 60)))
-            f_neg_cap = st.number_input("Negative Keyword Cap", min_value=0, max_value=200, value=int(matching.get("negative_keyword_cap", 45)))
-            if st.button("Save Keywords"):
+            f_bp = st.text_area("Keywords That Boost Score (keyword: score)", value="\n".join([f"{ki}: {vi}" for ki,vi in k.get("body_positive", {}).items()]), help="Words or phrases found in the job description that signal a good fit. Format: keyword: score (one per line).")
+            f_bn = st.text_area("Keywords That Reduce Score (keyword: penalty)", value="\n".join([f"{ki}: {vi}" for ki,vi in k.get("body_negative", {}).items()]), help="Words or phrases in the job description that signal a poor fit. Format: keyword: penalty (one per line). Higher penalty = more negative impact.")
+            f_unique = st.checkbox("Count Each Keyword Only Once", value=bool(matching.get("count_unique_matches_only", True)), help="If checked, a keyword that appears multiple times in the job description only adds its score once.")
+            f_pos_cap = st.number_input("Maximum Score From Positive Keywords", min_value=0, max_value=200, value=int(matching.get("positive_keyword_cap", 60)))
+            f_neg_cap = st.number_input("Maximum Penalty From Negative Keywords", min_value=0, max_value=200, value=int(matching.get("negative_keyword_cap", 45)))
+            if st.button("Save Keyword Settings"):
                 k["body_positive"] = {l.split(":")[0].strip(): int(l.split(":")[1]) for l in f_bp.splitlines() if ":" in l}
                 k["body_negative"] = {l.split(":")[0].strip(): int(l.split(":")[1]) for l in f_bn.splitlines() if ":" in l}
                 matching["count_unique_matches_only"] = bool(f_unique)
@@ -783,21 +800,23 @@ def main():
             rescue = prefs.setdefault("policy", {}).setdefault("title_rescue", {})
             adjustments = s_cfg.setdefault("adjustments", {})
             apply_now = s_cfg.setdefault("apply_now", {})
-            f_min_keep = st.number_input("Minimum Score To Keep", min_value=0, max_value=100, value=int(s_cfg.get("minimum_score_to_keep", 35)))
-            f_missing_salary = st.number_input("Missing Salary Penalty", min_value=0, max_value=50, value=int(adjustments.get("missing_salary_penalty", 6)))
-            f_salary_target_bonus = st.number_input("Salary At/Above Target Bonus", min_value=0, max_value=50, value=int(adjustments.get("salary_at_or_above_target_bonus", 6)))
-            f_salary_floor_bonus = st.number_input("Salary Meets Floor Bonus", min_value=0, max_value=50, value=int(adjustments.get("salary_meets_floor_bonus", 2)))
-            f_salary_below_penalty = st.number_input("Salary Below Target Penalty", min_value=0, max_value=50, value=int(adjustments.get("salary_below_target_penalty", 12)))
-            f_require_strong_title = st.checkbox("Apply Now Requires Strong Title", value=bool(apply_now.get("require_strong_title", True)))
-            f_min_role_alignment = st.number_input("Apply Now Min Role Alignment", min_value=0.0, max_value=20.0, value=float(apply_now.get("min_role_alignment", 6.0)), step=0.5)
-            f_direct_title_markers = st.text_area("Apply Now Direct Title Markers", value="\n".join(apply_now.get("direct_title_markers", [])))
-            f_adj_bonus = st.number_input("Adjacent Title Bonus", min_value=0, max_value=50, value=int(rescue.get("adjacent_title_bonus", 8)))
-            f_adj_domain_bonus = st.number_input("Adjacent Strong Domain Bonus", min_value=0, max_value=50, value=int(rescue.get("adjacent_title_strong_domain_bonus", 6)))
-            f_adj_min = st.number_input("Adjacent Title Min Score To Keep", min_value=0, max_value=100, value=int(rescue.get("adjacent_title_min_score_to_keep", 26)))
-            f_strong_body_markers = st.text_area("Strong Body Domain Markers", value="\n".join(rescue.get("strong_body_domain_markers", [])))
-            f_adj_markers = st.text_area("Adjacent Title Markers", value="\n".join(rescue.get("adjacent_title_markers", [])))
-            f_analyst_markers = st.text_area("Analyst Variant Markers", value="\n".join(rescue.get("analyst_variant_markers", [])))
-            if st.button("Save Scoring"):
+            f_min_keep = st.number_input("Minimum Score to Show a Job", min_value=0, max_value=100, value=int(s_cfg.get("minimum_score_to_keep", 35)), help="Jobs scoring below this threshold are hidden from all match views.")
+            f_missing_salary = st.number_input("Score Penalty: No Salary Listed", min_value=0, max_value=50, value=int(adjustments.get("missing_salary_penalty", 6)), help="Points deducted when a job posting has no salary information.")
+            f_salary_target_bonus = st.number_input("Score Bonus: Salary Meets or Exceeds Target", min_value=0, max_value=50, value=int(adjustments.get("salary_at_or_above_target_bonus", 6)))
+            f_salary_floor_bonus = st.number_input("Score Bonus: Salary Meets Minimum", min_value=0, max_value=50, value=int(adjustments.get("salary_meets_floor_bonus", 2)))
+            f_salary_below_penalty = st.number_input("Score Penalty: Salary Below Minimum", min_value=0, max_value=50, value=int(adjustments.get("salary_below_target_penalty", 12)))
+            f_require_strong_title = st.checkbox("'Apply Now' Requires a Strong Title Match", value=bool(apply_now.get("require_strong_title", True)))
+            f_min_role_alignment = st.number_input("'Apply Now' Minimum Title Match Score", min_value=0.0, max_value=20.0, value=float(apply_now.get("min_role_alignment", 6.0)), step=0.5)
+            f_direct_title_markers = st.text_area("'Apply Now' Required Title Keywords (one per line)", value="\n".join(apply_now.get("direct_title_markers", [])), help="The job title must contain one of these words to qualify for 'Apply Now'.")
+            st.markdown("#### Near-Match Rescue")
+            st.caption("These settings allow jobs with a near-matching title to remain visible if the job description content is strong enough.")
+            f_adj_bonus = st.number_input("Near-Match Title Score Bonus", min_value=0, max_value=50, value=int(rescue.get("adjacent_title_bonus", 8)))
+            f_adj_domain_bonus = st.number_input("Near-Match + Strong Domain Score Bonus", min_value=0, max_value=50, value=int(rescue.get("adjacent_title_strong_domain_bonus", 6)))
+            f_adj_min = st.number_input("Near-Match Minimum Score to Show", min_value=0, max_value=100, value=int(rescue.get("adjacent_title_min_score_to_keep", 26)))
+            f_strong_body_markers = st.text_area("Domain Keywords That Strengthen Near-Matches (one per line)", value="\n".join(rescue.get("strong_body_domain_markers", [])))
+            f_adj_markers = st.text_area("Near-Match Title Keywords (one per line)", value="\n".join(rescue.get("adjacent_title_markers", [])))
+            f_analyst_markers = st.text_area("Analyst Variant Keywords (one per line)", value="\n".join(rescue.get("analyst_variant_markers", [])))
+            if st.button("Save Scoring Settings"):
                 s_cfg["minimum_score_to_keep"] = int(f_min_keep)
                 adjustments["missing_salary_penalty"] = int(f_missing_salary)
                 adjustments["salary_at_or_above_target_bonus"] = int(f_salary_target_bonus)
@@ -816,8 +835,9 @@ def main():
 
         with t5:
             raw = settings.prefs_yaml.read_text(encoding="utf-8") if settings.prefs_yaml.exists() else ""
-            new_raw = st.text_area("YAML", value=raw, height=600)
-            if st.button("Save YAML"): settings.prefs_yaml.write_text(new_raw, encoding="utf-8"); st.success("Saved.")
+            st.caption("Direct YAML editor — for advanced users only. Incorrect formatting will break your settings. Use the other tabs for normal edits.")
+            new_raw = st.text_area("Raw Configuration", value=raw, height=600)
+            if st.button("Save Configuration"): settings.prefs_yaml.write_text(new_raw, encoding="utf-8"); st.success("Saved.")
 
         with t6:
             conn = ats_db.get_connection()
@@ -949,14 +969,14 @@ def main():
     elif page == "Target Companies":
         st.title("Target Companies")
         registry_options = {
-            "Primary ATS Registry": settings.companies_yaml,
-            "Contractor Registry": settings.contract_companies_yaml,
+            "Main Company List": settings.companies_yaml,
+            "Contractor Company List": settings.contract_companies_yaml,
         }
-        registry_label = st.radio("Registry", list(registry_options.keys()), horizontal=True)
+        registry_label = st.radio("Company List", list(registry_options.keys()), horizontal=True)
         registry_path = registry_options[registry_label]
         data = load_yaml(registry_path)
         cos = data.get("companies", [])
-        t1, t2, t3, t4 = st.tabs(["List", "Add / Edit", "Heal ATS", "YAML Editor"])
+        t1, t2, t3, t4 = st.tabs(["List", "Add / Edit", "Fix Job Listings", "Advanced Editor"])
         with t1:
             df_companies = pd.DataFrame(cos).reset_index(names="__idx")
             if not df_companies.empty:
@@ -1012,19 +1032,19 @@ def main():
                 selected_name = st.selectbox("Company", company_names)
                 selected_company = next((company for company in cos if company.get("name") == selected_name), {})
 
-            c_name = st.text_input("Name", value=selected_company.get("name", ""))
-            c_domain = st.text_input("Domain", value=selected_company.get("domain", ""))
-            c_careers = st.text_input("Careers URL", value=selected_company.get("careers_url", ""))
-            c_adapter = st.selectbox("Adapter", KNOWN_ADAPTERS, index=KNOWN_ADAPTERS.index(selected_company.get("adapter", "generic")) if selected_company.get("adapter", "generic") in KNOWN_ADAPTERS else KNOWN_ADAPTERS.index("generic"))
-            c_adapter_key = st.text_input("Adapter Key", value=selected_company.get("adapter_key", ""))
-            c_tier = st.number_input("Tier", min_value=1, max_value=4, value=int(selected_company.get("tier", 2)))
+            c_name = st.text_input("Company Name", value=selected_company.get("name", ""))
+            c_domain = st.text_input("Website Domain", value=selected_company.get("domain", ""), help="e.g. jobs.lever.co or careers.company.com")
+            c_careers = st.text_input("Careers Page URL", value=selected_company.get("careers_url", ""))
+            c_adapter = st.selectbox("Job Board Type", KNOWN_ADAPTERS, index=KNOWN_ADAPTERS.index(selected_company.get("adapter", "generic")) if selected_company.get("adapter", "generic") in KNOWN_ADAPTERS else KNOWN_ADAPTERS.index("generic"), help="The job board platform this company uses (e.g. Greenhouse, Lever, Workday).")
+            c_adapter_key = st.text_input("Job Board Identifier", value=selected_company.get("adapter_key", ""), help="The unique identifier for this company on their job board platform (e.g. the slug in the URL).")
+            c_tier = st.number_input("Priority Tier (1 = highest)", min_value=1, max_value=4, value=int(selected_company.get("tier", 2)))
             c_priority = st.selectbox("Priority", ["high", "medium", "low"], index=["high", "medium", "low"].index(selected_company.get("priority", "medium")) if selected_company.get("priority", "medium") in ["high", "medium", "low"] else 1)
-            c_active = st.checkbox("Active", value=bool(selected_company.get("active", True)))
-            c_manual_only = st.checkbox("Manual Only", value=bool(selected_company.get("manual_only", False)))
+            c_active = st.checkbox("Active (include in job search)", value=bool(selected_company.get("active", True)))
+            c_manual_only = st.checkbox("Search Manually (skip automatic scraping)", value=bool(selected_company.get("manual_only", False)))
             status_options = ["active", "broken", "pending", "manual_only"]
             c_status = st.selectbox("Status", status_options, index=status_options.index(selected_company.get("status", "active")) if selected_company.get("status", "active") in status_options else 0)
             c_industry = st.text_input("Industry", value=_normalize_editor_value(selected_company.get("industry", "")))
-            c_sub = st.text_input("Sub Industry", value=str(selected_company.get("sub_industry", "")))
+            c_sub = st.text_input("Sub-Industry", value=str(selected_company.get("sub_industry", "")))
             c_notes = st.text_area("Notes", value=str(selected_company.get("notes", "")))
 
             if st.button("Save Company"):
@@ -1063,14 +1083,14 @@ def main():
                 st.success(f"Company deleted from {registry_path.name}.")
         with t3:
             if registry_path != settings.companies_yaml:
-                st.info("ATS healing is only supported for the primary ATS registry. Use Add / Edit or YAML Editor for contractor sources.")
+                st.info("Automatic job board discovery is only available for the main company list. Use Add / Edit or Advanced Editor for contractor sources.")
             else:
-                h_all = st.checkbox("All", value=True)
-                h_deep = st.checkbox("Deep", value=False)
-                h_force = st.checkbox("Process Active Too", value=False)
-                h_workers = st.number_input("Workers", min_value=1, max_value=20, value=5, step=1)
-                h_deep_timeout = st.number_input("Deep Timeout (sec)", min_value=5, max_value=120, value=20, step=5)
-                if st.button("🚀 Run Healer"):
+                h_all = st.checkbox("Include All Companies (not just broken ones)", value=True)
+                h_deep = st.checkbox("Deep Search (slower — uses browser to find hidden job boards)", value=False)
+                h_force = st.checkbox("Also Re-check Already-Active Companies", value=False)
+                h_workers = st.number_input("Parallel Workers", min_value=1, max_value=20, value=5, step=1)
+                h_deep_timeout = st.number_input("Browser Timeout (seconds)", min_value=5, max_value=120, value=20, step=5)
+                if st.button("🚀 Run Fix Job Listings"):
                     cmd = [sys.executable, "-m", "jobsearch.cli", "heal"]
                     if h_all: cmd.append("--all")
                     if h_deep: cmd.append("--deep")
@@ -1082,18 +1102,19 @@ def main():
                     for raw in iter(proc.stdout.readline, ""): lines.append(raw.rstrip()); log.code("\n".join(lines[-20:]))
                     proc.wait(); st.success("Healer complete.")
         with t4:
+            st.caption("Direct YAML editor — for advanced users only. Use the List or Add / Edit tabs for normal changes.")
             raw = registry_path.read_text(encoding="utf-8") if registry_path.exists() else ""
-            new_raw = st.text_area("YAML", value=raw, height=600)
-            if st.button("Save Companies"): registry_path.write_text(new_raw, encoding="utf-8"); st.success(f"Saved {registry_path.name}.")
+            new_raw = st.text_area("Raw Company List", value=raw, height=600)
+            if st.button("Save Company List"): registry_path.write_text(new_raw, encoding="utf-8"); st.success(f"Saved {registry_path.name}.")
 
     elif page == "Run Job Search":
         st.title("Run Search Pipeline")
-        t1, t2, t3 = st.tabs(["Pipeline Run", "Recent Logs", "Manual CSV Entry"])
+        t1, t2, t3 = st.tabs(["Run Search", "Recent Run Log", "Manual Job Targets"])
         with t1:
-            r_deep = st.checkbox("Deep Search", value=False)
-            r_test = st.checkbox("Use Test Companies", value=False)
-            r_contract = st.checkbox("Use Contractor Sources", value=False)
-            r_workers = st.number_input("Workers", min_value=1, max_value=20, value=8, step=1)
+            r_deep = st.checkbox("Deep Search (slower — uses browser to find jobs on complex sites)", value=False)
+            r_test = st.checkbox("Use Test Company List (for testing only)", value=False)
+            r_contract = st.checkbox("Include Contractor Sources", value=False)
+            r_workers = st.number_input("Parallel Workers", min_value=1, max_value=20, value=8, step=1)
             pref_options = [path for path in [settings.prefs_yaml, settings.config_dir / "job_search_preferences_test.yaml"] if path.exists()]
             comp_options = [
                 path
@@ -1109,13 +1130,13 @@ def main():
             if r_test and (settings.config_dir / "job_search_companies_test.yaml") in comp_options:
                 default_companies = settings.config_dir / "job_search_companies_test.yaml"
             default_index = comp_options.index(default_companies) if default_companies in comp_options else 0
-            r_prefs = st.selectbox("Preferences File", pref_options, format_func=lambda p: p.name)
-            r_companies = st.selectbox("Companies File", comp_options, index=default_index, format_func=_companies_file_label)
+            r_prefs = st.selectbox("Search Settings File", pref_options, format_func=lambda p: p.name)
+            r_companies = st.selectbox("Company List", comp_options, index=default_index, format_func=_companies_file_label)
             selected_name = Path(r_companies).name
             if selected_name in {settings.contract_companies_yaml.name, "job_search_companies_contract_test.yaml"}:
-                st.info("Contractor-only lane enabled: this run uses external contract-oriented sources only.")
+                st.info("Contractor-only mode: this run searches contract-oriented job sources only.")
             elif r_contract:
-                st.info("Combined lane enabled: this run merges the selected ATS company file with the contractor source registry.")
+                st.info("Combined mode: this run searches both your main company list and contractor sources.")
 
             if st.button("🚀 Start Pipeline", type="primary"):
                 cmd = [sys.executable, "-m", "jobsearch.cli", "run", "--workers", str(int(r_workers))]
@@ -1149,8 +1170,9 @@ def main():
         with t3:
             manual_csv = settings.results_dir / "job_search_v6_manual_targets.csv"
             csv_value = manual_csv.read_text(encoding="utf-8") if manual_csv.exists() else "company,title,url,notes\n"
-            edited_csv = st.text_area("Manual Targets CSV", value=csv_value, height=320)
-            if st.button("Save Manual CSV"):
+            st.caption("Add jobs here that you found manually (e.g. from LinkedIn or a company website). Format: company, title, url, notes — one per line.")
+            edited_csv = st.text_area("Manual Job Targets", value=csv_value, height=320)
+            if st.button("Save Manual Job Targets"):
                 manual_csv.write_text(edited_csv, encoding="utf-8")
                 st.success(f"Saved {manual_csv.name}.")
 

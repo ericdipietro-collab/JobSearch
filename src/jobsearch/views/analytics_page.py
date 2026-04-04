@@ -255,7 +255,7 @@ def _render_funnel_overview(conn: sqlite3.Connection) -> None:
 
 
 def _render_score_analysis(conn: sqlite3.Connection) -> None:
-    st.subheader("Score Analysis")
+    st.subheader("Score Distribution")
 
     df = avg_score_by_stage(conn)
     if df.empty:
@@ -287,7 +287,7 @@ def _render_score_analysis(conn: sqlite3.Connection) -> None:
 
 
 def _render_pipeline_health(conn: sqlite3.Connection) -> None:
-    st.subheader("Pipeline Health")
+    st.subheader("Pipeline Overview")
 
     tis_df = time_in_stage(conn)
 
@@ -407,7 +407,7 @@ def _render_rejection_patterns(conn: sqlite3.Connection) -> None:
     col1, col2, col3 = st.columns(3)
     col1.metric("Rejected in Latest Run", len(rejected_df))
     col2.metric("Rejected Companies", rejected_df["company"].nunique())
-    col3.metric("Rejected Title Families", rejected_df["title_family"].nunique())
+    col3.metric("Distinct Role Categories Rejected", rejected_df["title_family"].nunique())
 
     company_counts = (
         rejected_df.groupby("company")
@@ -442,7 +442,7 @@ def _render_rejection_patterns(conn: sqlite3.Connection) -> None:
         st.markdown("**Top Rejected Companies**")
         st.dataframe(company_counts.head(10), hide_index=True, use_container_width=True)
     with top_right:
-        st.markdown("**Rejected Title Families**")
+        st.markdown("**Rejected Role Categories**")
         st.dataframe(family_counts, hide_index=True, use_container_width=True)
 
     if not keyword_df.empty:
@@ -462,7 +462,7 @@ def _render_rejection_patterns(conn: sqlite3.Connection) -> None:
         )
         family_compare = family_counts.merge(applied_family, on="title_family", how="outer").fillna(0)
         family_compare["gap"] = family_compare["rejected_count"] - family_compare["applied_count"]
-        st.markdown("**Title Family Blind Spots**")
+        st.markdown("**Role Category Blind Spots** — categories you're filtered out of more than you advance")
         st.dataframe(
             family_compare.sort_values("gap", ascending=False),
             hide_index=True,
@@ -489,9 +489,19 @@ def _render_rejection_patterns(conn: sqlite3.Connection) -> None:
         for line in recommendations:
             st.markdown(f"- {line}")
 
-    with st.expander("Inspect latest rejected rows"):
+    with st.expander("Inspect latest filtered-out jobs"):
         show_cols = [c for c in ["company", "title", "score", "title_family", "drop_reason", "decision_reason", "penalized_keywords"] if c in rejected_df.columns]
-        st.dataframe(rejected_df[show_cols], hide_index=True, use_container_width=True)
+        st.dataframe(
+            rejected_df[show_cols],
+            column_config={
+                "title_family": st.column_config.TextColumn("Role Category"),
+                "drop_reason": st.column_config.TextColumn("Reason Filtered"),
+                "decision_reason": st.column_config.TextColumn("Scoring Details"),
+                "penalized_keywords": st.column_config.TextColumn("Penalizing Keywords"),
+            },
+            hide_index=True,
+            use_container_width=True,
+        )
 
 
 def _render_interview_signal_analysis(conn: sqlite3.Connection) -> None:
@@ -557,7 +567,7 @@ def _render_interview_signal_analysis(conn: sqlite3.Connection) -> None:
             }
         )
     signal_df = pd.DataFrame(signal_rows).sort_values(["pass_rate_pct", "count"], ascending=[False, False])
-    st.markdown("**Signal Win Rates**")
+    st.markdown("**Which Interview Signals Predict a Pass?**")
     st.dataframe(signal_df, hide_index=True, use_container_width=True)
 
     with st.expander("Latest interview debrief rows"):
@@ -587,12 +597,12 @@ def render_analytics(conn: sqlite3.Connection) -> None:
 
     tab_funnel, tab_score, tab_health, tab_company, tab_outcome, tab_reject, tab_resume, tab_interview = st.tabs([
         "Funnel",
-        "Score Analysis",
-        "Pipeline Health",
+        "Score Distribution",
+        "Pipeline Overview",
         "By Company",
-        "Score vs Outcome",
+        "Score vs. Outcome",
         "Rejection Patterns",
-        "Resume Gaps",
+        "Resume Keyword Gaps",
         "Interview Signals",
     ])
 

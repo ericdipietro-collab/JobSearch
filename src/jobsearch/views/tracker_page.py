@@ -1033,7 +1033,7 @@ def render_tracker(conn) -> None:
             "Status":    a["status"].title(),
             "Applied":   a["date_applied"] or "",
             "Fit":       "⭐" * int(a["fit_stars"]) if a["fit_stars"] else "—",
-            "JD Δ":      "Changed" if a["jd_needs_review"] else "",
+            "JD Updated": "Changed" if a["jd_needs_review"] else "",
             "Follow-up": fu_label,
         })
     df_tbl = pd.DataFrame(rows)
@@ -1055,7 +1055,7 @@ def render_tracker(conn) -> None:
         "Status":    st.column_config.TextColumn("Status",    width="medium"),
         "Applied":   st.column_config.TextColumn("Applied",   width="small"),
         "Fit":       st.column_config.TextColumn("Fit",       width="small"),
-        "JD Δ":      st.column_config.TextColumn("JD Δ",      width="small"),
+        "JD Updated": st.column_config.TextColumn("JD Updated", width="small"),
         "Follow-up": st.column_config.TextColumn("Follow-up", width="medium"),
     }
 
