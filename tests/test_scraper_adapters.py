@@ -253,6 +253,7 @@ class ScraperAdapterRegressionTests(unittest.TestCase):
         self.assertEqual(len(jobs), 1)
         self.assertEqual(jobs[0].url, "https://jobs.smartrecruiters.com/Visa/123456")
         self.assertEqual(jobs[0].location, "Denver, CO")
+        self.assertEqual(jobs[0].description_excerpt, "Department: Solutions")
 
     def test_smartrecruiters_adapter_paginates(self):
         def payload(url: str):
@@ -267,6 +268,13 @@ class ScraperAdapterRegressionTests(unittest.TestCase):
         adapter = _FakeSmartRecruitersAdapter(payload)
         jobs = adapter.scrape({"name": "Visa", "adapter_key": "Visa"})
         self.assertEqual(len(jobs), 101)
+
+    def test_workday_html_reserve_keeps_budget_for_api_phase(self):
+        budget_ms = 5000
+        html_reserve_ms = min(10000, max(budget_ms // 3, 0))
+        api_budget_ms = max(budget_ms - html_reserve_ms, 0)
+        self.assertEqual(html_reserve_ms, 1666)
+        self.assertEqual(api_budget_ms, 3334)
 
     def test_motionrecruitment_adapter_extracts_contract_detail_links(self):
         html = """

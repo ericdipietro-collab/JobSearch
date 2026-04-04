@@ -37,16 +37,6 @@ class SmartRecruitersAdapter(BaseAdapter):
                     job_id = hashlib.md5(f"{company_name}{title}{job_url}".encode()).hexdigest()
 
                     department = raw.get("department", {}).get("label", "N/A")
-                    description = raw.get("jobAd", {}).get("sections", {}) if isinstance(raw.get("jobAd"), dict) else {}
-                    description_parts = []
-                    if isinstance(description, dict):
-                        for section in description.values():
-                            if isinstance(section, dict):
-                                text = section.get("text")
-                                if text:
-                                    description_parts.append(str(text))
-                    if not description_parts:
-                        description_parts.append(f"Department: {department}")
 
                     job = Job(
                         id=job_id,
@@ -57,7 +47,7 @@ class SmartRecruitersAdapter(BaseAdapter):
                         source="SmartRecruiters",
                         adapter="smartrecruiters",
                         tier=str(company_config.get("tier", 4)),
-                        description_excerpt=" ".join(description_parts)
+                        description_excerpt=f"Department: {department}",
                     )
                     jobs.append(job)
 

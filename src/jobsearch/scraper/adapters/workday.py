@@ -33,7 +33,7 @@ class WorkdayAdapter(BaseAdapter):
         started_at = time.perf_counter()
         budget_override = company_config.get("scrape_budget_ms")
         budget_ms = int(settings.workday_scrape_budget_ms if budget_override is None else budget_override)
-        html_reserve_ms = min(settings.workday_html_fallback_budget_ms, max(budget_ms, 0))
+        html_reserve_ms = min(settings.workday_html_fallback_budget_ms, max(budget_ms // 3, 0))
         api_budget_ms = max(budget_ms - html_reserve_ms, 0)
         api_started_at = time.perf_counter()
 
