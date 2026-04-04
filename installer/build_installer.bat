@@ -86,13 +86,12 @@ if errorlevel 1 (
     pause
     exit /b 1
 )
-%BUILD_PY% -m pip download --only-binary=:all: hatchling -d "wheels"
+REM pyaml is a transitive dep of streamlit not listed in requirements.txt directly
+%BUILD_PY% -m pip download --only-binary=:all: pyaml -d "wheels"
 if errorlevel 1 (
-    echo.
-    echo  ERROR: Failed to download build backend wheel (hatchling).
-    pause
-    exit /b 1
+    echo  WARNING: Could not download pyaml wheel ^(non-fatal, PyPI fallback available^).
 )
+REM build backend is now setuptools (always bundled in any venv — no download needed)
 
 REM ── 4. Compile the installer ──────────────────────────────────────────────────
 echo.

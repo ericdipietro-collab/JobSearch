@@ -119,11 +119,13 @@ if "%NEEDS_DEPS%"=="1" (
     echo  Installing pinned runtime dependencies...
     python -m pip install -q --upgrade pip
     if exist "installer\wheels" (
-        python -m pip install -q --no-index --find-links installer\wheels -r requirements.txt
-        python -m pip install -q --no-index --find-links installer\wheels hatchling
+        REM --find-links prefers the bundled wheels for speed; no --no-index so pip
+        REM can fall back to PyPI for any transitive deps missing from the bundle.
+        python -m pip install -q --find-links installer\wheels -r requirements.txt
     ) else (
         python -m pip install -q -r requirements.txt
     )
+    REM setuptools is always present in any venv — no extra build backend needed.
     python -m pip install -q -e .
     if errorlevel 1 (
         echo.
