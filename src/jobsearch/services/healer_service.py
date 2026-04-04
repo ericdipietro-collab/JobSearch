@@ -29,6 +29,8 @@ class DiscoveryResult:
     detail: str
 
 class ATSHealer:
+    CACHE_TTL_S = 600.0
+    MAX_HTML_PARSE_CHARS = 500_000
     DIRECT_PROBE_TIMEOUTS = {
         "ashby": 5,
         "lever": 5,
@@ -138,8 +140,8 @@ class ATSHealer:
         self.session = session or get_shared_session()
         self.deep_timeout_s = deep_timeout_s
         self.discovery_budget_ms = settings.heal_discovery_budget_ms
-        self._validate_url_cache: Dict[str, bool] = {}
-        self._discovery_validation_cache: Dict[Tuple[str, str, str], bool] = {}
+        self._validate_url_cache: Dict[str, Tuple[float, bool]] = {}
+        self._discovery_validation_cache: Dict[Tuple[str, str, str], Tuple[float, bool]] = {}
         # Optional Deep Heal integration
         try:
             from deep_search import playwright_adapter
@@ -171,6 +173,30 @@ class ATSHealer:
         if remaining <= 0.0:
             return 0.1
         return max(0.5, min(preferred, remaining))
+
+    def _cache_get(self, cache: Dict[Any, Tuple[float, bool]], key: Any) -> Optional[bool]:
+        entry = cache.get(key)
+        if not entry:
+            return None
+        cached_at, value = entry
+        if (time.perf_counter() - cached_at) > self.CACHE_TTL_S:
+            cache.pop(key, None)
+            return None
+        return value
+
+    def _cache_set(self, cache: Dict[Any, Tuple[float, bool]], key: Any, value: bool) -> None:
+        cache[key] = (time.perf_counter(), value)
+
+    def _html_for_parse(self, html: str) -> str:
+        return str(html or "")[: self.MAX_HTML_PARSE_CHARS]
+
+    def _signal_words(self, name: str) -> List[str]:
+        name_l = str(name or "").lower()
+        words = [word for word in re.findall(r"[a-z0-9]+", name_l) if len(word) >= 2]
+        if words:
+            return words
+        compact = re.sub(r"[^a-z0-9]+", "", name_l)
+        return [compact] if compact else []
 
     def _phase_deadline(self, deadline: Optional[float], budget_ms: int) -> Optional[float]:
         phase = time.perf_counter() + max(0.0, float(budget_ms) / 1000.0)
@@ -211,8 +237,10 @@ class ATSHealer:
 
         adapter_key = str(company.get("adapter_key", "") or "").strip().lower()
         if adapter == "smartrecruiters" and adapter_key in {"fantastic", "_next"}:
+            logger.info("Suspicious smartrecruiters adapter_key for %s: %s", company.get("name", "Unknown"), adapter_key)
             return True
         if adapter == "rippling" and adapter_key in {"_next", "fantastic"}:
+            logger.info("Suspicious rippling adapter_key for %s: %s", company.get("name", "Unknown"), adapter_key)
             return True
 
         name = str(company.get("name", "") or "")
@@ -407,7 +435,7 @@ class ATSHealer:
                 if resp.status_code == 200 and "myworkdayjobs.com" in resp.url:
                     parsed = urlparse(resp.url)
                     # Key normalization: remove lang codes like /en-US
-                    clean_path = re.sub(r"/[a-z]{2}-[A-Z]{2}/?", "/", parsed.path).rstrip("/")
+                    clean_path = re.sub(r"/[a-z]{2}-[a-z]{2}/?", "/", parsed.path, flags=re.I).rstrip("/")
                     key = f"{parsed.netloc}{clean_path}"
                     
                     res = DiscoveryResult("workday", key, resp.url, "FOUND", f"Workday wd{n} probe ({site})")
@@ -430,20 +458,21 @@ class ATSHealer:
     def _validate_url(self, url: str, name: str) -> bool:
         if self._is_blacklisted(url): return False
         cache_key = f"{name.lower()}|{url}"
-        if cache_key in self._validate_url_cache:
-            return self._validate_url_cache[cache_key]
+        cached = self._cache_get(self._validate_url_cache, cache_key)
+        if cached is not None:
+            return cached
 
         try:
             resp = self.session.get(url, headers=self._get_headers(), timeout=8, allow_redirects=True)
             if resp.status_code != 200:
-                self._validate_url_cache[cache_key] = False
+                self._cache_set(self._validate_url_cache, cache_key, False)
                 return False
 
             is_valid = self._is_probable_careers_page(resp.text, resp.url, name) or self._looks_like_known_ats_url(resp.url)
-            self._validate_url_cache[cache_key] = is_valid
+            self._cache_set(self._validate_url_cache, cache_key, is_valid)
             return is_valid
         except Exception:
-            self._validate_url_cache[cache_key] = False
+            self._cache_set(self._validate_url_cache, cache_key, False)
             return False
 
     def _validate_existing_assignment(self, company: Dict[str, Any]) -> bool:
@@ -652,8 +681,9 @@ class ATSHealer:
         """Strict verification step for discovered ATS links."""
         if not result.careers_url: return False
         cache_key = (name.lower(), result.careers_url, result.adapter or "")
-        if cache_key in self._discovery_validation_cache:
-            return self._discovery_validation_cache[cache_key]
+        cached = self._cache_get(self._discovery_validation_cache, cache_key)
+        if cached is not None:
+            return cached
 
         try:
             resp = self.session.get(
@@ -663,23 +693,22 @@ class ATSHealer:
                 allow_redirects=True,
             )
             is_valid = self._validate_discovery_response(result, name, resp)
-            self._discovery_validation_cache[cache_key] = is_valid
+            self._cache_set(self._discovery_validation_cache, cache_key, is_valid)
             return is_valid
         except Exception:
-            self._discovery_validation_cache[cache_key] = False
+            self._cache_set(self._discovery_validation_cache, cache_key, False)
             return False
 
     def _validate_discovery_response(self, result: DiscoveryResult, name: str, resp: requests.Response) -> bool:
-        name_l = name.lower()
-        sig_words = [w for w in name_l.split() if len(w) > 2]
+        sig_words = self._signal_words(name)
         if not sig_words:
-            sig_words = [name_l]
+            return False
 
         final_url = resp.url or result.careers_url or ""
         status_code = resp.status_code
 
         if status_code == 200:
-            soup = BeautifulSoup(resp.text, "html.parser")
+            soup = BeautifulSoup(self._html_for_parse(resp.text), "html.parser")
             title_text = (soup.title.string or "").lower() if soup.title else ""
             body_text = soup.get_text().lower()
             evidence_matches = sum(1 for w in sig_words if w in title_text or w in body_text)
@@ -726,10 +755,9 @@ class ATSHealer:
     def _is_probable_careers_page(self, html: str, url: str, name: str) -> bool:
         if not self._looks_like_html(html):
             return False
-        text = BeautifulSoup(html, "html.parser").get_text(" ", strip=True).lower()
+        text = BeautifulSoup(self._html_for_parse(html), "html.parser").get_text(" ", strip=True).lower()
         url_l = url.lower()
-        name_l = name.lower()
-        sig_words = [word for word in re.findall(r"[a-z0-9]+", name_l) if len(word) > 2]
+        sig_words = self._signal_words(name)
         company_matches = sum(1 for word in sig_words if word in text)
         careers_signals = ["career", "careers", "job", "jobs", "opening", "openings", "join us", "working at"]
 

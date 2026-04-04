@@ -26,6 +26,9 @@ class Scorer:
         self.title_positive_keywords = [str(item).strip().lower() for item in title_cfg.get("positive_keywords", []) if str(item).strip()]
         self.negative_disqualifiers = title_cfg.get("negative_disqualifiers", [])
         self.must_have_modifiers = title_cfg.get("must_have_modifiers", [])
+        self.fast_track_base_score = float(title_cfg.get("fast_track_base_score", 0))
+        self.fast_track_min_weight = int(title_cfg.get("fast_track_min_weight", 8))
+        self.title_max_points = int(title_cfg.get("title_max_points", 25))
 
         kw_cfg = self.prefs.get("keywords", {})
         self.body_positive = self._pref_weight_pairs(kw_cfg.get("body_positive"), [])
@@ -341,16 +344,11 @@ class Scorer:
         title_points += partial_title_points
 
         base_score = 0.0
-        if any(pts >= 8 for _, pts in title_hits):
-            score = 50.0
-            base_score = 50.0
-        elif title_hits:
-            score = max(score, 15.0)
-            base_score = score
-        elif partial_hits:
-            score = max(score, 12.0)
-            base_score = score
+        if self.fast_track_base_score > 0 and any(pts >= self.fast_track_min_weight for _, pts in title_hits):
+            score = self.fast_track_base_score
+            base_score = self.fast_track_base_score
 
+        title_points = min(title_points, self.title_max_points)
         score += title_points
 
         jd_pos_hits = self._unique_weighted_hits(jd_blob, self.body_positive)
