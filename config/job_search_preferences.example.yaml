@@ -163,7 +163,9 @@ titles:
   - accountant
   - sales
   # Title weights — higher weight = stronger signal.
-  # Weight >= fast_track_min_weight triggers base score of fast_track_base_score.
+  # Weight >= fast_track_min_weight triggers an optional base score boost (fast_track_base_score).
+  # Set fast_track_base_score > 0 to give strong title matches a head-start (e.g. 50).
+  # title_max_points caps total title contribution regardless of how many keywords match.
   positive_weights:
     technical product manager: 8
     solution architect: 7
@@ -176,8 +178,9 @@ titles:
     principal product manager: 5
     staff product manager: 5
     program manager: 3
-  fast_track_base_score: 50
+  fast_track_base_score: 0
   fast_track_min_weight: 8
+  title_max_points: 25
 
 # ── Job description keyword scoring ──────────────────────────────────────────
 # Edit these to match your domain expertise and target market.

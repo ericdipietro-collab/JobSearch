@@ -6,6 +6,7 @@ import hashlib
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from typing import List, Optional, Dict, Any
+import pandas as pd
 from jobsearch.scraper.models import Job
 from jobsearch import ats_db
 
@@ -26,8 +27,6 @@ def _safe_float(val: Any) -> Optional[float]:
         return float(val)
     except (ValueError, TypeError):
         return None
-
-import pandas as pd
 
 _BUCKET_TO_STATUS: Dict[str, str] = {
     "APPLY NOW":     "considering",
