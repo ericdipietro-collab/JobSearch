@@ -11,6 +11,8 @@ import yaml
 
 from jobsearch.config.settings import settings
 from jobsearch import ats_db
+from jobsearch import __version__
+from jobsearch.views.style_utils import set_custom_style
 
 # ── Import Views ──────────────────────────────────────────────────────────────
 from jobsearch.views.home_page              import render_home
@@ -54,6 +56,61 @@ WORK_TYPE_LABELS = {
     "contract": "Contract",
     "unknown": "Unknown",
 }
+
+
+def _search_text_match(df: pd.DataFrame, query: str, columns: list[str]) -> pd.DataFrame:
+    text = str(query or "").strip().lower()
+    if df.empty or not text:
+        return df
+    haystack = pd.Series([""] * len(df), index=df.index, dtype=str)
+    for column in columns:
+        if column in df.columns:
+            haystack = haystack + " " + df[column].fillna("").astype(str).str.lower()
+    return df[haystack.str.contains(re.escape(text), na=False, regex=True)]
+
+
+def _bucket_thresholds_from_preferences() -> dict[str, float]:
+    prefs = load_yaml(settings.prefs_yaml)
+    rules = (((prefs.get("scoring") or {}).get("action_buckets") or {}).get("rules") or [])
+    apply_now = 88.0
+    review_today = 74.0
+    watch = 55.0
+    for rule in rules:
+        label = str(rule.get("label") or "").strip().upper()
+        when = rule.get("when") or {}
+        min_score = when.get("min_score")
+        if min_score is None:
+            continue
+        try:
+            min_score = float(min_score)
+        except (TypeError, ValueError):
+            continue
+        if label == "APPLY NOW":
+            apply_now = min(apply_now, min_score)
+        elif label == "REVIEW TODAY" and not when.get("tier_in") and not when.get("strong_title"):
+            review_today = min(review_today, min_score)
+        elif label == "WATCH" and when.get("eligible", False):
+            watch = min(watch, min_score)
+    return {"APPLY NOW": apply_now, "REVIEW TODAY": review_today, "WATCH": watch}
+
+
+def _format_score_details(raw: object) -> str:
+    text = str(raw or "").strip()
+    if not text.startswith("score="):
+        return text
+    pairs = dict(re.findall(r"([a-zA-Z_+-]+)=([^\s]+)", text))
+    total = pairs.get("score", "—")
+    title = pairs.get("title", "0")
+    jd_plus = pairs.get("body+", "0")
+    jd_minus = pairs.get("body-", "0")
+    tier = pairs.get("tier", "0")
+    comp = pairs.get("comp", "0")
+    contract = pairs.get("contract", "0")
+    location = pairs.get("location-", "0")
+    return (
+        f"Title {title} | JD +{jd_plus}/-{jd_minus} | Tier {tier} | "
+        f"Comp {comp} | Contract {contract} | Location -{location} | Total {total}"
+    )
 
 def _safe_render(fn, *args, page_name: str = "", **kwargs):
     try: fn(*args, **kwargs)
@@ -204,15 +261,17 @@ def _load_jobs_df() -> pd.DataFrame:
             lambda d: (now - datetime.fromisoformat(str(d).split('T')[0])).days if d and str(d).strip() else 0
         )
         
+        thresholds = _bucket_thresholds_from_preferences()
+
         def bucket(row):
             s = str(row.get("status", "")).lower()
             if s in ("applied", "screening", "interviewing", "offer", "accepted"): return "Applied"
             if s == "rejected": return "Rejected"
             if s == "withdrawn": return "Filtered Out"
             sc = float(row.get("score", 0) or 0)
-            if sc >= 85: return "APPLY NOW"
-            if sc >= 70: return "REVIEW TODAY"
-            if sc >= 50: return "WATCH"
+            if sc >= thresholds["APPLY NOW"]: return "APPLY NOW"
+            if sc >= thresholds["REVIEW TODAY"]: return "REVIEW TODAY"
+            if sc >= thresholds["WATCH"]: return "WATCH"
             return "MANUAL REVIEW"
             
         df["effective_bucket"] = df.apply(bucket, axis=1)
@@ -220,6 +279,8 @@ def _load_jobs_df() -> pd.DataFrame:
         
         for c in ("score", "fit_stars", "salary_low", "salary_high", "tier"):
             if c in df.columns: df[c] = pd.to_numeric(df[c], errors="coerce")
+        if "decision_reason" in df.columns:
+            df["decision_reason"] = df["decision_reason"].map(_format_score_details)
             
         return df
     finally: conn.close()
@@ -238,6 +299,8 @@ def _load_rejected_jobs_df() -> pd.DataFrame:
     for col in ["matched_keywords", "penalized_keywords", "decision_reason", "drop_reason", "url"]:
         if col in df.columns:
             df[col] = df[col].astype(str)
+    if "decision_reason" in df.columns:
+        df["decision_reason"] = df["decision_reason"].map(_format_score_details)
     return df
 
 def _load_manual_review_lines():
@@ -408,17 +471,23 @@ def _extract_resume_text(uploaded_file) -> tuple[str, str]:
 
 def main():
     st.set_page_config(page_title="Job Search", page_icon="💼", layout="wide")
+    set_custom_style()
     
-    st.sidebar.title("💼 Job Search")
-    nav = ["Home", "Job Matches", "My Applications", "Journal", "Contacts", "Company Profiles", "Training", "Question Bank", "Weekly Report", "Templates", "Pipeline", "Analytics", "Run Job Search", "Search Settings", "Target Companies"]
-    page = st.sidebar.radio("Navigate", nav, label_visibility="collapsed")
-    
-    df_all = _load_jobs_df()
-    if not df_all.empty:
-        sidebar_metrics = _sidebar_metrics_for_df(df_all)
-        st.sidebar.metric("New Job Leads", sidebar_metrics["scraped_leads"])
-        st.sidebar.metric("In Tracker", sidebar_metrics["tracked"])
-        st.sidebar.metric("Active Applications", sidebar_metrics["active"])
+    with st.sidebar:
+        st.title("💼 Job Search")
+        st.caption(f"v{__version__}")
+        st.markdown("<div style='margin-bottom: 1.5rem;'></div>", unsafe_allow_html=True)
+        
+        nav = ["Home", "Job Matches", "My Applications", "Journal", "Contacts", "Company Profiles", "Training", "Question Bank", "Weekly Report", "Templates", "Pipeline", "Analytics", "Run Job Search", "Search Settings", "Target Companies"]
+        page = st.radio("Navigation", nav)
+        
+        st.markdown("---")
+        df_all = _load_jobs_df()
+        if not df_all.empty:
+            sidebar_metrics = _sidebar_metrics_for_df(df_all)
+            c1, c2 = st.columns(2)
+            c1.metric("Leads", sidebar_metrics["scraped_leads"])
+            c2.metric("Active", sidebar_metrics["active"])
     
     if page == "Home":
         conn = ats_db.get_connection(); _safe_render(render_home, conn, page_name="Home")
@@ -471,6 +540,11 @@ def main():
             ],
             index=0,
         )
+        search_query = st.text_input(
+            "Search visible jobs",
+            value="",
+            placeholder="Filter by company, title, location, keywords, or scoring details…",
+        )
         st.caption("Employment type counts are shown for current matches only. Many job postings don't specify a work type, so they appear as Unknown.")
         ann = {r["job_key"]: dict(r) for r in ats_db.get_all_annotations(ats_db.get_connection())}
         tabs = st.tabs(["🔥 Apply Now", "📋 Review Today", "👀 Watch", "🔍 Manual Review", "🚫 Filtered Out"])
@@ -480,6 +554,11 @@ def main():
             with tab:
                 b_df = df_all[df_all["effective_bucket"] == name].copy()
                 b_df = _apply_work_type_filter(b_df, work_type_filter).copy()
+                b_df = _search_text_match(
+                    b_df,
+                    search_query,
+                    ["company", "title", "location", "matched_keywords", "decision_reason", "url"],
+                )
                 if b_df.empty: st.info(f"No jobs in {name}"); continue
                 if name == "APPLY NOW": _render_apply_now_cards(b_df)
                 
@@ -531,6 +610,12 @@ def main():
                 pd.DataFrame(manual_review_items),
                 work_type_filter,
             ) if manual_review_items else pd.DataFrame()
+            if not filtered_manual_review.empty:
+                filtered_manual_review = _search_text_match(
+                    filtered_manual_review,
+                    search_query,
+                    ["company", "adapter", "note", "url"],
+                )
             if filtered_manual_review.empty and not manual_review_items:
                 st.info("No manual-review items recorded for the latest run.")
             else:
@@ -610,6 +695,11 @@ def main():
 
         with tabs[4]:
             filtered_rejected_df = _apply_work_type_filter(rejected_df, work_type_filter).copy()
+            filtered_rejected_df = _search_text_match(
+                filtered_rejected_df,
+                search_query,
+                ["company", "title", "location", "adapter", "drop_reason", "decision_reason", "url"],
+            )
             if filtered_rejected_df.empty:
                 st.info("No filtered-out jobs recorded for the latest pipeline run.")
             else:
@@ -976,7 +1066,7 @@ def main():
         registry_path = registry_options[registry_label]
         data = load_yaml(registry_path)
         cos = data.get("companies", [])
-        t1, t2, t3, t4 = st.tabs(["List", "Add / Edit", "Fix Job Listings", "Advanced Editor"])
+        t1, t2, t3, t4, t5 = st.tabs(["List", "Add / Edit", "Fix Job Listings", "Advanced Editor", "Scraper Health"])
         with t1:
             df_companies = pd.DataFrame(cos).reset_index(names="__idx")
             if not df_companies.empty:
@@ -1106,6 +1196,47 @@ def main():
             raw = registry_path.read_text(encoding="utf-8") if registry_path.exists() else ""
             new_raw = st.text_area("Raw Company List", value=raw, height=600)
             if st.button("Save Company List"): registry_path.write_text(new_raw, encoding="utf-8"); st.success(f"Saved {registry_path.name}.")
+
+        with t5:
+            conn = ats_db.get_connection()
+            try:
+                health_rows = pd.DataFrame([dict(row) for row in ats_db.get_scraper_health_rows(conn)])
+            finally:
+                conn.close()
+            if health_rows.empty:
+                st.info("No scraper health data recorded yet. Run the pipeline first.")
+            else:
+                health_rows["empty_streak"] = pd.to_numeric(health_rows["empty_streak"], errors="coerce").fillna(0).astype(int)
+                health_rows["success_count"] = pd.to_numeric(health_rows["success_count"], errors="coerce").fillna(0).astype(int)
+                health_rows["last_evaluated"] = pd.to_numeric(health_rows["last_evaluated"], errors="coerce").fillna(0).astype(int)
+                health_rows["dark_for_7d"] = health_rows["empty_streak"].ge(3) & health_rows["last_evaluated"].eq(0)
+                c1, c2 = st.columns(2)
+                c1.metric("Tracked Health Rows", len(health_rows))
+                c2.metric("Companies Dark 7d+", int(health_rows["dark_for_7d"].sum()))
+                health_query = st.text_input("Search scraper health", value="", placeholder="Company, adapter, status, notes…", key="scraper_health_search")
+                filtered_health = _search_text_match(
+                    health_rows,
+                    health_query,
+                    ["company", "adapter_family", "last_status", "notes", "careers_url"],
+                )
+                st.dataframe(
+                    filtered_health[
+                        [
+                            "company",
+                            "adapter_family",
+                            "last_status",
+                            "empty_streak",
+                            "success_count",
+                            "last_evaluated",
+                            "cooldown_until",
+                            "last_elapsed_ms",
+                            "dark_for_7d",
+                            "careers_url",
+                        ]
+                    ],
+                    hide_index=True,
+                    use_container_width=True,
+                )
 
     elif page == "Run Job Search":
         st.title("Run Search Pipeline")

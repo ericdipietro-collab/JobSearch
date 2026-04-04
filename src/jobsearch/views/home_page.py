@@ -11,6 +11,7 @@ import streamlit as st
 
 from jobsearch import ats_db as db
 from jobsearch.views.setup_wizard_page import render_setup_checklist
+from jobsearch.views.style_utils import feed_item, empty_state
 
 EVENT_ICONS = {
     "applied":             "📨",
@@ -37,7 +38,9 @@ def render_home(conn) -> None:
 
     render_setup_checklist(conn)
 
-    st.markdown("Your job search at a glance.")
+    st.title("Welcome Back")
+    st.markdown("<p style='color: #64748b; font-size: 1.1rem; margin-top: -1rem;'>Here is your job search at a glance.</p>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-bottom: 2rem;'></div>", unsafe_allow_html=True)
 
     # ── Top KPI row ───────────────────────────────────────────────────────────
     today = date.today()
@@ -51,45 +54,52 @@ def render_home(conn) -> None:
     active_count    = db.apply_now_count(conn)
 
     k1, k2, k3, k4 = st.columns(4)
-    k1.metric("Active Applications", active_count)
-    k2.metric(
-        "Weekly Activities",
-        f"{weekly_count} / {weekly_goal}",
-        delta="on track" if weekly_count >= weekly_goal else f"need {weekly_goal - weekly_count} more",
-        delta_color="normal" if weekly_count >= weekly_goal else "inverse",
-    )
-    k3.metric("Follow-ups Overdue", overdue_count, delta_color="inverse" if overdue_count else "off")
-    k4.metric("Interviews This Week", len(interviews_week))
+    with k1:
+        st.metric("Active Apps", active_count)
+    with k2:
+        st.metric(
+            "Weekly Goal",
+            f"{weekly_count} / {weekly_goal}",
+            delta="On Track" if weekly_count >= weekly_goal else f"-{weekly_goal - weekly_count}",
+            delta_color="normal" if weekly_count >= weekly_goal else "inverse",
+        )
+    with k3:
+        st.metric("Overdue", overdue_count, delta_color="inverse" if overdue_count else "off")
+    with k4:
+        st.metric("Interviews", len(interviews_week))
 
     # ── Weekly activity progress bar ─────────────────────────────────────────
-    st.divider()
-    st.subheader("This Week", anchor=False)
-    pct = min(weekly_count / weekly_goal, 1.0) if weekly_goal else 0.0
-    if weekly_count >= weekly_goal:
-        st.success(f"✅ Weekly goal met: {weekly_count} / {weekly_goal} activities")
-    else:
-        st.progress(pct, text=f"{weekly_count} / {weekly_goal} activities this week")
+    st.markdown("<div style='margin-bottom: 2rem;'></div>", unsafe_allow_html=True)
+    
+    with st.container(border=True):
+        st.subheader("Weekly Progress", anchor=False)
+        pct = min(weekly_count / weekly_goal, 1.0) if weekly_goal else 0.0
+        if weekly_count >= weekly_goal:
+            st.success(f"Goal met: {weekly_count} / {weekly_goal} activities")
+        else:
+            st.progress(pct, text=f"{weekly_count} / {weekly_goal} activities this week")
 
-    if interviews_week:
-        st.caption("**Upcoming interviews**")
-        for iv in interviews_week:
-            sched = iv["scheduled_at"] or ""
-            try:
-                sched_fmt = datetime.fromisoformat(sched).strftime("%a %b %d %I:%M %p")
-            except Exception:
-                sched_fmt = sched[:16]
-            st.info(
-                f"🗓️ **{iv['company']}** — {iv['role']}  "
-                f"| {(iv['interview_type'] or 'interview').replace('_',' ').title()}  "
-                f"| {sched_fmt}"
-            )
+        if interviews_week:
+            st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
+            for iv in interviews_week:
+                sched = iv["scheduled_at"] or ""
+                try:
+                    sched_fmt = datetime.fromisoformat(sched).strftime("%a %b %d %I:%M %p")
+                except Exception:
+                    sched_fmt = sched[:16]
+                st.info(
+                    f"🗓️ **{iv['company']}** — {iv['role']}  "
+                    f"| {(iv['interview_type'] or 'interview').replace('_',' ').title()}  "
+                    f"| {sched_fmt}"
+                )
 
     # ── Pipeline snapshot ─────────────────────────────────────────────────────
-    st.divider()
-    st.subheader("Pipeline", anchor=False)
+    st.markdown("<div style='margin-bottom: 2.5rem;'></div>", unsafe_allow_html=True)
+    st.subheader("Application Pipeline", anchor=False)
 
     overdue_followups = db.follow_up_due(conn)
     upcoming_followups = db.follow_up_upcoming(conn, days=3)
+    ghosted_apps = db.potentially_ghosted_applications(conn, days_without_response=14, limit=8)
     if overdue_followups or upcoming_followups:
         st.caption("**Follow-up queue**")
         q1, q2 = st.columns(2)
@@ -107,6 +117,17 @@ def render_home(conn) -> None:
                     st.markdown(f"- **{app['company']}** â€” {app['role']}  \nDue {app['follow_up_date']}")
             else:
                 st.caption("No upcoming follow-ups.")
+
+    if ghosted_apps:
+        st.warning(
+            f"Potentially ghosted: {len(ghosted_apps)} application{'s' if len(ghosted_apps) != 1 else ''} "
+            f"have had no response for 14+ days.",
+            icon="👻",
+        )
+        for app in ghosted_apps[:5]:
+            st.markdown(
+                f"- **{app['company']}** — {app['role']}  \nApplied {app['date_applied']}"
+            )
 
     snapshot = db.pipeline_snapshot(conn)
     active_statuses = ["applied", "screening", "interviewing", "offer"]
@@ -202,23 +223,26 @@ def render_home(conn) -> None:
             st.caption("No active applications yet.")
 
     # ── Recent activity feed ──────────────────────────────────────────────────
-    st.divider()
+    st.markdown("<div style='margin-bottom: 2rem;'></div>", unsafe_allow_html=True)
     st.subheader("Recent Activity", anchor=False)
 
     recent = db.get_recent_events(conn, limit=10)
     if not recent:
-        st.caption("No activity recorded yet.")
+        empty_state("📝", "No activity yet", "Your recent application events and networking calls will show up here.")
     else:
-        for ev in recent:
-            icon  = EVENT_ICONS.get(ev["event_type"], "•")
-            label = db.EVENT_LABELS.get(ev["event_type"], ev["event_type"].replace("_", " ").title())
-            d_str = ev["event_date"][:10] if ev["event_date"] else ""
-            try:
-                d_fmt = date.fromisoformat(d_str).strftime("%b %d")
-            except Exception:
-                d_fmt = d_str
-            st.markdown(
-                f'{icon} **{ev["company"]}** — {ev["role"] or ""}  '
-                f'<span style="color:#9ca3af;font-size:.8rem">{label} · {d_fmt}</span>',
-                unsafe_allow_html=True,
-            )
+        with st.container(border=True):
+            for ev in recent:
+                icon  = EVENT_ICONS.get(ev["event_type"], "•")
+                label = db.EVENT_LABELS.get(ev["event_type"], ev["event_type"].replace("_", " ").title())
+                d_str = ev["event_date"][:10] if ev["event_date"] else ""
+                try:
+                    d_fmt = date.fromisoformat(d_str).strftime("%b %d")
+                except Exception:
+                    d_fmt = d_str
+                
+                feed_item(
+                    icon=icon,
+                    title=ev["company"],
+                    subtitle=f"{ev['role'] or ''} • {label}",
+                    date_text=d_fmt
+                )

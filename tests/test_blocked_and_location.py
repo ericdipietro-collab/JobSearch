@@ -39,11 +39,13 @@ from jobsearch import ats_db as db
 from jobsearch.config.settings import settings
 from jobsearch.scraper.models import Job
 from jobsearch.app_main import (
+    _bucket_thresholds_from_preferences,
     _annualized_compensation_preview,
     _apply_work_type_filter,
     _disable_company_in_registry,
     _decorate_role_velocity,
     _extract_resume_text,
+    _format_score_details,
     _normalize_work_type,
     _parse_manual_review_lines,
     _role_velocity_summary,
@@ -244,6 +246,50 @@ class BlockedAndLocationTests(unittest.TestCase):
         self.assertEqual(int(row["empty_streak"]), 0)
         self.assertEqual(int(row["last_evaluated"]), 42)
         self.assertIsNone(row["cooldown_until"])
+        conn.close()
+
+    def test_bucket_thresholds_follow_preferences_file(self):
+        thresholds = _bucket_thresholds_from_preferences()
+        self.assertEqual(thresholds["APPLY NOW"], 88.0)
+        self.assertEqual(thresholds["REVIEW TODAY"], 74.0)
+        self.assertEqual(thresholds["WATCH"], 55.0)
+
+    def test_format_score_details_humanizes_raw_reason(self):
+        formatted = _format_score_details(
+            "score=68.0 base=0.0 title=10 body+=47 body-=0 tier=8 partial=0 gate=0 "
+            "location-=0 comp=6 contract=0 work_type=fte normalized_comp=165000 hits=7"
+        )
+        self.assertIn("Title 10", formatted)
+        self.assertIn("JD +47/-0", formatted)
+        self.assertIn("Total 68.0", formatted)
+
+    def test_potentially_ghosted_applications_detects_old_applied_roles(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        db.init_db(conn)
+        conn.execute(
+            """
+            INSERT INTO applications (company, role, job_url, source, scraper_key, status, score, fit_band, date_applied, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "GhostedCo",
+                "Senior PM",
+                "https://example.com/job",
+                "Example",
+                "ghosted-1",
+                "applied",
+                92,
+                "Strong Match",
+                "2026-03-01",
+                "2026-03-01T00:00:00+00:00",
+                "2026-03-01T00:00:00+00:00",
+            ),
+        )
+        conn.commit()
+        rows = db.potentially_ghosted_applications(conn, days_without_response=14)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["company"], "GhostedCo")
         conn.close()
 
     def test_generic_target_health_blocked_enters_cooldown(self):

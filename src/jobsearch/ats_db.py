@@ -1787,6 +1787,47 @@ def follow_up_upcoming(conn: sqlite3.Connection, days: int = 3) -> List[sqlite3.
     ).fetchall()
 
 
+def potentially_ghosted_applications(
+    conn: sqlite3.Connection,
+    *,
+    days_without_response: int = 14,
+    limit: Optional[int] = 20,
+) -> List[sqlite3.Row]:
+    query = """
+        SELECT a.*
+        FROM applications a
+        WHERE a.status = 'applied'
+          AND a.date_applied IS NOT NULL
+          AND date(a.date_applied) <= date('now', ?)
+          AND NOT EXISTS (
+              SELECT 1
+              FROM interviews i
+              WHERE i.application_id = a.id
+          )
+          AND NOT EXISTS (
+              SELECT 1
+              FROM events e
+              WHERE e.application_id = a.id
+                AND e.event_type IN (
+                    'follow_up_sent',
+                    'screening_scheduled',
+                    'screening_complete',
+                    'interview_scheduled',
+                    'interview_complete',
+                    'offer_received',
+                    'rejected',
+                    'withdrawn'
+                )
+          )
+        ORDER BY a.date_applied ASC, a.updated_at ASC
+    """
+    params: List[Any] = [f"-{int(days_without_response)} days"]
+    if limit is not None:
+        query += " LIMIT ?"
+        params.append(limit)
+    return conn.execute(query, params).fetchall()
+
+
 def upcoming_interviews(conn: sqlite3.Connection, days: int = 14, limit: Optional[int] = None) -> List[sqlite3.Row]:
     start = datetime.now().isoformat()
     end = (datetime.now() + timedelta(days=days)).isoformat()
@@ -1804,6 +1845,21 @@ def upcoming_interviews(conn: sqlite3.Connection, days: int = 14, limit: Optiona
         query += " LIMIT ?"
         params.append(limit)
     return conn.execute(query, params).fetchall()
+
+
+def get_scraper_health_rows(conn: sqlite3.Connection) -> List[sqlite3.Row]:
+    return conn.execute(
+        """
+        SELECT company, 'workday' AS adapter_family, careers_url, empty_streak, success_count,
+               last_evaluated, cooldown_until, last_status, last_elapsed_ms, notes, updated_at
+        FROM workday_target_health
+        UNION ALL
+        SELECT company, 'generic' AS adapter_family, careers_url, empty_streak, success_count,
+               last_evaluated, cooldown_until, last_status, last_elapsed_ms, notes, updated_at
+        FROM generic_target_health
+        ORDER BY updated_at DESC, company ASC
+        """
+    ).fetchall()
 
 
 def upcoming_interviews_this_week(conn: sqlite3.Connection) -> List[sqlite3.Row]:

@@ -948,6 +948,10 @@ def render_tracker(conn) -> None:
             st.toast(f"Imported {n} applications from ApplicationTracker.csv", icon="📂")
         st.session_state["tracker_csv_seeded"] = True
 
+    st.title("Application Tracker")
+    st.markdown("<p style='color: #64748b; font-size: 1.1rem; margin-top: -1rem;'>Manage and track your active job applications.</p>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-bottom: 2rem;'></div>", unsafe_allow_html=True)
+
     _render_followup_banner(conn)
     _render_summary_bar(conn)
     _render_linkedin_import(conn)
@@ -1052,11 +1056,11 @@ def render_tracker(conn) -> None:
         "Type":      st.column_config.TextColumn("Type",      width="small"),
         "Company":   st.column_config.TextColumn("Company",   width="medium"),
         "Role":      st.column_config.TextColumn("Role",      width="large"),
-        "Status":    st.column_config.TextColumn("Status",    width="medium"),
+        "Status":    st.column_config.TextColumn("Status",    width="small"),
         "Applied":   st.column_config.TextColumn("Applied",   width="small"),
         "Fit":       st.column_config.TextColumn("Fit",       width="small"),
         "JD Updated": st.column_config.TextColumn("JD Updated", width="small"),
-        "Follow-up": st.column_config.TextColumn("Follow-up", width="medium"),
+        "Follow-up": st.column_config.TextColumn("Follow-up", width="small"),
     }
 
     bulk_mode = st.session_state.get("tracker_bulk_mode", False)
@@ -1227,22 +1231,24 @@ def _render_jd_change_banner(conn) -> None:
 def _render_summary_bar(conn) -> None:
     metrics = _summary_metrics_for_rows(_formal_tracker_rows(db.get_applications(conn)))
 
-    cols = st.columns(6)
-    cards = [
-        ("Total", metrics["total"], None),
-        ("Active", metrics["active"], None),
-        ("Interviewing", metrics["interviewing"], None),
-        ("Offers", metrics["offers"], None),
-        ("Accepted", metrics["accepted"], None),
-        ("Rejected", metrics["rejected"], None),
-    ]
-    for col, (label, val, delta) in zip(cols, cards):
-        col.metric(label, val, delta)
+    with st.container(border=True):
+        cols = st.columns(6)
+        cards = [
+            ("Total", metrics["total"], None),
+            ("Active", metrics["active"], None),
+            ("Interviewing", metrics["interviewing"], None),
+            ("Offers", metrics["offers"], None),
+            ("Accepted", metrics["accepted"], None),
+            ("Rejected", metrics["rejected"], None),
+        ]
+        for col, (label, val, delta) in zip(cols, cards):
+            col.metric(label, val, delta)
 
     # Upcoming interviews
     upcoming = db.upcoming_interviews(conn, limit=3)
     if upcoming:
-        st.caption("**Upcoming interviews**")
+        st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
+        st.subheader("Upcoming Interviews", anchor=False)
         for iv in upcoming:
             st.info(
                 f"🗓 **{iv['company']}** — {iv['role']}  "
