@@ -34,6 +34,7 @@ from jobsearch.cli import (
 )
 from jobsearch.services.gmail_sync_service import _parse_imap_message
 from jobsearch.services.opportunity_service import _is_material_jd_change, _jd_fingerprint
+from jobsearch.services.healer_service import ATSHealer
 from jobsearch import ats_db as db
 from jobsearch.config.settings import settings
 from jobsearch.app_main import (
@@ -154,6 +155,13 @@ class BlockedAndLocationTests(unittest.TestCase):
         self.assertFalse(company["manual_only_suggested"])
         self.assertNotIn("cooldown_until", company)
         self.assertNotIn("heal_last_failure_detail", company)
+
+    def test_healer_discovery_budget_exhausts_immediately(self):
+        healer = ATSHealer(session=None)
+        healer.discovery_budget_ms = 0
+        result = healer.discover({"name": "SlowCo", "domain": "slowco.example", "careers_url": ""}, force=False, deep=False)
+        self.assertEqual(result.status, "NOT_FOUND")
+        self.assertEqual(result.detail, "Discovery budget exhausted")
 
     def test_workday_target_health_cooldown_skips_company(self):
         original_db_path = db.DB_PATH
@@ -1367,6 +1375,62 @@ class BlockedAndLocationTests(unittest.TestCase):
         matched = db.find_best_application_match(conn, "Pinnacle", "Enterprise Architect")
         self.assertIsNotNone(matched)
         self.assertEqual(matched["id"], app_id)
+
+    def test_generic_target_health_enters_cooldown_for_repeated_slow_empty(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        db.init_db(conn)
+        db.update_generic_target_health(
+            conn,
+            company="Slow Generic",
+            careers_url="https://example.com/careers",
+            status="empty",
+            elapsed_ms=20000,
+            evaluated_count=0,
+            cooldown_days=0,
+            notes="No jobs detected",
+        )
+        db.update_generic_target_health(
+            conn,
+            company="Slow Generic",
+            careers_url="https://example.com/careers",
+            status="empty",
+            elapsed_ms=22000,
+            evaluated_count=0,
+            cooldown_days=7,
+            notes="No jobs detected",
+        )
+        row = db.get_generic_target_health(conn, "Slow Generic")
+        self.assertEqual(row["empty_streak"], 2)
+        self.assertTrue(row["cooldown_until"])
+
+    def test_generic_target_health_resets_after_success(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        db.init_db(conn)
+        db.update_generic_target_health(
+            conn,
+            company="Recovered Generic",
+            careers_url="https://example.com/careers",
+            status="empty",
+            elapsed_ms=21000,
+            evaluated_count=0,
+            cooldown_days=7,
+            notes="No jobs detected",
+        )
+        db.update_generic_target_health(
+            conn,
+            company="Recovered Generic",
+            careers_url="https://example.com/careers",
+            status="ok",
+            elapsed_ms=800,
+            evaluated_count=5,
+            cooldown_days=0,
+            notes="Recovered",
+        )
+        row = db.get_generic_target_health(conn, "Recovered Generic")
+        self.assertEqual(row["empty_streak"], 0)
+        self.assertEqual(row["success_count"], 1)
 
 
 if __name__ == "__main__":

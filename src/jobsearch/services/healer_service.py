@@ -81,10 +81,61 @@ class ATSHealer:
         ("generic", "happydance.com"),
         ("generic", "onetrust.com"),
     ]
+    GENERIC_POSITIVE_URL_MARKERS = [
+        "/careers",
+        "/career",
+        "/jobs",
+        "/job-search",
+        "/join-us",
+        "/openings",
+        "/positions",
+        "/work-with-us",
+    ]
+    GENERIC_NEGATIVE_URL_MARKERS = [
+        "/about",
+        "/leadership",
+        "/company",
+        "/solutions",
+        "/solution",
+        "/platform",
+        "/products",
+        "/product",
+        "/integrations",
+        "/integration",
+        "/investor",
+        "/news",
+        "/blog",
+        "/press",
+        "/customers",
+        "/contact",
+    ]
+    GENERIC_POSITIVE_TEXT_MARKERS = [
+        "career opportunities",
+        "current openings",
+        "current opportunities",
+        "join our team",
+        "open positions",
+        "open roles",
+        "search jobs",
+        "view open roles",
+        "we're hiring",
+        "work with us",
+    ]
+    GENERIC_NEGATIVE_TEXT_MARKERS = [
+        "leadership team",
+        "product overview",
+        "platform overview",
+        "customer stories",
+        "investor relations",
+        "our solutions",
+        "request a demo",
+        "contact sales",
+    ]
 
     def __init__(self, session: Optional[requests.Session] = None, deep_timeout_s: float = 20.0):
         self.session = session or get_shared_session()
         self.deep_timeout_s = deep_timeout_s
+        self.discovery_budget_ms = settings.heal_discovery_budget_ms
         self._validate_url_cache: Dict[str, bool] = {}
         self._discovery_validation_cache: Dict[Tuple[str, str, str], bool] = {}
         # Optional Deep Heal integration
@@ -103,6 +154,21 @@ class ATSHealer:
 
     def _probe_timeout(self, adapter: Optional[str]) -> int:
         return self.DIRECT_PROBE_TIMEOUTS.get(adapter or "", 5)
+
+    def _remaining_budget_s(self, deadline: Optional[float]) -> float:
+        if deadline is None:
+            return float(self.discovery_budget_ms) / 1000.0
+        return max(0.0, deadline - time.perf_counter())
+
+    def _timed_out(self, deadline: Optional[float]) -> bool:
+        return self._remaining_budget_s(deadline) <= 0.0
+
+    def _request_timeout(self, adapter: Optional[str], deadline: Optional[float], default: float | None = None) -> float:
+        preferred = float(default if default is not None else self._probe_timeout(adapter))
+        remaining = self._remaining_budget_s(deadline)
+        if remaining <= 0.0:
+            return 0.1
+        return max(0.5, min(preferred, remaining))
 
     def _domain_suggested_adapter(self, domain: str) -> Optional[str]:
         domain_l = str(domain or "").lower()
@@ -153,6 +219,7 @@ class ATSHealer:
     def discover(self, company: Dict[str, Any], force: bool = False, deep: bool = False) -> DiscoveryResult:
         name = company.get("name", "Unknown")
         existing_url = company.get("careers_url", "")
+        deadline = time.perf_counter() + (float(self.discovery_budget_ms) / 1000.0)
         
         # 0. Manual Override check
         if company.get("heal_skip") and not force:
@@ -178,11 +245,11 @@ class ATSHealer:
         domain_hint = self._domain_suggested_adapter(domain)
 
         # 2. "Company First" - Waterfall Discovery (Find official page)
-        res = self._waterfall_discovery(domain, name)
+        res = self._waterfall_discovery(domain, name, deadline)
         
         # 3. Web Search
         if not res or res.status == "FALLBACK":
-            search_res = self._search_discovery(name, domain)
+            search_res = self._search_discovery(name, domain, deadline)
             if search_res and search_res.status == "FOUND":
                 res = search_res
 
@@ -195,51 +262,62 @@ class ATSHealer:
             direct_probe_order = [domain_hint] + [adapter for adapter in direct_probe_order if adapter != domain_hint]
 
         for s in slug_candidates:
+            if self._timed_out(deadline):
+                break
             for adapter_name in direct_probe_order:
+                if self._timed_out(deadline):
+                    break
                 if adapter_name == "greenhouse":
                     for gh_domain in ["job-boards.greenhouse.io", "boards.greenhouse.io"]:
-                        probe = self._probe_direct(f"https://{gh_domain}/{s}", "greenhouse", s, name)
+                        if self._timed_out(deadline):
+                            break
+                        probe = self._probe_direct(f"https://{gh_domain}/{s}", "greenhouse", s, name, deadline)
                         if probe:
                             return probe
                 elif adapter_name == "lever":
-                    probe = self._probe_direct(f"https://jobs.lever.co/{s}", "lever", s, name)
+                    probe = self._probe_direct(f"https://jobs.lever.co/{s}", "lever", s, name, deadline)
                     if not probe:
-                        probe = self._probe_direct(f"https://api.lever.co/v0/postings/{s}?mode=json", "lever", s, name)
+                        probe = self._probe_direct(f"https://api.lever.co/v0/postings/{s}?mode=json", "lever", s, name, deadline)
                     if probe:
                         return probe
                 elif adapter_name == "ashby":
-                    probe = self._probe_direct(f"https://jobs.ashbyhq.com/{s}", "ashby", s, name)
+                    probe = self._probe_direct(f"https://jobs.ashbyhq.com/{s}", "ashby", s, name, deadline)
                     if not probe:
-                        probe = self._probe_direct(f"https://api.ashbyhq.com/posting-api/job-board/{s}", "ashby", s, name)
+                        probe = self._probe_direct(f"https://api.ashbyhq.com/posting-api/job-board/{s}", "ashby", s, name, deadline)
                     if probe:
                         return probe
 
         # 6. Workday Sweep (Guessing wd1..wd25)
-        wd_res = self._probe_workday(slug, name)
+        wd_res = self._probe_workday(slug, name, deadline)
         if wd_res: return wd_res
 
         # 7. Final fallback
         if res:
-            if deep and res.status in {"FALLBACK", "BLOCKED"} and self.playwright:
-                deep_res = self._deep_heal(res.careers_url or existing_url, name, domain)
+            if deep and not self._timed_out(deadline) and res.status in {"FALLBACK", "BLOCKED"} and self.playwright:
+                deep_res = self._deep_heal(res.careers_url or existing_url, name, domain, deadline)
                 if deep_res: return deep_res
             return res
 
         # 8. Deep Heal (Final Attempt)
-        if deep and self.playwright:
+        if deep and not self._timed_out(deadline) and self.playwright:
             target_url = existing_url or f"https://{domain}"
-            deep_res = self._deep_heal(target_url, name, domain)
+            deep_res = self._deep_heal(target_url, name, domain, deadline)
             if deep_res: return deep_res
 
+        if self._timed_out(deadline):
+            return DiscoveryResult(None, None, None, "NOT_FOUND", "Discovery budget exhausted")
         return DiscoveryResult(None, None, None, "NOT_FOUND", "No board detected")
 
-    def _deep_heal(self, url: str, name: str, domain: str) -> Optional[DiscoveryResult]:
+    def _deep_heal(self, url: str, name: str, domain: str, deadline: Optional[float] = None) -> Optional[DiscoveryResult]:
         """Call the playwright adapter for deep discovery."""
         if not self.playwright: return None
         try:
+            remaining = self._remaining_budget_s(deadline)
+            if remaining <= 0.0:
+                return None
             with ThreadPoolExecutor(max_workers=1) as executor:
                 future = executor.submit(self.playwright.deep_heal_company, url, name, comp_domain=domain)
-                raw = future.result(timeout=self.deep_timeout_s)
+                raw = future.result(timeout=min(self.deep_timeout_s, remaining))
             if raw:
                 return DiscoveryResult(
                     adapter=raw["adapter"],
@@ -254,7 +332,7 @@ class ATSHealer:
             logger.error(f"Deep heal error for {name}: {e}")
         return None
 
-    def _probe_workday(self, slug: str, name: str) -> Optional[DiscoveryResult]:
+    def _probe_workday(self, slug: str, name: str, deadline: Optional[float] = None) -> Optional[DiscoveryResult]:
         """Sweep wd1..wd25 for Workday tenants concurrently."""
         from concurrent.futures import ThreadPoolExecutor, as_completed
         
@@ -268,10 +346,12 @@ class ATSHealer:
                 candidates.append((n, site))
 
         def check_one(n, site):
+            if self._timed_out(deadline):
+                return None
             url = f"https://{slug}.wd{n}.myworkdayjobs.com/{site}"
             try:
                 # Use isolated headers per request
-                resp = self.session.get(url, headers=self._get_headers(), timeout=5, allow_redirects=True)
+                resp = self.session.get(url, headers=self._get_headers(), timeout=self._request_timeout("workday", deadline), allow_redirects=True)
                 if resp.status_code == 200 and "myworkdayjobs.com" in resp.url:
                     parsed = urlparse(resp.url)
                     # Key normalization: remove lang codes like /en-US
@@ -328,12 +408,14 @@ class ATSHealer:
 
         return self._validate_url(existing_url, name)
 
-    def _probe_direct(self, url: str, adapter: str, key: str, name: str) -> Optional[DiscoveryResult]:
+    def _probe_direct(self, url: str, adapter: str, key: str, name: str, deadline: Optional[float] = None) -> Optional[DiscoveryResult]:
+        if self._timed_out(deadline):
+            return None
         try:
             resp = self.session.get(
                 url,
                 headers=self._get_headers(),
-                timeout=self._probe_timeout(adapter),
+                timeout=self._request_timeout(adapter, deadline),
                 allow_redirects=True,
             )
             
@@ -347,7 +429,7 @@ class ATSHealer:
             pass
         return None
 
-    def _waterfall_discovery(self, domain: str, name: str) -> Optional[DiscoveryResult]:
+    def _waterfall_discovery(self, domain: str, name: str, deadline: Optional[float] = None) -> Optional[DiscoveryResult]:
         from concurrent.futures import ThreadPoolExecutor, as_completed
         
         bases = [f"jobs.{domain}", f"careers.{domain}", f"www.{domain}", domain]
@@ -369,8 +451,10 @@ class ATSHealer:
                     checked_urls.add(url)
 
         def check_url(base, url):
+            if self._timed_out(deadline):
+                return None
             try:
-                resp = self.session.get(url, headers=self._get_headers(), timeout=5, allow_redirects=True)
+                resp = self.session.get(url, headers=self._get_headers(), timeout=self._request_timeout(None, deadline, default=5), allow_redirects=True)
                 if resp.status_code == 200:
                     res = self._scan_content(resp.text, resp.url, name)
                     if res: return res
@@ -379,8 +463,10 @@ class ATSHealer:
                     if base == domain or base == f"www.{domain}" or 'careers.' in base:
                         found_links = self._find_careers_links(resp.text, resp.url)
                         for link in found_links:
+                            if self._timed_out(deadline):
+                                return None
                             try:
-                                sub_resp = self.session.get(link, headers=self._get_headers(), timeout=5, allow_redirects=True)
+                                sub_resp = self.session.get(link, headers=self._get_headers(), timeout=self._request_timeout(None, deadline, default=5), allow_redirects=True)
                                 if sub_resp.status_code == 200:
                                     sub_res = self._scan_content(sub_resp.text, sub_resp.url, name)
                                     if sub_res: return sub_res
@@ -400,7 +486,9 @@ class ATSHealer:
                     return res
         
         # 3.5 Web Search Fallback (Yahoo)
-        return self._search_discovery(name, domain)
+        if self._timed_out(deadline):
+            return None
+        return self._search_discovery(name, domain, deadline)
 
     def _find_careers_links(self, html: str, base_url: str) -> List[str]:
         """Find non-standard career links on a page."""
@@ -419,14 +507,16 @@ class ATSHealer:
                 candidates.append(urljoin(base_url, href))
         return list(set(candidates))[:8] # Top 8 candidates
 
-    def _search_discovery(self, name: str, domain: str) -> Optional[DiscoveryResult]:
+    def _search_discovery(self, name: str, domain: str, deadline: Optional[float] = None) -> Optional[DiscoveryResult]:
         """Search for the careers page and verify all results concurrently."""
         from concurrent.futures import ThreadPoolExecutor, as_completed
         
         query = f"{name} careers"
         search_url = f"https://search.yahoo.com/search?p={query}"
+        if self._timed_out(deadline):
+            return None
         try:
-            resp = self.session.get(search_url, headers=self._get_headers(), timeout=10)
+            resp = self.session.get(search_url, headers=self._get_headers(), timeout=self._request_timeout(None, deadline, default=10), allow_redirects=True)
             if resp.status_code != 200: return None
             
             soup = BeautifulSoup(resp.text, "html.parser")
@@ -444,8 +534,10 @@ class ATSHealer:
                     search_links.append(href)
 
             def verify_link(url):
+                if self._timed_out(deadline):
+                    return None
                 try:
-                    v_resp = self.session.get(url, headers=self._get_headers(), timeout=6, allow_redirects=True)
+                    v_resp = self.session.get(url, headers=self._get_headers(), timeout=self._request_timeout(None, deadline, default=6), allow_redirects=True)
                     if v_resp.status_code == 200:
                         return self._scan_content(v_resp.text, v_resp.url, name)
                 except:
@@ -542,6 +634,9 @@ class ATSHealer:
             if self._looks_like_known_ats_url(final_url):
                 return evidence_matches >= 1
 
+            if result.adapter == "generic":
+                return self._is_probable_careers_page(resp.text, final_url, name)
+
             if any(w in title_text for w in sig_words):
                 return True
 
@@ -587,6 +682,17 @@ class ATSHealer:
 
         if self._looks_like_known_ats_url(url):
             return True
+
+        if any(marker in url_l for marker in self.GENERIC_NEGATIVE_URL_MARKERS):
+            return False
+        if any(marker in text for marker in self.GENERIC_NEGATIVE_TEXT_MARKERS):
+            return False
+
+        if any(marker in url_l for marker in self.GENERIC_POSITIVE_URL_MARKERS):
+            return any(signal in text for signal in careers_signals) or company_matches >= 1
+
+        if any(marker in text for marker in self.GENERIC_POSITIVE_TEXT_MARKERS):
+            return company_matches >= 1
 
         if company_matches >= min(len(sig_words), 2) and any(signal in text for signal in careers_signals):
             return True
