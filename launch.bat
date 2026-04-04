@@ -125,7 +125,8 @@ if "%NEEDS_DEPS%"=="1" (
     ) else (
         python -m pip install -q -r requirements.txt
     )
-    REM setuptools is always present in any venv — no extra build backend needed.
+    REM compat mode adds a .pth file — no C compiler or vswhere.exe needed.
+    set SETUPTOOLS_EDITABLE_MODE=compat
     python -m pip install -q -e .
     if errorlevel 1 (
         echo.
