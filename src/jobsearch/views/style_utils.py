@@ -17,10 +17,20 @@ THEME = {
 
 def set_custom_style():
     """Injects custom CSS to modernize the Streamlit UI."""
-    st.markdown("""
+    css = """
         <style>
         /* Modern font and background */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        :root {
+            --js-bg: inherit;
+            --js-surface: inherit;
+            --js-border: rgba(148, 163, 184, 0.25);
+            --js-text: inherit;
+            --js-text-muted: rgba(148, 163, 184, 0.92);
+            --js-scroll-track: rgba(148, 163, 184, 0.10);
+            --js-scroll-thumb: rgba(148, 163, 184, 0.28);
+        }
         
         html, body, [class*="css"] {
             font-family: 'Inter', sans-serif;
@@ -31,8 +41,7 @@ def set_custom_style():
 
         /* Sidebar styling */
         section[data-testid="stSidebar"] {
-            background-color: #f8fafc;
-            border-right: 1px solid #e2e8f0;
+            border-right: 1px solid var(--js-border);
         }
         
         section[data-testid="stSidebar"] .stRadio > label {
@@ -42,15 +51,14 @@ def set_custom_style():
         /* Sidebar Navigation Items */
         section[data-testid="stSidebar"] [data-testid="stWidgetLabel"] {
             font-weight: 600;
-            color: #475569;
         }
 
         /* Card-like containers */
-        .st-emotion-cache-12w0qpk {
+        [data-testid="stMetric"] {
             padding: 1.5rem;
             border-radius: 0.75rem;
-            border: 1px solid #e2e8f0;
-            background-color: white;
+            border: 1px solid var(--js-border);
+            background: rgba(148, 163, 184, 0.10);
             box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1 sm rgb(0 0 0 / 0.1);
         }
 
@@ -58,23 +66,22 @@ def set_custom_style():
         [data-testid="stMetricValue"] {
             font-size: 1.875rem;
             font-weight: 700;
-            color: #1e293b;
         }
         
         [data-testid="stMetricLabel"] {
             font-size: 0.875rem;
             font-weight: 500;
-            color: #64748b;
+            color: var(--js-text-muted);
             text-transform: uppercase;
             letter-spacing: 0.025em;
         }
 
         /* Custom Card Helper Class */
         .job-card {
-            background-color: white;
+            background: rgba(148, 163, 184, 0.08);
             padding: 1.25rem;
             border-radius: 0.75rem;
-            border: 1px solid #e2e8f0;
+            border: 1px solid var(--js-border);
             margin-bottom: 1rem;
             transition: all 0.2s ease;
         }
@@ -103,8 +110,47 @@ def set_custom_style():
 
         /* Titles and Headers */
         h1, h2, h3 {
-            color: #0f172a !important;
             font-weight: 700 !important;
+        }
+
+        .js-subtitle {
+            color: var(--js-text-muted);
+            font-size: 1.1rem;
+            margin-top: -1rem;
+        }
+
+        .js-status-card {
+            background: rgba(148, 163, 184, 0.10);
+        }
+
+        .js-setup-card {
+            border: 1px solid color-mix(in srgb, #7c3aed 60%, var(--js-border));
+            border-radius: 10px;
+            padding: 16px 20px;
+            margin-bottom: 16px;
+            background: color-mix(in srgb, #7c3aed 8%, transparent);
+        }
+
+        .js-setup-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin: 6px 0;
+            padding: 8px 10px;
+            border-radius: 6px;
+            background: rgba(148, 163, 184, 0.08);
+        }
+
+        .js-setup-title {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .js-setup-hint {
+            margin: 10px 0 0;
+            font-size: .78rem;
+            color: var(--js-text-muted);
         }
         
         .stButton > button {
@@ -135,23 +181,23 @@ def set_custom_style():
             height: 8px;
         }
         ::-webkit-scrollbar-track {
-            background: #f1f5f9;
+            background: var(--js-scroll-track);
             border-radius: 4px;
         }
         ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
+            background: var(--js-scroll-thumb);
             border-radius: 4px;
-            border: 2px solid #f1f5f9;
+            border: 2px solid var(--js-scroll-track);
         }
         ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
+            background: rgba(148, 163, 184, 0.42);
         }
         
         /* Specific fix for Streamlit's data grid container if possible */
         [data-testid="stTable"] {
             border-radius: 0.75rem;
             overflow: hidden;
-            border: 1px solid #e2e8f0;
+            border: 1px solid var(--js-border);
         }
         
         /* Improve spacing in the main app container */
@@ -162,15 +208,16 @@ def set_custom_style():
         }
 
         </style>
-    """, unsafe_allow_html=True)
+    """
+    st.markdown(css, unsafe_allow_html=True)
 
 def card(title, content, footer=None):
     """Renders a card with optional title and footer."""
     html = f"""
     <div class="job-card">
-        <div style="font-weight: 600; font-size: 1.1rem; color: #1e293b; margin-bottom: 0.5rem;">{title}</div>
-        <div style="color: #475569; font-size: 0.95rem;">{content}</div>
-        {f'<div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid #f1f5f9; font-size: 0.85rem; color: #64748b;">{footer}</div>' if footer else ''}
+        <div style="font-weight: 600; font-size: 1.1rem; color: var(--js-text); margin-bottom: 0.5rem;">{title}</div>
+        <div style="color: var(--js-text-muted); font-size: 0.95rem;">{content}</div>
+        {f'<div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--js-border); font-size: 0.85rem; color: var(--js-text-muted);">{footer}</div>' if footer else ''}
     </div>
     """
     st.markdown(html, unsafe_allow_html=True)
@@ -191,13 +238,13 @@ def badge(text, color="blue"):
 def feed_item(icon, title, subtitle, date_text):
     """Renders a modern feed item."""
     html = f"""
-    <div style="display: flex; align-items: flex-start; gap: 1rem; padding: 0.75rem 0; border-bottom: 1px solid #f1f5f9;">
-        <div style="font-size: 1.25rem; background: #f1f5f9; padding: 0.5rem; border-radius: 0.5rem; line-height: 1;">{icon}</div>
+    <div style="display: flex; align-items: flex-start; gap: 1rem; padding: 0.75rem 0; border-bottom: 1px solid var(--js-border);">
+        <div style="font-size: 1.25rem; background: var(--js-scroll-track); padding: 0.5rem; border-radius: 0.5rem; line-height: 1;">{icon}</div>
         <div style="flex: 1;">
-            <div style="font-weight: 600; color: #1e293b; font-size: 0.95rem;">{title}</div>
-            <div style="color: #64748b; font-size: 0.85rem;">{subtitle}</div>
+            <div style="font-weight: 600; color: var(--js-text); font-size: 0.95rem;">{title}</div>
+            <div style="color: var(--js-text-muted); font-size: 0.85rem;">{subtitle}</div>
         </div>
-        <div style="color: #94a3b8; font-size: 0.75rem; white-space: nowrap;">{date_text}</div>
+        <div style="color: var(--js-text-muted); font-size: 0.75rem; white-space: nowrap;">{date_text}</div>
     </div>
     """
     st.markdown(html, unsafe_allow_html=True)
@@ -205,10 +252,10 @@ def feed_item(icon, title, subtitle, date_text):
 def empty_state(icon, title, message):
     """Renders an empty state component."""
     html = f"""
-    <div style="text-align: center; padding: 3rem 1rem; background: #f8fafc; border-radius: 0.75rem; border: 2px dashed #e2e8f0; margin: 1rem 0;">
+    <div style="text-align: center; padding: 3rem 1rem; background: var(--js-bg); border-radius: 0.75rem; border: 2px dashed var(--js-border); margin: 1rem 0;">
         <div style="font-size: 2.5rem; margin-bottom: 1rem;">{icon}</div>
-        <div style="font-weight: 600; color: #1e293b; font-size: 1.1rem; margin-bottom: 0.5rem;">{title}</div>
-        <div style="color: #64748b; font-size: 0.95rem; max-width: 300px; margin: 0 auto;">{message}</div>
+        <div style="font-weight: 600; color: var(--js-text); font-size: 1.1rem; margin-bottom: 0.5rem;">{title}</div>
+        <div style="color: var(--js-text-muted); font-size: 0.95rem; max-width: 300px; margin: 0 auto;">{message}</div>
     </div>
     """
     st.markdown(html, unsafe_allow_html=True)

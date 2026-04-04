@@ -39,7 +39,7 @@ def render_home(conn) -> None:
     render_setup_checklist(conn)
 
     st.title("Welcome Back")
-    st.markdown("<p style='color: #64748b; font-size: 1.1rem; margin-top: -1rem;'>Here is your job search at a glance.</p>", unsafe_allow_html=True)
+    st.markdown("<p class='js-subtitle'>Here is your job search at a glance.</p>", unsafe_allow_html=True)
     st.markdown("<div style='margin-bottom: 2rem;'></div>", unsafe_allow_html=True)
 
     # ── Top KPI row ───────────────────────────────────────────────────────────
@@ -142,10 +142,10 @@ def render_home(conn) -> None:
             count = snapshot.get(status, 0)
             color = db.STATUS_COLORS.get(status, "#6b7280")
             col.markdown(
-                f'<div style="border-left:4px solid {color};padding:8px 12px;border-radius:4px">'
+                f'<div class="js-status-card" style="border-left:4px solid {color};padding:8px 12px;border-radius:4px">'
                 f'<div style="font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:{color}">'
                 f'{status.title()}</div>'
-                f'<div style="font-size:1.8rem;font-weight:700">{count}</div>'
+                f'<div style="font-size:1.8rem;font-weight:700;color:var(--js-text)">{count}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
@@ -156,18 +156,18 @@ def render_home(conn) -> None:
             count = snapshot.get(status, 0)
             color = db.STATUS_COLORS.get(status, "#6b7280")
             col.markdown(
-                f'<div style="border-left:4px solid {color};padding:6px 10px;border-radius:4px;opacity:.75">'
+                f'<div class="js-status-card" style="border-left:4px solid {color};padding:6px 10px;border-radius:4px;opacity:.75">'
                 f'<div style="font-size:.75rem;text-transform:uppercase;color:{color}">{status.title()}</div>'
-                f'<div style="font-size:1.4rem;font-weight:600">{count}</div>'
+                f'<div style="font-size:1.4rem;font-weight:600;color:var(--js-text)">{count}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
         # Exploring / considering
         other_count = snapshot.get("exploring", 0) + snapshot.get("considering", 0)
         cl_cols[-1].markdown(
-            f'<div style="border-left:4px solid #7c3aed;padding:6px 10px;border-radius:4px;opacity:.75">'
+            f'<div class="js-status-card" style="border-left:4px solid #7c3aed;padding:6px 10px;border-radius:4px;opacity:.75">'
             f'<div style="font-size:.75rem;text-transform:uppercase;color:#7c3aed">Exploring / Considering</div>'
-            f'<div style="font-size:1.4rem;font-weight:600">{other_count}</div>'
+            f'<div style="font-size:1.4rem;font-weight:600;color:var(--js-text)">{other_count}</div>'
             f'</div>',
             unsafe_allow_html=True,
         )

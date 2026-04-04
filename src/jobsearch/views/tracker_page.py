@@ -949,7 +949,7 @@ def render_tracker(conn) -> None:
         st.session_state["tracker_csv_seeded"] = True
 
     st.title("Application Tracker")
-    st.markdown("<p style='color: #64748b; font-size: 1.1rem; margin-top: -1rem;'>Manage and track your active job applications.</p>", unsafe_allow_html=True)
+    st.markdown("<p class='js-subtitle'>Manage and track your active job applications.</p>", unsafe_allow_html=True)
     st.markdown("<div style='margin-bottom: 2rem;'></div>", unsafe_allow_html=True)
 
     _render_followup_banner(conn)

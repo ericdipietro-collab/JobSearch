@@ -102,9 +102,7 @@ def render_setup_checklist(conn) -> None:
         weight = "400" if ok else "600"
         label_color = color if ok else "inherit"
         rows_html += (
-            f'<div style="display:flex;align-items:flex-start;gap:10px;'
-            f'margin:6px 0;padding:8px 10px;border-radius:6px;'
-            f'background:rgba(255,255,255,0.03)">'
+            f'<div class="js-setup-row">'
             f'<span style="font-size:1.1rem;line-height:1.4">{icon}</span>'
             f'<div>'
             f'<span style="font-weight:{weight};color:{label_color}">{label}</span>'
@@ -118,14 +116,13 @@ def render_setup_checklist(conn) -> None:
         next_nav = next((nav for _, ok, _, nav in items if not ok), None)
         if next_nav:
             next_hint = (
-                f'<p style="margin:10px 0 0;font-size:.78rem;color:#9ca3af">'
+                f'<p class="js-setup-hint">'
                 f'Next step: navigate to <strong>{next_nav}</strong> in the sidebar.</p>'
             )
 
     st.markdown(
-        f'<div style="border:1px solid #7c3aed;border-radius:10px;padding:16px 20px;'
-        f'margin-bottom:16px;background:rgba(124,58,237,0.06)">'
-        f'<div style="font-size:1rem;font-weight:700;margin-bottom:8px">'
+        f'<div class="js-setup-card">'
+        f'<div class="js-setup-title">'
         f'🚀 Setup Checklist &mdash; {done_count}&thinsp;/&thinsp;{len(items)} complete'
         f'</div>'
         f'{rows_html}'

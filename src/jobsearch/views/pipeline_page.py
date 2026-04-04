@@ -149,7 +149,7 @@ def _render_detail_panel(conn: sqlite3.Connection, app_id: int) -> None:
 def render_pipeline(conn: sqlite3.Connection) -> None:
     _init_session()
     st.title("Application Pipeline")
-    st.markdown("<p style='color: #64748b; font-size: 1.1rem; margin-top: -1rem;'>Visualise your progress through the hiring funnel.</p>", unsafe_allow_html=True)
+    st.markdown("<p class='js-subtitle'>Visualise your progress through the hiring funnel.</p>", unsafe_allow_html=True)
     st.markdown("<div style='margin-bottom: 2rem;'></div>", unsafe_allow_html=True)
     
     _stage_metric_row(conn)

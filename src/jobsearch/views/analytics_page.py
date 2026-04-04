@@ -594,7 +594,7 @@ def _render_interview_signal_analysis(conn: sqlite3.Connection) -> None:
 def render_analytics(conn: sqlite3.Connection) -> None:
     """Entry point called from app.py."""
     st.title("Search Analytics")
-    st.markdown("<p style='color: #64748b; font-size: 1.1rem; margin-top: -1rem;'>Data-driven insights into your job search performance.</p>", unsafe_allow_html=True)
+    st.markdown("<p class='js-subtitle'>Data-driven insights into your job search performance.</p>", unsafe_allow_html=True)
     st.markdown("<div style='margin-bottom: 2rem;'></div>", unsafe_allow_html=True)
 
     tab_funnel, tab_score, tab_health, tab_company, tab_outcome, tab_reject, tab_resume, tab_interview = st.tabs([
