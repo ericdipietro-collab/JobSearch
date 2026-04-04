@@ -1426,6 +1426,7 @@ def update_workday_target_health(
     notes: str = "",
 ) -> None:
     now = _now()
+    conn.execute("BEGIN IMMEDIATE")
     existing = get_workday_target_health(conn, company)
     empty_streak = int(existing["empty_streak"]) if existing else 0
     success_count = int(existing["success_count"]) if existing else 0
@@ -1435,7 +1436,7 @@ def update_workday_target_health(
     if normalized_status == "ok" and evaluated_count > 0:
         empty_streak = 0
         success_count += 1
-    elif normalized_status in {"empty", "budget_exhausted"} and evaluated_count == 0:
+    elif normalized_status in {"empty", "budget_exhausted", "blocked"} and evaluated_count == 0:
         empty_streak += 1
         if cooldown_days > 0:
             cooldown_until = (datetime.now(timezone.utc) + timedelta(days=cooldown_days)).isoformat()
@@ -1482,6 +1483,7 @@ def update_generic_target_health(
     notes: str = "",
 ) -> None:
     now = _now()
+    conn.execute("BEGIN IMMEDIATE")
     existing = get_generic_target_health(conn, company)
     empty_streak = int(existing["empty_streak"]) if existing else 0
     success_count = int(existing["success_count"]) if existing else 0
@@ -1491,7 +1493,7 @@ def update_generic_target_health(
     if normalized_status == "ok" and evaluated_count > 0:
         empty_streak = 0
         success_count += 1
-    elif normalized_status in {"empty", "cooldown", "low_signal"} and evaluated_count == 0:
+    elif normalized_status in {"empty", "cooldown", "low_signal", "blocked"} and evaluated_count == 0:
         empty_streak += 1
         if cooldown_days > 0:
             cooldown_until = (datetime.now(timezone.utc) + timedelta(days=cooldown_days)).isoformat()

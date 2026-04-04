@@ -6,6 +6,7 @@ import time
 import random
 import logging
 import requests
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass
@@ -15,6 +16,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 from jobsearch.config.settings import get_headers, get_shared_session, settings
+from jobsearch import ats_db as db
 
 logger = logging.getLogger(__name__)
 
@@ -170,6 +172,12 @@ class ATSHealer:
             return 0.1
         return max(0.5, min(preferred, remaining))
 
+    def _phase_deadline(self, deadline: Optional[float], budget_ms: int) -> Optional[float]:
+        phase = time.perf_counter() + max(0.0, float(budget_ms) / 1000.0)
+        if deadline is None:
+            return phase
+        return min(deadline, phase)
+
     def _domain_suggested_adapter(self, domain: str) -> Optional[str]:
         domain_l = str(domain or "").lower()
         for adapter, markers in self.EMBED_MARKERS:
@@ -216,6 +224,39 @@ class ATSHealer:
 
         return False
 
+    def _persistent_health_skip_reason(self, company: Dict[str, Any]) -> Optional[str]:
+        company_name = str(company.get("name", "") or "").strip()
+        if not company_name:
+            return None
+        adapter = str(company.get("adapter", "") or "").lower()
+        conn = db.get_connection()
+        try:
+            row = None
+            source = ""
+            if adapter == "workday":
+                row = db.get_workday_target_health(conn, company_name)
+                source = "workday"
+            elif adapter == "generic":
+                row = db.get_generic_target_health(conn, company_name)
+                source = "generic"
+            if not row or not row["cooldown_until"]:
+                return None
+            cooldown_until = datetime.fromisoformat(str(row["cooldown_until"]).replace("Z", "+00:00"))
+            if cooldown_until.tzinfo is None:
+                cooldown_until = cooldown_until.replace(tzinfo=timezone.utc)
+            cooldown_until = cooldown_until.astimezone(timezone.utc)
+            if cooldown_until > datetime.now(timezone.utc):
+                last_status = str(row["last_status"] or "").strip()
+                detail = f"Skipped due to {source} scrape cooldown until {cooldown_until.isoformat()}"
+                if last_status:
+                    detail += f" ({last_status})"
+                return detail
+            return None
+        except Exception:
+            return None
+        finally:
+            conn.close()
+
     def discover(self, company: Dict[str, Any], force: bool = False, deep: bool = False) -> DiscoveryResult:
         name = company.get("name", "Unknown")
         existing_url = company.get("careers_url", "")
@@ -224,6 +265,17 @@ class ATSHealer:
         # 0. Manual Override check
         if company.get("heal_skip") and not force:
             return DiscoveryResult(None, None, existing_url, "VALID", "User-verified (heal_skip)")
+
+        if not force:
+            health_skip_reason = self._persistent_health_skip_reason(company)
+            if health_skip_reason:
+                return DiscoveryResult(
+                    company.get("adapter"),
+                    company.get("adapter_key"),
+                    existing_url,
+                    "VALID",
+                    health_skip_reason,
+                )
 
         # 1. Validation check
         if existing_url and not self._existing_assignment_suspicious(company) and self._validate_existing_assignment(company):
@@ -461,12 +513,13 @@ class ATSHealer:
                     
                     # Heuristic follow-up for main domains
                     if base == domain or base == f"www.{domain}" or 'careers.' in base:
+                        follow_deadline = self._phase_deadline(deadline, settings.heal_waterfall_follow_budget_ms)
                         found_links = self._find_careers_links(resp.text, resp.url)
                         for link in found_links:
-                            if self._timed_out(deadline):
+                            if self._timed_out(follow_deadline):
                                 return None
                             try:
-                                sub_resp = self.session.get(link, headers=self._get_headers(), timeout=self._request_timeout(None, deadline, default=5), allow_redirects=True)
+                                sub_resp = self.session.get(link, headers=self._get_headers(), timeout=self._request_timeout(None, follow_deadline, default=5), allow_redirects=True)
                                 if sub_resp.status_code == 200:
                                     sub_res = self._scan_content(sub_resp.text, sub_resp.url, name)
                                     if sub_res: return sub_res

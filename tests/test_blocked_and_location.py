@@ -217,6 +217,62 @@ class BlockedAndLocationTests(unittest.TestCase):
         self.assertIsNone(row["cooldown_until"])
         conn.close()
 
+    def test_generic_target_health_blocked_enters_cooldown(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        db.init_db(conn)
+        db.update_generic_target_health(
+            conn,
+            company="BlockedCo",
+            careers_url="https://blocked.example/careers",
+            status="blocked",
+            elapsed_ms=1200.0,
+            evaluated_count=0,
+            cooldown_days=7,
+            notes="Blocked by site protection",
+        )
+        row = db.get_generic_target_health(conn, "BlockedCo")
+        self.assertEqual(row["last_status"], "blocked")
+        self.assertEqual(int(row["empty_streak"]), 1)
+        self.assertIsNotNone(row["cooldown_until"])
+        conn.close()
+
+    def test_healer_honors_persistent_scrape_cooldown(self):
+        original_db_path = db.DB_PATH
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                temp_db = Path(tmpdir) / "healer_skip.db"
+                db.DB_PATH = temp_db
+                conn = db.get_connection()
+                try:
+                    db.update_generic_target_health(
+                        conn,
+                        company="BlockedCo",
+                        careers_url="https://blocked.example/careers",
+                        status="blocked",
+                        elapsed_ms=1200.0,
+                        evaluated_count=0,
+                        cooldown_days=7,
+                        notes="Blocked by site protection",
+                    )
+                finally:
+                    conn.close()
+                healer = ATSHealer(session=None)
+                result = healer.discover(
+                    {
+                        "name": "BlockedCo",
+                        "active": True,
+                        "adapter": "generic",
+                        "careers_url": "https://blocked.example/careers",
+                    },
+                    force=False,
+                    deep=False,
+                )
+                self.assertEqual(result.status, "VALID")
+                self.assertIn("scrape cooldown", result.detail)
+        finally:
+            db.DB_PATH = original_db_path
+
     def test_tracker_summary_excludes_scraper_only_considering_rows(self):
         rows = [
             {"status": "considering"},

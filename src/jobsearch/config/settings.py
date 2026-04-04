@@ -32,6 +32,7 @@ class Settings:
         self.gmail_app_password = os.getenv("JOBSEARCH_GMAIL_APP_PASSWORD", "").strip()
         self.gmail_imap_host = os.getenv("JOBSEARCH_GMAIL_IMAP_HOST", "imap.gmail.com").strip() or "imap.gmail.com"
         self.heal_discovery_budget_ms = int(os.getenv("JOBSEARCH_HEAL_DISCOVERY_BUDGET_MS", "60000"))
+        self.heal_waterfall_follow_budget_ms = int(os.getenv("JOBSEARCH_HEAL_WATERFALL_FOLLOW_BUDGET_MS", "12000"))
         self.workday_scrape_budget_ms = int(os.getenv("JOBSEARCH_WORKDAY_SCRAPE_BUDGET_MS", "60000"))
         self.workday_empty_cooldown_days = int(os.getenv("JOBSEARCH_WORKDAY_EMPTY_COOLDOWN_DAYS", "7"))
         self.workday_empty_cooldown_threshold = int(os.getenv("JOBSEARCH_WORKDAY_EMPTY_COOLDOWN_THRESHOLD", "2"))

@@ -481,12 +481,18 @@ class ScraperEngine:
                 and success_count == 0
                 and streak + 1 >= settings.workday_empty_cooldown_threshold
             ):
-                    cooldown_days = settings.workday_empty_cooldown_days
+                cooldown_days = settings.workday_empty_cooldown_days
+            elif (
+                scrape_status == "blocked"
+                and evaluated_count == 0
+                and streak + 1 >= settings.workday_empty_cooldown_threshold
+            ):
+                cooldown_days = settings.workday_empty_cooldown_days
             db.update_workday_target_health(
                 conn,
                 company=company.get("name", ""),
                 careers_url=str(company.get("careers_url", "") or ""),
-                status=scrape_status if scrape_status in {"ok", "empty", "budget_exhausted", "cooldown"} else "ok",
+                status=scrape_status if scrape_status in {"ok", "empty", "budget_exhausted", "cooldown", "blocked"} else "ok",
                 elapsed_ms=scrape_ms,
                 evaluated_count=evaluated_count,
                 cooldown_days=cooldown_days,
@@ -526,11 +532,18 @@ class ScraperEngine:
                 and low_priority
             ):
                 cooldown_days = settings.generic_low_signal_cooldown_days
+            elif (
+                scrape_status == "blocked"
+                and evaluated_count == 0
+                and streak + 1 >= settings.generic_empty_cooldown_threshold
+                and low_priority
+            ):
+                cooldown_days = settings.generic_empty_cooldown_days
             db.update_generic_target_health(
                 conn,
                 company=company.get("name", ""),
                 careers_url=str(company.get("careers_url", "") or ""),
-                status=scrape_status if scrape_status in {"ok", "empty", "cooldown", "low_signal"} else "ok",
+                status=scrape_status if scrape_status in {"ok", "empty", "cooldown", "low_signal", "blocked"} else "ok",
                 elapsed_ms=scrape_ms,
                 evaluated_count=evaluated_count,
                 cooldown_days=cooldown_days,

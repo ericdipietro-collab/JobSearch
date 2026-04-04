@@ -314,6 +314,24 @@ def _parse_pipe_list(value: str):
     return [item.strip() for item in str(value or "").split("|") if item.strip()]
 
 
+def _coerce_company_editor_value(key: str, value):
+    if pd.isna(value):
+        return None
+    if key in {"active", "manual_only", "manual_only_suggested"}:
+        if isinstance(value, bool):
+            return value
+        return str(value).strip().lower() in {"1", "true", "yes", "y"}
+    if key in {"tier", "heal_failure_streak"}:
+        text = str(value).strip()
+        return int(text) if text else 0
+    if key == "industry":
+        text = str(value or "").strip()
+        return _parse_pipe_list(text) if "|" in text else text
+    if key in {"notes", "sub_industry", "adapter", "adapter_key", "careers_url", "domain", "priority", "status", "discovery_method", "heal_last_failure_detail", "cooldown_until", "last_healed", "name"}:
+        return str(value or "").strip()
+    return value
+
+
 def _annualized_compensation_preview(
     comp_type: str,
     amount: float,
@@ -940,7 +958,7 @@ def main():
         cos = data.get("companies", [])
         t1, t2, t3, t4 = st.tabs(["List", "Add / Edit", "Heal ATS", "YAML Editor"])
         with t1:
-            df_companies = pd.DataFrame(cos)
+            df_companies = pd.DataFrame(cos).reset_index(names="__idx")
             if not df_companies.empty:
                 filter_option = st.selectbox("Show", ["All", "Active", "Inactive", "Manual Only"], index=0)
                 active_series = df_companies.get("active", pd.Series([False] * len(df_companies), index=df_companies.index)).fillna(False).astype(bool)
@@ -959,7 +977,32 @@ def main():
                 c2.metric("Active Targets", active_count)
                 c3.metric("Manual Only", manual_only_count)
                 df_companies = df_companies.apply(lambda col: col.map(_normalize_editor_value))
-            st.data_editor(df_companies, use_container_width=True, hide_index=True)
+            display_cols = [col for col in df_companies.columns if col != "__idx"]
+            edited_df = st.data_editor(
+                df_companies[display_cols],
+                use_container_width=True,
+                hide_index=True,
+                disabled=["heal_failure_streak", "last_healed", "cooldown_until"],
+                key=f"company_list_editor_{registry_path.name}",
+            )
+            if st.button("Save List Changes", key=f"save_company_list_{registry_path.name}"):
+                filtered_indices = df_companies["__idx"].tolist()
+                companies = data.get("companies", [])
+                for row_position, company_idx in enumerate(filtered_indices):
+                    if company_idx >= len(companies):
+                        continue
+                    row = edited_df.iloc[row_position].to_dict()
+                    original = companies[company_idx]
+                    updated = dict(original)
+                    for key, value in row.items():
+                        updated[key] = _coerce_company_editor_value(key, value)
+                    if updated.get("manual_only"):
+                        updated["status"] = "manual_only"
+                    companies[company_idx] = updated
+                data["companies"] = companies
+                save_yaml(registry_path, data)
+                st.success(f"Saved {registry_path.name} from list view.")
+                st.rerun()
         with t2:
             company_names = [company.get("name", "") for company in cos if isinstance(company, dict)]
             mode = st.radio("Mode", ["Add New", "Edit Existing"], horizontal=True)

@@ -16,6 +16,7 @@ from jobsearch.scraper.adapters.rippling import RipplingAdapter
 from jobsearch.scraper.adapters.smartrecruiters import SmartRecruitersAdapter
 from jobsearch.scraper.adapters.workday import WorkdayAdapter
 from jobsearch.scraper.engine import ScraperEngine
+from jobsearch.services.healer_service import ATSHealer
 
 
 class _FakeLeverAdapter(LeverAdapter):
@@ -275,6 +276,32 @@ class ScraperAdapterRegressionTests(unittest.TestCase):
         self.assertEqual(len(jobs), 1)
         self.assertEqual(jobs[0].adapter, "rippling")
         self.assertIn("/tilledcareers/jobs/123", jobs[0].url)
+
+    def test_healer_rejects_generic_marketing_page(self):
+        healer = ATSHealer()
+        html = """
+        <html><head><title>Platform Overview</title></head>
+        <body>
+          <h1>Our Solutions</h1>
+          <p>Request a demo and contact sales to learn more.</p>
+        </body></html>
+        """
+        self.assertFalse(
+            healer._is_probable_careers_page(html, "https://example.com/platform", "ExampleCo")
+        )
+
+    def test_healer_accepts_generic_careers_page_with_openings_signal(self):
+        healer = ATSHealer()
+        html = """
+        <html><head><title>Careers at ExampleCo</title></head>
+        <body>
+          <h1>Current openings</h1>
+          <p>Join our team at ExampleCo and search jobs below.</p>
+        </body></html>
+        """
+        self.assertTrue(
+            healer._is_probable_careers_page(html, "https://example.com/careers", "ExampleCo")
+        )
 
 
 if __name__ == "__main__":
