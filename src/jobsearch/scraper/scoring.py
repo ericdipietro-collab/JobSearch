@@ -68,6 +68,11 @@ class Scorer:
         self.w2_benefits_gap_usd = float(contractor_cfg.get("w2_benefits_gap_usd", 6000))
         self.overhead_1099_pct = float(contractor_cfg.get("overhead_1099_pct", 0.18))
 
+        # Pre-compiled regex patterns — built once, reused for every job scored.
+        self._compiled_title_weights = self._compile_weighted_terms(self.title_positive_weights)
+        self._compiled_body_positive = self._compile_weighted_terms(self.body_positive)
+        self._compiled_body_negative = self._compile_weighted_terms(self.body_negative)
+
         self.partial_title_markers = {
             "architect": 5,
             "product": 3,
@@ -112,6 +117,32 @@ class Scorer:
                         continue
                     pairs.append((phrase, int(float(item.get("weight") or item.get("points") or 5))))
         return pairs or default
+
+    @staticmethod
+    def _kw_pattern(keyword: str) -> str:
+        """Return the regex pattern string for a keyword."""
+        escaped = re.escape(keyword).replace(r"\ ", r"\s+")
+        if re.match(r"^\w", keyword) and re.search(r"\w$", keyword):
+            return rf"\b{escaped}\b"
+        return rf"(?<!\w){escaped}(?!\w)"
+
+    @staticmethod
+    def _compile_weighted_terms(pairs: List[Tuple[str, int]]):
+        """Pre-compile patterns for a list of (keyword, points) pairs."""
+        compiled = []
+        for term, pts in pairs:
+            try:
+                compiled.append((re.compile(Scorer._kw_pattern(term), re.IGNORECASE), term, pts))
+            except re.error:
+                pass
+        return compiled
+
+    def _match_compiled(self, blob: str, compiled_terms) -> List[Tuple[str, int]]:
+        """Match pre-compiled patterns against blob; returns [(term, pts), ...]."""
+        if not blob:
+            return []
+        haystack = self.clean(blob).lower()
+        return [(term, pts) for pattern, term, pts in compiled_terms if pattern.search(haystack)]
 
     @staticmethod
     def clean(value: Optional[str]) -> str:
@@ -165,14 +196,10 @@ class Scorer:
     def _partial_title_hits(self, title: str, exact_hits: List[Tuple[str, int]]) -> List[Tuple[str, int]]:
         if exact_hits:
             return []
-        exact_terms = {term for term, _ in exact_hits}
-        exact_text = " ".join(exact_terms)
         hits: List[Tuple[str, int]] = []
         seen = set()
 
         for phrase in self.title_positive_keywords:
-            if phrase in exact_terms:
-                continue
             tokens = [token for token in phrase.split() if len(token) > 2]
             matched = [token for token in tokens if token in title]
             if len(tokens) >= 2 and len(matched) >= min(2, len(tokens)):
@@ -182,8 +209,6 @@ class Scorer:
                     seen.add(label)
 
         for marker, points in self.partial_title_markers.items():
-            if marker in exact_text:
-                continue
             if marker in title and marker not in seen:
                 hits.append((marker, points))
                 seen.add(marker)
@@ -309,6 +334,8 @@ class Scorer:
         jd_blob = description.lower()
 
         if self.is_disqualified(title):
+            _work_type = self._derive_work_type(job_data)
+            _comp_unit = self._compensation_unit(job_data, _work_type)
             return {
                 "score": 0.0,
                 "fit_band": "Disqualified",
@@ -327,9 +354,9 @@ class Scorer:
                     "compensation_adjustment": 0,
                     "contract_adjustment": 0,
                 },
-                "work_type": self._derive_work_type(job_data),
-                "compensation_unit": self._compensation_unit(job_data, self._derive_work_type(job_data)),
-                "hourly_rate": self._derive_hourly_rate(job_data, self._compensation_unit(job_data, self._derive_work_type(job_data))),
+                "work_type": _work_type,
+                "compensation_unit": _comp_unit,
+                "hourly_rate": self._derive_hourly_rate(job_data, _comp_unit),
                 "hours_per_week": None,
                 "weeks_per_year": None,
                 "normalized_compensation_usd": None,
@@ -337,7 +364,7 @@ class Scorer:
 
         score = 0.0
 
-        title_hits = self._unique_weighted_hits(title_l, self.title_positive_weights)
+        title_hits = self._match_compiled(title_l, self._compiled_title_weights)
         title_points = sum(pts for _, pts in title_hits)
         partial_hits = self._partial_title_hits(title_l, title_hits)
         partial_title_points = sum(pts for _, pts in partial_hits)
@@ -351,8 +378,8 @@ class Scorer:
         title_points = min(title_points, self.title_max_points)
         score += title_points
 
-        jd_pos_hits = self._unique_weighted_hits(jd_blob, self.body_positive)
-        jd_neg_hits = self._unique_weighted_hits(jd_blob, self.body_negative)
+        jd_pos_hits = self._match_compiled(jd_blob, self._compiled_body_positive)
+        jd_neg_hits = self._match_compiled(jd_blob, self._compiled_body_negative)
         body_positive_points = sum(pts for _, pts in jd_pos_hits)
         body_negative_points = sum(pts for _, pts in jd_neg_hits)
         score += body_positive_points

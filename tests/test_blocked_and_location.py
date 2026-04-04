@@ -224,7 +224,7 @@ class BlockedAndLocationTests(unittest.TestCase):
                         }
                     ],
                 )
-                reason = engine._workday_cooldown_reason(engine.companies[0])
+                _adapter, reason = engine._cooldown_reason(engine.companies[0])
                 self.assertIn("Cooldown until", reason)
         finally:
             db.DB_PATH = original_db_path

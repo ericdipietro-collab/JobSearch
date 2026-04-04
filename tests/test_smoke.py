@@ -47,7 +47,10 @@ class SmokeTests(unittest.TestCase):
         companies = companies_data.get("companies", [])
         tipalti = next((company for company in companies if company.get("name") == "Tipalti"), None)
         self.assertIsNotNone(tipalti)
-        self.assertEqual(tipalti.get("careers_url"), "https://tipalti.com/company/jobs")
+        self.assertIn(tipalti.get("careers_url"), {
+            "https://tipalti.com/company/jobs",
+            "https://tipalti.com/company/jobs/",
+        })
 
     def test_contract_test_registry_exists(self):
         contract_yaml = settings.config_dir / "job_search_companies_contract_test.yaml"

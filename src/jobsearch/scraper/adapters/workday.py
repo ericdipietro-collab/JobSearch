@@ -152,6 +152,18 @@ class WorkdayAdapter(BaseAdapter):
                     continue
                 seen_urls.add(job_url)
 
+                # Pre-screen: score with no description to skip detail fetches for
+                # titles that have no keyword signal and can't reach the keep threshold
+                # from tier bonus alone. Tier 1 companies always pass (15pt bonus).
+                if self.scorer:
+                    tier = int(company_config.get("tier", 4) or 4)
+                    pre = self.scorer.score_job({
+                        "title": title, "description": "",
+                        "tier": tier, "location": str(location),
+                    })
+                    if pre["score"] < self.scorer.min_score_to_keep * 0.3:
+                        continue
+
                 description = self._fetch_detail_description(
                     host,
                     tenant,

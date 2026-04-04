@@ -60,6 +60,13 @@ GENERIC_NEGATIVE_URL_MARKERS = (
     "/contact",
 )
 
+_REJECTED_CSV_FIELDS = [
+    "company", "title", "location", "url", "source", "adapter",
+    "tier", "score", "fit_band", "work_type", "compensation_unit",
+    "normalized_compensation_usd", "drop_reason", "decision_reason",
+    "matched_keywords", "penalized_keywords",
+]
+
 
 class ScraperEngine:
     ADAPTER_MAP: Dict[str, Type[BaseAdapter]] = {
@@ -153,14 +160,6 @@ class ScraperEngine:
         except Exception:
             pass
 
-        def log_msg(message: str):
-            print(message, flush=True)
-            try:
-                with log_path.open("a", encoding="utf-8") as handle:
-                    handle.write(f"{datetime.now().strftime('%H:%M:%S')} | {message}\n")
-            except Exception:
-                pass
-
         total_companies = len(self.companies)
         rejected_csv_path = settings.rejected_csv
         main_conn = get_connection()
@@ -191,27 +190,7 @@ class ScraperEngine:
                 try:
                     rejected_csv_path.parent.mkdir(parents=True, exist_ok=True)
                     with rejected_csv_path.open("w", newline="", encoding="utf-8") as handle:
-                        writer = csv.DictWriter(
-                            handle,
-                            fieldnames=[
-                                "company",
-                                "title",
-                                "location",
-                                "url",
-                                "source",
-                                "adapter",
-                                "tier",
-                                "score",
-                                "fit_band",
-                                "work_type",
-                                "compensation_unit",
-                                "normalized_compensation_usd",
-                                "drop_reason",
-                                "decision_reason",
-                                "matched_keywords",
-                                "penalized_keywords",
-                            ],
-                        )
+                        writer = csv.DictWriter(handle, fieldnames=_REJECTED_CSV_FIELDS)
                         writer.writeheader()
                 except Exception:
                     pass
@@ -305,27 +284,7 @@ class ScraperEngine:
                 if rejected_rows:
                     try:
                         with rejected_csv_path.open("a", newline="", encoding="utf-8") as handle:
-                            writer = csv.DictWriter(
-                                handle,
-                                fieldnames=[
-                                    "company",
-                                    "title",
-                                    "location",
-                                    "url",
-                                    "source",
-                                    "adapter",
-                                    "tier",
-                                    "score",
-                                    "fit_band",
-                                    "work_type",
-                                    "compensation_unit",
-                                    "normalized_compensation_usd",
-                                    "drop_reason",
-                                    "decision_reason",
-                                    "matched_keywords",
-                                    "penalized_keywords",
-                                ],
-                            )
+                            writer = csv.DictWriter(handle, fieldnames=_REJECTED_CSV_FIELDS)
                             writer.writerows(rejected_rows)
                     except Exception:
                         pass
@@ -353,15 +312,15 @@ class ScraperEngine:
         time.sleep(random.uniform(min_jitter, max_jitter))
         started_at = time.perf_counter()
         adapter_hint = self._resolve_adapter_name(company)
-        workday_skip_reason = self._workday_cooldown_reason(company)
-        if workday_skip_reason:
+        cooldown_adapter, cooldown_reason = self._cooldown_reason(company)
+        if cooldown_reason:
             return {
                 "jobs": [],
-                "adapter": "workday",
+                "adapter": cooldown_adapter,
                 "scrape_ms": 0.0,
                 "used_deep_search": False,
                 "status": "cooldown",
-                "note": workday_skip_reason,
+                "note": cooldown_reason,
             }
         generic_low_signal_reason = self._generic_low_signal_reason(company)
         if generic_low_signal_reason:
@@ -373,18 +332,9 @@ class ScraperEngine:
                 "status": "low_signal",
                 "note": generic_low_signal_reason,
             }
-        generic_skip_reason = self._generic_cooldown_reason(company)
-        if generic_skip_reason:
-            return {
-                "jobs": [],
-                "adapter": "generic",
-                "scrape_ms": 0.0,
-                "used_deep_search": False,
-                "status": "cooldown",
-                "note": generic_skip_reason,
-            }
         scrape_semaphore = self._adapter_semaphores.get(adapter_hint)
         if scrape_semaphore is None:
+            logger.warning("No semaphore configured for adapter %r; defaulting to concurrency=1", adapter_hint)
             scrape_semaphore = BoundedSemaphore(1)
         with scrape_semaphore:
             try:
@@ -454,51 +404,48 @@ class ScraperEngine:
         adapter_note = getattr(adapter, "last_note", "")
         return jobs, adapter_name, adapter_status, adapter_note
 
-    def _workday_cooldown_reason(self, company: Dict[str, Any]) -> str:
-        careers_url = str(company.get("careers_url", "") or "")
-        adapter_name = str(company.get("adapter", "") or "").lower()
-        if "myworkdayjobs.com" not in careers_url.lower() and adapter_name not in {"workday", "workday_manual"}:
-            return ""
-        conn = db.get_connection()
-        try:
-            row = db.get_workday_target_health(conn, company.get("name", ""))
-        finally:
-            conn.close()
-        if not row or not row["cooldown_until"]:
-            return ""
-        try:
-            cooldown_until = datetime.fromisoformat(str(row["cooldown_until"]))
-        except Exception:
-            return ""
-        if cooldown_until.tzinfo is None:
-            cooldown_until = cooldown_until.replace(tzinfo=timezone.utc)
-        if cooldown_until > datetime.now(timezone.utc):
-            return f"Cooldown until {cooldown_until.isoformat()}"
-        return ""
+    def _cooldown_reason(self, company: Dict[str, Any]):
+        """Return (adapter, reason) if the company is on cooldown, else ('', '').
 
-    def _generic_cooldown_reason(self, company: Dict[str, Any]) -> str:
-        careers_url = str(company.get("careers_url", "") or "")
+        Opens one DB connection per company instead of the previous two.
+        """
+        careers_url = str(company.get("careers_url", "") or "").lower()
         adapter_name = str(company.get("adapter", "") or "").lower()
-        if adapter_name != "generic" and "myworkdayjobs.com" in careers_url.lower():
-            return ""
-        if adapter_name != "generic":
-            return ""
+        name = company.get("name", "")
+        now = datetime.now(timezone.utc)
+
+        is_workday = "myworkdayjobs.com" in careers_url or adapter_name in {"workday", "workday_manual"}
+        is_generic = adapter_name == "generic" and not is_workday
+        if not is_workday and not is_generic:
+            return "", ""
+
         conn = db.get_connection()
         try:
-            row = db.get_generic_target_health(conn, company.get("name", ""))
+            if is_workday:
+                row = db.get_workday_target_health(conn, name)
+                if row and row["cooldown_until"]:
+                    try:
+                        until = datetime.fromisoformat(str(row["cooldown_until"]))
+                        if until.tzinfo is None:
+                            until = until.replace(tzinfo=timezone.utc)
+                        if until > now:
+                            return "workday", f"Cooldown until {until.isoformat()}"
+                    except Exception:
+                        pass
+            if is_generic:
+                row = db.get_generic_target_health(conn, name)
+                if row and row["cooldown_until"]:
+                    try:
+                        until = datetime.fromisoformat(str(row["cooldown_until"]))
+                        if until.tzinfo is None:
+                            until = until.replace(tzinfo=timezone.utc)
+                        if until > now:
+                            return "generic", f"Cooldown until {until.isoformat()}"
+                    except Exception:
+                        pass
         finally:
             conn.close()
-        if not row or not row["cooldown_until"]:
-            return ""
-        try:
-            cooldown_until = datetime.fromisoformat(str(row["cooldown_until"]))
-        except Exception:
-            return ""
-        if cooldown_until.tzinfo is None:
-            cooldown_until = cooldown_until.replace(tzinfo=timezone.utc)
-        if cooldown_until > datetime.now(timezone.utc):
-            return f"Cooldown until {cooldown_until.isoformat()}"
-        return ""
+        return "", ""
 
     def _generic_low_signal_reason(self, company: Dict[str, Any]) -> str:
         careers_url = str(company.get("careers_url", "") or "").strip()
