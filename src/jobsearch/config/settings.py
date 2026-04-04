@@ -11,13 +11,22 @@ _PACKAGE_DIR = _CONFIG_DIR.parent  # src/jobsearch/
 _SRC_DIR = _PACKAGE_DIR.parent     # src/
 BASE_DIR = _SRC_DIR.parent         # Project Root
 
+
+def _resolve_runtime_dir() -> Path:
+    override = os.getenv("JOBSEARCH_HOME", "").strip()
+    if override:
+        return Path(override).expanduser()
+    return BASE_DIR
+
+
 class Settings:
     def __init__(self):
         # Directories
         self.base_dir = BASE_DIR
-        self.config_dir = BASE_DIR / "config"
-        self.results_dir = BASE_DIR / "results"
-        self.data_dir = BASE_DIR / "data"
+        self.runtime_dir = _resolve_runtime_dir()
+        self.config_dir = self.runtime_dir / "config"
+        self.results_dir = self.runtime_dir / "results"
+        self.data_dir = self.runtime_dir / "data"
         
         # Files
         self.db_path = self.results_dir / "jobsearch.db"

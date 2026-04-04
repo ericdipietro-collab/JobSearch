@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AppInstaller
+    xmlns="http://schemas.microsoft.com/appx/appinstaller/2018"
+    Uri="__APPINSTALLER_URI__"
+    Version="__VERSION__">
+  <MainPackage
+      Name="__PACKAGE_NAME__"
+      Publisher="__PUBLISHER__"
+      Version="__VERSION__"
+      Uri="__PACKAGE_URI__" />
+  <UpdateSettings>
+    <OnLaunch HoursBetweenUpdateChecks="0" ShowPrompt="true" UpdateBlocksActivation="false" />
+    <AutomaticBackgroundTask />
+  </UpdateSettings>
+</AppInstaller>
