@@ -39,6 +39,15 @@ class AdzunaAdapter(BaseAdapter):
         if self._credentials_missing():
             return []
         jobs: list[Job] = []
+        request_cap = max(
+            1,
+            int(
+                company_config.get("max_requests_per_run")
+                or get_runtime_setting("adzuna_max_requests_per_run", str(settings.adzuna_max_requests_per_run))
+                or settings.adzuna_max_requests_per_run
+            ),
+        )
+        requests_made = 0
         queries = [str(q).strip() for q in (company_config.get("search_queries") or []) if str(q).strip()]
         if not queries:
             queries = [""]
@@ -46,8 +55,9 @@ class AdzunaAdapter(BaseAdapter):
         per_page = min(max_results, 50)
         for query in queries:
             page = 1
-            while len(jobs) < max_results:
+            while len(jobs) < max_results and requests_made < request_cap:
                 payload = self._fetch_page(company_config, query, page)
+                requests_made += 1
                 results = payload.get("results") or []
                 if not isinstance(results, list) or not results:
                     break

@@ -77,3 +77,23 @@ companies:
     max_results_per_query: 50
     concurrency: 1
     cooldown_days: 1
+  - name: The Muse API
+    source_lane: aggregator
+    adapter: themuse
+    active: false
+    priority: medium
+    tier: 4
+    careers_url: https://www.themuse.com/
+    domain: themuse.com
+    industry: job board | aggregator
+    status: active
+    notes: Disabled public API source for curated tech and business roles.
+    search_queries:
+      - senior product manager fintech
+      - solution architect financial services
+      - technical business analyst
+    location_filter: United States
+    max_results_per_query: 50
+    max_requests_per_run: 3
+    concurrency: 1
+    cooldown_days: 1

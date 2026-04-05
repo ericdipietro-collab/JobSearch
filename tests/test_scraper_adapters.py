@@ -20,6 +20,7 @@ from jobsearch.scraper.adapters.lever import LeverAdapter
 from jobsearch.scraper.adapters.motionrecruitment import MotionRecruitmentAdapter
 from jobsearch.scraper.adapters.rippling import RipplingAdapter
 from jobsearch.scraper.adapters.smartrecruiters import SmartRecruitersAdapter
+from jobsearch.scraper.adapters.themuse import TheMuseAdapter
 from jobsearch.scraper.adapters.usajobs import USAJobsAdapter
 from jobsearch.scraper.adapters.workday import WorkdayAdapter
 from jobsearch.scraper.engine import ScraperEngine
@@ -169,6 +170,15 @@ class _FakeJoobleAdapter(JoobleAdapter):
         return self.payloads.pop(0) if self.payloads else {"jobs": []}
 
 
+class _FakeTheMuseAdapter(TheMuseAdapter):
+    def __init__(self, payloads):
+        super().__init__(session=None, scorer=None)
+        self.payloads = list(payloads)
+
+    def _fetch_page(self, company_config, page):
+        return self.payloads.pop(0) if self.payloads else {"results": [], "page_count": 0}
+
+
 class ScraperAdapterRegressionTests(unittest.TestCase):
     def test_usajobs_adapter_parses_search_results(self):
         payload = {
@@ -269,6 +279,27 @@ class ScraperAdapterRegressionTests(unittest.TestCase):
             self.assertEqual(jobs[0].company, "IndeedCo")
             self.assertEqual(jobs[0].source_lane, "aggregator")
             self.assertEqual(jobs[0].canonical_job_url, "https://jobs.indeedco.com/roles/123")
+
+    def test_themuse_adapter_parses_results(self):
+        payload = {
+            "page": 1,
+            "page_count": 1,
+            "results": [
+                {
+                    "id": 77,
+                    "name": "Senior Product Manager",
+                    "company": {"name": "MuseCo"},
+                    "refs": {"landing_page": "https://www.themuse.com/jobs/museco/spm"},
+                    "locations": [{"name": "Remote"}],
+                    "contents": "Fintech product role",
+                }
+            ],
+        }
+        adapter = _FakeTheMuseAdapter([payload])
+        jobs = adapter.scrape({"name": "The Muse API", "search_queries": ["product manager"], "max_results_per_query": 10, "tier": 4})
+        self.assertEqual(len(jobs), 1)
+        self.assertEqual(jobs[0].company, "MuseCo")
+        self.assertEqual(jobs[0].source_lane, "aggregator")
 
     def test_indeed_connector_handles_missing_cache(self):
         adapter = IndeedConnectorAdapter(session=None, scorer=None)

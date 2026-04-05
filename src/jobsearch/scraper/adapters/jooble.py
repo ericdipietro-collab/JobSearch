@@ -15,6 +15,15 @@ class JoobleAdapter(BaseAdapter):
             self.last_note = "Jooble API key missing (App Settings or JOBSEARCH_JOOBLE_API_KEY)"
             return []
         jobs: list[Job] = []
+        request_cap = max(
+            1,
+            int(
+                company_config.get("max_requests_per_run")
+                or get_runtime_setting("jooble_max_requests_per_run", str(settings.jooble_max_requests_per_run))
+                or settings.jooble_max_requests_per_run
+            ),
+        )
+        requests_made = 0
         queries = [str(q).strip() for q in (company_config.get("search_queries") or []) if str(q).strip()]
         if not queries:
             queries = [""]
@@ -23,7 +32,7 @@ class JoobleAdapter(BaseAdapter):
         url = f"https://jooble.org/api/{api_key}"
         for query in queries:
             page = 1
-            while len(jobs) < max_results:
+            while len(jobs) < max_results and requests_made < request_cap:
                 payload = {
                     "keywords": query,
                     "location": str(company_config.get("location_filter") or "").strip(),
@@ -31,6 +40,7 @@ class JoobleAdapter(BaseAdapter):
                     "ResultOnPage": str(per_page),
                 }
                 data = self.fetch_json_post(url, payload)
+                requests_made += 1
                 results = data.get("jobs") or []
                 if not isinstance(results, list) or not results:
                     break

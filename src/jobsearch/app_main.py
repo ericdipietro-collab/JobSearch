@@ -1360,6 +1360,10 @@ def main():
                 adzuna_app_key = ats_db.get_setting(conn, "adzuna_app_key", default=settings.adzuna_app_key)
                 adzuna_country = ats_db.get_setting(conn, "adzuna_country", default=settings.adzuna_country)
                 jooble_api_key = ats_db.get_setting(conn, "jooble_api_key", default=settings.jooble_api_key)
+                usajobs_max_requests = int(ats_db.get_setting(conn, "usajobs_max_requests_per_run", default=str(settings.usajobs_max_requests_per_run)) or settings.usajobs_max_requests_per_run)
+                adzuna_max_requests = int(ats_db.get_setting(conn, "adzuna_max_requests_per_run", default=str(settings.adzuna_max_requests_per_run)) or settings.adzuna_max_requests_per_run)
+                jooble_max_requests = int(ats_db.get_setting(conn, "jooble_max_requests_per_run", default=str(settings.jooble_max_requests_per_run)) or settings.jooble_max_requests_per_run)
+                themuse_max_requests = int(ats_db.get_setting(conn, "themuse_max_requests_per_run", default=str(settings.themuse_max_requests_per_run)) or settings.themuse_max_requests_per_run)
 
                 st.markdown("#### Dashboard Settings")
                 app_weekly_goal = st.number_input("Weekly Activity Goal", min_value=1, max_value=50, value=weekly_goal, step=1)
@@ -1404,6 +1408,13 @@ def main():
                     help="Two-letter Adzuna market code, for example us, gb, or au.",
                 )
                 app_jooble_api_key = st.text_input("Jooble API Key", value=jooble_api_key, type="password")
+                rate_col1, rate_col2 = st.columns(2)
+                app_usajobs_max_requests = rate_col1.number_input("USAJobs Max Requests / Run", min_value=1, max_value=50, value=usajobs_max_requests, step=1)
+                app_adzuna_max_requests = rate_col2.number_input("Adzuna Max Requests / Run", min_value=1, max_value=50, value=adzuna_max_requests, step=1)
+                rate_col3, rate_col4 = st.columns(2)
+                app_jooble_max_requests = rate_col3.number_input("Jooble Max Requests / Run", min_value=1, max_value=50, value=jooble_max_requests, step=1)
+                app_themuse_max_requests = rate_col4.number_input("The Muse Max Requests / Run", min_value=1, max_value=50, value=themuse_max_requests, step=1)
+                st.caption("Use conservative per-run caps for free tiers. Increase only after you confirm the source is useful.")
 
                 if st.button("Save App Settings"):
                     ats_db.set_setting(conn, "weekly_activity_goal", str(int(app_weekly_goal)))
@@ -1416,6 +1427,10 @@ def main():
                     ats_db.set_setting(conn, "adzuna_app_key", app_adzuna_app_key.strip())
                     ats_db.set_setting(conn, "adzuna_country", (app_adzuna_country.strip() or "us").lower())
                     ats_db.set_setting(conn, "jooble_api_key", app_jooble_api_key.strip())
+                    ats_db.set_setting(conn, "usajobs_max_requests_per_run", str(int(app_usajobs_max_requests)))
+                    ats_db.set_setting(conn, "adzuna_max_requests_per_run", str(int(app_adzuna_max_requests)))
+                    ats_db.set_setting(conn, "jooble_max_requests_per_run", str(int(app_jooble_max_requests)))
+                    ats_db.set_setting(conn, "themuse_max_requests_per_run", str(int(app_themuse_max_requests)))
                     st.success("App settings saved.")
             finally:
                 conn.close()

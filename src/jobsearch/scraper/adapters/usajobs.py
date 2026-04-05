@@ -62,6 +62,15 @@ class USAJobsAdapter(BaseAdapter):
         if headers is None:
             return []
         jobs: list[Job] = []
+        request_cap = max(
+            1,
+            int(
+                company_config.get("max_requests_per_run")
+                or get_runtime_setting("usajobs_max_requests_per_run", str(settings.usajobs_max_requests_per_run))
+                or settings.usajobs_max_requests_per_run
+            ),
+        )
+        requests_made = 0
         queries = [str(q).strip() for q in (company_config.get("search_queries") or []) if str(q).strip()]
         if not queries:
             queries = [""]
@@ -69,8 +78,9 @@ class USAJobsAdapter(BaseAdapter):
         per_page = min(max_results, 500)
         for query in queries:
             page = 1
-            while len(jobs) < max_results:
+            while len(jobs) < max_results and requests_made < request_cap:
                 payload = self._query_jobs(company_config, query, page, headers)
+                requests_made += 1
                 search_result = payload.get("SearchResult") or {}
                 items = search_result.get("SearchResultItems") or []
                 if not isinstance(items, list) or not items:
