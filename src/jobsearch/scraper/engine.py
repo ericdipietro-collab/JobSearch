@@ -15,14 +15,18 @@ from jobsearch.config.settings import BASE_DIR, get_shared_session, rotate_log_f
 from jobsearch import ats_db as db
 from jobsearch.db.connection import get_connection
 from jobsearch.scraper.adapters.ashby import AshbyAdapter
+from jobsearch.scraper.adapters.adzuna import AdzunaAdapter
 from jobsearch.scraper.adapters.base import BaseAdapter, BlockedSiteError
 from jobsearch.scraper.adapters.dice import DiceAdapter
 from jobsearch.scraper.adapters.generic import GenericAdapter
 from jobsearch.scraper.adapters.greenhouse import GreenhouseAdapter
+from jobsearch.scraper.adapters.indeed_connector import IndeedConnectorAdapter
+from jobsearch.scraper.adapters.jooble import JoobleAdapter
 from jobsearch.scraper.adapters.lever import LeverAdapter
 from jobsearch.scraper.adapters.motionrecruitment import MotionRecruitmentAdapter
 from jobsearch.scraper.adapters.rippling import RipplingAdapter
 from jobsearch.scraper.adapters.smartrecruiters import SmartRecruitersAdapter
+from jobsearch.scraper.adapters.usajobs import USAJobsAdapter
 from jobsearch.scraper.adapters.workday import WorkdayAdapter
 from jobsearch.scraper.scoring import Scorer
 from jobsearch.services.opportunity_service import upsert_job
@@ -78,6 +82,10 @@ class ScraperEngine:
         "workday_manual": WorkdayAdapter,
         "rippling": RipplingAdapter,
         "smartrecruiters": SmartRecruitersAdapter,
+        "usajobs": USAJobsAdapter,
+        "adzuna": AdzunaAdapter,
+        "jooble": JoobleAdapter,
+        "indeed_connector": IndeedConnectorAdapter,
         "dice": DiceAdapter,
         "generic": GenericAdapter,
         "custom_manual": GenericAdapter,
@@ -121,6 +129,10 @@ class ScraperEngine:
             "ashby": settings.scrape_ashby_concurrency,
             "rippling": settings.scrape_rippling_concurrency,
             "smartrecruiters": settings.scrape_smartrecruiters_concurrency,
+            "usajobs": settings.scrape_usajobs_concurrency,
+            "adzuna": settings.scrape_adzuna_concurrency,
+            "jooble": settings.scrape_jooble_concurrency,
+            "indeed_connector": settings.scrape_indeed_connector_concurrency,
             "dice": settings.scrape_dice_concurrency,
             "motionrecruitment": settings.scrape_motionrecruitment_concurrency,
             "deep_search": settings.scrape_deep_search_concurrency,
@@ -624,6 +636,8 @@ class ScraperEngine:
                 "hourly_rate": getattr(job, "hourly_rate", None),
                 "hours_per_week": getattr(job, "hours_per_week", None),
                 "weeks_per_year": getattr(job, "weeks_per_year", None),
+                "source_lane": str(company.get("source_lane") or "employer_ats"),
+                "canonical_job_url": getattr(job, "canonical_job_url", ""),
             }
             score_results = self.scorer.score_job(scoring_data)
             job.score = score_results["score"]
@@ -640,6 +654,8 @@ class ScraperEngine:
                 "normalized_compensation_usd",
                 getattr(job, "normalized_compensation_usd", None),
             )
+            job.source_lane = str(company.get("source_lane") or getattr(job, "source_lane", "employer_ats") or "employer_ats")
+            job.canonical_job_url = str(getattr(job, "canonical_job_url", "") or "")
             score_values.append(float(job.score or 0.0))
 
             if job.score >= self.scorer.min_score_to_keep:

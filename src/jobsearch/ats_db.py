@@ -184,6 +184,8 @@ class Opportunity(BaseModel):
     description_excerpt: str = ""
     user_priority: int = 0
     notes: str = ""
+    source_lane: str = "employer_ats"
+    canonical_job_url: str = ""
 
     @staticmethod
     def make_id(company: str, title: str, url: str) -> str:
@@ -296,6 +298,8 @@ def init_db(conn: sqlite3.Connection) -> None:
             role_normalized TEXT,
             job_url TEXT,
             source TEXT,
+            source_lane TEXT NOT NULL DEFAULT 'employer_ats',
+            canonical_job_url TEXT,
             scraper_key TEXT,
             status TEXT NOT NULL DEFAULT 'considering',
             fit_stars INTEGER,
@@ -646,6 +650,8 @@ def init_db(conn: sqlite3.Connection) -> None:
             "penalized_keywords": "TEXT",
             "decision_reason": "TEXT",
             "description_excerpt": "TEXT",
+            "source_lane": "TEXT NOT NULL DEFAULT 'employer_ats'",
+            "canonical_job_url": "TEXT",
             "jd_fingerprint": "TEXT",
             "jd_last_changed_at": "TEXT",
             "jd_change_summary": "TEXT",

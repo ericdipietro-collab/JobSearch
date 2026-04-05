@@ -37,6 +37,7 @@ class Scorer:
         scoring_cfg = self.prefs.get("scoring", {})
         keyword_matching_cfg = scoring_cfg.get("keyword_matching", {})
         self.min_score_to_keep = scoring_cfg.get("minimum_score_to_keep", 35)
+        self.source_trust_cfg = scoring_cfg.get("source_trust", {})
         self.positive_keyword_cap = int(keyword_matching_cfg.get("positive_keyword_cap", 60))
         self.negative_keyword_cap = int(keyword_matching_cfg.get("negative_keyword_cap", 45))
         adjustments_cfg = scoring_cfg.get("adjustments", {})
@@ -109,6 +110,25 @@ class Scorer:
         }
         self._onsite_markers = {"onsite", "on-site", "on site", "in office", "office-based", "office based"}
         self._hybrid_markers = {"hybrid", "hybrid remote", "hybrid schedule", "remote/hybrid", "hybrid role"}
+
+    def _source_trust_key(self, job_data: Dict[str, Any]) -> str:
+        source_lane = str(job_data.get("source_lane") or "employer_ats").strip().lower() or "employer_ats"
+        if source_lane == "aggregator":
+            canonical = str(job_data.get("canonical_job_url") or "").strip()
+            return "aggregator_with_canonical" if canonical else "aggregator_without_canonical"
+        if source_lane == "contractor":
+            return "contractor"
+        return "employer_ats"
+
+    def _source_trust_policy(self, job_data: Dict[str, Any]) -> Dict[str, Any]:
+        key = self._source_trust_key(job_data)
+        policy = self.source_trust_cfg.get(key, {}) or {}
+        return {
+            "key": key,
+            "score_penalty": int(policy.get("score_penalty", 0) or 0),
+            "apply_now_eligible": bool(policy.get("apply_now_eligible", True)),
+            "cap_bucket": str(policy.get("cap_bucket") or "").strip().upper() or None,
+        }
 
     @staticmethod
     def _pref_weight_pairs(raw: Any, default: List[Tuple[str, int]]) -> List[Tuple[str, int]]:
@@ -282,7 +302,7 @@ class Scorer:
                 self.clean(job_data.get("salary_text")),
             ]
         ).lower()
-        if any(marker in blob for marker in ["intern", "internship", "co-op", "co op"]):
+        if any(marker in blob for marker in ["internship", "co-op", "co op"]) or re.search(r"\bintern\b", blob):
             return "internship"
         if any(marker in blob for marker in ["part-time", "part time"]):
             return "part_time"
@@ -335,7 +355,7 @@ class Scorer:
         if not text:
             return None, None
         annual_context = bool(
-            re.search(r"\b(salary|compensation|pay range|base pay|base salary|annual|annually|per year|yearly)\b", text, flags=re.IGNORECASE)
+            re.search(r"\b(salary|compensation|pay range|base pay|base salary|annual|annually|per year|yearly|ote|on.target)\b", text, flags=re.IGNORECASE)
         )
         if not annual_context:
             return None, None
@@ -484,9 +504,11 @@ class Scorer:
         )
         compensation_adjustment = 0
         contract_adjustment = 0
+        source_penalty = 0
 
         work_type = comp_data["work_type"]
         normalized_comp = comp_data["normalized_compensation_usd"]
+        source_trust = self._source_trust_policy(job_data)
 
         is_remote_role = self._is_remote_role(location, description, job_data.get("is_remote"))
         is_hybrid_role = self._is_hybrid_role(location, description)
@@ -577,7 +599,8 @@ class Scorer:
             else:
                 compensation_adjustment -= self.salary_below_target_penalty
 
-        score += compensation_adjustment + contract_adjustment + location_bonus
+        source_penalty -= int(source_trust["score_penalty"])
+        score += compensation_adjustment + contract_adjustment + location_bonus + source_penalty
         score = max(0.0, min(100.0, score))
 
         matched_str = ", ".join(sorted(set(term for term, _ in title_hits + partial_hits + jd_pos_hits)))
@@ -593,6 +616,7 @@ class Scorer:
                 f"title={title_points} body+={body_positive_points} body-={body_negative_points} "
                 f"tier={tier_bonus} partial={partial_title_points} gate={positive_keyword_gate_bonus} "
                 f"location-={location_penalty} location+={location_bonus} comp={compensation_adjustment} contract={contract_adjustment} "
+                f"source={source_penalty} source_lane={source_trust['key']} "
                 f"work_type={work_type} normalized_comp={normalized_comp if normalized_comp is not None else 'na'} "
                 f"hits={len(title_hits) + len(partial_hits) + len(jd_pos_hits)}"
             ),
@@ -608,6 +632,8 @@ class Scorer:
                 "location_bonus": location_bonus,
                 "compensation_adjustment": compensation_adjustment,
                 "contract_adjustment": contract_adjustment,
+                "source_penalty": source_penalty,
+                "source_trust_key": source_trust["key"],
             },
             **comp_data,
         }

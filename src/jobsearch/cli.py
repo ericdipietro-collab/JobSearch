@@ -171,7 +171,11 @@ def heal(heal_all, force, deep, workers, deep_timeout):
     with comp_path.open("r", encoding="utf-8") as handle:
         data = yaml.safe_load(handle) or {}
 
-    companies = data.get("companies", [])
+    companies = [
+        company
+        for company in (data.get("companies", []) or [])
+        if str(company.get("source_lane") or "").lower() != "aggregator"
+    ]
     now_utc = datetime.now(timezone.utc)
     to_heal = []
     skipped = []
@@ -374,12 +378,13 @@ def heal(heal_all, force, deep, workers, deep_timeout):
 @click.option("--deep-search", is_flag=True, help="Enable deep search using Playwright.")
 @click.option("--test-companies", is_flag=True, help="Use the test company list.")
 @click.option("--contract-sources", is_flag=True, help="Use the contractor-source company list.")
+@click.option("--aggregator-sources", is_flag=True, help="Include aggregator job board sources.")
 @click.option("--workers", default=8, help="Number of parallel workers for the scraper.")
 @click.option("--prefs", "--preferences", type=click.Path(exists=True), help="Path to preferences YAML.")
 @click.option("--companies", type=click.Path(exists=True), help="Path to companies YAML.")
 @click.option("--legacy", is_flag=True, help="Use the legacy scraper script if it exists.")
 @click.argument("extra_args", nargs=-1)
-def run(deep_search, test_companies, contract_sources, workers, prefs, companies, legacy, extra_args):
+def run(deep_search, test_companies, contract_sources, aggregator_sources, workers, prefs, companies, legacy, extra_args):
     """Run the job search pipeline."""
     click.echo("Starting Job Search Pipeline...")
 
@@ -432,6 +437,12 @@ def run(deep_search, test_companies, contract_sources, workers, prefs, companies
             with contract_path.open("r", encoding="utf-8") as handle:
                 contract_data = (yaml.safe_load(handle) or {}).get("companies", [])
             comp_data = _merge_company_lists(comp_data, contract_data)
+    if aggregator_sources:
+        aggregator_path = settings.aggregator_companies_yaml
+        if aggregator_path.exists() and aggregator_path != comp_path:
+            with aggregator_path.open("r", encoding="utf-8") as handle:
+                aggregator_data = (yaml.safe_load(handle) or {}).get("companies", [])
+            comp_data = _merge_company_lists(comp_data, aggregator_data)
 
     engine = ScraperEngine(prefs_data, comp_data, deep_search=deep_search)
     engine.run(max_workers=workers)

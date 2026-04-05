@@ -1,6 +1,7 @@
 """src/jobsearch/config/settings.py — Central source of truth for paths and environment."""
 
 import os
+import sqlite3
 from pathlib import Path
 from typing import Dict, Any
 
@@ -27,12 +28,14 @@ class Settings:
         self.config_dir = self.runtime_dir / "config"
         self.results_dir = self.runtime_dir / "results"
         self.data_dir = self.runtime_dir / "data"
+        self.aggregator_import_dir = self.results_dir / "aggregator_imports"
         
         # Files
         self.db_path = self.results_dir / "jobsearch.db"
         self.prefs_yaml = self.config_dir / "job_search_preferences.yaml"
         self.companies_yaml = self.config_dir / "job_search_companies.yaml"
         self.contract_companies_yaml = self.config_dir / "job_search_companies_contract.yaml"
+        self.aggregator_companies_yaml = self.config_dir / "job_search_companies_aggregators.yaml"
         self.history_json = self.results_dir / "job_search_history_v6.json"
         self.rejected_csv = self.results_dir / "job_search_v6_rejected.csv"
         self.log_file = self.results_dir / "job_search_v6.log"
@@ -55,7 +58,17 @@ class Settings:
         self.scrape_smartrecruiters_concurrency = int(os.getenv("JOBSEARCH_SCRAPE_SMARTRECRUITERS_CONCURRENCY", "2"))
         self.scrape_dice_concurrency = int(os.getenv("JOBSEARCH_SCRAPE_DICE_CONCURRENCY", "2"))
         self.scrape_motionrecruitment_concurrency = int(os.getenv("JOBSEARCH_SCRAPE_MOTIONRECRUITMENT_CONCURRENCY", "2"))
+        self.scrape_indeed_connector_concurrency = int(os.getenv("JOBSEARCH_SCRAPE_INDEED_CONNECTOR_CONCURRENCY", "1"))
+        self.scrape_usajobs_concurrency = int(os.getenv("JOBSEARCH_SCRAPE_USAJOBS_CONCURRENCY", "1"))
+        self.scrape_adzuna_concurrency = int(os.getenv("JOBSEARCH_SCRAPE_ADZUNA_CONCURRENCY", "1"))
+        self.scrape_jooble_concurrency = int(os.getenv("JOBSEARCH_SCRAPE_JOOBLE_CONCURRENCY", "1"))
         self.scrape_deep_search_concurrency = int(os.getenv("JOBSEARCH_SCRAPE_DEEP_SEARCH_CONCURRENCY", "1"))
+        self.usajobs_api_key = os.getenv("JOBSEARCH_USAJOBS_API_KEY", "").strip()
+        self.usajobs_user_agent = os.getenv("JOBSEARCH_USAJOBS_USER_AGENT", "").strip()
+        self.adzuna_app_id = os.getenv("JOBSEARCH_ADZUNA_APP_ID", "").strip()
+        self.adzuna_app_key = os.getenv("JOBSEARCH_ADZUNA_APP_KEY", "").strip()
+        self.adzuna_country = os.getenv("JOBSEARCH_ADZUNA_COUNTRY", "us").strip().lower() or "us"
+        self.jooble_api_key = os.getenv("JOBSEARCH_JOOBLE_API_KEY", "").strip()
         self.workday_scrape_budget_ms = int(os.getenv("JOBSEARCH_WORKDAY_SCRAPE_BUDGET_MS", "60000"))
         self.workday_html_fallback_budget_ms = int(os.getenv("JOBSEARCH_WORKDAY_HTML_FALLBACK_BUDGET_MS", "10000"))
         self.workday_empty_cooldown_days = int(os.getenv("JOBSEARCH_WORKDAY_EMPTY_COOLDOWN_DAYS", "7"))
@@ -68,6 +81,7 @@ class Settings:
         # Ensure directories exist
         self.results_dir.mkdir(parents=True, exist_ok=True)
         self.config_dir.mkdir(parents=True, exist_ok=True)
+        self.aggregator_import_dir.mkdir(parents=True, exist_ok=True)
 
     @property
     def preferences_yaml(self) -> Path:
@@ -82,6 +96,25 @@ class Settings:
         return 100
 
 settings = Settings()
+
+
+def get_runtime_setting(key: str, env_default: str = "") -> str:
+    """Read a local runtime setting, falling back to env/default values."""
+    if env_default:
+        return env_default
+    db_path = settings.db_path
+    if not db_path.exists():
+        return ""
+    try:
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        try:
+            row = conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
+            return str(row["value"]) if row and row["value"] is not None else ""
+        finally:
+            conn.close()
+    except Exception:
+        return ""
 
 
 def rotate_log_file(path: Path, keep: int = 5, max_bytes: int = 1_000_000) -> None:

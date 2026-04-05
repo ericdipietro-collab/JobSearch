@@ -3,7 +3,7 @@
 from __future__ import annotations
 import sqlite3
 
-SCHEMA_VERSION: int = 2
+SCHEMA_VERSION: int = 3
 
 # ── DDL Statements ───────────────────────────────────────────────────────────
 
@@ -15,6 +15,8 @@ CREATE TABLE IF NOT EXISTS applications (
     role_normalized    TEXT,
     job_url            TEXT,
     source             TEXT,
+    source_lane        TEXT    NOT NULL DEFAULT 'employer_ats',
+    canonical_job_url  TEXT,
     scraper_key        TEXT    UNIQUE, -- Map to old Opportunity.id (company||title||url)
     status             TEXT    NOT NULL DEFAULT 'considering',
     

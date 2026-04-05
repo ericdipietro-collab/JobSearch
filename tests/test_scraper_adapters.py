@@ -2,6 +2,8 @@ import sys
 import time
 import unittest
 import re
+import json
+import tempfile
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -11,14 +13,19 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from jobsearch.scraper.adapters.ashby import AshbyAdapter
+from jobsearch.scraper.adapters.adzuna import AdzunaAdapter
+from jobsearch.scraper.adapters.indeed_connector import IndeedConnectorAdapter
+from jobsearch.scraper.adapters.jooble import JoobleAdapter
 from jobsearch.scraper.adapters.lever import LeverAdapter
 from jobsearch.scraper.adapters.motionrecruitment import MotionRecruitmentAdapter
 from jobsearch.scraper.adapters.rippling import RipplingAdapter
 from jobsearch.scraper.adapters.smartrecruiters import SmartRecruitersAdapter
+from jobsearch.scraper.adapters.usajobs import USAJobsAdapter
 from jobsearch.scraper.adapters.workday import WorkdayAdapter
 from jobsearch.scraper.engine import ScraperEngine
 from jobsearch.scraper.models import Job
 from jobsearch.services.healer_service import ATSHealer
+from jobsearch.config.settings import settings
 
 
 class _FakeLeverAdapter(LeverAdapter):
@@ -129,7 +136,146 @@ class _BudgetedWorkdayAdapter(WorkdayAdapter):
         ]
 
 
+class _FakeUSAJobsAdapter(USAJobsAdapter):
+    def __init__(self, payloads):
+        super().__init__(session=None, scorer=None)
+        self.payloads = list(payloads)
+
+    def _headers(self):
+        return {"Host": "data.usajobs.gov", "User-Agent": "tester@example.com", "Authorization-Key": "key"}
+
+    def _query_jobs(self, company_config, keyword, page, headers):
+        return self.payloads.pop(0) if self.payloads else {"SearchResult": {"SearchResultItems": []}}
+
+
+class _FakeAdzunaAdapter(AdzunaAdapter):
+    def __init__(self, payloads):
+        super().__init__(session=None, scorer=None)
+        self.payloads = list(payloads)
+
+    def _credentials_missing(self):
+        return False
+
+    def _fetch_page(self, company_config, keyword, page):
+        return self.payloads.pop(0) if self.payloads else {"results": []}
+
+
+class _FakeJoobleAdapter(JoobleAdapter):
+    def __init__(self, payloads):
+        super().__init__(session=None, scorer=None)
+        self.payloads = list(payloads)
+
+    def fetch_json_post(self, url: str, payload, referer=None, timeout=None):
+        return self.payloads.pop(0) if self.payloads else {"jobs": []}
+
+
 class ScraperAdapterRegressionTests(unittest.TestCase):
+    def test_usajobs_adapter_parses_search_results(self):
+        payload = {
+            "SearchResult": {
+                "SearchResultCount": 1,
+                "SearchResultCountAll": 1,
+                "SearchResultItems": [
+                    {
+                        "MatchedObjectId": "123",
+                        "MatchedObjectDescriptor": {
+                            "PositionTitle": "IT Product Manager",
+                            "PositionURI": "https://www.usajobs.gov/GetJob/ViewDetails/123",
+                            "OrganizationName": "Department of Testing",
+                            "PositionLocationDisplay": "Denver, Colorado",
+                            "RemoteIndicator": False,
+                            "UserArea": {"Details": {"JobSummary": "Lead federal platform work."}},
+                        },
+                    }
+                ],
+            }
+        }
+        adapter = _FakeUSAJobsAdapter([payload])
+        jobs = adapter.scrape({"name": "USAJobs API", "search_queries": ["product manager"], "max_results_per_query": 10, "tier": 4})
+        self.assertEqual(len(jobs), 1)
+        self.assertEqual(jobs[0].source_lane, "aggregator")
+        self.assertIn("usajobs.gov", jobs[0].canonical_job_url)
+
+    def test_adzuna_adapter_parses_results(self):
+        payload = {
+            "results": [
+                {
+                    "id": "adz-1",
+                    "title": "Senior Product Manager",
+                    "redirect_url": "https://www.adzuna.com/redirect/1",
+                    "company": {"display_name": "AdzunaCo"},
+                    "location": {"display_name": "Remote - United States"},
+                    "description": "API product role",
+                    "salary_min": 180000,
+                    "salary_max": 210000,
+                }
+            ]
+        }
+        adapter = _FakeAdzunaAdapter([payload])
+        jobs = adapter.scrape({"name": "Adzuna API", "search_queries": ["product manager"], "max_results_per_query": 10, "tier": 4})
+        self.assertEqual(len(jobs), 1)
+        self.assertEqual(jobs[0].company, "AdzunaCo")
+        self.assertEqual(jobs[0].source_lane, "aggregator")
+
+    def test_jooble_adapter_parses_results(self):
+        original_key = settings.jooble_api_key
+        settings.jooble_api_key = "test-key"
+        try:
+            payload = {
+                "jobs": [
+                    {
+                        "id": 42,
+                        "title": "Solution Architect",
+                        "link": "https://jooble.org/jdp/42",
+                        "company": "JoobleCo",
+                        "location": "Remote",
+                        "snippet": "Architecture role",
+                        "salary": "$190,000",
+                    }
+                ]
+            }
+            adapter = _FakeJoobleAdapter([payload])
+            jobs = adapter.scrape({"name": "Jooble API", "search_queries": ["solution architect"], "max_results_per_query": 10, "tier": 4})
+            self.assertEqual(len(jobs), 1)
+            self.assertEqual(jobs[0].company, "JoobleCo")
+            self.assertEqual(jobs[0].source_lane, "aggregator")
+        finally:
+            settings.jooble_api_key = original_key
+
+    def test_indeed_connector_imports_jobs_from_cache(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_path = Path(tmpdir) / "indeed.json"
+            cache_path.write_text(
+                json.dumps(
+                    {
+                        "jobs": [
+                            {
+                                "company_name": "IndeedCo",
+                                "title": "Senior Product Manager",
+                                "url": "https://www.indeed.com/viewjob?jk=123",
+                                "employer_job_url": "https://jobs.indeedco.com/roles/123",
+                                "location": "Remote - United States",
+                                "description": "API platform role",
+                                "salary_text": "$180,000 - $210,000",
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            adapter = IndeedConnectorAdapter(session=None, scorer=None)
+            jobs = adapter.scrape({"name": "Indeed API Pilot", "cache_file": str(cache_path), "tier": 4})
+            self.assertEqual(len(jobs), 1)
+            self.assertEqual(jobs[0].company, "IndeedCo")
+            self.assertEqual(jobs[0].source_lane, "aggregator")
+            self.assertEqual(jobs[0].canonical_job_url, "https://jobs.indeedco.com/roles/123")
+
+    def test_indeed_connector_handles_missing_cache(self):
+        adapter = IndeedConnectorAdapter(session=None, scorer=None)
+        jobs = adapter.scrape({"name": "Indeed API Pilot", "cache_file": "aggregator_imports/missing.json"})
+        self.assertEqual(jobs, [])
+        self.assertEqual(adapter.last_status, "empty")
+
     def test_healer_signal_words_keep_short_company_names(self):
         healer = ATSHealer(session=None)
         self.assertEqual(healer._signal_words("ADP"), ["adp"])

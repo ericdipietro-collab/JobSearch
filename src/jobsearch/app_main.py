@@ -73,7 +73,8 @@ def _search_text_match(df: pd.DataFrame, query: str, columns: list[str]) -> pd.D
 def _bucket_thresholds_from_preferences() -> dict[str, float]:
     prefs = load_yaml(settings.prefs_yaml)
     rules = (((prefs.get("scoring") or {}).get("action_buckets") or {}).get("rules") or [])
-    apply_now = 88.0
+    source_trust = ((prefs.get("scoring") or {}).get("source_trust") or {})
+    apply_now = 80.0
     review_today = 74.0
     watch = 55.0
     for rule in rules:
@@ -92,7 +93,36 @@ def _bucket_thresholds_from_preferences() -> dict[str, float]:
             review_today = min(review_today, min_score)
         elif label == "WATCH" and when.get("eligible", False):
             watch = min(watch, min_score)
-    return {"APPLY NOW": apply_now, "REVIEW TODAY": review_today, "WATCH": watch}
+    comp_cfg = (prefs.get("search") or {}).get("compensation") or {}
+    min_salary = float(comp_cfg.get("min_salary_usd") or comp_cfg.get("target_salary_usd") or 165000)
+    return {
+        "APPLY NOW": apply_now,
+        "REVIEW TODAY": review_today,
+        "WATCH": watch,
+        "min_salary_usd": min_salary,
+        "source_trust": source_trust,
+    }
+
+
+def _source_bucket_cap(row: pd.Series, thresholds: dict[str, object]) -> str | None:
+    lane = str(row.get("source_lane") or "employer_ats").strip().lower() or "employer_ats"
+    source_trust = dict(thresholds.get("source_trust") or {})
+    if lane == "aggregator":
+        canonical = str(row.get("canonical_job_url") or "").strip()
+        key = "aggregator_with_canonical" if canonical else "aggregator_without_canonical"
+    elif lane == "contractor":
+        key = "contractor"
+    else:
+        key = "employer_ats"
+    policy = dict(source_trust.get(key) or {})
+    return str(policy.get("cap_bucket") or "").strip().upper() or None
+
+
+def _ats_only_df(df: pd.DataFrame) -> pd.DataFrame:
+    if df.empty or "source_lane" not in df.columns:
+        return df
+    lanes = df["source_lane"].fillna("employer_ats").astype(str).str.lower()
+    return df[lanes != "aggregator"].copy()
 
 
 def _format_score_details(raw: object) -> str:
@@ -127,6 +157,7 @@ def _invalidate_data_cache():
 
 
 def _sidebar_metrics_for_df(df: pd.DataFrame) -> dict[str, int]:
+    df = _ats_only_df(df)
     if df.empty or "status" not in df.columns:
         return {"scraped_leads": 0, "tracked": 0, "active": 0}
     statuses = df["status"].fillna("").astype(str).str.lower()
@@ -281,10 +312,29 @@ def _load_jobs_df() -> pd.DataFrame:
             if tag in {"APPLY NOW", "REVIEW TODAY", "WATCH", "FILTERED OUT"}:
                 return "Filtered Out" if tag == "FILTERED OUT" else tag
             sc = float(row.get("score", 0) or 0)
-            if sc >= thresholds["APPLY NOW"]: return "APPLY NOW"
-            if sc >= thresholds["REVIEW TODAY"]: return "REVIEW TODAY"
-            if sc >= thresholds["WATCH"]: return "WATCH"
-            return "Filtered Out"
+            bucket_name = "Filtered Out"
+            if sc >= thresholds["APPLY NOW"]:
+                # Hard gate: if salary is known and below the minimum, cap at REVIEW TODAY.
+                # Prevents high-keyword-density jobs with low/non-negotiable pay from
+                # appearing as Apply Now regardless of their score.
+                norm_comp = row.get("normalized_compensation_usd")
+                try:
+                    if norm_comp is not None and float(norm_comp) < thresholds["min_salary_usd"]:
+                        bucket_name = "REVIEW TODAY"
+                    else:
+                        bucket_name = "APPLY NOW"
+                except (TypeError, ValueError):
+                    bucket_name = "APPLY NOW"
+            elif sc >= thresholds["REVIEW TODAY"]:
+                bucket_name = "REVIEW TODAY"
+            elif sc >= thresholds["WATCH"]:
+                bucket_name = "WATCH"
+            cap = _source_bucket_cap(row, thresholds)
+            if cap == "WATCH" and bucket_name in {"APPLY NOW", "REVIEW TODAY"}:
+                return "WATCH"
+            if cap == "REVIEW TODAY" and bucket_name == "APPLY NOW":
+                return "REVIEW TODAY"
+            return bucket_name
             
         df["effective_bucket"] = df.apply(bucket, axis=1)
         def user_status(row):
@@ -561,13 +611,23 @@ def _rescore_saved_jobs(conn, prefs_path: Path | None = None) -> int:
                 "salary_text": row["salary_text"] or "",
                 "salary_min": row["salary_low"],
                 "salary_max": row["salary_high"],
-                "work_type": row["work_type"] or "",
+                # Pass empty work_type so _derive_work_type re-detects from blob —
+                # this clears false-positive "internship" tags from the intern substring bug.
+                "work_type": "",
                 "compensation_unit": row["compensation_unit"] or "",
                 "hourly_rate": row["hourly_rate"],
                 "hours_per_week": row["hours_per_week"],
                 "weeks_per_year": row["weeks_per_year"],
-                "is_remote": bool(row["is_remote"]),
+                # If stored as remote, trust it (the API was authoritative at scrape time).
+                # If stored as non-remote, pass None so the scorer re-detects from
+                # location/description text — this fixes jobs where is_remote was
+                # incorrectly stored as 0 (e.g., "Remote within US" stored as 0).
+                "is_remote": True if row["is_remote"] else None,
             }
+        )
+        is_remote_detected = int(
+            bool(row["is_remote"]) or
+            scorer._is_remote_role(row["location"] or "", row["description_excerpt"] or "")
         )
         conn.execute(
             """
@@ -583,6 +643,7 @@ def _rescore_saved_jobs(conn, prefs_path: Path | None = None) -> int:
                 hours_per_week = ?,
                 weeks_per_year = ?,
                 normalized_compensation_usd = ?,
+                is_remote = ?,
                 updated_at = ?
             WHERE id = ?
             """,
@@ -598,6 +659,7 @@ def _rescore_saved_jobs(conn, prefs_path: Path | None = None) -> int:
                 result.get("hours_per_week"),
                 result.get("weeks_per_year"),
                 result.get("normalized_compensation_usd"),
+                is_remote_detected,
                 now,
                 row["id"],
             ),
@@ -666,6 +728,8 @@ def _companies_file_label(path: Path) -> str:
         return f"{name} (test list)"
     if name == settings.contract_companies_yaml.name:
         return f"{name} (contractor list)"
+    if name == settings.aggregator_companies_yaml.name:
+        return f"{name} (aggregator list)"
     if name == "job_search_companies_contract_test.yaml":
         return f"{name} (legacy test list)"
     return name
@@ -757,7 +821,8 @@ def main():
         vm1.metric("Older Postings", velocity_summary["stale"])
         vm2.metric("Reposted Jobs", velocity_summary["reposted"])
         vm3.metric("No Longer Listed", velocity_summary["dormant"])
-        match_population = df_all[df_all["effective_bucket"].isin(["APPLY NOW", "REVIEW TODAY", "WATCH"])].copy()
+        ats_df = _ats_only_df(df_all)
+        match_population = ats_df[ats_df["effective_bucket"].isin(["APPLY NOW", "REVIEW TODAY", "WATCH"])].copy()
         work_type_series = match_population.get("work_type", pd.Series(["unknown"] * len(match_population), index=match_population.index)).map(_normalize_work_type)
         contractor_count = int(work_type_series.isin({"w2_contract", "1099_contract", "c2c_contract", "contract"}).sum())
         fte_count = int((work_type_series == "fte").sum())
@@ -1289,6 +1354,12 @@ def main():
                 gmail_address = ats_db.get_setting(conn, "gmail_address", default=settings.gmail_address)
                 gmail_app_password = ats_db.get_setting(conn, "gmail_app_password", default=settings.gmail_app_password)
                 gmail_imap_host = ats_db.get_setting(conn, "gmail_imap_host", default=settings.gmail_imap_host)
+                usajobs_api_key = ats_db.get_setting(conn, "usajobs_api_key", default=settings.usajobs_api_key)
+                usajobs_user_agent = ats_db.get_setting(conn, "usajobs_user_agent", default=settings.usajobs_user_agent)
+                adzuna_app_id = ats_db.get_setting(conn, "adzuna_app_id", default=settings.adzuna_app_id)
+                adzuna_app_key = ats_db.get_setting(conn, "adzuna_app_key", default=settings.adzuna_app_key)
+                adzuna_country = ats_db.get_setting(conn, "adzuna_country", default=settings.adzuna_country)
+                jooble_api_key = ats_db.get_setting(conn, "jooble_api_key", default=settings.jooble_api_key)
 
                 st.markdown("#### Dashboard Settings")
                 app_weekly_goal = st.number_input("Weekly Activity Goal", min_value=1, max_value=50, value=weekly_goal, step=1)
@@ -1316,11 +1387,35 @@ def main():
                 app_gmail_password = st.text_input("Gmail App Password", value=gmail_app_password, type="password")
                 app_gmail_host = st.text_input("IMAP Host", value=gmail_imap_host or "imap.gmail.com")
 
+                st.markdown("#### Aggregator API Settings")
+                st.caption("Stored locally in the app settings table. Environment variables still override these values when present.")
+                app_usajobs_user_agent = st.text_input(
+                    "USAJobs User-Agent / Email",
+                    value=usajobs_user_agent,
+                    help="USAJobs requires the registered email address in the User-Agent header.",
+                )
+                app_usajobs_api_key = st.text_input("USAJobs API Key", value=usajobs_api_key, type="password")
+                adzuna_col1, adzuna_col2 = st.columns(2)
+                app_adzuna_app_id = adzuna_col1.text_input("Adzuna App ID", value=adzuna_app_id)
+                app_adzuna_app_key = adzuna_col2.text_input("Adzuna App Key", value=adzuna_app_key, type="password")
+                app_adzuna_country = st.text_input(
+                    "Adzuna Country",
+                    value=adzuna_country or "us",
+                    help="Two-letter Adzuna market code, for example us, gb, or au.",
+                )
+                app_jooble_api_key = st.text_input("Jooble API Key", value=jooble_api_key, type="password")
+
                 if st.button("Save App Settings"):
                     ats_db.set_setting(conn, "weekly_activity_goal", str(int(app_weekly_goal)))
                     ats_db.set_setting(conn, "gmail_address", app_gmail_address.strip())
                     ats_db.set_setting(conn, "gmail_app_password", app_gmail_password.strip())
                     ats_db.set_setting(conn, "gmail_imap_host", app_gmail_host.strip() or "imap.gmail.com")
+                    ats_db.set_setting(conn, "usajobs_user_agent", app_usajobs_user_agent.strip())
+                    ats_db.set_setting(conn, "usajobs_api_key", app_usajobs_api_key.strip())
+                    ats_db.set_setting(conn, "adzuna_app_id", app_adzuna_app_id.strip())
+                    ats_db.set_setting(conn, "adzuna_app_key", app_adzuna_app_key.strip())
+                    ats_db.set_setting(conn, "adzuna_country", (app_adzuna_country.strip() or "us").lower())
+                    ats_db.set_setting(conn, "jooble_api_key", app_jooble_api_key.strip())
                     st.success("App settings saved.")
             finally:
                 conn.close()
@@ -1414,6 +1509,7 @@ def main():
         registry_options = {
             "Main Company List": settings.companies_yaml,
             "Contractor Company List": settings.contract_companies_yaml,
+            "Aggregator Company List": settings.aggregator_companies_yaml,
         }
         registry_label = st.radio("Company List", list(registry_options.keys()), horizontal=True)
         registry_path = registry_options[registry_label]
@@ -1526,7 +1622,7 @@ def main():
                 st.success(f"Company deleted from {registry_path.name}.")
         with t3:
             if registry_path != settings.companies_yaml:
-                st.info("Automatic job board discovery is only available for the main company list. Use Add / Edit or Advanced Editor for contractor sources.")
+                st.info("Automatic job board discovery is only available for the main company list. Contractor and aggregator sources should be edited directly in their registry.")
             else:
                 h_all = st.checkbox("Include All Companies (not just broken ones)", value=True)
                 h_deep = st.checkbox("Deep Search (slower — uses browser to find hidden job boards)", value=False)
@@ -1609,6 +1705,7 @@ def main():
             r_deep = st.checkbox("Deep Search (slower — uses browser to find jobs on complex sites)", value=False)
             r_test = st.checkbox("Use Test Company List (for testing only)", value=False)
             r_contract = st.checkbox("Include Contractor Sources", value=False)
+            r_aggregator = st.checkbox("Include Aggregator Sources", value=False)
             r_workers = st.number_input("Parallel Workers", min_value=1, max_value=20, value=8, step=1)
             pref_options = [path for path in [settings.prefs_yaml, settings.config_dir / "job_search_preferences_test.yaml"] if path.exists()]
             comp_options = [
@@ -1617,6 +1714,7 @@ def main():
                     settings.companies_yaml,
                     settings.config_dir / "job_search_companies_test.yaml",
                     settings.contract_companies_yaml,
+                    settings.aggregator_companies_yaml,
                     settings.config_dir / "job_search_companies_contract_test.yaml",
                 ]
                 if path.exists()
@@ -1630,14 +1728,21 @@ def main():
             selected_name = Path(r_companies).name
             if selected_name in {settings.contract_companies_yaml.name, "job_search_companies_contract_test.yaml"}:
                 st.info("Contractor-only mode: this run searches contract-oriented job sources only.")
+            elif selected_name == settings.aggregator_companies_yaml.name:
+                st.info("Aggregator-only mode: this run searches lower-trust third-party job board sources only.")
+            elif r_contract and r_aggregator:
+                st.info("Combined mode: this run searches your main company list, contractor sources, and aggregator sources.")
             elif r_contract:
                 st.info("Combined mode: this run searches both your main company list and contractor sources.")
+            elif r_aggregator:
+                st.info("Combined mode: this run searches both your main company list and aggregator sources. Aggregator jobs are supplemental and lower trust.")
 
             if st.button("🚀 Start Pipeline", type="primary"):
                 cmd = [sys.executable, "-m", "jobsearch.cli", "run", "--workers", str(int(r_workers))]
                 if r_deep: cmd.append("--deep-search")
                 if r_test: cmd.append("--test-companies")
                 if r_contract: cmd.append("--contract-sources")
+                if r_aggregator: cmd.append("--aggregator-sources")
                 if Path(r_prefs) != settings.prefs_yaml: cmd.extend(["--prefs", str(r_prefs)])
                 if Path(r_companies) != settings.companies_yaml: cmd.extend(["--companies", str(r_companies)])
 

@@ -156,16 +156,66 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
         (job.id,),
     ).fetchone()
 
+    source_lane = str(getattr(job, "source_lane", "employer_ats") or "employer_ats").strip().lower() or "employer_ats"
+    canonical_job_url = str(getattr(job, "canonical_job_url", "") or "").strip()
+    normalized_location = _safe_str(job.location).lower()
+
+    if existing is None and source_lane == "aggregator" and canonical_job_url:
+        stronger = conn.execute(
+            """
+            SELECT id
+            FROM applications
+            WHERE source_lane IN ('employer_ats', 'contractor')
+              AND (job_url = ? OR canonical_job_url = ?)
+            ORDER BY CASE source_lane WHEN 'employer_ats' THEN 0 ELSE 1 END
+            LIMIT 1
+            """,
+            (canonical_job_url, canonical_job_url),
+        ).fetchone()
+        if stronger is not None:
+            return False, stronger["id"]
+
+    if existing is None and canonical_job_url:
+        existing = conn.execute(
+            """
+            SELECT id, status, description_excerpt, salary_text, location, jd_fingerprint,
+                   salary_low, salary_high, work_type, compensation_unit,
+                   hourly_rate, hours_per_week, weeks_per_year, normalized_compensation_usd
+            FROM applications
+            WHERE canonical_job_url = ? OR job_url = ?
+            LIMIT 1
+            """,
+            (canonical_job_url, canonical_job_url),
+        ).fetchone()
+
+    # Secondary dedup: prevent duplicate rows for the same company+role still in
+    # 'considering' state (e.g. when a scraper re-discovers the same job at a
+    # slightly different URL, producing a new scraper_key hash).
+    if existing is None and job.role_title_normalized:
+        existing = conn.execute(
+            """
+            SELECT id, status, description_excerpt, salary_text, location, jd_fingerprint,
+                   salary_low, salary_high, work_type, compensation_unit,
+                   hourly_rate, hours_per_week, weeks_per_year, normalized_compensation_usd
+            FROM applications
+            WHERE company = ?
+              AND role_normalized = ?
+              AND LOWER(TRIM(COALESCE(location, ''))) = ?
+              AND status = 'considering'
+            """,
+            (job.company, job.role_title_normalized, normalized_location),
+        ).fetchone()
+
     now = _now_iso()
     status, stage_label = _normalize_status_and_stage(job)
     new_jd_fingerprint = _jd_fingerprint(job.description_excerpt, job.salary_text, job.location)
-    
+
     if existing is None:
         # INSERT
         cur = conn.execute(
             """
             INSERT INTO applications (
-                company, role, role_normalized, job_url, source, scraper_key,
+                company, role, role_normalized, job_url, source, source_lane, canonical_job_url, scraper_key,
                 status, score, fit_band, matched_keywords, penalized_keywords,
                 decision_reason, description_excerpt, location, is_remote,
                 jd_fingerprint,
@@ -174,7 +224,7 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
                 date_discovered, date_applied,
                 user_priority, tier, notes, created_at, updated_at
             ) VALUES (
-                :company, :role, :role_normalized, :url, :source, :id,
+                :company, :role, :role_normalized, :url, :source, :source_lane, :canonical_job_url, :id,
                 :status, :score, :fit_band, :matched_keywords, :penalized_keywords,
                 :decision_reason, :description_excerpt, :location, :is_remote, :jd_fingerprint,
                 :salary_text, :salary_min, :salary_max, :work_type, :compensation_unit,
@@ -189,6 +239,8 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
                 "role_normalized": job.role_title_normalized,
                 "url": job.url,
                 "source": job.source,
+                "source_lane": getattr(job, "source_lane", "employer_ats") or "employer_ats",
+                "canonical_job_url": getattr(job, "canonical_job_url", "") or "",
                 "id": job.id,
                 "status": status,
                 "score": job.score,
