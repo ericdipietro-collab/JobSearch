@@ -509,6 +509,69 @@ class BlockedAndLocationTests(unittest.TestCase):
         self.assertEqual(result["score_components"]["body_positive_points"], 12)
         self.assertEqual(result["score_components"]["body_negative_points"], 5)
 
+    def test_annual_salary_can_be_extracted_from_description_text(self):
+        scorer = Scorer(
+            {
+                "titles": {},
+                "keywords": {},
+                "scoring": {"minimum_score_to_keep": 35, "adjustments": {}},
+                "search": {"compensation": {}, "geography": {}, "contractor": {}, "location_preferences": {}},
+            }
+        )
+        result = scorer.score_job(
+            {
+                "title": "Senior Product Manager",
+                "description": "Base salary range for this role is $180,000 - $220,000 per year plus bonus.",
+                "location": "Remote - United States",
+                "tier": 4,
+            }
+        )
+        self.assertEqual(result["compensation_unit"], "salary")
+        self.assertIsNotNone(result["normalized_compensation_usd"])
+        self.assertGreaterEqual(float(result["normalized_compensation_usd"]), 180000.0)
+
+    def test_explicit_far_away_hybrid_stays_filtered_even_if_jd_mentions_local_markers_and_salary(self):
+        scorer = Scorer(
+            {
+                "titles": {
+                    "direct_title_markers": ["product manager", "senior product manager"],
+                    "adjacent_title_markers": [],
+                    "analyst_variant_markers": [],
+                    "partial_titles": {},
+                    "disqualifiers": [],
+                },
+                "keywords": {"body_positive": {"platform": 8, "api": 8}, "body_negative": {}},
+                "scoring": {"minimum_score_to_keep": 35, "adjustments": {}},
+                "search": {
+                    "location_policy": "remote_only",
+                    "compensation": {"target_salary_usd": 165000, "min_salary_usd": 165000},
+                    "geography": {"us_only": True, "allow_international_remote": True},
+                    "location_preferences": {
+                        "remote_us": {"enabled": True, "bonus": 14},
+                        "local_hybrid": {
+                            "enabled": True,
+                            "allow_if_salary_at_least_usd": 165000,
+                            "markers": ["80504", "longmont", "boulder", "denver"],
+                            "bonus": 4,
+                        },
+                    },
+                    "contractor": {},
+                },
+            }
+        )
+        result = scorer.score_job(
+            {
+                "title": "Senior Product Manager",
+                "description": "Hybrid role. Team collaborates with stakeholders in Denver and Boulder. Base salary range is $180,000 - $220,000 per year.",
+                "location": "New York, New York, United States",
+                "is_remote": 0,
+                "tier": 2,
+            }
+        )
+        self.assertEqual(result["score"], 0.0)
+        self.assertEqual(result["fit_band"], "Filtered Out")
+        self.assertIn("location mismatch", str(result["decision_reason"]).lower())
+
     def test_work_type_filter_leaves_manual_review_rows_without_work_type(self):
         df = pd.DataFrame([{"company": "ADP", "adapter": "generic"}])
         filtered = _apply_work_type_filter(df, "Contract Only")

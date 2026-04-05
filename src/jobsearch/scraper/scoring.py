@@ -263,6 +263,9 @@ class Scorer:
         return any(marker in blob for marker in self._onsite_markers)
 
     def _matches_local_area(self, location: str, description: str) -> bool:
+        location_l = self.clean(location).lower()
+        if location_l:
+            return any(marker in location_l for marker in self.local_hybrid_markers)
         blob = self._location_blob(location, description)
         if not blob:
             return False
@@ -320,16 +323,48 @@ class Scorer:
             return (salary_min + salary_max) / 2.0
         if salary_min is not None:
             return salary_min
-        text = self.clean(job_data.get("salary_text"))
+        text = " ".join([self.clean(job_data.get("salary_text")), self.clean(job_data.get("description"))]).strip()
         sanitized = re.sub(r"\b(1099|w2|w-2|c2c|corp[-\s]?to[-\s]?corp)\b", " ", text, flags=re.IGNORECASE)
         matches = [float(match.replace(",", "")) for match in re.findall(r"\$?\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.\d{1,2})?)", sanitized)]
         if not matches:
             return None
         return sum(matches[:2]) / min(2, len(matches))
 
+    def _extract_annual_salary_range(self, text: str) -> tuple[Optional[float], Optional[float]]:
+        text = self.clean(text)
+        if not text:
+            return None, None
+        annual_context = bool(
+            re.search(r"\b(salary|compensation|pay range|base pay|base salary|annual|annually|per year|yearly)\b", text, flags=re.IGNORECASE)
+        )
+        if not annual_context:
+            return None, None
+        raw_matches = re.findall(r"\$?\s*([0-9]{1,3}(?:,\d{3})*(?:\.\d{1,2})?|[0-9]{2,3}(?:\.\d{1,2})?)\s*([kK]?)", text)
+        values: list[float] = []
+        for amount_raw, k_suffix in raw_matches:
+            try:
+                amount = float(amount_raw.replace(",", ""))
+            except ValueError:
+                continue
+            if k_suffix:
+                amount *= 1000.0
+            if amount >= 1000:
+                values.append(amount)
+        if not values:
+            return None, None
+        if len(values) >= 2:
+            return values[0], values[1]
+        return values[0], None
+
     def _normalize_compensation(self, job_data: Dict[str, Any], work_type: str, unit: str) -> Dict[str, Any]:
         salary_min = self._to_float(job_data.get("salary_min"))
         salary_max = self._to_float(job_data.get("salary_max"))
+        if salary_min is None and salary_max is None:
+            derived_min, derived_max = self._extract_annual_salary_range(
+                " ".join([self.clean(job_data.get("salary_text")), self.clean(job_data.get("description"))]).strip()
+            )
+            salary_min = derived_min
+            salary_max = derived_max
         hourly_rate = self._derive_hourly_rate(job_data, unit)
 
         hours_per_week = self._to_float(job_data.get("hours_per_week")) or self.default_hours_per_week

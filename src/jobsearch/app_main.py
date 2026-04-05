@@ -261,6 +261,8 @@ def _load_jobs_df() -> pd.DataFrame:
         if df.empty: return df
         
         df = df.rename(columns={"role": "title", "job_url": "url", "scraper_key": "_key"})
+        ann_rows = ats_db.get_all_annotations(conn)
+        ann_map = {str(r["job_key"]): dict(r) for r in ann_rows}
         df = _decorate_role_velocity(df)
         
         now = datetime.now()
@@ -275,6 +277,9 @@ def _load_jobs_df() -> pd.DataFrame:
             if s in ("applied", "screening", "interviewing", "offer", "accepted"): return "Applied"
             if s == "rejected": return "Rejected"
             if s == "withdrawn": return "Filtered Out"
+            tag = str(ann_map.get(str(row.get("_key", "")), {}).get("tag", "") or "").strip().upper()
+            if tag in {"APPLY NOW", "REVIEW TODAY", "WATCH", "FILTERED OUT"}:
+                return "Filtered Out" if tag == "FILTERED OUT" else tag
             sc = float(row.get("score", 0) or 0)
             if sc >= thresholds["APPLY NOW"]: return "APPLY NOW"
             if sc >= thresholds["REVIEW TODAY"]: return "REVIEW TODAY"
@@ -282,7 +287,22 @@ def _load_jobs_df() -> pd.DataFrame:
             return "Filtered Out"
             
         df["effective_bucket"] = df.apply(bucket, axis=1)
-        df["user_status"] = df["status"].map(lambda s: str(s).capitalize() if s else "Considering")
+        def user_status(row):
+            s = str(row.get("status", "")).lower()
+            if s in {"applied", "rejected"}:
+                return str(s).capitalize()
+            tag = str(ann_map.get(str(row.get("_key", "")), {}).get("tag", "") or "").strip().upper()
+            if tag == "APPLY NOW":
+                return "Apply Now"
+            if tag == "REVIEW TODAY":
+                return "Review Today"
+            if tag == "WATCH":
+                return "Watch"
+            if tag == "FILTERED OUT":
+                return "Filtered Out"
+            return "Considering"
+        df["user_status"] = df.apply(user_status, axis=1)
+        df["note"] = df["_key"].map(lambda k: ann_map.get(str(k), {}).get("note", ""))
         
         for c in ("score", "fit_stars", "salary_low", "salary_high", "tier"):
             if c in df.columns: df[c] = pd.to_numeric(df[c], errors="coerce")
@@ -334,6 +354,148 @@ def _parse_manual_review_lines(lines):
                 row[key.strip()] = value.strip()
         rows.append(row)
     return rows
+
+
+def _load_registry_companies() -> list[dict]:
+    data = load_yaml(settings.companies_yaml)
+    return list(data.get("companies", []) or [])
+
+
+def _registry_company_lookup() -> dict[str, dict]:
+    return {
+        str(company.get("name", "")).strip().lower(): dict(company)
+        for company in _load_registry_companies()
+        if str(company.get("name", "")).strip()
+    }
+
+
+def _latest_pipeline_company_statuses() -> list[dict]:
+    path = settings.results_dir / "job_search_v6.log"
+    if not path.exists():
+        return []
+    pattern = re.compile(
+        r"""
+        ^\d{2}:\d{2}:\d{2}\s+\|\s+\[\d+/\d+\]\s+
+        (?P<result>OK|FAIL)\s+
+        (?P<company>.*?)\s+\|\s+
+        (?P<fields>.+)$
+        """,
+        re.VERBOSE,
+    )
+    latest: dict[str, dict] = {}
+    try:
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except Exception:
+        return []
+    for line in lines:
+        match = pattern.match(line.strip())
+        if not match:
+            continue
+        company = match.group("company").strip()
+        if not company:
+            continue
+        fields_text = match.group("fields")
+        fields: dict[str, str] = {}
+        note_match = re.search(r"\snote=(.+)$", fields_text)
+        note = note_match.group(1).strip() if note_match else ""
+        base_text = fields_text[: note_match.start()] if note_match else fields_text
+        for key, value in re.findall(r"([a-zA-Z_]+)=([^\s]+)", base_text):
+            fields[key] = value
+        latest[company.lower()] = {
+            "company": company,
+            "result": match.group("result"),
+            "adapter": fields.get("adapter", ""),
+            "status": fields.get("status", "").strip(),
+            "evaluated": int(float(fields.get("evaluated", "0") or 0)),
+            "persisted": int(float(fields.get("persisted", "0") or 0)),
+            "note": note,
+        }
+    return list(latest.values())
+
+
+def _build_manual_review_items() -> list[dict]:
+    registry = _registry_company_lookup()
+    items: dict[str, dict] = {}
+
+    def _upsert(item: dict) -> None:
+        company = str(item.get("company", "")).strip()
+        if not company:
+            return
+        key = company.lower()
+        existing = items.get(key)
+        if not existing:
+            items[key] = item
+            return
+        for field in ("adapter", "url", "note", "queue_source", "status"):
+            if not existing.get(field) and item.get(field):
+                existing[field] = item[field]
+        if existing.get("queue_source") != "manual_only" and item.get("queue_source") == "manual_only":
+            existing["queue_source"] = "manual_only"
+
+    for company in registry.values():
+        company_name = str(company.get("name", "")).strip()
+        if not company_name:
+            continue
+        url = str(company.get("careers_url", "") or "")
+        adapter = str(company.get("adapter", "") or "")
+        status = str(company.get("status", "") or "")
+        manual_only = bool(company.get("manual_only"))
+        notes = str(company.get("notes", "") or "").strip()
+        if manual_only or status == "manual_only":
+            _upsert(
+                {
+                    "company": company_name,
+                    "adapter": adapter,
+                    "url": url,
+                    "note": notes or "Marked manual review / manual-only in registry.",
+                    "queue_source": "manual_only",
+                    "status": "manual_only",
+                }
+            )
+
+    failing_statuses = {"empty", "blocked", "low_signal", "budget_exhausted"}
+    for entry in _latest_pipeline_company_statuses():
+        company_name = entry["company"]
+        registry_company = registry.get(company_name.lower(), {})
+        status = str(entry.get("status", "") or "")
+        evaluated = int(entry.get("evaluated", 0) or 0)
+        persisted = int(entry.get("persisted", 0) or 0)
+        is_failure = (
+            entry.get("result") == "FAIL"
+            or status in failing_statuses
+            or (status == "ok" and evaluated == 0 and persisted == 0)
+        )
+        if not is_failure:
+            continue
+        url = str(registry_company.get("careers_url", "") or "")
+        adapter = str(entry.get("adapter") or registry_company.get("adapter") or "")
+        note = str(entry.get("note") or "").strip()
+        if not note:
+            if entry.get("result") == "FAIL":
+                note = "Latest pipeline run failed to scrape this company."
+            elif status == "ok":
+                note = "Latest pipeline run found no listings."
+            else:
+                note = f"Latest pipeline status: {status}"
+        _upsert(
+            {
+                "company": company_name,
+                "adapter": adapter,
+                "url": url,
+                "note": note,
+                "queue_source": "latest_run",
+                "status": status or entry.get("result", "").lower(),
+            }
+        )
+
+    for item in _parse_manual_review_lines(_load_manual_review_lines()):
+        queue_source = "manual_review_file"
+        if not item.get("url"):
+            item["url"] = str(registry.get(item["company"].lower(), {}).get("careers_url", "") or "")
+        item.setdefault("queue_source", queue_source)
+        _upsert(item)
+
+    return sorted(items.values(), key=lambda row: (row.get("company", "").lower(), row.get("queue_source", "")))
 
 
 def _disable_company_in_registry(company_name: str) -> bool:
@@ -576,8 +738,7 @@ def main():
     elif page == "Job Matches":
         st.title("Job Matches")
         rejected_df = _load_rejected_jobs_df()
-        manual_review_lines = _load_manual_review_lines()
-        manual_review_items = _parse_manual_review_lines(manual_review_lines)
+        manual_review_items = _build_manual_review_items()
         review_conn = ats_db.get_connection()
         try:
             review_actions = {row["company"]: dict(row) for row in ats_db.get_manual_review_actions(review_conn)}
@@ -588,7 +749,7 @@ def main():
             for item in manual_review_items
             if review_actions.get(item["company"], {}).get("resolution", "new") not in {"resolved", "ignored", "disabled"}
         ]
-        if df_all.empty and rejected_df.empty and not manual_review_lines:
+        if df_all.empty and rejected_df.empty and not manual_review_items:
             st.info("No jobs yet. Run the pipeline.")
             return
         velocity_summary = _role_velocity_summary(df_all)
@@ -627,9 +788,9 @@ def main():
         ann = {r["job_key"]: dict(r) for r in ats_db.get_all_annotations(ats_db.get_connection())}
         tabs = st.tabs(["🔥 Apply Now", "📋 Review Today", "👀 Watch", "🔍 Manual Review", "🚫 Filtered Out"])
         BUCKETS = [
-            ("APPLY NOW", tabs[0], ["Applied", "Rejected", "Watch"]),
-            ("REVIEW TODAY", tabs[1], ["Apply Now", "Applied", "Watch", "Rejected"]),
-            ("WATCH", tabs[2], ["Apply Now", "Review Today", "Applied", "Rejected"]),
+            ("APPLY NOW", tabs[0], ["Applied", "Rejected", "Watch", "Filtered Out"]),
+            ("REVIEW TODAY", tabs[1], ["Apply Now", "Applied", "Watch", "Rejected", "Filtered Out"]),
+            ("WATCH", tabs[2], ["Apply Now", "Review Today", "Applied", "Rejected", "Filtered Out"]),
         ]
         
         for name, tab, opts in BUCKETS:
@@ -645,10 +806,10 @@ def main():
                 if name == "APPLY NOW": _render_apply_now_cards(b_df)
                 
                 # Table Rendering
-                for c in DISPLAY_COLS + ["user_status", "_key"]:
+                for c in DISPLAY_COLS + ["user_status", "_key", "note"]:
                     if c not in b_df.columns: b_df[c] = ""
-                disp = b_df[DISPLAY_COLS + ["user_status", "_key"]].copy()
-                disp["Note"] = disp["_key"].map(lambda k: ann.get(k, {}).get("note", ""))
+                disp = b_df[DISPLAY_COLS + ["user_status", "_key", "note"]].copy()
+                disp["Note"] = disp["note"]
                 
                 # Convert list types to strings for Arrow
                 for col in ["matched_keywords", "decision_reason"]:
@@ -670,6 +831,7 @@ def main():
                         "tier": st.column_config.NumberColumn("Priority Tier"),
                         "matched_keywords": st.column_config.TextColumn("Matched Keywords"),
                         "decision_reason": st.column_config.TextColumn("Scoring Details"),
+                        "Note": st.column_config.TextColumn("Reason / Note"),
                     },
                     hide_index=True,
                     use_container_width=True,
@@ -679,13 +841,16 @@ def main():
                 for i, row in edited.iterrows():
                     key = disp.iloc[list(disp.index).index(i)]["_key"]
                     new_s = str(row.get("user_status") or "").strip()
+                    new_note = str(row.get("Note") or "").strip()
+                    old_note = str(disp.iloc[list(disp.index).index(i)]["Note"] or "").strip()
                     if new_s and new_s != disp.iloc[list(disp.index).index(i)]["user_status"]:
                         target_bucket = {
                             "Apply Now": "APPLY NOW",
                             "Review Today": "REVIEW TODAY",
                             "Watch": "WATCH",
+                            "Filtered Out": "FILTERED OUT",
                         }.get(new_s)
-                        db_s = {"Applied": "applied", "Rejected": "rejected"}.get(new_s, "considering")
+                        db_s = {"Applied": "applied", "Rejected": "rejected", "Filtered Out": "considering"}.get(new_s, "considering")
                         conn = ats_db.get_connection(); now = datetime.now(timezone.utc).isoformat()
                         conn.execute("UPDATE applications SET status=?, updated_at=? WHERE scraper_key=?", (db_s, now, key))
                         res = conn.execute("SELECT id FROM applications WHERE scraper_key=?", (key,)).fetchone()
@@ -693,8 +858,17 @@ def main():
                             title = f"Moved to {new_s}"
                             if target_bucket:
                                 title = f"Bucket changed to {target_bucket.title()}"
-                            ats_db.add_event(conn, res["id"], db_s, now, title=title)
+                            ats_db.add_event(conn, res["id"], db_s, now, title=title, notes=new_note or old_note)
+                        ats_db.upsert_annotation(conn, key, new_note or None, target_bucket)
                         conn.commit(); conn.close(); _invalidate_data_cache(); st.rerun()
+                    elif new_note != old_note:
+                        conn = ats_db.get_connection()
+                        try:
+                            existing_tag = ann.get(key, {}).get("tag")
+                            ats_db.upsert_annotation(conn, key, new_note or None, existing_tag)
+                        finally:
+                            conn.close()
+                        _invalidate_data_cache(); st.rerun()
 
         with tabs[3]:
             filtered_manual_review = _apply_work_type_filter(
@@ -708,7 +882,7 @@ def main():
                     ["company", "adapter", "note", "url"],
                 )
             if filtered_manual_review.empty and not manual_review_items:
-                st.info("No manual-review items recorded for the latest run.")
+                st.info("No manual-review items are currently queued.")
             else:
                 if not filtered_manual_review.empty:
                     filtered_items = filtered_manual_review.to_dict("records")
@@ -721,7 +895,7 @@ def main():
                     filtered_unresolved = []
                 st.caption(
                     f"Manual review queue: {len(filtered_unresolved)} unresolved of {len(filtered_items) if filtered_items else len(manual_review_items)} visible "
-                    f"({settings.manual_review_file.name})"
+                    f"(registry manual-only + latest run failures + {settings.manual_review_file.name if settings.manual_review_file.exists() else 'no manual review file'})"
                 )
                 if not filtered_unresolved:
                     st.success("All manual-review items have been handled.")
@@ -730,6 +904,8 @@ def main():
                         st.markdown(
                             f"**{item['company']}**"
                             + (f"  \nSource: `{item.get('adapter')}`" if item.get("adapter") else "")
+                            + (f"  \nQueue: `{item.get('queue_source')}`" if item.get("queue_source") else "")
+                            + (f"  \nStatus: `{item.get('status')}`" if item.get("status") else "")
                             + (f"  \nReason: {item.get('note')}" if item.get("note") else "")
                         )
                         if item.get("url"):
@@ -803,11 +979,12 @@ def main():
             else:
                 if not filtered_bucket_df.empty:
                     st.caption(f"Currently saved jobs below your watch threshold: {len(filtered_bucket_df)}")
-                    promote_opts = ["Apply Now", "Review Today", "Watch", "Applied", "Rejected"]
-                    for c in DISPLAY_COLS + ["user_status", "_key"]:
+                    promote_opts = ["Apply Now", "Review Today", "Watch", "Applied", "Rejected", "Filtered Out"]
+                    for c in DISPLAY_COLS + ["user_status", "_key", "note"]:
                         if c not in filtered_bucket_df.columns:
                             filtered_bucket_df[c] = ""
-                    filtered_disp = filtered_bucket_df[DISPLAY_COLS + ["user_status", "_key"]].copy()
+                    filtered_disp = filtered_bucket_df[DISPLAY_COLS + ["user_status", "_key", "note"]].copy()
+                    filtered_disp["Note"] = filtered_disp["note"]
                     if "work_type" in filtered_disp.columns:
                         filtered_disp["work_type"] = filtered_disp["work_type"].map(_work_type_label)
                     filtered_edited = st.data_editor(
@@ -819,6 +996,7 @@ def main():
                             "fit_band": st.column_config.TextColumn("Fit Level"),
                             "normalized_compensation_usd": st.column_config.NumberColumn("Annualized Pay (USD)", format="$%.0f"),
                             "decision_reason": st.column_config.TextColumn("Scoring Details"),
+                            "Note": st.column_config.TextColumn("Reason / Note"),
                         },
                         hide_index=True,
                         use_container_width=True,
@@ -827,14 +1005,16 @@ def main():
                     for i, row in filtered_edited.iterrows():
                         key = filtered_disp.iloc[list(filtered_disp.index).index(i)]["_key"]
                         new_s = str(row.get("user_status") or "").strip()
+                        new_note = str(row.get("Note") or "").strip()
+                        old_note = str(filtered_disp.iloc[list(filtered_disp.index).index(i)]["Note"] or "").strip()
                         if new_s and new_s != filtered_disp.iloc[list(filtered_disp.index).index(i)]["user_status"]:
                             target_bucket = {
                                 "Apply Now": "APPLY NOW",
                                 "Review Today": "REVIEW TODAY",
                                 "Watch": "WATCH",
+                                "Filtered Out": "FILTERED OUT",
                             }.get(new_s)
-                            db_s = {"Applied": "applied", "Rejected": "rejected"}.get(new_s, "considering")
-                            note = None
+                            db_s = {"Applied": "applied", "Rejected": "rejected", "Filtered Out": "considering"}.get(new_s, "considering")
                             conn = ats_db.get_connection()
                             try:
                                 conn.execute(
@@ -842,11 +1022,19 @@ def main():
                                     (db_s, datetime.now(timezone.utc).isoformat(), key),
                                 )
                                 conn.commit()
-                                if target_bucket:
-                                    ats_db.upsert_annotation(conn, key, target_bucket, note)
+                                ats_db.upsert_annotation(conn, key, new_note or None, target_bucket)
                                 _invalidate_data_cache()
                             finally:
                                 conn.close()
+                            st.rerun()
+                        elif new_note != old_note:
+                            conn = ats_db.get_connection()
+                            try:
+                                existing_tag = ann.get(key, {}).get("tag")
+                                ats_db.upsert_annotation(conn, key, new_note or None, existing_tag)
+                            finally:
+                                conn.close()
+                            _invalidate_data_cache()
                             st.rerun()
                 if not filtered_rejected_df.empty:
                     st.caption(f"Filtered out by the scoring system in the latest search: {len(filtered_rejected_df)}")
