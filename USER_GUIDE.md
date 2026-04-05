@@ -2,7 +2,7 @@
 
 This guide covers daily use of the Job Search dashboard — from first-time setup through running searches, tracking applications, prepping for interviews, and analyzing your results.
 
-**What's new in v2.0:** Score breakdowns on every job card, ghosted application alerts on the home dashboard, a Scraper Health panel showing which companies have gone dark, keyword search across all Job Matches tabs, and YAML-driven bucket thresholds so your Search Settings preferences control the Apply Now / Review Today / Watch cutoffs directly.
+**What's new in v2.0:** Score breakdowns on every job card, ghosted application alerts on the home dashboard, a Scraper Health panel showing which companies have gone dark, keyword search across all Job Matches tabs, Search Settings controls for title-vs-JD weighting, a re-score button for saved jobs, and YAML-driven bucket thresholds so your Search Settings preferences control the Apply Now / Review Today / Watch cutoffs directly.
 
 ---
 
@@ -96,7 +96,11 @@ Open **Search Settings** in the left sidebar. There are five tabs:
 
 **Scoring Settings**
 - `minimum_score_to_keep` — jobs scoring below this go to the rejected CSV. Start at 35 and adjust after your first run.
+- `Maximum Score From Title Match` — caps total title contribution, which lets you dial title-vs-JD weighting without editing YAML.
+- `Maximum Score From JD Keywords` — caps how much the job description can add to the score.
+- `Maximum Penalty From JD Negative Keywords` — caps how much JD negatives can subtract.
 - Adjustment parameters for missing salary, salary bonuses, and contract role penalties.
+- `Re-score Saved Jobs` — re-evaluates currently saved job matches using your latest settings without rerunning the scraper.
 
 **Advanced Editor**
 - Direct access to the raw preferences YAML for power users.
@@ -137,7 +141,7 @@ Every job goes through a funnel:
 2. **Title scoring** — your `title_positive_weights` keywords are matched against the job title. A weight ≥ 8 triggers a Fast-Track base score of 50 points.
 3. **JD scoring** — `Keywords That Boost Score` and `Keywords That Reduce Score` keywords are matched against the full description.
 4. **Tier bonus** — Tier 1 companies add 15 pts, Tier 2 adds 8 pts, Tier 3 adds 4 pts.
-5. **Location penalty** — international remote roles lose 12 pts.
+5. **Location filter** — non-local onsite/hybrid roles are hard-filtered out. International remote roles are filtered based on your location settings.
 6. **Compensation adjustment** — salary at or above target adds pts; salary below floor deducts pts; missing salary is configurable.
 7. **Contract adjustment** — contract roles are scored, filtered, and normalized based on your contractor preferences.
 
@@ -171,11 +175,17 @@ The **Job Matches** page shows all scraped jobs that passed the scoring threshol
 - **Posted / Velocity** — how long the role has been open; *Stale* or *Recurring* roles signal leverage or problems
 - **Status** — current disposition (New, Considering, Applied, etc.)
 
+**Tabs on this page:**
+- **Apply Now** — top-priority roles that meet your strongest criteria
+- **Review Today** — strong roles worth reviewing today
+- **Watch** — near-miss roles or roles you manually promoted into a follow-up queue
+- **Manual Review** — scraper/manual queue for companies the scraper could not resolve cleanly
+- **Filtered Out** — low-fit saved jobs plus the latest rejected-search output
+
 **Actions from this page:**
 - Click a role to open the detail panel
 - Change status directly in the table to move it into the tracker
-- Flag roles for manual review
-- Dismiss roles you're not interested in
+- Use **Filtered Out -> Move To** to promote false negatives into `Watch`, `Review Today`, or `Apply Now`
 
 ---
 
@@ -297,7 +307,9 @@ The **Analytics** page shows where your search is working and where it isn't.
 
 **Score vs. outcome** — scatter plot of your score at application versus final outcome (interview, offer, rejected). Over time this shows whether your scoring predicts success.
 
-**Company pipeline** — how many applications and what stages at each company.
+**Company pipeline** — how many applications, interview rounds, and stage outcomes each company has produced.
+
+**Lifecycle outcomes** — shows how far each application got before ending in rejection, ghosting, offer, or acceptance, plus company-level summaries of interview rounds and farthest stage reached.
 
 **Rejection Pattern Analysis** — after enough data, surfaces which companies and title families are consistently rejecting you, and what penalty signals appear most often.
 
@@ -418,7 +430,7 @@ Originally designed to simplify unemployment benefit paperwork — the report li
 
 ![Weekly Report — activity log with benefit certification summary](docs/Screenshots/weeklyactivity.png)
 
-Select a date range and export the table directly. All event types are translated to human-readable descriptions (e.g. `interview_complete` → *In-person / video interview*).
+Select a date range and export the table directly. All event types are translated to human-readable descriptions (e.g. `interview_complete` → *In-person / video interview*). The report also dedupes scheduled/completed interview pairs so the same interview round is not counted twice.
 
 ---
 
@@ -437,7 +449,9 @@ Select a date range and export the table directly. All event types are translate
 | `allow_missing_salary` | Whether to penalize roles with no salary posted |
 | `remote_only` | Only consider remote roles |
 | `us_only` | Filter out non-US locations |
-| `allow_international_remote` | Permit remote roles outside the US (applies a penalty) |
+| `allow_international_remote` | Permit remote roles outside the US |
+
+For location-sensitive searches, non-local onsite/hybrid roles are treated as a hard filter. If you change location settings, use **Re-score Saved Jobs** to update existing Job Matches immediately.
 
 ### Contractor Settings
 
@@ -458,6 +472,9 @@ Select a date range and export the table directly. All event types are translate
 | Setting | Description |
 |---|---|
 | `minimum_score_to_keep` | Jobs below this are rejected to CSV |
+| `title_max_points` | Maximum score contribution from title matching |
+| `positive_keyword_cap` | Maximum score contribution from JD-positive keywords |
+| `negative_keyword_cap` | Maximum penalty from JD-negative keywords |
 | `missing_salary_penalty` | Points deducted when no salary is posted |
 | `salary_at_or_above_target_bonus` | Bonus points when comp meets or exceeds target |
 | `salary_meets_floor_bonus` | Smaller bonus when comp meets the floor but not target |

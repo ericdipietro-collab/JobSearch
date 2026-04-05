@@ -73,6 +73,7 @@ After changing the setting, rerun the installer or launcher.
 - Scrapes target company careers pages across Greenhouse, Lever, Ashby, Workday, Rippling, and SmartRecruiters
 - Supports a contractor sourcing lane with Dice and Motion Recruitment
 - Scores jobs with configurable title, JD, salary, location, and tier weighting
+- Lets you re-score saved jobs after changing scoring settings, without rerunning the scraper
 - Tracks applications, contacts, interviews, offers, and rejections
 - Syncs Gmail signals for missed applications, rejections, and interview scheduling
 - Stores your base resume for keyword-gap analysis and per-application tailoring
@@ -109,6 +110,7 @@ After changing the setting, rerun the installer or launcher.
 - compensation and location preferences
 - job title preferences
 - JD keywords
+- scoring caps for title vs. JD weighting
 - Gmail settings if desired
 - your base resume
 4. Review `Target Companies`
@@ -171,8 +173,13 @@ This keeps state outside the install or extracted app folder, which is safer for
 
 **No useful matches are being kept**
 - Lower the salary floor in `Search Settings`
-- Relax title or JD keyword weights
+- Relax title weighting, JD keyword caps, or title gates in `Search Settings -> Scoring Settings`
 - Inspect the rejected CSV and scoring details
+
+**Too many out-of-area onsite or hybrid roles are showing up**
+- Use `Search Settings -> Compensation & Location`
+- The app now treats non-local onsite/hybrid roles as a hard filter
+- After changing settings, click `Search Settings -> Scoring Settings -> Re-score Saved Jobs`
 
 **Gmail sync fails**
 - Use a Google App Password, not your main password

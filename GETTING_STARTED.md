@@ -73,6 +73,7 @@ Set:
 - compensation and location preferences
 - job title preferences
 - JD keyword preferences
+- scoring caps for title vs. JD weighting
 - Gmail settings if using inbox sync
 - your base resume text or uploaded file
 
@@ -148,8 +149,14 @@ Use deep runs sparingly. Static scraping should be the default.
 
 **No useful jobs are being kept**
 - lower the salary floor
-- relax title/JD keyword settings
+- relax title weighting, JD keyword caps, or title gates
+- click `Search Settings -> Scoring Settings -> Re-score Saved Jobs` after changing them
 - inspect the rejected CSV and score details
+
+**Out-of-area onsite or hybrid roles are still visible**
+- the scorer treats non-local onsite/hybrid roles as a hard filter
+- update `Compensation & Location` if your local-hybrid radius or markers changed
+- then run `Re-score Saved Jobs` instead of rerunning the full pipeline
 
 **Companies are stale or blocked**
 - use `Target Companies -> Heal ATS`
