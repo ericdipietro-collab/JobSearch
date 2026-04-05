@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 from typing import List
+import re
 
 import pandas as pd
 import streamlit as st
@@ -37,6 +38,54 @@ _RESULT = {
     "interview_complete":  "Interview completed",
     "follow_up_sent":      "Follow-up sent",
 }
+
+
+def _row_get(row, key: str, default=None):
+    if row is None:
+        return default
+    if isinstance(row, dict):
+        return row.get(key, default)
+    try:
+        return row[key]
+    except Exception:
+        return default
+
+
+def _event_family(event_type: str) -> str:
+    value = str(event_type or "").lower()
+    if value.startswith("screening_"):
+        return "screening"
+    if value.startswith("interview_"):
+        return "interview"
+    return value
+
+
+def _round_number_from_event(row) -> str:
+    text = f"{_row_get(row, 'event_title') or ''} {_row_get(row, 'event_notes') or ''}"
+    match = re.search(r"\bround\s+(\d+)\b", text, flags=re.IGNORECASE)
+    return match.group(1) if match else ""
+
+
+def _dedupe_report_rows(rows: list) -> list:
+    completed_keys = set()
+    for row in rows:
+        event_type = str(row["event_type"] or "").lower()
+        if event_type not in {"screening_complete", "interview_complete"}:
+            continue
+        round_number = _round_number_from_event(row)
+        if round_number:
+            completed_keys.add((row["application_id"], _event_family(event_type), round_number))
+
+    filtered = []
+    for row in rows:
+        event_type = str(row["event_type"] or "").lower()
+        if event_type in {"screening_scheduled", "interview_scheduled"}:
+            round_number = _round_number_from_event(row)
+            key = (row["application_id"], _event_family(event_type), round_number)
+            if round_number and key in completed_keys:
+                continue
+        filtered.append(row)
+    return filtered
 
 
 def _week_bounds(offset_weeks: int = 0):
@@ -108,6 +157,14 @@ def render_activity_report(conn) -> None:
     else:
         default_start, default_end = _week_bounds(1)  # last week as sane default
 
+    if preset != "Custom":
+        current_start = st.session_state.get("report_start")
+        current_end = st.session_state.get("report_end")
+        if current_start != default_start:
+            st.session_state["report_start"] = default_start
+        if current_end != default_end:
+            st.session_state["report_end"] = default_end
+
     with rc1:
         start_d = st.date_input("From", value=default_start, key="report_start")
     with rc2:
@@ -121,7 +178,7 @@ def render_activity_report(conn) -> None:
     end_str   = end_d.isoformat()
 
     # ── Fetch data ────────────────────────────────────────────────────────────
-    rows = db.get_activity_report(conn, start_str, end_str)
+    rows = _dedupe_report_rows(db.get_activity_report(conn, start_str, end_str))
 
     # Also fetch training active this period
     training_rows = db.get_training_for_report(conn, start_str, end_str)

@@ -12,6 +12,7 @@ import yaml
 from jobsearch.config.settings import settings
 from jobsearch import ats_db
 from jobsearch import __version__
+from jobsearch.scraper.scoring import Scorer
 from jobsearch.views.style_utils import set_custom_style
 
 # ── Import Views ──────────────────────────────────────────────────────────────
@@ -122,16 +123,22 @@ def _safe_render(fn, *args, page_name: str = "", **kwargs):
 
 def _invalidate_data_cache(): 
     _load_jobs_df.clear()
+    _load_rejected_jobs_df.clear()
 
 
 def _sidebar_metrics_for_df(df: pd.DataFrame) -> dict[str, int]:
     if df.empty or "status" not in df.columns:
         return {"scraped_leads": 0, "tracked": 0, "active": 0}
     statuses = df["status"].fillna("").astype(str).str.lower()
+    entry_types = df.get("entry_type", pd.Series(["application"] * len(df), index=df.index)).fillna("application").astype(str).str.lower()
+    effective_buckets = df.get("effective_bucket", pd.Series([""] * len(df), index=df.index)).fillna("").astype(str).str.upper()
+    active_applications = int(((entry_types == "application") & statuses.isin(["applied", "screening", "interviewing", "offer"])).sum())
+    tracked_non_app = int(((entry_types != "application") & ~statuses.isin(["rejected", "withdrawn", "accepted"])).sum())
+    scraped_leads = active_applications + tracked_non_app + int((effective_buckets == "APPLY NOW").sum()) + int((effective_buckets == "REVIEW TODAY").sum())
     return {
-        "scraped_leads": int((statuses == "considering").sum()),
+        "scraped_leads": scraped_leads,
         "tracked": int((statuses != "considering").sum()),
-        "active": int(statuses.isin(["applied", "screening", "interviewing", "offer"]).sum()),
+        "active": active_applications,
     }
 
 
@@ -272,7 +279,7 @@ def _load_jobs_df() -> pd.DataFrame:
             if sc >= thresholds["APPLY NOW"]: return "APPLY NOW"
             if sc >= thresholds["REVIEW TODAY"]: return "REVIEW TODAY"
             if sc >= thresholds["WATCH"]: return "WATCH"
-            return "MANUAL REVIEW"
+            return "Filtered Out"
             
         df["effective_bucket"] = df.apply(bucket, axis=1)
         df["user_status"] = df["status"].map(lambda s: str(s).capitalize() if s else "Considering")
@@ -365,6 +372,77 @@ def _render_apply_now_cards(df):
 
 def load_yaml(p): return yaml.safe_load(p.read_text(encoding="utf-8")) if p.exists() else {}
 def save_yaml(p, d): p.write_text(yaml.safe_dump(d, sort_keys=False, allow_unicode=True), encoding="utf-8")
+
+
+def _rescore_saved_jobs(conn, prefs_path: Path | None = None) -> int:
+    prefs = load_yaml(prefs_path or settings.prefs_yaml)
+    scorer = Scorer(prefs)
+    rows = conn.execute(
+        """
+        SELECT id, company, role, description_excerpt, location, tier,
+               salary_text, salary_low, salary_high, work_type,
+               compensation_unit, hourly_rate, hours_per_week, weeks_per_year,
+               is_remote, status
+        FROM applications
+        WHERE status = 'considering'
+        """
+    ).fetchall()
+    updated = 0
+    now = datetime.now(timezone.utc).isoformat()
+    for row in rows:
+        result = scorer.score_job(
+            {
+                "title": row["role"] or "",
+                "description": row["description_excerpt"] or "",
+                "location": row["location"] or "",
+                "tier": row["tier"] or 4,
+                "salary_text": row["salary_text"] or "",
+                "salary_min": row["salary_low"],
+                "salary_max": row["salary_high"],
+                "work_type": row["work_type"] or "",
+                "compensation_unit": row["compensation_unit"] or "",
+                "hourly_rate": row["hourly_rate"],
+                "hours_per_week": row["hours_per_week"],
+                "weeks_per_year": row["weeks_per_year"],
+                "is_remote": bool(row["is_remote"]),
+            }
+        )
+        conn.execute(
+            """
+            UPDATE applications
+            SET score = ?,
+                fit_band = ?,
+                matched_keywords = ?,
+                penalized_keywords = ?,
+                decision_reason = ?,
+                work_type = ?,
+                compensation_unit = ?,
+                hourly_rate = ?,
+                hours_per_week = ?,
+                weeks_per_year = ?,
+                normalized_compensation_usd = ?,
+                updated_at = ?
+            WHERE id = ?
+            """,
+            (
+                result.get("score"),
+                result.get("fit_band"),
+                result.get("matched_keywords"),
+                result.get("penalized_keywords"),
+                result.get("decision_reason"),
+                result.get("work_type"),
+                result.get("compensation_unit"),
+                result.get("hourly_rate"),
+                result.get("hours_per_week"),
+                result.get("weeks_per_year"),
+                result.get("normalized_compensation_usd"),
+                now,
+                row["id"],
+            ),
+        )
+        updated += 1
+    conn.commit()
+    return updated
 
 def _normalize_editor_value(value):
     if isinstance(value, list):
@@ -518,7 +596,7 @@ def main():
         vm1.metric("Older Postings", velocity_summary["stale"])
         vm2.metric("Reposted Jobs", velocity_summary["reposted"])
         vm3.metric("No Longer Listed", velocity_summary["dormant"])
-        match_population = df_all[df_all["effective_bucket"].isin(["APPLY NOW", "REVIEW TODAY", "WATCH", "MANUAL REVIEW"])].copy()
+        match_population = df_all[df_all["effective_bucket"].isin(["APPLY NOW", "REVIEW TODAY", "WATCH"])].copy()
         work_type_series = match_population.get("work_type", pd.Series(["unknown"] * len(match_population), index=match_population.index)).map(_normalize_work_type)
         contractor_count = int(work_type_series.isin({"w2_contract", "1099_contract", "c2c_contract", "contract"}).sum())
         fte_count = int((work_type_series == "fte").sum())
@@ -548,7 +626,11 @@ def main():
         st.caption("Employment type counts are shown for current matches only. Many job postings don't specify a work type, so they appear as Unknown.")
         ann = {r["job_key"]: dict(r) for r in ats_db.get_all_annotations(ats_db.get_connection())}
         tabs = st.tabs(["🔥 Apply Now", "📋 Review Today", "👀 Watch", "🔍 Manual Review", "🚫 Filtered Out"])
-        BUCKETS = [("APPLY NOW", tabs[0], ["Applied", "Rejected"]), ("REVIEW TODAY", tabs[1], ["APPLY NOW", "Applied", "WATCH", "Rejected"]), ("WATCH", tabs[2], ["APPLY NOW", "REVIEW TODAY", "Applied", "Rejected"]), ("MANUAL REVIEW", tabs[3], ["APPLY NOW", "Applied", "Rejected"])]
+        BUCKETS = [
+            ("APPLY NOW", tabs[0], ["Applied", "Rejected", "Watch"]),
+            ("REVIEW TODAY", tabs[1], ["Apply Now", "Applied", "Watch", "Rejected"]),
+            ("WATCH", tabs[2], ["Apply Now", "Review Today", "Applied", "Rejected"]),
+        ]
         
         for name, tab, opts in BUCKETS:
             with tab:
@@ -598,11 +680,20 @@ def main():
                     key = disp.iloc[list(disp.index).index(i)]["_key"]
                     new_s = str(row.get("user_status") or "").strip()
                     if new_s and new_s != disp.iloc[list(disp.index).index(i)]["user_status"]:
+                        target_bucket = {
+                            "Apply Now": "APPLY NOW",
+                            "Review Today": "REVIEW TODAY",
+                            "Watch": "WATCH",
+                        }.get(new_s)
                         db_s = {"Applied": "applied", "Rejected": "rejected"}.get(new_s, "considering")
                         conn = ats_db.get_connection(); now = datetime.now(timezone.utc).isoformat()
                         conn.execute("UPDATE applications SET status=?, updated_at=? WHERE scraper_key=?", (db_s, now, key))
                         res = conn.execute("SELECT id FROM applications WHERE scraper_key=?", (key,)).fetchone()
-                        if res: ats_db.add_event(conn, res["id"], db_s, now, title=f"Moved to {new_s}")
+                        if res:
+                            title = f"Moved to {new_s}"
+                            if target_bucket:
+                                title = f"Bucket changed to {target_bucket.title()}"
+                            ats_db.add_event(conn, res["id"], db_s, now, title=title)
                         conn.commit(); conn.close(); _invalidate_data_cache(); st.rerun()
 
         with tabs[3]:
@@ -694,33 +785,88 @@ def main():
                     st.info(f"Showing first 50 of {len(filtered_unresolved)} unresolved manual-review entries.")
 
         with tabs[4]:
+            filtered_bucket_df = df_all[df_all["effective_bucket"] == "Filtered Out"].copy()
+            filtered_bucket_df = _apply_work_type_filter(filtered_bucket_df, work_type_filter).copy()
+            filtered_bucket_df = _search_text_match(
+                filtered_bucket_df,
+                search_query,
+                ["company", "title", "location", "matched_keywords", "decision_reason", "url"],
+            )
             filtered_rejected_df = _apply_work_type_filter(rejected_df, work_type_filter).copy()
             filtered_rejected_df = _search_text_match(
                 filtered_rejected_df,
                 search_query,
                 ["company", "title", "location", "adapter", "drop_reason", "decision_reason", "url"],
             )
-            if filtered_rejected_df.empty:
-                st.info("No filtered-out jobs recorded for the latest pipeline run.")
+            if filtered_bucket_df.empty and filtered_rejected_df.empty:
+                st.info("No filtered-out jobs available.")
             else:
-                st.caption(f"Filtered out by the scoring system in the latest search: {len(filtered_rejected_df)}")
-                show_cols = [c for c in ["company", "title", "score", "fit_band", "work_type", "normalized_compensation_usd", "location", "adapter", "drop_reason", "decision_reason", "url"] if c in filtered_rejected_df.columns]
-                if "work_type" in filtered_rejected_df.columns:
-                    filtered_rejected_df["work_type"] = filtered_rejected_df["work_type"].map(_work_type_label)
-                st.dataframe(
-                    filtered_rejected_df[show_cols],
-                    column_config={
-                        "url": st.column_config.LinkColumn("URL"),
-                        "score": st.column_config.NumberColumn("Match Score"),
-                        "fit_band": st.column_config.TextColumn("Fit Level"),
-                        "normalized_compensation_usd": st.column_config.NumberColumn("Annualized Pay (USD)", format="$%.0f"),
-                        "adapter": st.column_config.TextColumn("Source"),
-                        "drop_reason": st.column_config.TextColumn("Reason Filtered"),
-                        "decision_reason": st.column_config.TextColumn("Scoring Details"),
-                    },
-                    hide_index=True,
-                    use_container_width=True,
-                )
+                if not filtered_bucket_df.empty:
+                    st.caption(f"Currently saved jobs below your watch threshold: {len(filtered_bucket_df)}")
+                    promote_opts = ["Apply Now", "Review Today", "Watch", "Applied", "Rejected"]
+                    for c in DISPLAY_COLS + ["user_status", "_key"]:
+                        if c not in filtered_bucket_df.columns:
+                            filtered_bucket_df[c] = ""
+                    filtered_disp = filtered_bucket_df[DISPLAY_COLS + ["user_status", "_key"]].copy()
+                    if "work_type" in filtered_disp.columns:
+                        filtered_disp["work_type"] = filtered_disp["work_type"].map(_work_type_label)
+                    filtered_edited = st.data_editor(
+                        filtered_disp.drop(columns=["_key"]),
+                        column_config={
+                            "user_status": st.column_config.SelectboxColumn("Move To", options=[""] + promote_opts),
+                            "url": st.column_config.LinkColumn("URL"),
+                            "score": st.column_config.NumberColumn("Match Score"),
+                            "fit_band": st.column_config.TextColumn("Fit Level"),
+                            "normalized_compensation_usd": st.column_config.NumberColumn("Annualized Pay (USD)", format="$%.0f"),
+                            "decision_reason": st.column_config.TextColumn("Scoring Details"),
+                        },
+                        hide_index=True,
+                        use_container_width=True,
+                        key="ed_filtered_saved",
+                    )
+                    for i, row in filtered_edited.iterrows():
+                        key = filtered_disp.iloc[list(filtered_disp.index).index(i)]["_key"]
+                        new_s = str(row.get("user_status") or "").strip()
+                        if new_s and new_s != filtered_disp.iloc[list(filtered_disp.index).index(i)]["user_status"]:
+                            target_bucket = {
+                                "Apply Now": "APPLY NOW",
+                                "Review Today": "REVIEW TODAY",
+                                "Watch": "WATCH",
+                            }.get(new_s)
+                            db_s = {"Applied": "applied", "Rejected": "rejected"}.get(new_s, "considering")
+                            note = None
+                            conn = ats_db.get_connection()
+                            try:
+                                conn.execute(
+                                    "UPDATE applications SET status=?, updated_at=? WHERE scraper_key=?",
+                                    (db_s, datetime.now(timezone.utc).isoformat(), key),
+                                )
+                                conn.commit()
+                                if target_bucket:
+                                    ats_db.upsert_annotation(conn, key, target_bucket, note)
+                                _invalidate_data_cache()
+                            finally:
+                                conn.close()
+                            st.rerun()
+                if not filtered_rejected_df.empty:
+                    st.caption(f"Filtered out by the scoring system in the latest search: {len(filtered_rejected_df)}")
+                    show_cols = [c for c in ["company", "title", "score", "fit_band", "work_type", "normalized_compensation_usd", "location", "adapter", "drop_reason", "decision_reason", "url"] if c in filtered_rejected_df.columns]
+                    if "work_type" in filtered_rejected_df.columns:
+                        filtered_rejected_df["work_type"] = filtered_rejected_df["work_type"].map(_work_type_label)
+                    st.dataframe(
+                        filtered_rejected_df[show_cols],
+                        column_config={
+                            "url": st.column_config.LinkColumn("URL"),
+                            "score": st.column_config.NumberColumn("Match Score"),
+                            "fit_band": st.column_config.TextColumn("Fit Level"),
+                            "normalized_compensation_usd": st.column_config.NumberColumn("Annualized Pay (USD)", format="$%.0f"),
+                            "adapter": st.column_config.TextColumn("Source"),
+                            "drop_reason": st.column_config.TextColumn("Reason Filtered"),
+                            "decision_reason": st.column_config.TextColumn("Scoring Details"),
+                        },
+                        hide_index=True,
+                        use_container_width=True,
+                    )
 
     elif page == "Search Settings":
         st.title("Search Settings")
@@ -887,10 +1033,18 @@ def main():
 
         with t4:
             s_cfg = prefs.setdefault("scoring", {})
+            title_cfg = prefs.setdefault("titles", {})
+            matching = s_cfg.setdefault("keyword_matching", {})
             rescue = prefs.setdefault("policy", {}).setdefault("title_rescue", {})
             adjustments = s_cfg.setdefault("adjustments", {})
             apply_now = s_cfg.setdefault("apply_now", {})
+            st.caption("After saving settings, you can re-score saved jobs without rerunning the scraper.")
             f_min_keep = st.number_input("Minimum Score to Show a Job", min_value=0, max_value=100, value=int(s_cfg.get("minimum_score_to_keep", 35)), help="Jobs scoring below this threshold are hidden from all match views.")
+            st.markdown("#### Title vs JD Weighting")
+            st.caption("Use these caps to control how much total score can come from the title versus the job description keywords.")
+            f_title_max_points = st.number_input("Maximum Score From Title Match", min_value=0, max_value=100, value=int(title_cfg.get("title_max_points", 25)))
+            f_positive_keyword_cap = st.number_input("Maximum Score From JD Keywords", min_value=0, max_value=200, value=int(matching.get("positive_keyword_cap", 60)))
+            f_negative_keyword_cap = st.number_input("Maximum Penalty From JD Negative Keywords", min_value=0, max_value=200, value=int(matching.get("negative_keyword_cap", 45)))
             f_missing_salary = st.number_input("Score Penalty: No Salary Listed", min_value=0, max_value=50, value=int(adjustments.get("missing_salary_penalty", 6)), help="Points deducted when a job posting has no salary information.")
             f_salary_target_bonus = st.number_input("Score Bonus: Salary Meets or Exceeds Target", min_value=0, max_value=50, value=int(adjustments.get("salary_at_or_above_target_bonus", 6)))
             f_salary_floor_bonus = st.number_input("Score Bonus: Salary Meets Minimum", min_value=0, max_value=50, value=int(adjustments.get("salary_meets_floor_bonus", 2)))
@@ -908,6 +1062,9 @@ def main():
             f_analyst_markers = st.text_area("Analyst Variant Keywords (one per line)", value="\n".join(rescue.get("analyst_variant_markers", [])))
             if st.button("Save Scoring Settings"):
                 s_cfg["minimum_score_to_keep"] = int(f_min_keep)
+                title_cfg["title_max_points"] = int(f_title_max_points)
+                matching["positive_keyword_cap"] = int(f_positive_keyword_cap)
+                matching["negative_keyword_cap"] = int(f_negative_keyword_cap)
                 adjustments["missing_salary_penalty"] = int(f_missing_salary)
                 adjustments["salary_at_or_above_target_bonus"] = int(f_salary_target_bonus)
                 adjustments["salary_meets_floor_bonus"] = int(f_salary_floor_bonus)
@@ -922,6 +1079,14 @@ def main():
                 rescue["adjacent_title_markers"] = [line.strip() for line in f_adj_markers.splitlines() if line.strip()]
                 rescue["analyst_variant_markers"] = [line.strip() for line in f_analyst_markers.splitlines() if line.strip()]
                 save_yaml(settings.prefs_yaml, prefs); st.success("Saved.")
+            if st.button("Re-score Saved Jobs"):
+                conn = ats_db.get_connection()
+                try:
+                    updated = _rescore_saved_jobs(conn)
+                finally:
+                    conn.close()
+                _invalidate_data_cache()
+                st.success(f"Re-scored {updated} saved jobs using the current search settings.")
 
         with t5:
             raw = settings.prefs_yaml.read_text(encoding="utf-8") if settings.prefs_yaml.exists() else ""

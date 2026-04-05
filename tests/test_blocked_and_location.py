@@ -1,6 +1,6 @@
 import sys
 import unittest
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from email.message import EmailMessage
 from pathlib import Path
 import sqlite3
@@ -439,6 +439,76 @@ class BlockedAndLocationTests(unittest.TestCase):
         self.assertEqual(result["compensation_unit"], "hourly")
         self.assertIsNotNone(result["normalized_compensation_usd"])
 
+    def test_explicit_nonlocal_location_hard_drops_even_if_description_mentions_remote(self):
+        scorer = Scorer(
+            {
+                "titles": {
+                    "direct_title_markers": ["product manager", "architect", "analyst"],
+                    "adjacent_title_markers": [],
+                    "analyst_variant_markers": [],
+                    "partial_titles": {},
+                    "disqualifiers": [],
+                },
+                "keywords": {
+                    "positive": {"api": 6, "integration": 6, "platform": 6},
+                    "negative": {},
+                    "gates": [],
+                },
+                "scoring": {"minimum_score_to_keep": 35, "adjustments": {}},
+                "search": {
+                    "location_policy": "remote_only",
+                    "compensation": {"target_salary_usd": 165000, "min_salary_usd": 165000},
+                    "geography": {"us_only": True, "allow_international_remote": True},
+                    "location_preferences": {
+                        "remote_us": {"enabled": True, "bonus": 14},
+                        "local_hybrid": {
+                            "enabled": True,
+                            "allow_if_salary_at_least_usd": 165000,
+                            "markers": ["80504", "longmont", "boulder", "denver"],
+                        },
+                    },
+                    "contractor": {},
+                },
+            }
+        )
+        result = scorer.score_job(
+            {
+                "title": "Technical Product Manager",
+                "description": "This role partners with remote stakeholders across product and platform teams.",
+                "location": "New York, New York, United States",
+                "is_remote": 0,
+                "tier": 2,
+            }
+        )
+        self.assertEqual(result["score"], 0.0)
+        self.assertEqual(result["fit_band"], "Filtered Out")
+        self.assertIn("location mismatch", str(result["decision_reason"]).lower())
+
+    def test_jd_keyword_caps_are_applied(self):
+        scorer = Scorer(
+            {
+                "titles": {"positive_weights": {"product manager": 20}, "title_max_points": 10},
+                "keywords": {"body_positive": {"api": 15, "integration": 15}, "body_negative": {"onsite": 20}},
+                "scoring": {
+                    "minimum_score_to_keep": 0,
+                    "keyword_matching": {"positive_keyword_cap": 12, "negative_keyword_cap": 5},
+                    "adjustments": {},
+                },
+                "search": {"compensation": {}, "geography": {}, "contractor": {}, "location_preferences": {}},
+            }
+        )
+        result = scorer.score_job(
+            {
+                "title": "Product Manager",
+                "description": "API integration role, api integration, onsite",
+                "location": "Remote - United States",
+                "tier": 4,
+            }
+        )
+        self.assertEqual(result["score_components"]["title_points"], 10)
+        self.assertEqual(result["score_components"]["body_positive_points"], 12)
+        self.assertEqual(result["score_components"]["body_negative_points"], 5)
+
     def test_work_type_filter_leaves_manual_review_rows_without_work_type(self):
         df = pd.DataFrame([{"company": "ADP", "adapter": "generic"}])
         filtered = _apply_work_type_filter(df, "Contract Only")
@@ -684,30 +754,31 @@ class BlockedAndLocationTests(unittest.TestCase):
         self.assertAlmostEqual(contract_1099["normalized_compensation_usd"], 163056.0)
 
     def test_role_velocity_labels_and_summary(self):
+        today = datetime.now(timezone.utc).date()
         df = pd.DataFrame(
             [
                 {
-                    "date_discovered": "2026-03-28",
-                    "first_seen_at": "2026-03-28T00:00:00",
-                    "last_seen_at": "2026-04-03T00:00:00",
+                    "date_discovered": str(today - timedelta(days=6)),
+                    "first_seen_at": f"{today - timedelta(days=6)}T00:00:00",
+                    "last_seen_at": f"{today - timedelta(days=1)}T00:00:00",
                     "seen_count": 1,
                 },
                 {
-                    "date_discovered": "2026-02-20",
-                    "first_seen_at": "2026-02-20T00:00:00",
-                    "last_seen_at": "2026-04-03T00:00:00",
+                    "date_discovered": str(today - timedelta(days=43)),
+                    "first_seen_at": f"{today - timedelta(days=43)}T00:00:00",
+                    "last_seen_at": f"{today - timedelta(days=1)}T00:00:00",
                     "seen_count": 4,
                 },
                 {
-                    "date_discovered": "2026-01-15",
-                    "first_seen_at": "2026-01-15T00:00:00",
-                    "last_seen_at": "2026-04-03T00:00:00",
+                    "date_discovered": str(today - timedelta(days=80)),
+                    "first_seen_at": f"{today - timedelta(days=80)}T00:00:00",
+                    "last_seen_at": f"{today - timedelta(days=1)}T00:00:00",
                     "seen_count": 5,
                 },
                 {
-                    "date_discovered": "2026-02-10",
-                    "first_seen_at": "2026-02-10T00:00:00",
-                    "last_seen_at": "2026-03-20T00:00:00",
+                    "date_discovered": str(today - timedelta(days=54)),
+                    "first_seen_at": f"{today - timedelta(days=54)}T00:00:00",
+                    "last_seen_at": f"{today - timedelta(days=15)}T00:00:00",
                     "seen_count": 2,
                 },
             ]

@@ -35,7 +35,10 @@ class Scorer:
         self.body_negative = self._pref_weight_pairs(kw_cfg.get("body_negative"), [])
 
         scoring_cfg = self.prefs.get("scoring", {})
+        keyword_matching_cfg = scoring_cfg.get("keyword_matching", {})
         self.min_score_to_keep = scoring_cfg.get("minimum_score_to_keep", 35)
+        self.positive_keyword_cap = int(keyword_matching_cfg.get("positive_keyword_cap", 60))
+        self.negative_keyword_cap = int(keyword_matching_cfg.get("negative_keyword_cap", 45))
         adjustments_cfg = scoring_cfg.get("adjustments", {})
         self.missing_salary_penalty = int(adjustments_cfg.get("missing_salary_penalty", 6))
         self.salary_at_or_above_target_bonus = int(adjustments_cfg.get("salary_at_or_above_target_bonus", 6))
@@ -48,14 +51,24 @@ class Scorer:
         comp_cfg = search_cfg.get("compensation", {})
         geo_cfg = search_cfg.get("geography", {})
         contractor_cfg = search_cfg.get("contractor", {})
+        location_pref_cfg = search_cfg.get("location_preferences", {})
+        remote_us_cfg = location_pref_cfg.get("remote_us", {})
+        local_hybrid_cfg = location_pref_cfg.get("local_hybrid", {})
 
         self.target_salary_usd = float(comp_cfg.get("target_salary_usd", 165000))
         self.min_salary_usd = float(comp_cfg.get("min_salary_usd", 165000))
         self.allow_missing_salary = bool(comp_cfg.get("allow_missing_salary", True))
         self.remote_only = comp_cfg.get("remote_only", True)
+        self.location_policy = str(search_cfg.get("location_policy", "remote_only")).strip().lower() or "remote_only"
         self.us_only = bool(geo_cfg.get("us_only", True))
         self.allow_international_remote = bool(geo_cfg.get("allow_international_remote", False))
         self.require_one_positive_keyword = bool(title_cfg.get("require_one_positive_keyword", False))
+        self.remote_us_enabled = bool(remote_us_cfg.get("enabled", True))
+        self.remote_us_bonus = int(remote_us_cfg.get("bonus", 14))
+        self.local_hybrid_enabled = bool(local_hybrid_cfg.get("enabled", True))
+        self.local_hybrid_bonus = int(local_hybrid_cfg.get("bonus", 4))
+        self.local_hybrid_salary_floor = float(local_hybrid_cfg.get("allow_if_salary_at_least_usd", self.target_salary_usd))
+        self.local_hybrid_markers = [str(item).strip().lower() for item in local_hybrid_cfg.get("markers", []) if str(item).strip()]
 
         self.include_contract_roles = bool(contractor_cfg.get("include_contract_roles", True))
         self.allow_w2_hourly = bool(contractor_cfg.get("allow_w2_hourly", True))
@@ -94,6 +107,8 @@ class Scorer:
             "australia", "canada", "united kingdom", "uk", "europe", "germany", "france",
             "ireland", "singapore", "india", "new zealand", "japan", "netherlands",
         }
+        self._onsite_markers = {"onsite", "on-site", "on site", "in office", "office-based", "office based"}
+        self._hybrid_markers = {"hybrid", "hybrid remote", "hybrid schedule", "remote/hybrid", "hybrid role"}
 
     @staticmethod
     def _pref_weight_pairs(raw: Any, default: List[Tuple[str, int]]) -> List[Tuple[str, int]]:
@@ -220,6 +235,38 @@ class Scorer:
         if "remote" not in location_l:
             return False
         return any(marker in location_l for marker in self._non_us_remote_markers)
+
+    def _location_blob(self, location: str, description: str) -> str:
+        return self.clean(" ".join([location or "", description or ""])).lower()
+
+    def _is_remote_role(self, location: str, description: str, is_remote: Any = None) -> bool:
+        if isinstance(is_remote, bool):
+            return is_remote
+        location_l = self.clean(location).lower()
+        if location_l:
+            return "remote" in location_l
+        blob = self._location_blob(location, description)
+        return "remote" in blob
+
+    def _is_hybrid_role(self, location: str, description: str) -> bool:
+        location_l = self.clean(location).lower()
+        if location_l:
+            return any(marker in location_l for marker in self._hybrid_markers)
+        blob = self._location_blob(location, description)
+        return any(marker in blob for marker in self._hybrid_markers)
+
+    def _is_onsite_role(self, location: str, description: str) -> bool:
+        location_l = self.clean(location).lower()
+        if location_l:
+            return any(marker in location_l for marker in self._onsite_markers)
+        blob = self._location_blob(location, description)
+        return any(marker in blob for marker in self._onsite_markers)
+
+    def _matches_local_area(self, location: str, description: str) -> bool:
+        blob = self._location_blob(location, description)
+        if not blob:
+            return False
+        return any(marker in blob for marker in self.local_hybrid_markers)
 
     def _derive_work_type(self, job_data: Dict[str, Any]) -> str:
         explicit = self.clean(job_data.get("work_type")).lower()
@@ -380,17 +427,13 @@ class Scorer:
 
         jd_pos_hits = self._match_compiled(jd_blob, self._compiled_body_positive)
         jd_neg_hits = self._match_compiled(jd_blob, self._compiled_body_negative)
-        body_positive_points = sum(pts for _, pts in jd_pos_hits)
-        body_negative_points = sum(pts for _, pts in jd_neg_hits)
+        body_positive_points = min(sum(pts for _, pts in jd_pos_hits), self.positive_keyword_cap)
+        body_negative_points = min(sum(pts for _, pts in jd_neg_hits), self.negative_keyword_cap)
         score += body_positive_points
         score -= body_negative_points
 
         location_penalty = 0
-        if self.us_only and not self.allow_international_remote and self._is_international_remote(location):
-            location_penalty = 12
-            score -= location_penalty
-            jd_neg_hits.append(("international remote", location_penalty))
-
+        location_bonus = 0
         tier_bonus = {1: 15, 2: 8, 3: 4}.get(company_tier, 0)
         score += tier_bonus
 
@@ -409,6 +452,72 @@ class Scorer:
 
         work_type = comp_data["work_type"]
         normalized_comp = comp_data["normalized_compensation_usd"]
+
+        is_remote_role = self._is_remote_role(location, description, job_data.get("is_remote"))
+        is_hybrid_role = self._is_hybrid_role(location, description)
+        is_onsite_role = self._is_onsite_role(location, description)
+        local_match = self._matches_local_area(location, description)
+
+        if self.us_only and not self.allow_international_remote and self._is_international_remote(location):
+            return {
+                "score": 0.0,
+                "fit_band": "Filtered Out",
+                "matched_keywords": ", ".join(sorted(set(term for term, _ in title_hits + partial_hits + jd_pos_hits))),
+                "penalized_keywords": "international remote",
+                "decision_reason": "Hard-Drop: location mismatch (international remote)",
+                "score_components": {
+                    "base_score": base_score,
+                    "title_points": title_points,
+                    "body_positive_points": body_positive_points,
+                    "body_negative_points": body_negative_points,
+                    "tier_bonus": tier_bonus,
+                    "partial_title_bonus": partial_title_points,
+                    "positive_keyword_gate_bonus": positive_keyword_gate_bonus,
+                    "location_penalty": 100,
+                    "location_bonus": 0,
+                    "compensation_adjustment": 0,
+                    "contract_adjustment": 0,
+                },
+                **comp_data,
+            }
+
+        if is_remote_role:
+            if self.remote_us_enabled and self.location_policy in {"remote_only", "remote_or_hybrid"}:
+                location_bonus += self.remote_us_bonus
+        elif is_hybrid_role or is_onsite_role or location.strip():
+            local_hybrid_salary_ok = (
+                normalized_comp is not None and normalized_comp >= self.local_hybrid_salary_floor
+            )
+            local_hybrid_allowed = (
+                self.local_hybrid_enabled
+                and self.location_policy in {"remote_only", "hybrid_only", "remote_or_hybrid"}
+                and local_match
+                and local_hybrid_salary_ok
+            )
+            if local_hybrid_allowed:
+                location_bonus += self.local_hybrid_bonus
+            else:
+                return {
+                    "score": 0.0,
+                    "fit_band": "Filtered Out",
+                    "matched_keywords": ", ".join(sorted(set(term for term, _ in title_hits + partial_hits + jd_pos_hits))),
+                    "penalized_keywords": "location mismatch",
+                    "decision_reason": "Hard-Drop: location mismatch",
+                    "score_components": {
+                        "base_score": base_score,
+                        "title_points": title_points,
+                        "body_positive_points": body_positive_points,
+                        "body_negative_points": body_negative_points,
+                        "tier_bonus": tier_bonus,
+                        "partial_title_bonus": partial_title_points,
+                        "positive_keyword_gate_bonus": positive_keyword_gate_bonus,
+                        "location_penalty": 100,
+                        "location_bonus": 0,
+                        "compensation_adjustment": 0,
+                        "contract_adjustment": 0,
+                    },
+                    **comp_data,
+                }
 
         if work_type in {"w2_contract", "1099_contract", "c2c_contract"}:
             if not self.include_contract_roles:
@@ -433,7 +542,7 @@ class Scorer:
             else:
                 compensation_adjustment -= self.salary_below_target_penalty
 
-        score += compensation_adjustment + contract_adjustment
+        score += compensation_adjustment + contract_adjustment + location_bonus
         score = max(0.0, min(100.0, score))
 
         matched_str = ", ".join(sorted(set(term for term, _ in title_hits + partial_hits + jd_pos_hits)))
@@ -448,7 +557,7 @@ class Scorer:
                 f"score={score:.1f} base={base_score:.1f} "
                 f"title={title_points} body+={body_positive_points} body-={body_negative_points} "
                 f"tier={tier_bonus} partial={partial_title_points} gate={positive_keyword_gate_bonus} "
-                f"location-={location_penalty} comp={compensation_adjustment} contract={contract_adjustment} "
+                f"location-={location_penalty} location+={location_bonus} comp={compensation_adjustment} contract={contract_adjustment} "
                 f"work_type={work_type} normalized_comp={normalized_comp if normalized_comp is not None else 'na'} "
                 f"hits={len(title_hits) + len(partial_hits) + len(jd_pos_hits)}"
             ),
@@ -461,6 +570,7 @@ class Scorer:
                 "partial_title_bonus": partial_title_points,
                 "positive_keyword_gate_bonus": positive_keyword_gate_bonus,
                 "location_penalty": location_penalty,
+                "location_bonus": location_bonus,
                 "compensation_adjustment": compensation_adjustment,
                 "contract_adjustment": contract_adjustment,
             },

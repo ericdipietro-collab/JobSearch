@@ -84,6 +84,13 @@ def _days_until(iso: Optional[str]) -> Optional[int]:
         return None
 
 
+def _event_day_from_signal(signal, fallback_day: str) -> str:
+    scheduled = str(signal["interview_scheduled_at"] or "").strip()
+    if len(scheduled) >= 10 and scheduled[:10].count("-") == 2:
+        return scheduled[:10]
+    return fallback_day
+
+
 EVENT_ICONS = {
     "applied":             "📨",
     "conversation":        "💬",
@@ -763,6 +770,7 @@ def _apply_email_signal_action(conn, signal, action: str) -> None:
             location=signal["interview_location"] or None,
         )
         if rescheduled:
+            event_day = _event_day_from_signal(signal, received_day)
             update_payload = {
                 "scheduled_at": signal["interview_scheduled_at"] or rescheduled["scheduled_at"],
                 "duration_mins": signal["interview_duration_mins"] or rescheduled["duration_mins"],
@@ -782,7 +790,7 @@ def _apply_email_signal_action(conn, signal, action: str) -> None:
                 conn,
                 app["id"],
                 "interview_scheduled",
-                received_day,
+                event_day,
                 title="Gmail-detected interview rescheduled",
                 notes=signal["subject"],
             )
@@ -805,11 +813,12 @@ def _apply_email_signal_action(conn, signal, action: str) -> None:
             location=signal["interview_location"] or None,
             prep_notes=signal["subject"],
         )
+        event_day = _event_day_from_signal(signal, received_day)
         db.add_event(
             conn,
             app["id"],
             "interview_scheduled",
-            received_day,
+            event_day,
             title="Gmail-detected interview scheduled",
             notes=signal["subject"],
         )

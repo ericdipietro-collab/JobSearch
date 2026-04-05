@@ -18,6 +18,7 @@ from jobsearch.services.analytics_service import (
     conversion_rates,
     funnel_counts,
     high_score_not_applied,
+    lifecycle_summary,
     score_vs_outcome,
     time_in_stage,
 )
@@ -333,6 +334,49 @@ def _render_pipeline_health(conn: sqlite3.Connection) -> None:
         )
 
 
+def _render_lifecycle_outcomes(conn: sqlite3.Connection) -> None:
+    st.subheader("Lifecycle Outcomes")
+
+    company_df, detail_df = lifecycle_summary(conn)
+    if company_df.empty or detail_df.empty:
+        st.info("No lifecycle data available yet.")
+        return
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Interview Rounds", int(detail_df["interview_rounds"].sum()))
+    c2.metric("Rejected", int((detail_df["lifecycle_outcome"] == "Rejected").sum()))
+    c3.metric("Ghosted", int(detail_df["ghosted"].sum()))
+    c4.metric("Offers / Accepted", int(detail_df["lifecycle_outcome"].isin(["Offer", "Accepted"]).sum()))
+
+    st.markdown("**By Company**")
+    st.dataframe(
+        company_df,
+        hide_index=True,
+        use_container_width=True,
+        column_config={
+            "applications": st.column_config.NumberColumn("Applications"),
+            "interview_rounds": st.column_config.NumberColumn("Interview Rounds"),
+            "interviewed_companies": st.column_config.NumberColumn("Interviewed Apps"),
+            "offers": st.column_config.NumberColumn("Offers"),
+            "accepted": st.column_config.NumberColumn("Accepted"),
+            "rejected": st.column_config.NumberColumn("Rejected"),
+            "ghosted": st.column_config.NumberColumn("Ghosted"),
+        },
+    )
+
+    with st.expander("Lifecycle detail by application"):
+        st.dataframe(
+            detail_df,
+            hide_index=True,
+            use_container_width=True,
+            column_config={
+                "interview_rounds": st.column_config.NumberColumn("Interview Rounds"),
+                "max_round": st.column_config.NumberColumn("Max Round"),
+                "ghosted": st.column_config.CheckboxColumn("Ghosted"),
+            },
+        )
+
+
 def _render_company_pipeline(conn: sqlite3.Connection) -> None:
     st.subheader("Company Pipeline")
 
@@ -349,7 +393,7 @@ def _render_company_pipeline(conn: sqlite3.Connection) -> None:
             "company": st.column_config.TextColumn("Company", width="medium"),
             "total": st.column_config.NumberColumn("Total", width="small"),
             "applied": st.column_config.NumberColumn("Applied", width="small"),
-            "interviewed": st.column_config.NumberColumn("Interviewed", width="small"),
+            "interviews": st.column_config.NumberColumn("Interviews", width="small"),
             "offer": st.column_config.NumberColumn("Offer", width="small"),
         },
     )
@@ -616,6 +660,8 @@ def render_analytics(conn: sqlite3.Connection) -> None:
 
     with tab_health:
         _render_pipeline_health(conn)
+        st.divider()
+        _render_lifecycle_outcomes(conn)
 
     with tab_company:
         _render_company_pipeline(conn)

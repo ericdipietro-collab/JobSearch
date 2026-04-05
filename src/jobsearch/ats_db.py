@@ -1936,7 +1936,9 @@ def applications_by_week(conn: sqlite3.Connection, weeks: int = 8) -> List[Dict[
 def get_activity_report(conn: sqlite3.Connection, start_date: str, end_date: str) -> List[sqlite3.Row]:
     return conn.execute(
         """
-        SELECT e.event_type,
+        SELECT e.id AS event_id,
+               e.application_id,
+               e.event_type,
                e.event_date,
                e.title AS event_title,
                e.notes AS event_notes,
@@ -1948,8 +1950,9 @@ def get_activity_report(conn: sqlite3.Connection, start_date: str, end_date: str
         JOIN applications a ON a.id = e.application_id
         LEFT JOIN contacts c ON c.application_id = a.id
         WHERE e.event_type IN ({})
-          AND substr(e.event_date, 1, 10) >= ?
-          AND substr(e.event_date, 1, 10) <= ?
+          AND date(substr(e.event_date, 1, 10)) IS NOT NULL
+          AND date(substr(e.event_date, 1, 10)) >= date(?)
+          AND date(substr(e.event_date, 1, 10)) <= date(?)
         GROUP BY e.id
         ORDER BY e.event_date DESC, e.id DESC
         """.format(",".join("?" for _ in REPORTABLE_EVENT_TYPES)),
