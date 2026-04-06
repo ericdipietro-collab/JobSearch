@@ -52,6 +52,8 @@ DISPLAY_COLS = [
     "company",
     "url",
     "title",
+    "source",
+    "source_lane_label",
     "score",
     "fit_band",
     "location",
@@ -76,6 +78,22 @@ WORK_TYPE_LABELS = {
     "unknown": "Unknown",
 }
 
+EXPERIMENTAL_SOURCE_ADAPTERS = {
+    "jobspy",
+    "indeed_connector",
+    "adzuna",
+    "jooble",
+    "themuse",
+    "usajobs",
+}
+
+SOURCE_LANE_LABELS = {
+    "employer_ats": "Employer ATS",
+    "contractor": "Contractor",
+    "aggregator": "Aggregator",
+    "jobspy_experimental": "JobSpy Experimental",
+}
+
 
 def _search_text_match(df: pd.DataFrame, query: str, columns: list[str]) -> pd.DataFrame:
     text = str(query or "").strip().lower()
@@ -86,6 +104,118 @@ def _search_text_match(df: pd.DataFrame, query: str, columns: list[str]) -> pd.D
         if column in df.columns:
             haystack = haystack + " " + df[column].fillna("").astype(str).str.lower()
     return df[haystack.str.contains(re.escape(text), na=False, regex=True)]
+
+
+def _source_lane_label(value: object) -> str:
+    key = str(value or "employer_ats").strip().lower() or "employer_ats"
+    return SOURCE_LANE_LABELS.get(key, key.replace("_", " ").title())
+
+
+def _parse_log_key_values(text: str) -> dict[str, str]:
+    return {key: value for key, value in re.findall(r"([a-zA-Z_]+)=([^\s]+)", text or "")}
+
+
+def _parse_jobspy_board_metrics(note: str) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    for part in [segment.strip() for segment in str(note or "").split("|")]:
+        if ":" not in part or "requested=" not in part:
+            continue
+        board, metrics_text = part.split(":", 1)
+        board = board.strip()
+        metrics = _parse_log_key_values(metrics_text)
+        if not board or not metrics:
+            continue
+        rows.append(
+            {
+                "board": board,
+                "requested": int(float(metrics.get("requested", "0") or 0)),
+                "attempted": int(float(metrics.get("attempted", "0") or 0)),
+                "success": int(float(metrics.get("success", "0") or 0)),
+                "failed": int(float(metrics.get("failed", "0") or 0)),
+                "skipped": int(float(metrics.get("skipped", "0") or 0)),
+                "runtime_ms": float(metrics.get("runtime_ms", "0") or 0),
+                "raw": int(float(metrics.get("raw", "0") or 0)),
+                "normalized": int(float(metrics.get("normalized", "0") or 0)),
+                "deduped": int(float(metrics.get("deduped", "0") or 0)),
+            }
+        )
+    return rows
+
+
+def _parse_experimental_source_log(log_path: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
+    if not log_path.exists():
+        return pd.DataFrame(), pd.DataFrame()
+    try:
+        lines = log_path.read_text(encoding="utf-8", errors="ignore").splitlines()
+    except Exception:
+        return pd.DataFrame(), pd.DataFrame()
+
+    company_rows: list[dict[str, object]] = []
+    board_rows: list[dict[str, object]] = []
+    company_pattern = re.compile(
+        r"^\d{2}:\d{2}:\d{2}\s+\|\s+\[(?P<progress>\d+/\d+)\]\s+(?P<result>OK|FAIL)\s+(?P<company>.*?)\s+\|\s+(?P<fields>.+)$"
+    )
+    adapter_pattern = re.compile(r"^\d{2}:\d{2}:\d{2}\s+\|\s+Adapter metrics\s+\|\s+(?P<fields>.+)$")
+
+    for line in lines:
+        adapter_match = adapter_pattern.match(line.strip())
+        if adapter_match:
+            fields = _parse_log_key_values(adapter_match.group("fields"))
+            adapter = str(fields.get("adapter", "")).strip().lower()
+            if adapter not in EXPERIMENTAL_SOURCE_ADAPTERS:
+                continue
+            company_rows.append(
+                {
+                    "progress": "summary",
+                    "result": "SUMMARY",
+                    "company": f"{adapter} adapter totals",
+                    "adapter": adapter,
+                    "evaluated": int(float(fields.get("evaluated", "0") or 0)),
+                    "persisted": int(float(fields.get("persisted", "0") or 0)),
+                    "new": 0,
+                    "dropped": 0,
+                    "status": "",
+                    "scrape_ms": float(fields.get("scrape_ms", "0") or 0),
+                    "process_ms": float(fields.get("process_ms", "0") or 0),
+                    "note": "",
+                }
+            )
+            continue
+
+        match = company_pattern.match(line.strip())
+        if not match:
+            continue
+        fields_text = match.group("fields")
+        note = ""
+        if " note=" in fields_text:
+            fields_text, note = fields_text.split(" note=", 1)
+            note = note.strip()
+        fields = _parse_log_key_values(fields_text)
+        adapter = str(fields.get("adapter", "")).strip().lower()
+        if adapter not in EXPERIMENTAL_SOURCE_ADAPTERS:
+            continue
+        company_rows.append(
+            {
+                "progress": match.group("progress"),
+                "result": match.group("result"),
+                "company": match.group("company").strip(),
+                "adapter": adapter,
+                "evaluated": int(float(fields.get("evaluated", "0") or 0)),
+                "persisted": int(float(fields.get("persisted", "0") or 0)),
+                "new": int(float(fields.get("new", "0") or 0)),
+                "dropped": int(float(fields.get("dropped", "0") or 0)),
+                "status": str(fields.get("status", "")).strip(),
+                "scrape_ms": float(fields.get("scrape_ms", "0") or 0),
+                "process_ms": float(fields.get("process_ms", "0") or 0),
+                "note": note,
+            }
+        )
+        if adapter == "jobspy" and note:
+            for board_row in _parse_jobspy_board_metrics(note):
+                board_row["company"] = match.group("company").strip()
+                board_rows.append(board_row)
+
+    return pd.DataFrame(company_rows), pd.DataFrame(board_rows)
 
 
 def _bucket_thresholds_from_preferences() -> dict[str, float]:
@@ -371,6 +501,8 @@ def _load_jobs_df() -> pd.DataFrame:
             return "Considering"
         df["user_status"] = df.apply(user_status, axis=1)
         df["note"] = df["_key"].map(lambda k: ann_map.get(str(k), {}).get("note", ""))
+        df["source"] = df.get("source", pd.Series([""] * len(df), index=df.index)).fillna("").astype(str)
+        df["source_lane_label"] = df.get("source_lane", pd.Series(["employer_ats"] * len(df), index=df.index)).map(_source_lane_label)
         
         for c in ("score", "fit_stars", "salary_low", "salary_high", "tier"):
             if c in df.columns: df[c] = pd.to_numeric(df[c], errors="coerce")
@@ -885,7 +1017,7 @@ def main():
                 b_df = _search_text_match(
                     b_df,
                     search_query,
-                    ["company", "title", "location", "matched_keywords", "decision_reason", "url"],
+                    ["company", "title", "location", "source", "source_lane_label", "matched_keywords", "decision_reason", "url"],
                 )
                 if b_df.empty: st.info(f"No jobs in {name}"); continue
                 if name == "APPLY NOW": _render_apply_now_cards(b_df)
@@ -907,6 +1039,8 @@ def main():
                     column_config={
                         "user_status": st.column_config.SelectboxColumn("Move To", options=[""] + opts),
                         "url": st.column_config.LinkColumn("URL"),
+                        "source": st.column_config.TextColumn("Source"),
+                        "source_lane_label": st.column_config.TextColumn("Lane"),
                         "score": st.column_config.NumberColumn("Match Score"),
                         "fit_band": st.column_config.TextColumn("Fit Level"),
                         "age_days": st.column_config.NumberColumn("Days Old"),
@@ -1051,7 +1185,7 @@ def main():
             filtered_bucket_df = _search_text_match(
                 filtered_bucket_df,
                 search_query,
-                ["company", "title", "location", "matched_keywords", "decision_reason", "url"],
+                ["company", "title", "location", "source", "source_lane_label", "matched_keywords", "decision_reason", "url"],
             )
             filtered_rejected_df = _apply_work_type_filter(rejected_df, work_type_filter).copy()
             filtered_rejected_df = _search_text_match(
@@ -1077,6 +1211,8 @@ def main():
                         column_config={
                             "user_status": st.column_config.SelectboxColumn("Move To", options=[""] + promote_opts),
                             "url": st.column_config.LinkColumn("URL"),
+                            "source": st.column_config.TextColumn("Source"),
+                            "source_lane_label": st.column_config.TextColumn("Lane"),
                             "score": st.column_config.NumberColumn("Match Score"),
                             "fit_band": st.column_config.TextColumn("Fit Level"),
                             "normalized_compensation_usd": st.column_config.NumberColumn("Annualized Pay (USD)", format="$%.0f"),
@@ -1917,6 +2053,83 @@ def main():
         with t2:
             log_path = settings.log_file
             if log_path.exists():
+                experimental_df, jobspy_board_df = _parse_experimental_source_log(log_path)
+                if not experimental_df.empty:
+                    st.subheader("Experimental / API Source Results")
+                    source_summary = experimental_df[experimental_df["result"] != "SUMMARY"].copy()
+                    if not source_summary.empty:
+                        st.dataframe(
+                            source_summary[
+                                [
+                                    "company",
+                                    "adapter",
+                                    "evaluated",
+                                    "persisted",
+                                    "new",
+                                    "dropped",
+                                    "status",
+                                    "scrape_ms",
+                                    "process_ms",
+                                    "note",
+                                ]
+                            ],
+                            column_config={
+                                "company": st.column_config.TextColumn("Source Row"),
+                                "adapter": st.column_config.TextColumn("Adapter"),
+                                "evaluated": st.column_config.NumberColumn("Evaluated"),
+                                "persisted": st.column_config.NumberColumn("Persisted"),
+                                "new": st.column_config.NumberColumn("New"),
+                                "dropped": st.column_config.NumberColumn("Dropped"),
+                                "status": st.column_config.TextColumn("Status"),
+                                "scrape_ms": st.column_config.NumberColumn("Scrape ms"),
+                                "process_ms": st.column_config.NumberColumn("Process ms"),
+                                "note": st.column_config.TextColumn("Details"),
+                            },
+                            hide_index=True,
+                            use_container_width=True,
+                        )
+                    totals_df = experimental_df[experimental_df["result"] == "SUMMARY"].copy()
+                    if not totals_df.empty:
+                        st.caption("Adapter totals from the latest run")
+                        st.dataframe(
+                            totals_df[["company", "evaluated", "persisted", "scrape_ms", "process_ms"]],
+                            hide_index=True,
+                            use_container_width=True,
+                        )
+                if not jobspy_board_df.empty:
+                    st.subheader("JobSpy Board Metrics")
+                    st.dataframe(
+                        jobspy_board_df[
+                            [
+                                "company",
+                                "board",
+                                "requested",
+                                "attempted",
+                                "success",
+                                "failed",
+                                "skipped",
+                                "runtime_ms",
+                                "raw",
+                                "normalized",
+                                "deduped",
+                            ]
+                        ],
+                        column_config={
+                            "company": st.column_config.TextColumn("Source Row"),
+                            "board": st.column_config.TextColumn("Board"),
+                            "requested": st.column_config.NumberColumn("Requested"),
+                            "attempted": st.column_config.NumberColumn("Attempted"),
+                            "success": st.column_config.NumberColumn("Success"),
+                            "failed": st.column_config.NumberColumn("Failed"),
+                            "skipped": st.column_config.NumberColumn("Skipped"),
+                            "runtime_ms": st.column_config.NumberColumn("Runtime ms"),
+                            "raw": st.column_config.NumberColumn("Raw"),
+                            "normalized": st.column_config.NumberColumn("Normalized"),
+                            "deduped": st.column_config.NumberColumn("Cross-board Deduped"),
+                        },
+                        hide_index=True,
+                        use_container_width=True,
+                    )
                 st.caption(f"Showing tail of {log_path.name}")
                 st.code("\n".join(log_path.read_text(encoding="utf-8", errors="ignore").splitlines()[-60:]))
             else:
