@@ -1475,6 +1475,10 @@ def main():
             f_benefits = st.number_input("1099: Estimated Annual Benefits Cost (USD)", min_value=0.0, value=float(contractor.get("benefits_replacement_usd", 18000)), step=1000.0, help="Annual cost of health insurance and benefits you'd need to cover yourself as a 1099 contractor.")
             f_w2_gap = st.number_input("W2 Hourly: Benefits Gap vs. Salaried (USD)", min_value=0.0, value=float(contractor.get("w2_benefits_gap_usd", 6000)), step=500.0, help="Estimated annual value of benefits you lose on a W2 hourly contract vs. a salaried role.")
             f_1099_overhead = st.number_input("1099: Self-Employment Overhead Rate (%)", min_value=0.0, max_value=0.75, value=float(contractor.get("overhead_1099_pct", 0.18)), step=0.01, format="%.2f", help="Percentage deducted for self-employment tax and other 1099 overhead costs.")
+            st.markdown("#### Experience Tolerance")
+            experience = s.setdefault("experience", {})
+            f_years_exp = st.number_input("Your Years of Experience", min_value=0.0, max_value=60.0, value=float(experience.get("years", 0)), step=0.5, help="Your professional experience level. Set to 0 to disable experience-based filtering.")
+            f_exp_gap = st.number_input("Experience Gap Tolerance (years)", min_value=0.0, max_value=20.0, value=float(experience.get("gap_tolerance", 0)), step=0.5, help="How many years below the job requirement are you willing to stretch? Jobs exceeding this gap will be filtered out.")
             if st.button("Save Compensation & Location Settings"):
                 c.update({
                     "min_salary_usd": int(f_min),
@@ -1500,6 +1504,10 @@ def main():
                 query_tiers.update({
                     "aggregator_max_tier": int(f_aggregator_max_tier),
                     "jobspy_max_tier": int(f_jobspy_max_tier),
+                })
+                experience.update({
+                    "years": float(f_years_exp),
+                    "gap_tolerance": float(f_exp_gap),
                 })
                 contractor.update({
                     "include_contract_roles": bool(f_include_contract),

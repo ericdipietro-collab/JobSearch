@@ -71,6 +71,11 @@ class Scorer:
         self.local_hybrid_salary_floor = float(local_hybrid_cfg.get("allow_if_salary_at_least_usd", self.target_salary_usd))
         self.local_hybrid_markers = [str(item).strip().lower() for item in local_hybrid_cfg.get("markers", []) if str(item).strip()]
 
+        # Experience tolerance
+        exp_cfg = search_cfg.get("experience", {})
+        self.user_years_experience = float(exp_cfg.get("years", 0))
+        self.experience_gap_tolerance = float(exp_cfg.get("gap_tolerance", 0))
+
         self.include_contract_roles = bool(contractor_cfg.get("include_contract_roles", True))
         self.allow_w2_hourly = bool(contractor_cfg.get("allow_w2_hourly", True))
         self.allow_1099_hourly = bool(contractor_cfg.get("allow_1099_hourly", True))
@@ -293,6 +298,66 @@ class Scorer:
             return False
         return any(marker in blob for marker in self.local_hybrid_markers)
 
+    def _extract_required_years_experience(self, title: str, description: str) -> Optional[float]:
+        """Extract minimum required years of experience from job posting."""
+        # Comprehensive patterns for experience extraction
+        text = f"{title} {description}".lower()
+        patterns = [
+            # "X+ years", "X+ years of experience"
+            r"(\d+)\s*\+\s*years?(?:\s+(?:of\s+)?(?:experience|exp|working|managing|developing))?",
+            # "at least X years"
+            r"at\s+least\s+(\d+)\s+years?",
+            # "minimum X years"
+            r"minimum\s+(\d+)\s+years?",
+            # "X years of experience/exp/development"
+            r"(\d+)\s+years?\s+of\s+(?:experience|exp|development)",
+            # "X years experience" (no "of")
+            r"(\d+)\s+years?\s+(?:experience|exp)",
+            # "X years working/managing/developing"
+            r"(\d+)\s+years?\s+(?:working|managing|developing|building)",
+            # "require X years", "need X years"
+            r"(?:require|need|requires|needs)\s+(?:at\s+least\s+)?(\d+)\s+years?",
+        ]
+
+        matches = []
+        for pattern in patterns:
+            for match in re.finditer(pattern, text):
+                try:
+                    years = float(match.group(1))
+                    matches.append(years)
+                except (ValueError, IndexError):
+                    pass
+
+        # Return the maximum (most demanding) requirement found
+        return max(matches) if matches else None
+
+    def _check_experience_fit(self, title: str, description: str) -> Tuple[bool, Optional[str]]:
+        """
+        Check if job's experience requirement fits user's profile.
+        Returns (passes_check, penalty_reason).
+        """
+        if self.user_years_experience <= 0:
+            # User hasn't set their experience level, skip check
+            return True, None
+
+        required_years = self._extract_required_years_experience(title, description)
+        if required_years is None:
+            # No experience requirement found, allow
+            return True, None
+
+        gap = required_years - self.user_years_experience
+        if gap <= 0:
+            # User has enough or more experience
+            return True, None
+
+        # User is short on experience
+        if gap <= self.experience_gap_tolerance:
+            # Within tolerance — apply soft penalty later in scoring
+            return True, f"Soft penalty: {gap:.1f} years below requirement"
+        else:
+            # Beyond tolerance — hard drop
+            return False, f"Experience gap: {gap:.1f} years beyond tolerance ({self.experience_gap_tolerance} years)"
+
     def _derive_work_type(self, job_data: Dict[str, Any]) -> str:
         explicit = self.clean(job_data.get("work_type")).lower()
         if explicit:
@@ -466,6 +531,44 @@ class Scorer:
                 "normalized_compensation_usd": None,
             }
 
+        # Check experience fit
+        exp_passes_check, exp_penalty_reason = self._check_experience_fit(title, description)
+        if not exp_passes_check:
+            # Hard-drop: experience gap exceeds tolerance
+            _work_type = self._derive_work_type(job_data)
+            _comp_unit = self._compensation_unit(job_data, _work_type)
+            return {
+                "score": 0.0,
+                "fit_band": "Filtered Out",
+                "matched_keywords": "",
+                "penalized_keywords": "Experience Gap",
+                "decision_reason": f"Hard-Drop: {exp_penalty_reason}",
+                "score_components": {
+                    "base_score": 0.0,
+                    "title_points": 0,
+                    "body_positive_points": 0,
+                    "body_negative_points": 0,
+                    "tier_bonus": 0,
+                    "partial_title_bonus": 0,
+                    "positive_keyword_gate_bonus": 0,
+                    "location_penalty": 0,
+                    "compensation_adjustment": 0,
+                    "contract_adjustment": 0,
+                },
+                "work_type": _work_type,
+                "compensation_unit": _comp_unit,
+                "hourly_rate": self._derive_hourly_rate(job_data, _comp_unit),
+                "hours_per_week": None,
+                "weeks_per_year": None,
+                "normalized_compensation_usd": None,
+            }
+
+        # Store experience penalty reason for later application as soft penalty
+        exp_soft_penalty = 0
+        if exp_penalty_reason:
+            # Apply a soft penalty for being under experience requirement
+            exp_soft_penalty = -5
+
         score = 0.0
 
         title_hits = self._match_compiled(title_l, self._compiled_title_weights)
@@ -602,11 +705,13 @@ class Scorer:
                 compensation_adjustment -= self.salary_below_target_penalty
 
         source_penalty -= int(source_trust["score_penalty"])
-        score += compensation_adjustment + contract_adjustment + location_bonus + source_penalty
+        score += compensation_adjustment + contract_adjustment + location_bonus + source_penalty + exp_soft_penalty
         score = max(0.0, min(100.0, score))
 
         matched_str = ", ".join(sorted(set(term for term, _ in title_hits + partial_hits + jd_pos_hits)))
         penalized_str = ", ".join(sorted(set(term for term, _ in jd_neg_hits)))
+        if exp_penalty_reason and exp_soft_penalty < 0:
+            penalized_str += (", " if penalized_str else "") + exp_penalty_reason
 
         return {
             "score": score,
@@ -618,7 +723,7 @@ class Scorer:
                 f"title={title_points} body+={body_positive_points} body-={body_negative_points} "
                 f"tier={tier_bonus} partial={partial_title_points} gate={positive_keyword_gate_bonus} "
                 f"location-={location_penalty} location+={location_bonus} comp={compensation_adjustment} contract={contract_adjustment} "
-                f"source={source_penalty} source_lane={source_trust['key']} "
+                f"experience={exp_soft_penalty} source={source_penalty} source_lane={source_trust['key']} "
                 f"work_type={work_type} normalized_comp={normalized_comp if normalized_comp is not None else 'na'} "
                 f"hits={len(title_hits) + len(partial_hits) + len(jd_pos_hits)}"
             ),
@@ -635,6 +740,7 @@ class Scorer:
                 "compensation_adjustment": compensation_adjustment,
                 "contract_adjustment": contract_adjustment,
                 "source_penalty": source_penalty,
+                "experience_penalty": exp_soft_penalty,
                 "source_trust_key": source_trust["key"],
             },
             **comp_data,
