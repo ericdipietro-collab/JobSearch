@@ -29,7 +29,24 @@ from jobsearch.views.pipeline_page          import render_pipeline
 from jobsearch.views.analytics_page         import render_analytics
 
 # ── Constants ──
-KNOWN_ADAPTERS = ["greenhouse", "lever", "ashby", "workday", "rippling", "smartrecruiters", "custom_manual", "generic"]
+KNOWN_ADAPTERS = [
+    "greenhouse",
+    "lever",
+    "ashby",
+    "workday",
+    "rippling",
+    "smartrecruiters",
+    "usajobs",
+    "adzuna",
+    "jooble",
+    "themuse",
+    "indeed_connector",
+    "jobspy",
+    "dice",
+    "motionrecruitment",
+    "custom_manual",
+    "generic",
+]
 DISPLAY_COLS = [
     "company",
     "url",
@@ -122,7 +139,7 @@ def _ats_only_df(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty or "source_lane" not in df.columns:
         return df
     lanes = df["source_lane"].fillna("employer_ats").astype(str).str.lower()
-    return df[lanes != "aggregator"].copy()
+    return df[~lanes.isin(["aggregator", "jobspy_experimental"])].copy()
 
 
 def _format_score_details(raw: object) -> str:
@@ -730,6 +747,8 @@ def _companies_file_label(path: Path) -> str:
         return f"{name} (contractor list)"
     if name == settings.aggregator_companies_yaml.name:
         return f"{name} (aggregator list)"
+    if name == settings.jobspy_companies_yaml.name:
+        return f"{name} (jobspy experimental list)"
     if name == "job_search_companies_contract_test.yaml":
         return f"{name} (legacy test list)"
     return name
@@ -1525,6 +1544,7 @@ def main():
             "Main Company List": settings.companies_yaml,
             "Contractor Company List": settings.contract_companies_yaml,
             "Aggregator Company List": settings.aggregator_companies_yaml,
+            "JobSpy Experimental List": settings.jobspy_companies_yaml,
         }
         registry_label = st.radio("Company List", list(registry_options.keys()), horizontal=True)
         registry_path = registry_options[registry_label]
@@ -1637,7 +1657,7 @@ def main():
                 st.success(f"Company deleted from {registry_path.name}.")
         with t3:
             if registry_path != settings.companies_yaml:
-                st.info("Automatic job board discovery is only available for the main company list. Contractor and aggregator sources should be edited directly in their registry.")
+                st.info("Automatic job board discovery is only available for the main company list. Contractor, aggregator, and JobSpy experimental sources should be edited directly in their registry.")
             else:
                 h_all = st.checkbox("Include All Companies (not just broken ones)", value=True)
                 h_deep = st.checkbox("Deep Search (slower — uses browser to find hidden job boards)", value=False)
@@ -1721,6 +1741,7 @@ def main():
             r_test = st.checkbox("Use Test Company List (for testing only)", value=False)
             r_contract = st.checkbox("Include Contractor Sources", value=False)
             r_aggregator = st.checkbox("Include Aggregator Sources", value=False)
+            r_jobspy = st.checkbox("Include JobSpy (Experimental)", value=False)
             r_workers = st.number_input("Parallel Workers", min_value=1, max_value=20, value=8, step=1)
             pref_options = [path for path in [settings.prefs_yaml, settings.config_dir / "job_search_preferences_test.yaml"] if path.exists()]
             comp_options = [
@@ -1730,6 +1751,7 @@ def main():
                     settings.config_dir / "job_search_companies_test.yaml",
                     settings.contract_companies_yaml,
                     settings.aggregator_companies_yaml,
+                    settings.jobspy_companies_yaml,
                     settings.config_dir / "job_search_companies_contract_test.yaml",
                 ]
                 if path.exists()
@@ -1745,12 +1767,22 @@ def main():
                 st.info("Contractor-only mode: this run searches contract-oriented job sources only.")
             elif selected_name == settings.aggregator_companies_yaml.name:
                 st.info("Aggregator-only mode: this run searches lower-trust third-party job board sources only.")
+            elif selected_name == settings.jobspy_companies_yaml.name:
+                st.info("JobSpy-only mode: this run searches the experimental JobSpy discovery lane only.")
+            elif r_contract and r_aggregator and r_jobspy:
+                st.info("Combined mode: this run searches your main company list, contractor sources, aggregator sources, and JobSpy experimental sources.")
+            elif r_contract and r_jobspy:
+                st.info("Combined mode: this run searches your main company list, contractor sources, and JobSpy experimental sources.")
+            elif r_aggregator and r_jobspy:
+                st.info("Combined mode: this run searches your main company list, aggregator sources, and JobSpy experimental sources.")
             elif r_contract and r_aggregator:
                 st.info("Combined mode: this run searches your main company list, contractor sources, and aggregator sources.")
             elif r_contract:
                 st.info("Combined mode: this run searches both your main company list and contractor sources.")
             elif r_aggregator:
                 st.info("Combined mode: this run searches both your main company list and aggregator sources. Aggregator jobs are supplemental and lower trust.")
+            elif r_jobspy:
+                st.info("Combined mode: this run searches both your main company list and JobSpy experimental sources. JobSpy results are exploratory and lower trust.")
 
             if st.button("🚀 Start Pipeline", type="primary"):
                 cmd = [sys.executable, "-m", "jobsearch.cli", "run", "--workers", str(int(r_workers))]
@@ -1758,6 +1790,7 @@ def main():
                 if r_test: cmd.append("--test-companies")
                 if r_contract: cmd.append("--contract-sources")
                 if r_aggregator: cmd.append("--aggregator-sources")
+                if r_jobspy: cmd.append("--jobspy-sources")
                 if Path(r_prefs) != settings.prefs_yaml: cmd.extend(["--prefs", str(r_prefs)])
                 if Path(r_companies) != settings.companies_yaml: cmd.extend(["--companies", str(r_companies)])
 

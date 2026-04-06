@@ -379,12 +379,13 @@ def heal(heal_all, force, deep, workers, deep_timeout):
 @click.option("--test-companies", is_flag=True, help="Use the test company list.")
 @click.option("--contract-sources", is_flag=True, help="Use the contractor-source company list.")
 @click.option("--aggregator-sources", is_flag=True, help="Include aggregator job board sources.")
+@click.option("--jobspy-sources", is_flag=True, help="Include JobSpy experimental sources.")
 @click.option("--workers", default=8, help="Number of parallel workers for the scraper.")
 @click.option("--prefs", "--preferences", type=click.Path(exists=True), help="Path to preferences YAML.")
 @click.option("--companies", type=click.Path(exists=True), help="Path to companies YAML.")
 @click.option("--legacy", is_flag=True, help="Use the legacy scraper script if it exists.")
 @click.argument("extra_args", nargs=-1)
-def run(deep_search, test_companies, contract_sources, aggregator_sources, workers, prefs, companies, legacy, extra_args):
+def run(deep_search, test_companies, contract_sources, aggregator_sources, jobspy_sources, workers, prefs, companies, legacy, extra_args):
     """Run the job search pipeline."""
     click.echo("Starting Job Search Pipeline...")
 
@@ -443,6 +444,12 @@ def run(deep_search, test_companies, contract_sources, aggregator_sources, worke
             with aggregator_path.open("r", encoding="utf-8") as handle:
                 aggregator_data = (yaml.safe_load(handle) or {}).get("companies", [])
             comp_data = _merge_company_lists(comp_data, aggregator_data)
+    if jobspy_sources:
+        jobspy_path = settings.jobspy_companies_yaml
+        if jobspy_path.exists() and jobspy_path != comp_path:
+            with jobspy_path.open("r", encoding="utf-8") as handle:
+                jobspy_data = (yaml.safe_load(handle) or {}).get("companies", [])
+            comp_data = _merge_company_lists(comp_data, jobspy_data)
 
     engine = ScraperEngine(prefs_data, comp_data, deep_search=deep_search)
     engine.run(max_workers=workers)

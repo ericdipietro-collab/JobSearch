@@ -1,0 +1,24 @@
+version: 1
+companies:
+  - name: JobSpy Experimental
+    source_lane: jobspy_experimental
+    adapter: jobspy
+    active: false
+    priority: low
+    tier: 4
+    careers_url: https://www.google.com/search?q=jobs
+    domain: google.com
+    industry: experimental | aggregator
+    status: active
+    notes: Experimental JobSpy discovery lane. Disabled by default and lower trust than ATS or standard aggregators.
+    search_queries:
+      - senior product manager fintech
+      - solution architect financial services
+      - technical business analyst
+    location_filter: United States
+    site_names: google
+    results_wanted: 20
+    hours_old: 72
+    country_indeed: USA
+    concurrency: 1
+    cooldown_days: 1

@@ -113,6 +113,8 @@ class Scorer:
 
     def _source_trust_key(self, job_data: Dict[str, Any]) -> str:
         source_lane = str(job_data.get("source_lane") or "employer_ats").strip().lower() or "employer_ats"
+        if source_lane == "jobspy_experimental":
+            return "jobspy_experimental"
         if source_lane == "aggregator":
             canonical = str(job_data.get("canonical_job_url") or "").strip()
             return "aggregator_with_canonical" if canonical else "aggregator_without_canonical"

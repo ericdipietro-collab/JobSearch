@@ -160,7 +160,7 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
     canonical_job_url = str(getattr(job, "canonical_job_url", "") or "").strip()
     normalized_location = _safe_str(job.location).lower()
 
-    if existing is None and source_lane == "aggregator" and canonical_job_url:
+    if existing is None and source_lane in {"aggregator", "jobspy_experimental"} and canonical_job_url:
         stronger = conn.execute(
             """
             SELECT id

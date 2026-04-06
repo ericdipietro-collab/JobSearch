@@ -25,6 +25,7 @@ from jobsearch.scraper.adapters.jooble import JoobleAdapter
 from jobsearch.scraper.adapters.lever import LeverAdapter
 from jobsearch.scraper.adapters.motionrecruitment import MotionRecruitmentAdapter
 from jobsearch.scraper.adapters.rippling import RipplingAdapter
+from jobsearch.scraper.adapters.jobspy_experimental import JobSpyExperimentalAdapter
 from jobsearch.scraper.adapters.smartrecruiters import SmartRecruitersAdapter
 from jobsearch.scraper.adapters.themuse import TheMuseAdapter
 from jobsearch.scraper.adapters.usajobs import USAJobsAdapter
@@ -88,6 +89,7 @@ class ScraperEngine:
         "jooble": JoobleAdapter,
         "themuse": TheMuseAdapter,
         "indeed_connector": IndeedConnectorAdapter,
+        "jobspy": JobSpyExperimentalAdapter,
         "dice": DiceAdapter,
         "generic": GenericAdapter,
         "custom_manual": GenericAdapter,
@@ -136,6 +138,7 @@ class ScraperEngine:
             "jooble": settings.scrape_jooble_concurrency,
             "themuse": settings.scrape_themuse_concurrency,
             "indeed_connector": settings.scrape_indeed_connector_concurrency,
+            "jobspy": settings.scrape_jobspy_concurrency,
             "dice": settings.scrape_dice_concurrency,
             "motionrecruitment": settings.scrape_motionrecruitment_concurrency,
             "deep_search": settings.scrape_deep_search_concurrency,

@@ -4,6 +4,8 @@ import unittest
 import re
 import json
 import tempfile
+import types
+from unittest import mock
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -15,6 +17,7 @@ if str(SRC_DIR) not in sys.path:
 from jobsearch.scraper.adapters.ashby import AshbyAdapter
 from jobsearch.scraper.adapters.adzuna import AdzunaAdapter
 from jobsearch.scraper.adapters.indeed_connector import IndeedConnectorAdapter
+from jobsearch.scraper.adapters.jobspy_experimental import JobSpyExperimentalAdapter
 from jobsearch.scraper.adapters.jooble import JoobleAdapter
 from jobsearch.scraper.adapters.lever import LeverAdapter
 from jobsearch.scraper.adapters.motionrecruitment import MotionRecruitmentAdapter
@@ -179,6 +182,22 @@ class _FakeTheMuseAdapter(TheMuseAdapter):
         return self.payloads.pop(0) if self.payloads else {"results": [], "page_count": 0}
 
 
+class _FakeJobSpyModule:
+    @staticmethod
+    def scrape_jobs(**kwargs):
+        return [
+            {
+                "title": "Senior Product Manager",
+                "company": "SpyCo",
+                "job_url": "https://jobs.spyco.com/roles/1",
+                "direct_url": "https://jobs.spyco.com/roles/1",
+                "location": "Remote - United States",
+                "description": "Experimental discovery role",
+                "salary_text": "$180,000 - $210,000",
+            }
+        ]
+
+
 class ScraperAdapterRegressionTests(unittest.TestCase):
     def test_usajobs_adapter_parses_search_results(self):
         payload = {
@@ -300,6 +319,30 @@ class ScraperAdapterRegressionTests(unittest.TestCase):
         self.assertEqual(len(jobs), 1)
         self.assertEqual(jobs[0].company, "MuseCo")
         self.assertEqual(jobs[0].source_lane, "aggregator")
+
+    def test_jobspy_adapter_handles_missing_dependency(self):
+        with mock.patch("jobsearch.scraper.adapters.jobspy_experimental.importlib.import_module", side_effect=ImportError("missing")):
+            adapter = JobSpyExperimentalAdapter(session=None, scorer=None)
+            jobs = adapter.scrape({"name": "JobSpy Experimental", "search_queries": ["product manager"], "results_wanted": 5})
+            self.assertEqual(jobs, [])
+            self.assertEqual(adapter.last_status, "empty")
+            self.assertIn("jobspy not installed", adapter.last_note)
+
+    def test_jobspy_adapter_imports_records_when_module_available(self):
+        original = sys.modules.get("jobspy")
+        sys.modules["jobspy"] = types.SimpleNamespace(scrape_jobs=_FakeJobSpyModule.scrape_jobs)
+        try:
+            adapter = JobSpyExperimentalAdapter(session=None, scorer=None)
+            jobs = adapter.scrape({"name": "JobSpy Experimental", "search_queries": ["product manager"], "results_wanted": 5, "site_names": "google"})
+            self.assertEqual(len(jobs), 1)
+            self.assertEqual(jobs[0].company, "SpyCo")
+            self.assertEqual(jobs[0].source_lane, "jobspy_experimental")
+            self.assertEqual(jobs[0].canonical_job_url, "https://jobs.spyco.com/roles/1")
+        finally:
+            if original is None:
+                sys.modules.pop("jobspy", None)
+            else:
+                sys.modules["jobspy"] = original
 
     def test_indeed_connector_handles_missing_cache(self):
         adapter = IndeedConnectorAdapter(session=None, scorer=None)
