@@ -1478,24 +1478,6 @@ companies:
   last_healed: '2026-04-04T13:16:23.165943'
   heal_failure_streak: 0
   manual_only_suggested: false
-- name: Carvana
-  tier: 2
-  priority: medium
-  adapter: greenhouse
-  adapter_key: carvana
-  domain: carvana.com
-  industry: auto finance | lending tech | integrations
-  notes: Their massive internal fintech arm requires deep understanding of lending
-    pipelines.
-  sub_industry: Auto Finance / FinTech
-  careers_url: https://www.carvana.com/careers/jobs
-  active: true
-  status: active
-  discovery_method: Direct greenhouse probe
-  last_healed: '2026-04-04T13:17:22.651756'
-  manual_only: false
-  heal_failure_streak: 0
-  manual_only_suggested: false
 - name: Catch
   tier: 2
   priority: medium

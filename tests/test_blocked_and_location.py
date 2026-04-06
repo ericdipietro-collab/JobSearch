@@ -159,6 +159,46 @@ class BlockedAndLocationTests(unittest.TestCase):
         total = conn.execute("SELECT COUNT(*) AS c FROM applications").fetchone()["c"]
         self.assertEqual(total, 1)
         conn.close()
+
+    def test_upsert_job_ignores_jobspy_when_stronger_canonical_exists(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        db.init_db(conn)
+        stronger = Job(
+            id="ats-1",
+            company="ExampleCo",
+            role_title_raw="Senior Product Manager",
+            role_title_normalized="senior product manager",
+            url="https://jobs.example.com/roles/123",
+            source="Greenhouse",
+            adapter="greenhouse",
+            description_excerpt="Strong role",
+            location="Remote - United States",
+        )
+        stronger.source_lane = "employer_ats"
+        stronger.canonical_job_url = "https://jobs.example.com/roles/123"
+        inserted, strong_id = upsert_job(conn, stronger)
+        self.assertTrue(inserted)
+
+        agg = Job(
+            id="jobspy-1",
+            company="ExampleCo",
+            role_title_raw="Senior Product Manager",
+            role_title_normalized="senior product manager",
+            url="https://www.google.com/jobs/1",
+            source="JobSpy",
+            adapter="jobspy",
+            description_excerpt="JobSpy copy",
+            location="Remote - United States",
+        )
+        agg.source_lane = "jobspy_experimental"
+        agg.canonical_job_url = "https://jobs.example.com/roles/123"
+        inserted2, agg_id = upsert_job(conn, agg)
+        self.assertFalse(inserted2)
+        self.assertEqual(agg_id, strong_id)
+        total = conn.execute("SELECT COUNT(*) AS c FROM applications").fetchone()["c"]
+        self.assertEqual(total, 1)
+        conn.close()
     def test_blocked_site_error_uses_deep_search_when_enabled(self):
         class _BlockedEngine(ScraperEngine):
             def _scrape_company(self, company):

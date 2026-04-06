@@ -1,16 +1,16 @@
 version: 1
 companies:
-  - name: JobSpy Experimental
+  - name: JobSpy Google Experimental
     source_lane: jobspy_experimental
     adapter: jobspy
-    active: false
+    active: true
     priority: low
     tier: 4
     careers_url: https://www.google.com/search?q=jobs
     domain: google.com
     industry: experimental | aggregator
     status: active
-    notes: Experimental JobSpy discovery lane. Disabled by default and lower trust than ATS or standard aggregators.
+    notes: Experimental JobSpy discovery lane using Google Jobs only. Keep this as the safest/default JobSpy entry.
     search_queries:
       - senior product manager fintech
       - solution architect financial services
@@ -18,7 +18,125 @@ companies:
     location_filter: United States
     site_names: google
     results_wanted: 20
+    max_total_results: 20
     hours_old: 72
     country_indeed: USA
     concurrency: 1
+    is_remote: false
+    job_type: ""
+    linkedin_fetch_description: false
+    google_search_term_template: "{query}"
+    continue_on_site_failure: true
+    cooldown_days: 1
+  - name: JobSpy Indeed Experimental
+    source_lane: jobspy_experimental
+    adapter: jobspy
+    active: false
+    priority: low
+    tier: 4
+    careers_url: https://www.indeed.com/jobs
+    domain: indeed.com
+    industry: experimental | aggregator
+    status: active
+    notes: Experimental JobSpy source for Indeed. Leave disabled until Google-only testing looks useful.
+    search_queries:
+      - senior product manager fintech
+      - solution architect financial services
+      - technical business analyst
+    location_filter: United States
+    site_names: indeed
+    results_wanted: 20
+    max_total_results: 20
+    hours_old: 72
+    country_indeed: USA
+    concurrency: 1
+    is_remote: false
+    job_type: ""
+    linkedin_fetch_description: false
+    google_search_term_template: "{query}"
+    continue_on_site_failure: true
+    cooldown_days: 1
+  - name: JobSpy LinkedIn Experimental
+    source_lane: jobspy_experimental
+    adapter: jobspy
+    active: false
+    priority: low
+    tier: 4
+    careers_url: https://www.linkedin.com/jobs/
+    domain: linkedin.com
+    industry: experimental | aggregator
+    status: active
+    notes: Experimental JobSpy source for LinkedIn. High-friction and should stay disabled unless explicitly testing it.
+    search_queries:
+      - senior product manager fintech
+      - solution architect financial services
+      - technical business analyst
+    location_filter: United States
+    site_names: linkedin
+    results_wanted: 20
+    max_total_results: 20
+    hours_old: 72
+    country_indeed: USA
+    concurrency: 1
+    is_remote: false
+    job_type: ""
+    linkedin_fetch_description: false
+    google_search_term_template: "{query}"
+    continue_on_site_failure: true
+    cooldown_days: 1
+  - name: JobSpy Glassdoor Experimental
+    source_lane: jobspy_experimental
+    adapter: jobspy
+    active: false
+    priority: low
+    tier: 4
+    careers_url: https://www.glassdoor.com/Job/index.htm
+    domain: glassdoor.com
+    industry: experimental | aggregator
+    status: active
+    notes: Experimental JobSpy source for Glassdoor. Keep disabled until the Google lane proves useful.
+    search_queries:
+      - senior product manager fintech
+      - solution architect financial services
+      - technical business analyst
+    location_filter: United States
+    site_names: glassdoor
+    results_wanted: 20
+    max_total_results: 20
+    hours_old: 72
+    country_indeed: USA
+    concurrency: 1
+    is_remote: false
+    job_type: ""
+    linkedin_fetch_description: false
+    google_search_term_template: "{query}"
+    continue_on_site_failure: true
+    cooldown_days: 1
+  - name: JobSpy ZipRecruiter Experimental
+    source_lane: jobspy_experimental
+    adapter: jobspy
+    active: false
+    priority: low
+    tier: 4
+    careers_url: https://www.ziprecruiter.com/jobs-search
+    domain: ziprecruiter.com
+    industry: experimental | aggregator
+    status: active
+    notes: Experimental JobSpy source for ZipRecruiter. Keep disabled until the Google lane proves useful.
+    search_queries:
+      - senior product manager fintech
+      - solution architect financial services
+      - technical business analyst
+    location_filter: United States
+    site_names: zip_recruiter
+    results_wanted: 20
+    max_total_results: 20
+    hours_old: 72
+    country_indeed: USA
+    concurrency: 1
+    is_remote: false
+    job_type: ""
+    linkedin_fetch_description: false
+    google_search_term_template: "{query}"
+    continue_on_site_failure: true
     cooldown_days: 1

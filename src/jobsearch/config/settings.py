@@ -1,6 +1,7 @@
 """src/jobsearch/config/settings.py — Central source of truth for paths and environment."""
 
 import os
+import shutil
 import sqlite3
 from pathlib import Path
 from typing import Dict, Any
@@ -80,6 +81,12 @@ class Settings:
         self.jobspy_results_per_run = int(os.getenv("JOBSEARCH_JOBSPY_RESULTS_PER_RUN", "20"))
         self.jobspy_hours_old = int(os.getenv("JOBSEARCH_JOBSPY_HOURS_OLD", "72"))
         self.jobspy_country_indeed = os.getenv("JOBSEARCH_JOBSPY_COUNTRY_INDEED", "USA").strip() or "USA"
+        self.jobspy_is_remote = str(os.getenv("JOBSEARCH_JOBSPY_IS_REMOTE", "false")).strip().lower() in {"1", "true", "yes", "on"}
+        self.jobspy_job_type = os.getenv("JOBSEARCH_JOBSPY_JOB_TYPE", "").strip()
+        self.jobspy_linkedin_fetch_description = str(os.getenv("JOBSEARCH_JOBSPY_LINKEDIN_FETCH_DESCRIPTION", "false")).strip().lower() in {"1", "true", "yes", "on"}
+        self.jobspy_google_search_term_template = os.getenv("JOBSEARCH_JOBSPY_GOOGLE_SEARCH_TERM_TEMPLATE", "{query}").strip() or "{query}"
+        self.jobspy_continue_on_site_failure = str(os.getenv("JOBSEARCH_JOBSPY_CONTINUE_ON_SITE_FAILURE", "true")).strip().lower() in {"1", "true", "yes", "on"}
+        self.jobspy_max_total_results = int(os.getenv("JOBSEARCH_JOBSPY_MAX_TOTAL_RESULTS", "20"))
         self.workday_scrape_budget_ms = int(os.getenv("JOBSEARCH_WORKDAY_SCRAPE_BUDGET_MS", "60000"))
         self.workday_html_fallback_budget_ms = int(os.getenv("JOBSEARCH_WORKDAY_HTML_FALLBACK_BUDGET_MS", "10000"))
         self.workday_empty_cooldown_days = int(os.getenv("JOBSEARCH_WORKDAY_EMPTY_COOLDOWN_DAYS", "7"))
@@ -93,6 +100,29 @@ class Settings:
         self.results_dir.mkdir(parents=True, exist_ok=True)
         self.config_dir.mkdir(parents=True, exist_ok=True)
         self.aggregator_import_dir.mkdir(parents=True, exist_ok=True)
+        self._seed_runtime_config()
+
+    def _seed_runtime_config(self) -> None:
+        if self.runtime_dir == self.base_dir:
+            return
+        defaults = {
+            "job_search_preferences.yaml": "job_search_preferences.example.yaml",
+            "job_search_companies.yaml": "job_search_companies.yaml",
+            "job_search_companies_contract.yaml": "job_search_companies_contract.yaml",
+            "job_search_companies_aggregators.yaml": "job_search_companies_aggregators.yaml",
+            "job_search_companies_jobspy.yaml": "job_search_companies_jobspy.yaml",
+        }
+        packaged_config_dir = self.base_dir / "config"
+        for runtime_name, packaged_name in defaults.items():
+            runtime_path = self.config_dir / runtime_name
+            if runtime_path.exists():
+                continue
+            packaged_path = packaged_config_dir / packaged_name
+            if packaged_path.exists():
+                try:
+                    shutil.copyfile(packaged_path, runtime_path)
+                except Exception:
+                    pass
 
     @property
     def preferences_yaml(self) -> Path:

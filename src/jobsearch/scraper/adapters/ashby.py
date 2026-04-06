@@ -68,8 +68,31 @@ class AshbyAdapter(BaseAdapter):
 
                 compensation = raw.get("compensation") if isinstance(raw.get("compensation"), dict) else {}
                 description = (raw.get("descriptionHtml") or raw.get("descriptionPlain") or "")
-                if compensation.get("summary"):
-                    description += " " + compensation.get("summary")
+                comp_summary = str(compensation.get("summary") or "").strip()
+                if comp_summary:
+                    description += " " + comp_summary
+
+                # Extract structured salary from compensation object.
+                # Ashby returns compensation.minValue / maxValue with an interval field.
+                # Also check nested baseSalary for some API versions.
+                salary_min: float | None = None
+                salary_max: float | None = None
+                for comp_node in [compensation, compensation.get("baseSalary") or {}]:
+                    if not isinstance(comp_node, dict):
+                        continue
+                    interval = str(comp_node.get("interval") or comp_node.get("type") or "").strip().upper()
+                    annual = interval in {"YEAR", "YEARLY", "ANNUAL", ""}
+                    raw_min = comp_node.get("minValue") or comp_node.get("min")
+                    raw_max = comp_node.get("maxValue") or comp_node.get("max")
+                    try:
+                        cmin = float(raw_min) if raw_min is not None else None
+                        cmax = float(raw_max) if raw_max is not None else None
+                    except (TypeError, ValueError):
+                        cmin = cmax = None
+                    if cmin is not None and annual:
+                        salary_min = cmin if salary_min is None else salary_min
+                        salary_max = cmax if salary_max is None else salary_max
+                        break
 
                 title = str(raw.get("title") or "").strip()
                 job_url = raw.get("jobUrl") or raw.get("absoluteUrl") or ""
@@ -89,6 +112,9 @@ class AshbyAdapter(BaseAdapter):
                         adapter="ashby",
                         tier=str(company_config.get("tier", 4)),
                         description_excerpt=description,
+                        salary_text=comp_summary,
+                        salary_min=salary_min,
+                        salary_max=salary_max,
                     )
                 )
 

@@ -103,6 +103,7 @@ if exist "config" (
     if not exist "%APP_CONFIG%\job_search_preferences.yaml" if exist "config\job_search_preferences.yaml" copy /y "config\job_search_preferences.yaml" "%APP_CONFIG%\job_search_preferences.yaml" >nul
     if not exist "%APP_CONFIG%\job_search_companies.yaml" if exist "config\job_search_companies.yaml" copy /y "config\job_search_companies.yaml" "%APP_CONFIG%\job_search_companies.yaml" >nul
     if not exist "%APP_CONFIG%\job_search_companies_contract.yaml" if exist "config\job_search_companies_contract.yaml" copy /y "config\job_search_companies_contract.yaml" "%APP_CONFIG%\job_search_companies_contract.yaml" >nul
+    if not exist "%APP_CONFIG%\job_search_companies_aggregators.yaml" if exist "config\job_search_companies_aggregators.yaml" copy /y "config\job_search_companies_aggregators.yaml" "%APP_CONFIG%\job_search_companies_aggregators.yaml" >nul
 )
 if exist "results" (
     if not exist "%APP_RESULTS%\jobsearch.db" if exist "results\jobsearch.db" copy /y "results\jobsearch.db" "%APP_RESULTS%\jobsearch.db" >nul
@@ -129,6 +130,12 @@ if not exist "%APP_CONFIG%\job_search_companies_contract.yaml" (
     ) else if exist "config\job_search_companies_contract_test.yaml" (
         echo  Copying contractor registry to %APP_CONFIG%\job_search_companies_contract.yaml ...
         copy /y "config\job_search_companies_contract_test.yaml" "%APP_CONFIG%\job_search_companies_contract.yaml" >nul
+    )
+)
+if not exist "%APP_CONFIG%\job_search_companies_aggregators.yaml" (
+    if exist "config\job_search_companies_aggregators.yaml" (
+        echo  Copying aggregator registry to %APP_CONFIG%\job_search_companies_aggregators.yaml ...
+        copy /y "config\job_search_companies_aggregators.yaml" "%APP_CONFIG%\job_search_companies_aggregators.yaml" >nul
     )
 )
 

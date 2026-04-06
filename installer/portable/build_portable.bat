@@ -37,6 +37,7 @@ if exist "%ROOT%\installer\downloads\python-3.11.9-amd64.exe" copy /y "%ROOT%\in
 if exist "%ROOT%\config\job_search_preferences.example.yaml" copy /y "%ROOT%\config\job_search_preferences.example.yaml" "%STAGE%\config\job_search_preferences.example.yaml" >nul
 if exist "%ROOT%\config\job_search_companies.yaml" copy /y "%ROOT%\config\job_search_companies.yaml" "%STAGE%\config\job_search_companies.yaml" >nul
 if exist "%ROOT%\config\job_search_companies_contract.yaml" copy /y "%ROOT%\config\job_search_companies_contract.yaml" "%STAGE%\config\job_search_companies_contract.yaml" >nul
+if exist "%ROOT%\config\job_search_companies_aggregators.yaml" copy /y "%ROOT%\config\job_search_companies_aggregators.yaml" "%STAGE%\config\job_search_companies_aggregators.yaml" >nul
 if exist "%ROOT%\README.md" copy /y "%ROOT%\README.md" "%STAGE%\docs\README.md" >nul
 if exist "%ROOT%\GETTING_STARTED.md" copy /y "%ROOT%\GETTING_STARTED.md" "%STAGE%\docs\GETTING_STARTED.md" >nul
 if exist "%~dp0README.md" copy /y "%~dp0README.md" "%STAGE%\docs\PORTABLE_RELEASE.md" >nul
