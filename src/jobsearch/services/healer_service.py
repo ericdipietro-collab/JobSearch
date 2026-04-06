@@ -460,14 +460,21 @@ class ATSHealer:
         wd_res = self._probe_workday(slug, name, deadline, adapter_key=str(company.get("adapter_key") or ""))
         if wd_res: return wd_res
 
-        # 7. Final fallback
+        # 7. Crawl4AI ATS Discovery (LLM-powered detection for complex pages)
+        if not self._timed_out(deadline) and (existing_url or domain):
+            target_url = existing_url or f"https://{domain}"
+            crawl4ai_res = self._discover_with_crawl4ai(target_url, name, deadline)
+            if crawl4ai_res:
+                return crawl4ai_res
+
+        # 8. Final fallback
         if res:
             if deep and not self._timed_out(deadline) and res.status in {"FALLBACK", "BLOCKED"} and self.playwright:
                 deep_res = self._deep_heal(res.careers_url or existing_url, name, domain, deadline)
                 if deep_res: return deep_res
             return res
 
-        # 8. Deep Heal (Final Attempt)
+        # 9. Deep Heal (Final Attempt)
         if deep and not self._timed_out(deadline) and self.playwright:
             target_url = existing_url or f"https://{domain}"
             deep_res = self._deep_heal(target_url, name, domain, deadline)
@@ -476,6 +483,143 @@ class ATSHealer:
         if self._timed_out(deadline):
             return DiscoveryResult(None, None, None, "NOT_FOUND", "Discovery budget exhausted")
         return DiscoveryResult(None, None, None, "NOT_FOUND", "No board detected")
+
+    def _discover_with_crawl4ai(self, url: str, name: str, deadline: Optional[float] = None) -> Optional[DiscoveryResult]:
+        """
+        Use crawl4ai + LLM to detect ATS platform from a complex careers page.
+        Falls back to Playwright if HTTP-only crawling fails.
+        Returns DiscoveryResult if successful, None otherwise.
+        """
+        try:
+            import crawl4ai
+            from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
+        except ImportError:
+            logger.debug("[crawl4ai] crawl4ai not installed, skipping crawl4ai discovery")
+            return None
+
+        remaining = self._remaining_budget_s(deadline)
+        if remaining <= 0.0:
+            return None
+
+        try:
+            import asyncio
+            try:
+                # Try to run async crawl
+                result = asyncio.run(self._crawl4ai_ats_detection(url, name, remaining))
+            except RuntimeError as e:
+                # Handle "Event loop is already running" (Streamlit context)
+                if "event loop" in str(e).lower():
+                    try:
+                        import nest_asyncio
+                        nest_asyncio.apply()
+                        loop = asyncio.get_event_loop()
+                        result = loop.run_until_complete(self._crawl4ai_ats_detection(url, name, remaining))
+                    except Exception as nested_err:
+                        logger.debug(f"[crawl4ai] Nested asyncio failed: {nested_err}")
+                        return None
+                else:
+                    raise
+
+            if result:
+                logger.info(
+                    f"[crawl4ai] Detected ATS for {name}: {result.adapter} ({result.careers_url})"
+                )
+                return result
+            else:
+                logger.debug(f"[crawl4ai] No ATS detection result for {name}")
+                return None
+
+        except Exception as e:
+            logger.debug(f"[crawl4ai] ATS detection failed for {url}: {e}")
+            return None
+
+    async def _crawl4ai_ats_detection(self, url: str, company_name: str, timeout_s: float) -> Optional[DiscoveryResult]:
+        """Async crawl4ai extraction of ATS platform metadata."""
+        from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
+        from crawl4ai.extraction_strategy import LLMExtractionStrategy
+        import json
+
+        ats_detection_schema = {
+            "type": "object",
+            "properties": {
+                "ats_platform": {
+                    "type": "string",
+                    "description": "Detected ATS platform (e.g., 'greenhouse', 'lever', 'ashby', 'workday', 'rippling', 'smartrecruiters', or 'unknown')",
+                },
+                "job_board_url": {
+                    "type": "string",
+                    "description": "Direct URL to the job board or careers page, if detectable",
+                },
+                "adapter_key": {
+                    "type": "string",
+                    "description": "Company slug or identifier for the ATS (e.g., 'my-company-name'), if detectable",
+                },
+            },
+            "required": ["ats_platform"],
+        }
+
+        extraction_instruction = (
+            "Analyze this careers/jobs page and detect the ATS platform being used. "
+            "Look for: links to job boards, job posting URLs, ATS provider footprints (Greenhouse, Lever, Ashby, Workday, etc.). "
+            "If you can extract the company's job board URL, include it. "
+            "If you can identify a company slug (e.g., from a Greenhouse 'for=...' parameter), include it."
+        )
+
+        try:
+            crawler = AsyncWebCrawler()
+            config = CrawlerRunConfig(
+                word_count_threshold=10,
+                extraction_strategy=LLMExtractionStrategy(
+                    schema=ats_detection_schema,
+                    instruction=extraction_instruction,
+                    provider="google",  # Use Gemini (same as enrichment service)
+                ),
+                timeout=int(timeout_s),
+            )
+
+            result = await crawler.arun(url, config)
+
+            if not result or not result.extracted_content:
+                return None
+
+            # Parse LLM extraction result
+            try:
+                extracted = json.loads(result.extracted_content)
+            except json.JSONDecodeError:
+                logger.debug(f"[crawl4ai] Failed to parse LLM extraction for {url}")
+                return None
+
+            ats_platform = extracted.get("ats_platform", "").lower().strip()
+            if not ats_platform or ats_platform == "unknown":
+                return None
+
+            # Map LLM-detected platform to adapter name
+            ats_map = {
+                "greenhouse": "greenhouse",
+                "lever": "lever",
+                "ashby": "ashby",
+                "workday": "workday",
+                "rippling": "rippling",
+                "smartrecruiters": "smartrecruiters",
+            }
+            adapter = ats_map.get(ats_platform)
+            if not adapter:
+                return None
+
+            job_board_url = extracted.get("job_board_url", "").strip() or None
+            adapter_key = extracted.get("adapter_key", "").strip() or None
+
+            return DiscoveryResult(
+                adapter=adapter,
+                adapter_key=adapter_key,
+                careers_url=job_board_url,
+                status="FOUND",
+                detail=f"Detected via crawl4ai: {ats_platform}",
+            )
+
+        except Exception as e:
+            logger.debug(f"[crawl4ai] Extraction failed for {url}: {e}")
+            return None
 
     def _deep_heal(self, url: str, name: str, domain: str, deadline: Optional[float] = None) -> Optional[DiscoveryResult]:
         """Call the playwright adapter for deep discovery."""
