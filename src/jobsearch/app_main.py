@@ -1020,6 +1020,17 @@ def main():
         page = st.radio("Navigation", nav)
         
         st.markdown("---")
+
+        # Check for pending high-score alerts in sidebar
+        try:
+            sidebar_conn = ats_db.get_connection()
+            pending_alerts = int(ats_db.get_setting(sidebar_conn, "pending_alerts") or "0")
+            sidebar_conn.close()
+            if pending_alerts > 0:
+                st.warning(f"🔥 {pending_alerts} new high-match job{'s' if pending_alerts != 1 else ''}")
+        except Exception:
+            pass
+
         df_all = _load_jobs_df()
         if not df_all.empty:
             sidebar_metrics = _sidebar_metrics_for_df(df_all)
@@ -1034,6 +1045,20 @@ def main():
 
     elif page == "Job Matches":
         st.title("Job Matches")
+
+        # Check for pending high-score job alerts from auto-refresh
+        try:
+            alert_conn = ats_db.get_connection()
+            pending_alerts = scheduler.get_and_clear_alerts(alert_conn)
+            if pending_alerts > 0:
+                if pending_alerts == 1:
+                    st.toast("🔥 1 new high-match job found!", icon="🔔")
+                else:
+                    st.toast(f"🔥 {pending_alerts} new high-match jobs found!", icon="🔔")
+            alert_conn.close()
+        except Exception:
+            pass  # Silently ignore scheduler errors
+
         rejected_df = _load_rejected_jobs_df()
         manual_review_items = _build_manual_review_items()
         review_conn = ats_db.get_connection()
