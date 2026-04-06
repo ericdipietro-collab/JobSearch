@@ -11,6 +11,7 @@ numpy==1.26.3
 pypdf==5.4.0
 jobspy-enhanced-scraper
 google-generativeai
+APScheduler>=3.10
 
 # Optional: for OpenAI GPT fallback when Google Gemini is unavailable
 # openai

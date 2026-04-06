@@ -18,6 +18,7 @@ from jobsearch.scraper.jobspy_validation import ALLOWED_JOBSPY_SITES
 from jobsearch.views.style_utils import set_custom_style
 from jobsearch.services.export_service import ExcelReportBuilder
 from jobsearch.services.search_service import search_jobs
+from jobsearch import scheduler
 
 # ── Import Views ──────────────────────────────────────────────────────────────
 from jobsearch.views.home_page              import render_home
@@ -2554,6 +2555,63 @@ def main():
                 st.info("Combined mode: this run searches both your main company list and aggregator sources. Aggregator jobs are supplemental and lower trust.")
             elif r_jobspy:
                 st.info("Combined mode: this run searches both your main company list and JobSpy experimental sources. JobSpy results are exploratory and lower trust.")
+
+            st.divider()
+
+            # Auto-refresh configuration
+            st.subheader("Auto-Refresh Settings")
+            col1, col2 = st.columns([2, 1])
+            with col1:
+                enable_auto_refresh = st.checkbox("Enable Auto-Refresh", value=False, help="Run scraper automatically on a schedule without manual intervention")
+            with col2:
+                refresh_interval = st.number_input("Interval (hours)", min_value=1, max_value=24, value=1, step=1, disabled=not enable_auto_refresh)
+
+            if enable_auto_refresh:
+                # Get database connection for scheduler
+                try:
+                    conn = ats_db.connect()
+                    scheduler.start_auto_refresh(conn, interval_hours=int(refresh_interval))
+
+                    last_run = scheduler.get_last_run(conn)
+                    next_run = scheduler.get_next_run(conn)
+
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        if last_run:
+                            last_dt = datetime.fromisoformat(last_run)
+                            st.info(f"Last run: {last_dt.strftime('%Y-%m-%d %H:%M UTC')}")
+                        else:
+                            st.info("Last run: never")
+                    with col2:
+                        if next_run:
+                            next_dt = datetime.fromisoformat(next_run)
+                            st.info(f"Next run: {next_dt.strftime('%Y-%m-%d %H:%M UTC')}")
+                        else:
+                            st.info("Next run: pending")
+                    with col3:
+                        if st.button("Stop Auto-Refresh", key="stop_auto_refresh"):
+                            scheduler.stop_auto_refresh()
+                            st.success("Auto-refresh stopped")
+                            st.rerun()
+                    conn.close()
+                except Exception as e:
+                    st.error(f"Error configuring auto-refresh: {e}")
+            else:
+                # Show option to stop if one is running
+                try:
+                    conn = ats_db.connect()
+                    next_run = scheduler.get_next_run(conn)
+                    if next_run:
+                        st.warning("Auto-refresh is currently running. Disable above to stop it.")
+                        if st.button("Stop Auto-Refresh Now", key="stop_auto_refresh_now"):
+                            scheduler.stop_auto_refresh()
+                            st.success("Auto-refresh stopped")
+                            st.rerun()
+                    conn.close()
+                except Exception:
+                    pass
+
+            st.divider()
 
             if st.button("🚀 Start Pipeline", type="primary"):
                 cmd = [sys.executable, "-m", "jobsearch.cli", "run", "--workers", str(int(r_workers))]
