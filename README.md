@@ -1,6 +1,6 @@
-# Job Search Automation Platform v2.0
+# Job Search Automation Platform v2.1
 
-A local job-search dashboard that discovers jobs from target companies, scores them against your preferences, and tracks your search in a single SQLite database on your own machine.
+A comprehensive, local job-search dashboard that discovers jobs from target companies, scores them against your preferences, auto-refreshes on a schedule, and tracks your entire search lifecycle in a single SQLite database on your own machine.
 
 **[Full User Guide](USER_GUIDE.md)** for the full walkthrough.
 
@@ -72,17 +72,32 @@ After changing the setting, rerun the installer or launcher.
 
 ## What It Does
 
-- Scrapes target company careers pages across Greenhouse, Lever, Ashby, Workday, Rippling, and SmartRecruiters
-- Supports a contractor sourcing lane with Dice and Motion Recruitment
-- Supports an API aggregator lane with Adzuna, USAJobs, Jooble, and The Muse
-- Supports a separate experimental JobSpy lane for broader board discovery without inflating ATS metrics
-- Scores jobs with configurable title, JD, salary, location, and tier weighting
-- Lets you re-score saved jobs after changing scoring settings, without rerunning the scraper
-- Tracks applications, contacts, interviews, offers, and rejections
-- Syncs Gmail signals for missed applications, rejections, and interview scheduling
-- Stores your base resume for keyword-gap analysis and per-application tailoring
-- Includes offer comparison, negotiation planning, and interview debrief tools
-- Repairs stale company careers URLs with the ATS Healer
+### Core Scraping & Discovery
+- **18 ATS Adapters** — Scrapes target company careers pages across Greenhouse, Lever, Ashby, Workday, Rippling, SmartRecruiters, USAJOBS, Google Careers, Indeed Connector, and more
+- **Contractor sourcing lane** — Dice and Motion Recruitment for contract-to-hire opportunities
+- **Aggregator lane** — Adzuna, USAJobs, Jooble, TheMuse for broader board discovery
+- **JobSpy experimental lane** — Proprietary job board discovery without inflating ATS metrics
+- **ATS Healer** — Auto-discovers stale/missing company careers URLs and detects ATS platforms, even for complex SPA careers pages via Crawl4AI
+
+### Intelligent Scoring & Filtering
+- **Configurable scoring engine** — Title, JD keywords, salary, location, and tier weighting via interactive sliders
+- **Experience tolerance gap** — Soft-drop jobs requiring significantly more experience; soft-penalty for near-fit roles
+- **Re-scoring without re-scraping** — Update scoring weights and re-score all saved jobs instantly
+- **Full-text search (FTS5)** — Sub-15ms semantic search across 10K+ jobs with BM25 ranking
+
+### Automation & Alerts
+- **Background auto-refresh** — Scraper runs on configurable schedule (1-24 hours) without manual intervention
+- **High-score job alerts** — Toast notifications when new jobs above "Apply Now" threshold are discovered
+- **LLM enrichment** — Google Gemini or OpenAI analyzes JDs for visa sponsorship, tech stack, IC vs Manager roles, and skills gaps
+- **Content-hash sync** — Re-scrapes preserve your annotations (notes, status, date_applied); only updates job-provided fields
+
+### Application Tracking & Analysis
+- **Rich application tracking** — Records applications, contacts, interviews, offers, rejections
+- **Gmail sync** — Auto-detects missed applications, rejections, and interview scheduling emails
+- **Skills gap reports** — Per-job missing-skills analysis for targeted interview prep
+- **Excel export** — Color-coded multi-sheet reports with summary stats and filtered-out jobs
+- **Offer comparison & negotiation planning** — Side-by-side offer analysis and negotiation playbook
+- **Interview debrief & feedback** — Post-interview notes and learnings capture
 
 ---
 
