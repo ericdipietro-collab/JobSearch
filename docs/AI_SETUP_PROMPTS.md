@@ -89,13 +89,13 @@ scoring:
         manual_review: true
     - label: APPLY NOW
       when:
-        min_score: 88
+        min_score: 80
         eligible: true
         strong_title: true
         known_salary_for_apply: true
     - label: REVIEW TODAY
       when:
-        min_score: 88
+        min_score: 80
         eligible: true
         strong_title: true
         known_salary_for_apply: false

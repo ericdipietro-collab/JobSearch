@@ -12,7 +12,7 @@ PYTHON=""
 for cmd in python3 python; do
     if command -v "$cmd" &>/dev/null; then
         ver=$("$cmd" -c "import sys; print(sys.version_info[:2])" 2>/dev/null)
-        if python3 -c "v=$ver; exit(0 if v>=(3,9) else 1)" 2>/dev/null; then
+        if "$cmd" -c "v=$ver; exit(0 if v>=(3,9) else 1)" 2>/dev/null; then
             PYTHON="$cmd"
             break
         fi

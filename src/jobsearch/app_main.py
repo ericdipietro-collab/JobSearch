@@ -222,9 +222,9 @@ def _bucket_thresholds_from_preferences() -> dict[str, float]:
     prefs = load_yaml(settings.prefs_yaml)
     rules = (((prefs.get("scoring") or {}).get("action_buckets") or {}).get("rules") or [])
     source_trust = ((prefs.get("scoring") or {}).get("source_trust") or {})
-    apply_now = 80.0
-    review_today = 74.0
-    watch = 55.0
+    apply_now = None
+    review_today = None
+    watch = None
     for rule in rules:
         label = str(rule.get("label") or "").strip().upper()
         when = rule.get("when") or {}
@@ -236,17 +236,17 @@ def _bucket_thresholds_from_preferences() -> dict[str, float]:
         except (TypeError, ValueError):
             continue
         if label == "APPLY NOW":
-            apply_now = min(apply_now, min_score)
+            apply_now = min(min_score, apply_now) if apply_now is not None else min_score
         elif label == "REVIEW TODAY" and not when.get("tier_in") and not when.get("strong_title"):
-            review_today = min(review_today, min_score)
+            review_today = min(min_score, review_today) if review_today is not None else min_score
         elif label == "WATCH" and when.get("eligible", False):
-            watch = min(watch, min_score)
+            watch = min(min_score, watch) if watch is not None else min_score
     comp_cfg = (prefs.get("search") or {}).get("compensation") or {}
     min_salary = float(comp_cfg.get("min_salary_usd") or comp_cfg.get("target_salary_usd") or 165000)
     return {
-        "APPLY NOW": apply_now,
-        "REVIEW TODAY": review_today,
-        "WATCH": watch,
+        "APPLY NOW": float(apply_now if apply_now is not None else 80.0),
+        "REVIEW TODAY": float(review_today if review_today is not None else 74.0),
+        "WATCH": float(watch if watch is not None else 55.0),
         "min_salary_usd": min_salary,
         "source_trust": source_trust,
     }
