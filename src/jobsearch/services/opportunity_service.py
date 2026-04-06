@@ -142,14 +142,22 @@ def _record_job_observation(conn: sqlite3.Connection, app_id: int, job: Job, tim
 
 def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
     """
-    Insert or update a Job from the scraper.
+    Insert or update a Job from the scraper with content-hash sync.
+
+    If job content hasn't changed (same hash), skips update to preserve user annotations.
     Returns (inserted, app_id).
     """
+    from jobsearch.db.repository import compute_content_hash
+
+    # Compute content hash for change detection
+    new_hash = compute_content_hash(job.role_title_raw, job.url, job.description_excerpt)
+
     existing = conn.execute(
         """
         SELECT id, status, description_excerpt, salary_text, location, jd_fingerprint,
                salary_low, salary_high, work_type, compensation_unit,
-               hourly_rate, hours_per_week, weeks_per_year, normalized_compensation_usd
+               hourly_rate, hours_per_week, weeks_per_year, normalized_compensation_usd,
+               content_hash
         FROM applications
         WHERE scraper_key = ?
         """,
@@ -218,7 +226,7 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
                 company, role, role_normalized, job_url, source, source_lane, canonical_job_url, scraper_key,
                 status, score, fit_band, matched_keywords, penalized_keywords,
                 decision_reason, description_excerpt, location, is_remote,
-                jd_fingerprint,
+                jd_fingerprint, content_hash,
                 salary_text, salary_low, salary_high, work_type, compensation_unit,
                 hourly_rate, hours_per_week, weeks_per_year, normalized_compensation_usd,
                 date_discovered, date_applied,
@@ -226,7 +234,7 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
             ) VALUES (
                 :company, :role, :role_normalized, :url, :source, :source_lane, :canonical_job_url, :id,
                 :status, :score, :fit_band, :matched_keywords, :penalized_keywords,
-                :decision_reason, :description_excerpt, :location, :is_remote, :jd_fingerprint,
+                :decision_reason, :description_excerpt, :location, :is_remote, :jd_fingerprint, :content_hash,
                 :salary_text, :salary_min, :salary_max, :work_type, :compensation_unit,
                 :hourly_rate, :hours_per_week, :weeks_per_year, :normalized_compensation_usd,
                 :date_discovered, :date_applied,
@@ -252,6 +260,7 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
                 "location": job.location,
                 "is_remote": int(job.is_remote),
                 "jd_fingerprint": new_jd_fingerprint,
+                "content_hash": new_hash,
                 "salary_text": job.salary_text,
                 "salary_min": job.salary_min,
                 "salary_max": job.salary_max,
@@ -275,8 +284,14 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
         _insert_stage_history(conn, app_id, None, stage_label, "Scraper discovery")
         return True, app_id
     else:
-        # UPDATE scraper-owned fields
+        # UPDATE scraper-owned fields (with content-hash sync)
         app_id = existing["id"]
+        old_hash = existing.get("content_hash")
+
+        # If content hash unchanged, skip update to preserve user annotations
+        if old_hash == new_hash:
+            return False, app_id
+
         old_excerpt = str(existing["description_excerpt"] or "")
         old_salary = str(existing["salary_text"] or "")
         old_location = str(existing["location"] or "")

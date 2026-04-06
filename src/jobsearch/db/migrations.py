@@ -41,3 +41,11 @@ def migrate_stage_history(conn: sqlite3.Connection) -> None:
     )
     conn.execute("DROP TABLE stage_history_legacy")
 
+
+def migrate_content_hash(conn: sqlite3.Connection) -> None:
+    """Add content_hash column for preserving annotations on re-scrape."""
+    existing = table_columns(conn, "applications")
+    if "content_hash" in existing:
+        return
+    conn.execute("ALTER TABLE applications ADD COLUMN content_hash TEXT")
+

@@ -3,9 +3,9 @@
 from __future__ import annotations
 import sqlite3
 
-from jobsearch.db.migrations import migrate_stage_history
+from jobsearch.db.migrations import migrate_stage_history, migrate_content_hash
 
-SCHEMA_VERSION: int = 5
+SCHEMA_VERSION: int = 6
 
 # ── DDL Statements ───────────────────────────────────────────────────────────
 
@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS applications (
     decision_reason    TEXT,
     description_excerpt TEXT,
     enriched_data      TEXT,  -- JSON: {visa_sponsor, tech_stack, ic_vs_manager, enrichment_status}
+    content_hash       TEXT,  -- Hash of (title||url||description_excerpt) for change detection
     
     -- CRM & Profile fields
     location           TEXT,
@@ -370,6 +371,7 @@ def init_db(conn: sqlite3.Connection) -> None:
     _add_column_if_missing(cur, "applications", "ai_match_score", "REAL")
     _add_column_if_missing(cur, "applications", "enriched_data", "enriched_data TEXT")
     migrate_stage_history(conn)
+    migrate_content_hash(conn)
     cur.execute("CREATE TABLE IF NOT EXISTS schema_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
     cur.execute(
         """
