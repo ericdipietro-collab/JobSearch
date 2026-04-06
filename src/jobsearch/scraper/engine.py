@@ -11,7 +11,7 @@ from threading import BoundedSemaphore
 from typing import Any, Dict, List, Type
 from urllib.parse import urlparse
 
-from jobsearch.config.settings import BASE_DIR, get_shared_session, rotate_log_file, settings
+from jobsearch.config.settings import BASE_DIR, get_runtime_setting, get_shared_session, rotate_log_file, settings
 from jobsearch import ats_db as db
 from jobsearch.db.connection import get_connection
 from jobsearch.scraper.adapters.ashby import AshbyAdapter
@@ -138,7 +138,7 @@ class ScraperEngine:
             "jooble": settings.scrape_jooble_concurrency,
             "themuse": settings.scrape_themuse_concurrency,
             "indeed_connector": settings.scrape_indeed_connector_concurrency,
-            "jobspy": settings.scrape_jobspy_concurrency,
+            "jobspy": int(get_runtime_setting("jobspy_concurrency", str(settings.scrape_jobspy_concurrency)) or settings.scrape_jobspy_concurrency),
             "dice": settings.scrape_dice_concurrency,
             "motionrecruitment": settings.scrape_motionrecruitment_concurrency,
             "deep_search": settings.scrape_deep_search_concurrency,

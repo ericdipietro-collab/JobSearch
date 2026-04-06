@@ -1,10 +1,18 @@
 from __future__ import annotations
 
 import importlib
+import json
+import time
 from typing import Any, Dict, Iterable, List
 
-from jobsearch.config.settings import get_runtime_setting, settings
 from jobsearch.scraper.adapters.base import BaseAdapter
+from jobsearch.scraper.jobspy_metrics import JobSpyMetrics
+from jobsearch.scraper.jobspy_normalization import cluster_jobspy_records
+from jobsearch.scraper.jobspy_validation import (
+    load_jobspy_settings,
+    split_jobspy_queries,
+    validate_jobspy_settings,
+)
 from jobsearch.scraper.models import Job
 
 
@@ -18,17 +26,6 @@ class JobSpyExperimentalAdapter(BaseAdapter):
                 if text:
                     return text
         return ""
-
-    @staticmethod
-    def _site_names(company_config: Dict[str, Any]) -> list[str]:
-        raw = (
-            company_config.get("site_names")
-            or get_runtime_setting("jobspy_site_names", settings.jobspy_site_names)
-            or settings.jobspy_site_names
-        )
-        if isinstance(raw, (list, tuple)):
-            return [str(item).strip() for item in raw if str(item).strip()]
-        return [part.strip() for part in str(raw or "google").split(",") if part.strip()]
 
     @staticmethod
     def _iter_records(payload: Any) -> Iterable[Dict[str, Any]]:
@@ -63,6 +60,13 @@ class JobSpyExperimentalAdapter(BaseAdapter):
             return canonical
         return ""
 
+    @staticmethod
+    def _query_for_site(query: str, site: str, config: Dict[str, Any]) -> str:
+        if site == "google":
+            template = str(config.get("google_search_term_template") or "{query}").strip() or "{query}"
+            return template.replace("{query}", query)
+        return query
+
     def scrape(self, company_config: Dict[str, Any]) -> List[Job]:
         try:
             module = importlib.import_module("jobspy")
@@ -77,66 +81,118 @@ class JobSpyExperimentalAdapter(BaseAdapter):
             self.last_note = "jobspy module is missing scrape_jobs()"
             return []
 
-        results_wanted = int(
-            company_config.get("results_wanted")
-            or get_runtime_setting("jobspy_results_per_run", str(settings.jobspy_results_per_run))
-            or settings.jobspy_results_per_run
-        )
-        hours_old = int(
-            company_config.get("hours_old")
-            or get_runtime_setting("jobspy_hours_old", str(settings.jobspy_hours_old))
-            or settings.jobspy_hours_old
-        )
-        country_indeed = str(
-            company_config.get("country_indeed")
-            or get_runtime_setting("jobspy_country_indeed", settings.jobspy_country_indeed)
-            or settings.jobspy_country_indeed
-        ).strip() or "USA"
+        preferences = getattr(self.scorer, "prefs", {}) or {}
+        config = load_jobspy_settings(preferences, company_config)
+        issues = validate_jobspy_settings(config)
+        if issues:
+            self.last_status = "empty"
+            self.last_note = "; ".join(issues)
+            return []
+
+        results_wanted = int(config.get("results_wanted_per_site") or 20)
+        hours_old = int(config.get("hours_old") or 72)
+        country_indeed = str(config.get("country_indeed") or "USA").strip() or "USA"
         location = str(company_config.get("location_filter") or "").strip()
-        queries = [str(q).strip() for q in (company_config.get("search_queries") or []) if str(q).strip()]
+        queries = split_jobspy_queries(company_config.get("search_queries"))
         if not queries:
             queries = [str(company_config.get("name") or "").strip() or "jobs"]
+        max_total_results = int(config.get("max_total_results") or results_wanted)
+        continue_on_failure = bool(config.get("continue_on_site_failure", True))
+        metrics = JobSpyMetrics()
 
-        jobs: list[Job] = []
-        for query in queries:
-            payload = scrape_jobs(
-                site_name=self._site_names(company_config),
-                search_term=query,
-                location=location or None,
-                results_wanted=max(1, results_wanted),
-                hours_old=max(1, hours_old),
-                country_indeed=country_indeed,
-            )
-            for record in self._iter_records(payload):
-                title = self._first_non_empty(record, "title", "job_title", "name")
-                url = self._first_non_empty(record, "job_url", "url", "link")
-                if not title or not url:
-                    continue
-                company = self._first_non_empty(record, "company", "company_name", "employer") or str(company_config.get("name") or "JobSpy").strip()
-                canonical = self._canonical_url(record, url)
-                job = Job(
-                    id=str(record.get("id") or Job.make_id(company, title, canonical or url)),
-                    company=company,
-                    role_title_raw=title,
-                    url=url,
-                    source="JobSpy",
-                    adapter="jobspy",
-                    tier=str(company_config.get("tier") or 4),
-                    description_excerpt=self._first_non_empty(record, "description", "description_text", "snippet"),
-                    location=self._first_non_empty(record, "location", "job_location"),
-                    is_remote=bool(record.get("is_remote")) if isinstance(record.get("is_remote"), bool) else ("remote" in self._first_non_empty(record, "location", "job_location").lower()),
-                    salary_text=self._first_non_empty(record, "salary_text", "salary"),
-                    salary_min=record.get("min_amount") or record.get("salary_min"),
-                    salary_max=record.get("max_amount") or record.get("salary_max"),
-                )
-                job.source_lane = "jobspy_experimental"
-                job.canonical_job_url = canonical
-                jobs.append(job)
-                if len(jobs) >= results_wanted:
-                    break
-            if len(jobs) >= results_wanted:
+        normalized_records: list[dict] = []
+        for site in list(config.get("enabled_sites") or []):
+            if len(normalized_records) >= max_total_results:
                 break
+            metrics.mark_requested(site)
+            started_at = time.perf_counter()
+            try:
+                metrics.mark_attempted(site)
+                raw_payload = []
+                for query in queries:
+                    payload = scrape_jobs(
+                        site_name=[site],
+                        search_term=self._query_for_site(query, site, config),
+                        location=location or None,
+                        results_wanted=max(1, results_wanted),
+                        hours_old=max(1, hours_old),
+                        country_indeed=country_indeed,
+                        linkedin_fetch_description=bool(config.get("linkedin_fetch_description", False)),
+                        is_remote=bool(config.get("is_remote", False)),
+                        job_type=str(config.get("job_type") or "") or None,
+                    )
+                    raw_payload.extend(list(self._iter_records(payload)))
+                    if len(raw_payload) >= results_wanted:
+                        break
+                raw_results = len(raw_payload)
+                site_records = []
+                for record in raw_payload:
+                    record = dict(record)
+                    record["_source_site"] = site
+                    title = self._first_non_empty(record, "title", "job_title", "name")
+                    url = self._first_non_empty(record, "job_url", "url", "link")
+                    if not title or not url:
+                        continue
+                    record["canonical_job_url"] = self._canonical_url(record, url)
+                    site_records.append(record)
+                normalized_results = len(site_records)
+                clustered = cluster_jobspy_records(site_records)
+                metrics.mark_success(
+                    site,
+                    runtime_ms=round((time.perf_counter() - started_at) * 1000, 1),
+                    raw_results=raw_results,
+                    normalized_results=normalized_results,
+                    deduped_results=max(0, normalized_results - len(clustered)),
+                )
+                normalized_records.extend(clustered)
+            except Exception:
+                metrics.mark_failure(site, runtime_ms=round((time.perf_counter() - started_at) * 1000, 1))
+                if not continue_on_failure:
+                    break
 
-        self.last_status = "ok" if jobs else "empty"
-        self.last_note = f"Imported {len(jobs)} JobSpy result(s)" if jobs else "No JobSpy results"
-        return jobs[:results_wanted]
+        clustered_records = cluster_jobspy_records(normalized_records)[:max_total_results]
+        jobs: list[Job] = []
+        for record in clustered_records:
+            title = self._first_non_empty(record, "title", "job_title", "name")
+            url = self._first_non_empty(record, "job_url", "url", "link")
+            if not title or not url:
+                continue
+            company = self._first_non_empty(record, "company", "company_name", "employer") or str(company_config.get("name") or "JobSpy").strip()
+            canonical = self._canonical_url(record, url)
+            variants = list(record.get("_source_site_variants") or [])
+            provenance = {
+                "source_site": record.get("_source_site") or "",
+                "source_site_variants": variants,
+                "source_site_count": int(record.get("_source_site_count") or len(variants)),
+                "direct_apply_confidence": record.get("_direct_apply_confidence") or ("high" if canonical else "low"),
+            }
+            job = Job(
+                id=str(record.get("id") or Job.make_id(company, title, canonical or url)),
+                company=company,
+                role_title_raw=title,
+                url=url,
+                source="JobSpy",
+                adapter="jobspy",
+                tier=str(company_config.get("tier") or 4),
+                description_excerpt=self._first_non_empty(record, "description", "description_text", "snippet"),
+                location=self._first_non_empty(record, "location", "job_location"),
+                is_remote=bool(record.get("is_remote")) if isinstance(record.get("is_remote"), bool) else ("remote" in self._first_non_empty(record, "location", "job_location").lower()),
+                salary_text=self._first_non_empty(record, "salary_text", "salary"),
+                salary_min=record.get("min_amount") or record.get("salary_min"),
+                salary_max=record.get("max_amount") or record.get("salary_max"),
+                notes=json.dumps(provenance, sort_keys=True),
+            )
+            job.source_lane = "jobspy_experimental"
+            job.canonical_job_url = canonical
+            jobs.append(job)
+
+        if not jobs:
+            self.last_status = "empty"
+            self.last_note = "No JobSpy results"
+            if metrics.boards:
+                self.last_note = f"{self.last_note} | {metrics.summary_text()}"
+            return []
+
+        self.last_status = "ok"
+        self.last_note = f"Imported {len(jobs)} JobSpy result(s) | {metrics.summary_text()}"
+        return jobs[:max_total_results]

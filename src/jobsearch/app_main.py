@@ -13,6 +13,7 @@ from jobsearch.config.settings import settings
 from jobsearch import ats_db
 from jobsearch import __version__
 from jobsearch.scraper.scoring import Scorer
+from jobsearch.scraper.jobspy_validation import split_jobspy_queries
 from jobsearch.views.style_utils import set_custom_style
 
 # ── Import Views ──────────────────────────────────────────────────────────────
@@ -1383,7 +1384,6 @@ def main():
                 adzuna_max_requests = int(ats_db.get_setting(conn, "adzuna_max_requests_per_run", default=str(settings.adzuna_max_requests_per_run)) or settings.adzuna_max_requests_per_run)
                 jooble_max_requests = int(ats_db.get_setting(conn, "jooble_max_requests_per_run", default=str(settings.jooble_max_requests_per_run)) or settings.jooble_max_requests_per_run)
                 themuse_max_requests = int(ats_db.get_setting(conn, "themuse_max_requests_per_run", default=str(settings.themuse_max_requests_per_run)) or settings.themuse_max_requests_per_run)
-
                 st.markdown("#### Dashboard Settings")
                 app_weekly_goal = st.number_input("Weekly Activity Goal", min_value=1, max_value=50, value=weekly_goal, step=1)
 
@@ -1619,6 +1619,78 @@ def main():
             c_status = st.selectbox("Status", status_options, index=status_options.index(selected_company.get("status", "active")) if selected_company.get("status", "active") in status_options else 0)
             c_industry = st.text_input("Industry", value=_normalize_editor_value(selected_company.get("industry", "")))
             c_sub = st.text_input("Sub-Industry", value=str(selected_company.get("sub_industry", "")))
+            c_search_queries = st.text_area(
+                "Search Queries (one per line)",
+                value="\n".join(split_jobspy_queries(selected_company.get("search_queries"))),
+                help="Used by aggregator and JobSpy lanes to search the source. Leave blank for ATS/company sources.",
+            )
+            c_location_filter = st.text_input(
+                "Location Filter",
+                value=str(selected_company.get("location_filter", "")),
+                help="Optional source-side location filter, for example United States.",
+            )
+            c_site_names = st.text_input(
+                "Source Sites",
+                value=_normalize_editor_value(selected_company.get("site_names", "")),
+                help="Optional comma-separated site names for multi-source adapters like JobSpy.",
+            )
+            extra_col1, extra_col2, extra_col3, extra_col4 = st.columns(4)
+            c_results_wanted = extra_col1.number_input(
+                "Results Wanted",
+                min_value=1,
+                max_value=200,
+                value=int(selected_company.get("results_wanted", selected_company.get("max_results_per_query", 20) or 20)),
+                step=1,
+            )
+            c_hours_old = extra_col2.number_input(
+                "Hours Old",
+                min_value=1,
+                max_value=720,
+                value=int(selected_company.get("hours_old", 72) or 72),
+                step=1,
+            )
+            c_country_indeed = extra_col3.text_input(
+                "Indeed Country",
+                value=str(selected_company.get("country_indeed", "USA") or "USA"),
+            )
+            c_concurrency = extra_col4.number_input(
+                "Concurrency",
+                min_value=1,
+                max_value=10,
+                value=int(selected_company.get("concurrency", 1) or 1),
+                step=1,
+            )
+            js_cfg1, js_cfg2, js_cfg3 = st.columns(3)
+            c_max_total_results = js_cfg1.number_input(
+                "Max Total Results",
+                min_value=1,
+                max_value=500,
+                value=int(selected_company.get("max_total_results", selected_company.get("results_wanted", 20) or 20)),
+                step=1,
+            )
+            c_is_remote = js_cfg2.checkbox(
+                "Remote Only",
+                value=bool(selected_company.get("is_remote", False)),
+            )
+            c_continue_on_site_failure = js_cfg3.checkbox(
+                "Continue On Site Failure",
+                value=bool(selected_company.get("continue_on_site_failure", True)),
+            )
+            js_cfg4, js_cfg5 = st.columns(2)
+            c_job_type = js_cfg4.text_input(
+                "Job Type",
+                value=str(selected_company.get("job_type", "")),
+                help="Optional JobSpy job_type value, for example fulltime or contract.",
+            )
+            c_linkedin_fetch_description = js_cfg5.checkbox(
+                "LinkedIn Fetch Description",
+                value=bool(selected_company.get("linkedin_fetch_description", False)),
+            )
+            c_google_search_term_template = st.text_input(
+                "Google Search Term Template",
+                value=str(selected_company.get("google_search_term_template", "{query}") or "{query}"),
+                help="Used only for the Google JobSpy row. Keep {query} in the template.",
+            )
             c_notes = st.text_area("Notes", value=str(selected_company.get("notes", "")))
 
             if st.button("Save Company"):
@@ -1635,6 +1707,19 @@ def main():
                     "status": "manual_only" if c_manual_only else c_status,
                     "industry": _parse_pipe_list(c_industry) if "|" in c_industry else c_industry.strip(),
                     "sub_industry": c_sub.strip(),
+                    "search_queries": [line.strip() for line in c_search_queries.splitlines() if line.strip()],
+                    "location_filter": c_location_filter.strip(),
+                    "site_names": c_site_names.strip(),
+                    "results_wanted": int(c_results_wanted),
+                    "hours_old": int(c_hours_old),
+                    "country_indeed": c_country_indeed.strip() or "USA",
+                    "concurrency": int(c_concurrency),
+                    "max_total_results": int(c_max_total_results),
+                    "is_remote": bool(c_is_remote),
+                    "continue_on_site_failure": bool(c_continue_on_site_failure),
+                    "job_type": c_job_type.strip(),
+                    "linkedin_fetch_description": bool(c_linkedin_fetch_description),
+                    "google_search_term_template": c_google_search_term_template.strip() or "{query}",
                     "notes": c_notes.strip(),
                 }
                 if not new_company["name"]:

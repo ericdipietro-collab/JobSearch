@@ -198,6 +198,36 @@ class _FakeJobSpyModule:
         ]
 
 
+def _jobspy_multi_site_scrape_jobs(**kwargs):
+    site_name = kwargs.get("site_name") or []
+    site = site_name[0] if isinstance(site_name, list) and site_name else str(site_name)
+    if site == "linkedin":
+        raise RuntimeError("linkedin blocked")
+    if site == "google":
+        return [
+            {
+                "title": "Senior Product Manager",
+                "company": "SpyCo",
+                "job_url": "https://www.google.com/jobs/1",
+                "direct_url": "https://jobs.spyco.com/roles/1",
+                "location": "Remote - United States",
+                "description": "Google board copy",
+            }
+        ]
+    if site == "indeed":
+        return [
+            {
+                "title": "Senior Product Manager",
+                "company": "SpyCo",
+                "job_url": "https://www.indeed.com/viewjob?jk=1",
+                "direct_url": "https://jobs.spyco.com/roles/1",
+                "location": "Remote - United States",
+                "description": "Indeed board copy with longer description text",
+            }
+        ]
+    return []
+
+
 class ScraperAdapterRegressionTests(unittest.TestCase):
     def test_usajobs_adapter_parses_search_results(self):
         payload = {
@@ -338,6 +368,70 @@ class ScraperAdapterRegressionTests(unittest.TestCase):
             self.assertEqual(jobs[0].company, "SpyCo")
             self.assertEqual(jobs[0].source_lane, "jobspy_experimental")
             self.assertEqual(jobs[0].canonical_job_url, "https://jobs.spyco.com/roles/1")
+        finally:
+            if original is None:
+                sys.modules.pop("jobspy", None)
+            else:
+                sys.modules["jobspy"] = original
+
+    def test_jobspy_adapter_validates_site_names(self):
+        original = sys.modules.get("jobspy")
+        sys.modules["jobspy"] = types.SimpleNamespace(scrape_jobs=_FakeJobSpyModule.scrape_jobs)
+        try:
+            adapter = JobSpyExperimentalAdapter(session=None, scorer=None)
+            jobs = adapter.scrape({"name": "JobSpy Experimental", "search_queries": ["product manager"], "site_names": "google,badsite"})
+            self.assertEqual(jobs, [])
+            self.assertEqual(adapter.last_status, "empty")
+            self.assertIn("Unsupported JobSpy sites", adapter.last_note)
+        finally:
+            if original is None:
+                sys.modules.pop("jobspy", None)
+            else:
+                sys.modules["jobspy"] = original
+
+    def test_jobspy_company_site_names_override_runtime_defaults(self):
+        original = sys.modules.get("jobspy")
+        sys.modules["jobspy"] = types.SimpleNamespace(scrape_jobs=_FakeJobSpyModule.scrape_jobs)
+        with mock.patch("jobsearch.scraper.jobspy_validation.get_runtime_setting", return_value="indeed"):
+            try:
+                adapter = JobSpyExperimentalAdapter(session=None, scorer=None)
+                jobs = adapter.scrape(
+                    {
+                        "name": "JobSpy Google Experimental",
+                        "search_queries": ["product manager"],
+                        "site_names": "google",
+                    }
+                )
+                self.assertEqual(len(jobs), 1)
+                self.assertIn('"source_site": "google"', jobs[0].notes)
+            finally:
+                if original is None:
+                    sys.modules.pop("jobspy", None)
+                else:
+                    sys.modules["jobspy"] = original
+
+    def test_jobspy_adapter_clusters_same_job_across_sites_and_continues_on_failure(self):
+        original = sys.modules.get("jobspy")
+        sys.modules["jobspy"] = types.SimpleNamespace(scrape_jobs=_jobspy_multi_site_scrape_jobs)
+        try:
+            scorer = types.SimpleNamespace(
+                prefs={
+                    "jobspy_experimental": {
+                        "enabled_sites": ["google", "linkedin", "indeed"],
+                        "continue_on_site_failure": True,
+                        "max_total_results": 10,
+                    }
+                }
+            )
+            adapter = JobSpyExperimentalAdapter(session=None, scorer=scorer)
+            jobs = adapter.scrape({"name": "JobSpy Experimental", "search_queries": ["product manager"]})
+            self.assertEqual(len(jobs), 1)
+            self.assertEqual(jobs[0].canonical_job_url, "https://jobs.spyco.com/roles/1")
+            self.assertIn('"source_site_count": 2', jobs[0].notes)
+            self.assertIn("linkedin:", adapter.last_note)
+            self.assertIn("failed=1", adapter.last_note)
+            self.assertIn("google:", adapter.last_note)
+            self.assertIn("indeed:", adapter.last_note)
         finally:
             if original is None:
                 sys.modules.pop("jobspy", None)
