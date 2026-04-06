@@ -105,6 +105,44 @@ class ProfileService:
         
         return new_prefs
 
+    def extract_skills(self, resume_text: str) -> List[str]:
+        """
+        Extract technical skills and competencies from resume text.
+        Returns a list of skills suitable for gap analysis.
+        """
+        if not self.llm_client.get_active_provider() or self.llm_client.get_active_provider() == "none":
+            logger.warning("No LLM provider configured. Cannot extract skills.")
+            return []
+
+        prompt = f"""
+        Extract ONLY the technical skills, tools, languages, and frameworks from this resume.
+        Return a JSON array of skill names (lowercase, singular form when possible).
+
+        Examples: ["python", "java", "kubernetes", "react", "aws", "sql", "terraform", "docker"]
+
+        Resume Text:
+        {resume_text}
+
+        Return ONLY a valid JSON array like ["skill1", "skill2"] and nothing else.
+        """
+
+        try:
+            text, _ = self.llm_client.generate(prompt)
+            text = text.strip()
+            if text.startswith("```json"):
+                text = text[7:]
+            if text.endswith("```"):
+                text = text[:-3]
+            text = text.strip()
+
+            skills = json.loads(text)
+            if isinstance(skills, list):
+                return [s.lower().strip() for s in skills if s]
+            return []
+        except Exception as exc:
+            logger.error(f"Failed to extract skills: {exc}")
+            return []
+
     def analyze_job_fit(self, job_title: str, job_description: str, resume_text: str) -> Dict[str, Any]:
         """
         Uses an LLM to analyze how well a job fits the user's resume.

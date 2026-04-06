@@ -327,6 +327,29 @@ def _sidebar_metrics_for_df(df: pd.DataFrame) -> dict[str, int]:
     }
 
 
+def _get_today_token_usage(conn) -> dict:
+    """Get today's total LLM token usage and budget info."""
+    try:
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        cursor = conn.execute(
+            "SELECT SUM(tokens_used) as total, COUNT(*) as calls FROM llm_cost_log WHERE run_date = ?",
+            (today,)
+        )
+        row = cursor.fetchone()
+        total_tokens = row[0] if row and row[0] else 0
+        call_count = row[1] if row and row[1] else 0
+        daily_budget = settings.llm_daily_token_budget
+        percent_used = 100 * total_tokens / daily_budget if daily_budget > 0 else 0
+        return {
+            "total_tokens": int(total_tokens),
+            "call_count": int(call_count),
+            "daily_budget": daily_budget,
+            "percent_used": min(100, percent_used),  # Cap at 100 for display
+        }
+    except Exception:
+        return {"total_tokens": 0, "call_count": 0, "daily_budget": 0, "percent_used": 0}
+
+
 def _coerce_timestamp_series(series: pd.Series) -> pd.Series:
     return pd.to_datetime(series, errors="coerce", utc=True)
 
@@ -2670,6 +2693,27 @@ def main():
                     lines.append(raw.rstrip())
                     log.code("\n".join(lines[-30:]))
                 proc.wait(); _invalidate_data_cache(); st.success("Pipeline complete.")
+
+                # Display token usage metrics
+                try:
+                    token_conn = ats_db.connect()
+                    token_usage = _get_today_token_usage(token_conn)
+                    token_conn.close()
+
+                    if token_usage["total_tokens"] > 0:
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("LLM Tokens Used", f"{token_usage['total_tokens']:,}")
+                        with col2:
+                            st.metric("LLM Calls", token_usage["call_count"])
+                        with col3:
+                            budget_pct = token_usage["percent_used"]
+                            if budget_pct >= 80:
+                                st.warning(f"Budget: {budget_pct:.1f}%")
+                            else:
+                                st.metric("Budget Used", f"{budget_pct:.1f}%")
+                except Exception:
+                    pass
 
         with t2:
             log_path = settings.log_file
