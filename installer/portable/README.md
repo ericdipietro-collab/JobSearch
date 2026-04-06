@@ -11,6 +11,11 @@ Characteristics:
 - no MSIX required
 - runtime state is stored under `%LOCALAPPDATA%\JobSearchDashboardData`
 - the extracted app folder stays read-only / replaceable
+- ships the current default registries for:
+  - main ATS companies
+  - contractor companies
+  - aggregator companies
+  - JobSpy experimental companies
 
 If Python is missing on the target machine:
 - `launch.bat` will offer the bundled signed Python installer from `installer\downloads\python-3.11.9-amd64.exe`
@@ -22,6 +27,10 @@ installer\portable\build_portable.bat
 
 What to upload to GitHub Releases:
 - `dist\JobSearchDashboard-portable-2.0.0.zip`
+
+Recommended build flow:
+1. Rebuild `installer\wheels` first via `installer\build_installer.bat` if dependencies changed
+2. Then run `installer\portable\build_portable.bat`
 
 What end users do:
 1. Download the zip

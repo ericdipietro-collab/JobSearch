@@ -1,32 +1,43 @@
-# MSIX / App Installer Notes
+# MSIX Release
 
-This repo is partially prepared for an MSIX/App Installer distribution path.
+This folder contains the build script and templates for the Windows MSIX package.
 
-What is ready:
-- Runtime state can live outside the install directory via `JOBSEARCH_HOME`.
-- `launch.bat` now defaults writable state to:
-  - `%LOCALAPPDATA%\JobSearchDashboardData\config`
-  - `%LOCALAPPDATA%\JobSearchDashboardData\results`
-  - `%LOCALAPPDATA%\JobSearchDashboardData\data`
-  - `%LOCALAPPDATA%\JobSearchDashboardData\.venv`
-- Existing install-local `config` and `results\jobsearch.db` are migrated forward on first launch.
+The MSIX build produces:
+- `dist\JobSearchDashboard_2.0.0.0_x64.msix`
+- optionally `dist\JobSearchDashboard.appinstaller` when a base URI is provided
 
-Current launcher path:
-- `JobSearchLauncher.cs` is a small Win32 launcher source.
-- `build_launcher.bat` builds `bin\JobSearchLauncher.exe`.
-- The launcher expects `launch.bat` to sit beside it and forwards args like `--setup-only`.
+Characteristics:
+- packaged Windows install path
+- writable runtime state stays under `%LOCALAPPDATA%\JobSearchDashboardData`
+- ships the current default registries for:
+  - main ATS companies
+  - contractor companies
+  - aggregator companies
+  - JobSpy experimental companies
 
-What still blocks a real MSIX package:
-- A package manifest is still needed.
-- App Installer metadata still needs to be added.
-- Signing is still required for real-world distribution.
+How to build:
+```powershell
+installer\msix\build_msix.bat
+```
 
-Recommended next steps:
-1. Build `bin\JobSearchLauncher.exe`.
-2. Create `Package.appxmanifest`.
-3. Add `.appinstaller` generation.
-4. Sign the package with a trusted RSA code-signing certificate.
+Optional App Installer output:
+```powershell
+$env:JOBSEARCH_APPINSTALLER_BASE_URI="https://github.com/<owner>/<repo>/releases/download/v2.0.0"
+installer\msix\build_msix.bat
+```
+
+Optional signing:
+```powershell
+$env:JOBSEARCH_MSIX_PFX_PATH="C:\path\to\cert.pfx"
+$env:JOBSEARCH_MSIX_PFX_PASSWORD="your-password"
+installer\msix\build_msix.bat
+```
+
+Recommended build flow:
+1. Rebuild `installer\wheels` first via `installer\build_installer.bat` if dependencies changed
+2. Then run `installer\msix\build_msix.bat`
 
 Notes:
-- Unsigned MSIX/App Installer packages will still run into Windows trust / Smart App Control issues.
-- GitHub Releases hosting is fine for `.appinstaller` and `.msix`, but it does not replace signing.
+- unsigned MSIX packages can still trigger Windows trust / Smart App Control friction
+- rebuild the MSIX after runtime-visible code or config changes
+- if you publish an `.appinstaller`, use the final public release URL for the matching version

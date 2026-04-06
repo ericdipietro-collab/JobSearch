@@ -76,12 +76,18 @@ Set:
 - scoring caps for title vs. JD weighting
 - Gmail settings if using inbox sync
 - your base resume text or uploaded file
+- API credentials if you plan to use aggregator sources:
+  - `Adzuna App ID / App Key`
+  - `USAJobs User-Agent / Email / API Key`
+  - `Jooble API Key`
 
 ### Target Companies
 
 Review:
 - primary ATS registry
 - contractor registry
+- aggregator registry
+- JobSpy experimental registry
 - scraper health
 - ATS healer
 
@@ -91,6 +97,8 @@ Start with:
 - `Deep Search`: off
 - your primary companies file selected
 - `Use Contractor Sources`: optional
+- `Include Aggregator Sources`: optional, after API credentials are set
+- `Include JobSpy (Experimental)`: optional, only after you have reviewed the JobSpy registry and installed its dependency if needed
 
 ## Optional advanced paths
 
@@ -113,6 +121,31 @@ Path:
 - `Smart App Control`
 
 After changing the setting, rerun the installer or launcher.
+
+## Building binaries from source
+
+If you are creating release artifacts yourself, build them from Windows with Python 3.11:
+
+```powershell
+cd installer
+.\build_installer.bat
+cd ..\installer\portable
+.\build_portable.bat
+cd ..\msix
+.\build_msix.bat
+```
+
+Artifacts are written to `dist\`.
+
+Notes:
+- `JobSearchSetup.exe` is the classic installer
+- `JobSearchDashboard-portable-2.0.0.zip` is the portable zip
+- `JobSearchDashboard_2.0.0.0_x64.msix` is the packaged Windows build
+- the build scripts should include the current default registries for:
+  - main ATS companies
+  - contractor companies
+  - aggregator companies
+  - JobSpy experimental companies
 
 ### Deep Search / Deep Heal
 

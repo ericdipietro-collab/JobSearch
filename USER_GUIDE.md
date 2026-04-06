@@ -58,7 +58,7 @@ If the dashboard has been useful in your search, you can support ongoing develop
 
 ### Manual (any platform)
 
-1. Install Python 3.9 or newer and make sure it is on `PATH`.
+1. Install Python 3.11 and make sure it is on `PATH`.
 2. Clone or download this repo.
 3. Run the appropriate launcher:
    - Windows: `launch.bat`
@@ -154,6 +154,8 @@ Scores map to fit bands: **Strong Match** (85+), **Good Match** (70+), **Fair Ma
 | Standard run | Daily use — fast, covers all active companies |
 | `--deep-search` | Sites that require JavaScript rendering (Playwright/Chromium required) |
 | `--contract-sources` | Adds contractor-specific job boards to the standard run |
+| `--aggregator-sources` | Adds lower-trust API aggregator sources such as Adzuna, USAJobs, Jooble, and The Muse |
+| `--jobspy-sources` | Adds the separate experimental JobSpy lane for broader board discovery |
 
 ### ATS Healing
 
@@ -181,6 +183,10 @@ The **Job Matches** page shows all scraped jobs that passed the scoring threshol
 - **Watch** — near-miss roles or roles you manually promoted into a follow-up queue
 - **Manual Review** — scraper/manual queue for companies the scraper could not resolve cleanly
 - **Filtered Out** — low-fit saved jobs plus the latest rejected-search output
+
+Each saved role also shows:
+- **Source** — the provider or board family (for example Workday, Rippling, Adzuna, JobSpy)
+- **Lane** — Employer ATS, Contractor, Aggregator, or JobSpy Experimental
 
 **Actions from this page:**
 - Click a role to open the detail panel
@@ -511,6 +517,12 @@ For location-sensitive searches, non-local onsite/hybrid roles are treated as a 
 | `workday` | Workday (probes wd1–wd25 subdomains) |
 | `rippling` | Rippling ATS |
 | `smartrecruiters` | SmartRecruiters |
+| `usajobs` | USAJobs API |
+| `adzuna` | Adzuna API |
+| `jooble` | Jooble API |
+| `themuse` | The Muse API |
+| `indeed_connector` | Imported Indeed connector feed |
+| `jobspy` | Experimental JobSpy board search |
 | `generic` | Any careers page without a supported ATS |
 
 ### Fix Job Listings
@@ -540,6 +552,12 @@ python -m jobsearch.cli run --deep-search
 
 # Include contractor sources
 python -m jobsearch.cli run --contract-sources
+
+# Include API aggregators
+python -m jobsearch.cli run --aggregator-sources
+
+# Include JobSpy experimental sources
+python -m jobsearch.cli run --jobspy-sources
 
 # Both
 python -m jobsearch.cli run --deep-search --contract-sources

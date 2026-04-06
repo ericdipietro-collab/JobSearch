@@ -60,6 +60,7 @@ Source: "..\src\*";                DestDir: "{app}\src";      Flags: ignoreversi
 Source: "..\config\job_search_companies.yaml";         DestDir: "{app}\config"; Flags: ignoreversion onlyifdoesntexist
 Source: "..\config\job_search_companies_contract.yaml"; DestDir: "{app}\config"; Flags: ignoreversion onlyifdoesntexist skipifsourcedoesntexist
 Source: "..\config\job_search_companies_aggregators.yaml"; DestDir: "{app}\config"; Flags: ignoreversion onlyifdoesntexist skipifsourcedoesntexist
+Source: "..\config\job_search_companies_jobspy.yaml"; DestDir: "{app}\config"; Flags: ignoreversion onlyifdoesntexist skipifsourcedoesntexist
 ; Always ship the latest curated primary registry alongside user-preserved config for upgrade review/import.
 Source: "..\config\job_search_companies.yaml"; DestDir: "{app}\config"; DestName: "job_search_companies.upgrade_defaults.yaml"; Flags: ignoreversion
 Source: "..\config\job_search_preferences.example.yaml"; DestDir: "{app}\config"; Flags: ignoreversion

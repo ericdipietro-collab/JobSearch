@@ -72,6 +72,8 @@ After changing the setting, rerun the installer or launcher.
 
 - Scrapes target company careers pages across Greenhouse, Lever, Ashby, Workday, Rippling, and SmartRecruiters
 - Supports a contractor sourcing lane with Dice and Motion Recruitment
+- Supports an API aggregator lane with Adzuna, USAJobs, Jooble, and The Muse
+- Supports a separate experimental JobSpy lane for broader board discovery without inflating ATS metrics
 - Scores jobs with configurable title, JD, salary, location, and tier weighting
 - Lets you re-score saved jobs after changing scoring settings, without rerunning the scraper
 - Tracks applications, contacts, interviews, offers, and rejections
@@ -123,9 +125,55 @@ After changing the setting, rerun the installer or launcher.
 ```bash
 python -m jobsearch.cli run
 python -m jobsearch.cli run --contract-sources
+python -m jobsearch.cli run --aggregator-sources
+python -m jobsearch.cli run --jobspy-sources
 python -m jobsearch.cli heal --all
 python -m jobsearch.cli dashboard
 ```
+
+---
+
+## Building Release Binaries
+
+Build release artifacts on Windows with Python 3.11 installed.
+
+### Classic installer
+
+```powershell
+cd installer
+.\build_installer.bat
+```
+
+Output:
+- `dist\JobSearchSetup.exe`
+
+### Portable zip
+
+```powershell
+cd installer\portable
+.\build_portable.bat
+```
+
+Output:
+- `dist\JobSearchDashboard-portable-2.0.0.zip`
+
+### MSIX
+
+```powershell
+cd installer\msix
+.\build_msix.bat
+```
+
+Output:
+- `dist\JobSearchDashboard_2.0.0.0_x64.msix`
+
+Optional:
+- set `JOBSEARCH_APPINSTALLER_BASE_URI` before running `build_msix.bat` to also generate `dist\JobSearchDashboard.appinstaller`
+- set `JOBSEARCH_MSIX_PFX_PATH` and `JOBSEARCH_MSIX_PFX_PASSWORD` to sign the MSIX during build
+
+Important:
+- rebuild binaries after any runtime-visible code or config change
+- portable, installer, and MSIX builds should ship the current registry defaults, including the aggregator and JobSpy registries
 
 ---
 
@@ -155,6 +203,8 @@ Important files:
 - `config\job_search_preferences.yaml`
 - `config\job_search_companies.yaml`
 - `config\job_search_companies_contract.yaml`
+- `config\job_search_companies_aggregators.yaml`
+- `config\job_search_companies_jobspy.yaml`
 - `results\jobsearch.db`
 - `results\job_search_v6.log`
 - `results\ats_heal.log`
