@@ -639,3 +639,84 @@ class Scorer:
             },
             **comp_data,
         }
+
+    def apply_enrichment_adjustments(
+        self, score_result: Dict[str, Any], enriched_data: Optional[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """
+        Applies AI-based enrichment adjustments to a scoring result.
+        Adjusts score based on visa sponsorship, tech stack match, and IC vs Manager preference.
+
+        Args:
+            score_result: The result dict from score_job()
+            enriched_data: Dict with keys: visa_sponsor (bool|None), tech_stack (list), ic_vs_manager (str|None)
+
+        Returns:
+            Updated score_result with enrichment adjustments applied
+        """
+        if not enriched_data or enriched_data.get("enrichment_status") != "success":
+            return score_result
+
+        enrichment_adjustment = 0
+        enrichment_reasons = []
+
+        # Check visa sponsorship
+        visa_pref = self.prefs.get("requirements", {}).get("visa_sponsorship_required", False)
+        visa_sponsor = enriched_data.get("visa_sponsor")
+
+        if visa_pref and visa_sponsor is True:
+            enrichment_adjustment += 8
+            enrichment_reasons.append("+8 visa_sponsor_match")
+        elif visa_pref and visa_sponsor is False:
+            enrichment_adjustment -= 15
+            enrichment_reasons.append("-15 no_visa_sponsorship")
+
+        # Check tech stack match
+        tech_stack = enriched_data.get("tech_stack", [])
+        preferred_techs = self.prefs.get("requirements", {}).get("preferred_tech_stack", [])
+
+        if preferred_techs and tech_stack:
+            preferred_lower = [t.lower() for t in preferred_techs]
+            tech_lower = [t.lower() for t in tech_stack]
+            matches = len([t for t in tech_lower if any(p in t for p in preferred_lower)])
+            if matches > 0:
+                tech_bonus = min(matches * 3, 12)  # Max 12 points for tech stack
+                enrichment_adjustment += tech_bonus
+                enrichment_reasons.append(f"+{tech_bonus} tech_stack_match({matches})")
+            else:
+                enrichment_adjustment -= 5
+                enrichment_reasons.append("-5 tech_stack_mismatch")
+
+        # Check IC vs Manager preference
+        ic_vs_manager_pref = self.prefs.get("requirements", {}).get("role_type", "any")
+        ic_vs_manager = enriched_data.get("ic_vs_manager")
+
+        if ic_vs_manager_pref == "individual_contributor" and ic_vs_manager == "individual_contributor":
+            enrichment_adjustment += 6
+            enrichment_reasons.append("+6 ic_preference_match")
+        elif ic_vs_manager_pref == "manager" and ic_vs_manager == "manager":
+            enrichment_adjustment += 6
+            enrichment_reasons.append("+6 manager_preference_match")
+        elif ic_vs_manager_pref != "any" and ic_vs_manager == "mixed":
+            enrichment_adjustment -= 3
+            enrichment_reasons.append("-3 mixed_role_preference")
+
+        # Apply adjustment to score
+        if enrichment_adjustment != 0:
+            original_score = score_result.get("score", 0.0)
+            adjusted_score = max(0.0, min(100.0, original_score + enrichment_adjustment))
+            score_result = dict(score_result)
+            score_result["score"] = adjusted_score
+            score_result["fit_band"] = self.fit_band(adjusted_score)
+
+            # Update decision reason with enrichment info
+            enrichment_str = "; ".join(enrichment_reasons)
+            score_result["decision_reason"] = (
+                f"{score_result.get('decision_reason', '')} [enrichment: {enrichment_str}]"
+            )
+
+            # Store enrichment details
+            score_result["enrichment_adjustment"] = enrichment_adjustment
+            score_result["enrichment_reasons"] = enrichment_reasons
+
+        return score_result

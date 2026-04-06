@@ -14,7 +14,9 @@ from jobsearch import ats_db
 from jobsearch import __version__
 from jobsearch.scraper.scoring import Scorer
 from jobsearch.scraper.query_tiers import normalize_search_queries, search_query_text_lines
+from jobsearch.scraper.jobspy_validation import ALLOWED_JOBSPY_SITES
 from jobsearch.views.style_utils import set_custom_style
+from jobsearch.services.export_service import ExcelReportBuilder
 
 # ── Import Views ──────────────────────────────────────────────────────────────
 from jobsearch.views.home_page              import render_home
@@ -43,6 +45,7 @@ KNOWN_ADAPTERS = [
     "themuse",
     "indeed_connector",
     "jobspy",
+    "google_careers",
     "dice",
     "motionrecruitment",
     "custom_manual",
@@ -80,6 +83,7 @@ WORK_TYPE_LABELS = {
 
 EXPERIMENTAL_SOURCE_ADAPTERS = {
     "jobspy",
+    "google_careers",
     "indeed_connector",
     "adzuna",
     "jooble",
@@ -721,15 +725,72 @@ def _disable_company_in_registry(company_name: str) -> bool:
 def _render_apply_now_cards(df):
     for _, r in df.iterrows():
         key, co, ti, sc, url = r["_key"], str(r.get("company","")), str(r.get("title","")), r.get("score"), str(r.get("url",""))
-        c1, c2, c3 = st.columns([5, 2, 2])
+        desc = str(r.get("description_excerpt", "") or "")
+        ai_analysis_raw = r.get("ai_analysis")
+        ai_score = r.get("ai_match_score")
+
+        c1, c2, c3, c4 = st.columns([4, 1.5, 1.5, 2])
         c1.markdown(f"**{co}** — {ti} <small>score {sc:.0f}</small>", unsafe_allow_html=True)
-        if url: c2.markdown(f"[🔗 Open Job]({url})")
-        if c3.button("✅ Apply & Track", key=f"at_{key}"):
+        if url: c2.markdown(f"[🔗 Open]({url})")
+        
+        if c3.button("✨ AI Analysis", key=f"ai_{key}"):
+            conn = ats_db.get_connection()
+            try:
+                google_key = ats_db.get_setting(conn, "google_api_key", default=os.getenv("GOOGLE_API_KEY", ""))
+                resume_text = ats_db.get_setting(conn, "base_resume_text", default="")
+                
+                if not google_key:
+                    st.error("Add Google API Key in Settings first.")
+                elif not resume_text:
+                    st.error("Upload a Base Resume in Settings first.")
+                else:
+                    with st.spinner("AI Analyzing..."):
+                        from jobsearch.services.profile_service import ProfileService
+                        profiler = ProfileService(api_key=google_key)
+                        analysis = profiler.analyze_job_fit(ti, desc, resume_text)
+                        if analysis:
+                            now = datetime.now(timezone.utc).isoformat()
+                            conn.execute(
+                                "UPDATE applications SET ai_analysis=?, ai_match_score=?, updated_at=? WHERE scraper_key=?",
+                                (json.dumps(analysis), analysis.get("match_score"), now, key)
+                            )
+                            conn.commit()
+                            _invalidate_data_cache()
+                            st.rerun()
+            finally:
+                conn.close()
+
+        if c4.button("✅ Apply & Track", key=f"at_{key}"):
             conn = ats_db.get_connection(); now = datetime.now(timezone.utc).isoformat()
             conn.execute("UPDATE applications SET status='applied', date_applied=?, updated_at=? WHERE scraper_key=?", (now[:10], now, key))
             res = conn.execute("SELECT id FROM applications WHERE scraper_key=?", (key,)).fetchone()
             if res: ats_db.add_event(conn, res["id"], "applied", now, title=f"Applied to {co}")
             conn.commit(); conn.close(); _invalidate_data_cache(); st.rerun()
+        
+        if ai_analysis_raw:
+            try:
+                analysis = json.loads(ai_analysis_raw)
+                score_color = "#10b981" if ai_score and ai_score >= 80 else "#f59e0b" if ai_score and ai_score >= 60 else "#ef4444"
+                st.markdown(
+                    f"""
+                    <div style="background: #1f2937; padding: 10px; border-radius: 5px; border-left: 4px solid {score_color}; margin-bottom: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <strong style="color: {score_color}">AI Match Score: {ai_score:.0f}%</strong>
+                        </div>
+                        <p style="margin: 5px 0; font-size: 0.9rem;">{analysis.get('summary', '')}</p>
+                        <div style="display: flex; gap: 20px; font-size: 0.8rem;">
+                            <div><strong style="color: #10b981">Pros:</strong> {', '.join(analysis.get('pros', []))}</div>
+                            <div><strong style="color: #ef4444">Cons:</strong> {', '.join(analysis.get('cons', []))}</div>
+                        </div>
+                        <div style="font-size: 0.8rem; margin-top: 5px;">
+                            <strong style="color: #6366f1">Missing:</strong> {', '.join(analysis.get('missing_skills', []))}
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+            except: pass
+
         st.markdown("<hr style='margin:2px 0;border-color:#374151'>", unsafe_allow_html=True)
 
 def load_yaml(p): return yaml.safe_load(p.read_text(encoding="utf-8")) if p.exists() else {}
@@ -1003,6 +1064,32 @@ def main():
         )
         st.caption("Employment type counts are shown for current matches only. Many job postings don't specify a work type, so they appear as Unknown.")
         ann = {r["job_key"]: dict(r) for r in ats_db.get_all_annotations(ats_db.get_connection())}
+
+        # Export buttons
+        st.divider()
+        export_col1, export_col2 = st.columns([2, 1])
+        with export_col1:
+            st.caption("💾 Export your matched jobs")
+        with export_col2:
+            if st.button("📊 Excel", use_container_width=True, help="Download color-coded Excel report with matches, summary, and filtered jobs"):
+                try:
+                    builder = ExcelReportBuilder()
+                    rejected_for_export = rejected_df if "rejected_df" in locals() and not rejected_df.empty else pd.DataFrame()
+                    excel_bytes = builder.build_excel(
+                        jobs_df=df_all,
+                        filtered_jobs_df=rejected_for_export,
+                    )
+                    st.download_button(
+                        label="⬇️ Click to download Excel",
+                        data=excel_bytes,
+                        file_name=f"job_matches_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        key="excel_export_btn",
+                    )
+                except Exception as e:
+                    st.error(f"Excel export failed: {e}")
+        st.divider()
+
         tabs = st.tabs(["🔥 Apply Now", "📋 Review Today", "👀 Watch", "🔍 Manual Review", "🚫 Filtered Out"])
         BUCKETS = [
             ("APPLY NOW", tabs[0], ["Applied", "Rejected", "Watch", "Filtered Out"]),
@@ -1280,7 +1367,7 @@ def main():
     elif page == "Search Settings":
         st.title("Search Settings")
         prefs = load_yaml(settings.prefs_yaml)
-        t1, t2, t3, t4, t5, t6, t7 = st.tabs(["Compensation & Location", "Job Title Settings", "Job Description Keywords", "Scoring Settings", "Advanced Editor", "App Settings", "Base Resume"])
+        t1, t2, t3, t4, t5, t6, t7, t8 = st.tabs(["Compensation & Location", "Job Title Settings", "Job Description Keywords", "Scoring Settings", "Performance & Concurrency", "Advanced Editor", "App Settings", "Base Resume"])
         
         with t1:
             s = prefs.setdefault("search", {}); c = s.setdefault("compensation", {})
@@ -1520,12 +1607,301 @@ def main():
                 st.success(f"Re-scored {updated} saved jobs using the current search settings.")
 
         with t5:
+            conn = ats_db.get_connection()
+            try:
+                perf = prefs.setdefault("performance", {})
+                st.caption("Adjust scraper concurrency and timeout settings. Higher concurrency speeds up scraping but may trigger rate limits. Timeouts are in milliseconds.")
+
+                st.markdown("#### Adapter Concurrency")
+                st.caption("Number of parallel workers for each job board type. Higher = faster but may hit rate limits.")
+
+                perf_col1, perf_col2 = st.columns(2)
+                f_jobspy_conc = perf_col1.number_input(
+                    "JobSpy Concurrency",
+                    min_value=1,
+                    max_value=10,
+                    value=int(perf.get("scrape_jobspy_concurrency", settings.scrape_jobspy_concurrency)),
+                    step=1,
+                    help="Speed up multi-site job aggregation. Default: 1"
+                )
+                f_workday_conc = perf_col2.number_input(
+                    "Workday Concurrency",
+                    min_value=1,
+                    max_value=10,
+                    value=int(perf.get("scrape_workday_concurrency", settings.scrape_workday_concurrency)),
+                    step=1,
+                    help="Default: 2"
+                )
+
+                perf_col3, perf_col4 = st.columns(2)
+                f_generic_conc = perf_col3.number_input(
+                    "Generic Adapter Concurrency",
+                    min_value=1,
+                    max_value=10,
+                    value=int(perf.get("scrape_generic_concurrency", settings.scrape_generic_concurrency)),
+                    step=1,
+                    help="Default: 3"
+                )
+                f_greenhouse_conc = perf_col4.number_input(
+                    "Greenhouse Concurrency",
+                    min_value=1,
+                    max_value=10,
+                    value=int(perf.get("scrape_greenhouse_concurrency", settings.scrape_greenhouse_concurrency)),
+                    step=1,
+                    help="Default: 4"
+                )
+
+                perf_col5, perf_col6 = st.columns(2)
+                f_lever_conc = perf_col5.number_input(
+                    "Lever Concurrency",
+                    min_value=1,
+                    max_value=10,
+                    value=int(perf.get("scrape_lever_concurrency", settings.scrape_lever_concurrency)),
+                    step=1,
+                    help="Default: 4"
+                )
+                f_ashby_conc = perf_col6.number_input(
+                    "Ashby Concurrency",
+                    min_value=1,
+                    max_value=10,
+                    value=int(perf.get("scrape_ashby_concurrency", settings.scrape_ashby_concurrency)),
+                    step=1,
+                    help="Default: 4"
+                )
+
+                perf_col7, perf_col8 = st.columns(2)
+                f_rippling_conc = perf_col7.number_input(
+                    "Rippling Concurrency",
+                    min_value=1,
+                    max_value=10,
+                    value=int(perf.get("scrape_rippling_concurrency", settings.scrape_rippling_concurrency)),
+                    step=1,
+                    help="Default: 2"
+                )
+                f_smartrecruiters_conc = perf_col8.number_input(
+                    "SmartRecruiters Concurrency",
+                    min_value=1,
+                    max_value=10,
+                    value=int(perf.get("scrape_smartrecruiters_concurrency", settings.scrape_smartrecruiters_concurrency)),
+                    step=1,
+                    help="Default: 2"
+                )
+
+                perf_col9, perf_col10 = st.columns(2)
+                f_dice_conc = perf_col9.number_input(
+                    "Dice Concurrency",
+                    min_value=1,
+                    max_value=10,
+                    value=int(perf.get("scrape_dice_concurrency", settings.scrape_dice_concurrency)),
+                    step=1,
+                    help="Default: 2"
+                )
+                f_motionrecruitment_conc = perf_col10.number_input(
+                    "Motion Recruitment Concurrency",
+                    min_value=1,
+                    max_value=10,
+                    value=int(perf.get("scrape_motionrecruitment_concurrency", settings.scrape_motionrecruitment_concurrency)),
+                    step=1,
+                    help="Default: 2"
+                )
+
+                perf_col11, perf_col12 = st.columns(2)
+                f_indeed_conc = perf_col11.number_input(
+                    "Indeed Connector Concurrency",
+                    min_value=1,
+                    max_value=10,
+                    value=int(perf.get("scrape_indeed_connector_concurrency", settings.scrape_indeed_connector_concurrency)),
+                    step=1,
+                    help="Default: 1"
+                )
+                f_usajobs_conc = perf_col12.number_input(
+                    "USAJobs Concurrency",
+                    min_value=1,
+                    max_value=10,
+                    value=int(perf.get("scrape_usajobs_concurrency", settings.scrape_usajobs_concurrency)),
+                    step=1,
+                    help="Default: 1"
+                )
+
+                perf_col13, perf_col14 = st.columns(2)
+                f_adzuna_conc = perf_col13.number_input(
+                    "Adzuna Concurrency",
+                    min_value=1,
+                    max_value=10,
+                    value=int(perf.get("scrape_adzuna_concurrency", settings.scrape_adzuna_concurrency)),
+                    step=1,
+                    help="Default: 1"
+                )
+                f_jooble_conc = perf_col14.number_input(
+                    "Jooble Concurrency",
+                    min_value=1,
+                    max_value=10,
+                    value=int(perf.get("scrape_jooble_concurrency", settings.scrape_jooble_concurrency)),
+                    step=1,
+                    help="Default: 1"
+                )
+
+                perf_col15, perf_col16 = st.columns(2)
+                f_themuse_conc = perf_col15.number_input(
+                    "The Muse Concurrency",
+                    min_value=1,
+                    max_value=10,
+                    value=int(perf.get("scrape_themuse_concurrency", settings.scrape_themuse_concurrency)),
+                    step=1,
+                    help="Default: 1"
+                )
+                f_deep_search_conc = perf_col16.number_input(
+                    "Deep Search Concurrency",
+                    min_value=1,
+                    max_value=10,
+                    value=int(perf.get("scrape_deep_search_concurrency", settings.scrape_deep_search_concurrency)),
+                    step=1,
+                    help="Default: 1"
+                )
+
+                st.markdown("#### Timeouts & Budgets (milliseconds)")
+                timeout_col1, timeout_col2 = st.columns(2)
+                f_heal_discovery_budget = timeout_col1.number_input(
+                    "Healer Discovery Budget",
+                    min_value=1000,
+                    max_value=300000,
+                    value=int(perf.get("heal_discovery_budget_ms", settings.heal_discovery_budget_ms)),
+                    step=5000,
+                    help="Max time to discover ATS platforms. Default: 60000 ms"
+                )
+                f_heal_waterfall_budget = timeout_col2.number_input(
+                    "Healer Waterfall Follow Budget",
+                    min_value=1000,
+                    max_value=60000,
+                    value=int(perf.get("heal_waterfall_follow_budget_ms", settings.heal_waterfall_follow_budget_ms)),
+                    step=1000,
+                    help="Max time per URL in fallback chain. Default: 12000 ms"
+                )
+
+                timeout_col3, timeout_col4 = st.columns(2)
+                f_scrape_jitter_min = timeout_col3.number_input(
+                    "Scrape Jitter Min (ms)",
+                    min_value=0,
+                    max_value=5000,
+                    value=int(perf.get("scrape_jitter_min_ms", settings.scrape_jitter_min_ms)),
+                    step=10,
+                    help="Min random delay between requests. Default: 100 ms"
+                )
+                f_scrape_jitter_max = timeout_col4.number_input(
+                    "Scrape Jitter Max (ms)",
+                    min_value=100,
+                    max_value=10000,
+                    value=int(perf.get("scrape_jitter_max_ms", settings.scrape_jitter_max_ms)),
+                    step=10,
+                    help="Max random delay between requests. Default: 500 ms"
+                )
+
+                timeout_col5, timeout_col6 = st.columns(2)
+                f_heal_jitter_min = timeout_col5.number_input(
+                    "Healer Jitter Min (ms)",
+                    min_value=0,
+                    max_value=5000,
+                    value=int(perf.get("heal_jitter_min_ms", settings.heal_jitter_min_ms)),
+                    step=10,
+                    help="Default: 100 ms"
+                )
+                f_heal_jitter_max = timeout_col6.number_input(
+                    "Healer Jitter Max (ms)",
+                    min_value=100,
+                    max_value=10000,
+                    value=int(perf.get("heal_jitter_max_ms", settings.heal_jitter_max_ms)),
+                    step=10,
+                    help="Default: 500 ms"
+                )
+
+                st.markdown("#### Cooldown & Recovery")
+                cooldown_col1, cooldown_col2 = st.columns(2)
+                f_workday_empty_cooldown = cooldown_col1.number_input(
+                    "Workday Empty Result Cooldown (days)",
+                    min_value=1,
+                    max_value=30,
+                    value=int(perf.get("workday_empty_cooldown_days", settings.workday_empty_cooldown_days)),
+                    step=1,
+                    help="Skip Workday sites if they return empty. Default: 7 days"
+                )
+                f_workday_empty_threshold = cooldown_col2.number_input(
+                    "Workday Empty Threshold (count)",
+                    min_value=1,
+                    max_value=10,
+                    value=int(perf.get("workday_empty_cooldown_threshold", settings.workday_empty_cooldown_threshold)),
+                    step=1,
+                    help="Trigger cooldown after N empty results. Default: 2"
+                )
+
+                cooldown_col3, cooldown_col4 = st.columns(2)
+                f_generic_empty_cooldown = cooldown_col3.number_input(
+                    "Generic Adapter Empty Cooldown (days)",
+                    min_value=1,
+                    max_value=30,
+                    value=int(perf.get("generic_empty_cooldown_days", settings.generic_empty_cooldown_days)),
+                    step=1,
+                    help="Default: 7 days"
+                )
+                f_generic_empty_threshold = cooldown_col4.number_input(
+                    "Generic Empty Threshold (count)",
+                    min_value=1,
+                    max_value=10,
+                    value=int(perf.get("generic_empty_cooldown_threshold", settings.generic_empty_cooldown_threshold)),
+                    step=1,
+                    help="Default: 3"
+                )
+
+                f_generic_low_signal_cooldown = st.number_input(
+                    "Generic Low-Signal Cooldown (days)",
+                    min_value=1,
+                    max_value=30,
+                    value=int(perf.get("generic_low_signal_cooldown_days", settings.generic_low_signal_cooldown_days)),
+                    step=1,
+                    help="Skip sites after returning mostly low-scoring results. Default: 14 days"
+                )
+
+                if st.button("Save Performance Settings"):
+                    perf.update({
+                        "scrape_jobspy_concurrency": int(f_jobspy_conc),
+                        "scrape_workday_concurrency": int(f_workday_conc),
+                        "scrape_generic_concurrency": int(f_generic_conc),
+                        "scrape_greenhouse_concurrency": int(f_greenhouse_conc),
+                        "scrape_lever_concurrency": int(f_lever_conc),
+                        "scrape_ashby_concurrency": int(f_ashby_conc),
+                        "scrape_rippling_concurrency": int(f_rippling_conc),
+                        "scrape_smartrecruiters_concurrency": int(f_smartrecruiters_conc),
+                        "scrape_dice_concurrency": int(f_dice_conc),
+                        "scrape_motionrecruitment_concurrency": int(f_motionrecruitment_conc),
+                        "scrape_indeed_connector_concurrency": int(f_indeed_conc),
+                        "scrape_usajobs_concurrency": int(f_usajobs_conc),
+                        "scrape_adzuna_concurrency": int(f_adzuna_conc),
+                        "scrape_jooble_concurrency": int(f_jooble_conc),
+                        "scrape_themuse_concurrency": int(f_themuse_conc),
+                        "scrape_deep_search_concurrency": int(f_deep_search_conc),
+                        "heal_discovery_budget_ms": int(f_heal_discovery_budget),
+                        "heal_waterfall_follow_budget_ms": int(f_heal_waterfall_budget),
+                        "scrape_jitter_min_ms": int(f_scrape_jitter_min),
+                        "scrape_jitter_max_ms": int(f_scrape_jitter_max),
+                        "heal_jitter_min_ms": int(f_heal_jitter_min),
+                        "heal_jitter_max_ms": int(f_heal_jitter_max),
+                        "workday_empty_cooldown_days": int(f_workday_empty_cooldown),
+                        "workday_empty_cooldown_threshold": int(f_workday_empty_threshold),
+                        "generic_empty_cooldown_days": int(f_generic_empty_cooldown),
+                        "generic_empty_cooldown_threshold": int(f_generic_empty_threshold),
+                        "generic_low_signal_cooldown_days": int(f_generic_low_signal_cooldown),
+                    })
+                    save_yaml(settings.prefs_yaml, prefs)
+                    st.success("Performance settings saved.")
+            finally:
+                pass
+
+        with t6:
             raw = settings.prefs_yaml.read_text(encoding="utf-8") if settings.prefs_yaml.exists() else ""
             st.caption("Direct YAML editor — for advanced users only. Incorrect formatting will break your settings. Use the other tabs for normal edits.")
             new_raw = st.text_area("Raw Configuration", value=raw, height=600)
             if st.button("Save Configuration"): settings.prefs_yaml.write_text(new_raw, encoding="utf-8"); st.success("Saved.")
 
-        with t6:
+        with t7:
             conn = ats_db.get_connection()
             try:
                 weekly_goal = int(ats_db.get_setting(conn, "weekly_activity_goal", default="3") or "3")
@@ -1576,6 +1952,12 @@ def main():
                     help="USAJobs requires the registered email address in the User-Agent header.",
                 )
                 app_usajobs_api_key = st.text_input("USAJobs API Key", value=usajobs_api_key, type="password")
+                app_google_api_key = st.text_input(
+                    "Google API Key", 
+                    value=ats_db.get_setting(conn, "google_api_key", default=os.getenv("GOOGLE_API_KEY", "")), 
+                    type="password",
+                    help="Used for AI-driven resume analysis and preference generation. Get one for free at aistudio.google.com"
+                )
                 adzuna_col1, adzuna_col2 = st.columns(2)
                 app_adzuna_app_id = adzuna_col1.text_input("Adzuna App ID", value=adzuna_app_id)
                 app_adzuna_app_key = adzuna_col2.text_input("Adzuna App Key", value=adzuna_app_key, type="password")
@@ -1604,6 +1986,7 @@ def main():
                     ats_db.set_setting(conn, "adzuna_app_key", app_adzuna_app_key.strip())
                     ats_db.set_setting(conn, "adzuna_country", (app_adzuna_country.strip() or "us").lower())
                     ats_db.set_setting(conn, "jooble_api_key", app_jooble_api_key.strip())
+                    ats_db.set_setting(conn, "google_api_key", app_google_api_key.strip())
                     ats_db.set_setting(conn, "usajobs_max_requests_per_run", str(int(app_usajobs_max_requests)))
                     ats_db.set_setting(conn, "adzuna_max_requests_per_run", str(int(app_adzuna_max_requests)))
                     ats_db.set_setting(conn, "jooble_max_requests_per_run", str(int(app_jooble_max_requests)))
@@ -1612,7 +1995,7 @@ def main():
             finally:
                 conn.close()
 
-        with t7:
+        with t8:
             conn = ats_db.get_connection()
             try:
                 resume_name = ats_db.get_setting(conn, "base_resume_name", default="Master Resume")
@@ -1652,6 +2035,36 @@ def main():
                             st.rerun()
                     except Exception as exc:
                         st.error(f"Could not extract resume text: {exc}")
+
+                if st.session_state.get("base_resume_text_input"):
+                    if st.button("✨ Auto-Generate Search Preferences", help="Use AI to extract job titles and keywords from this resume and add them to your Search Settings."):
+                        from jobsearch.services.profile_service import ProfileService
+                        import yaml
+                        
+                        google_key = ats_db.get_setting(conn, "google_api_key", default=os.getenv("GOOGLE_API_KEY", ""))
+                        if not google_key:
+                            st.error("Google API Key not found. Please add it in the **App Settings** tab first.")
+                        else:
+                            with st.spinner("Analyzing resume and generating preferences..."):
+                                try:
+                                    profiler = ProfileService(api_key=google_key)
+                                    extracted = profiler.extract_preferences(st.session_state["base_resume_text_input"])
+                                    if not extracted:
+                                        st.error("AI could not extract preferences. Check your API key or resume text.")
+                                    else:
+                                        # Load current prefs
+                                        prefs_path = settings.prefs_yaml
+                                        current_prefs = {}
+                                        if prefs_path.exists():
+                                            current_prefs = yaml.safe_load(prefs_path.read_text(encoding="utf-8")) or {}
+                                        
+                                        merged = profiler.merge_preferences(current_prefs, extracted)
+                                        prefs_path.write_text(yaml.safe_dump(merged, sort_keys=False), encoding="utf-8")
+                                        
+                                        st.success("✅ Preferences updated! Go to **Search Settings** to review your new titles and keywords.")
+                                        st.balloons()
+                                except Exception as exc:
+                                    st.error(f"Failed to generate preferences: {exc}")
                 br1, br2 = st.columns(2)
                 base_resume_name = br1.text_input("Resume Name", key="base_resume_name_input")
                 base_resume_source = br2.text_input("Source URL", key="base_resume_source_input", placeholder="Optional link to the living master resume")
@@ -1769,7 +2182,7 @@ def main():
             c_careers = st.text_input("Careers Page URL", value=selected_company.get("careers_url", ""))
             c_adapter = st.selectbox("Job Board Type", KNOWN_ADAPTERS, index=KNOWN_ADAPTERS.index(selected_company.get("adapter", "generic")) if selected_company.get("adapter", "generic") in KNOWN_ADAPTERS else KNOWN_ADAPTERS.index("generic"), help="The job board platform this company uses (e.g. Greenhouse, Lever, Workday).")
             c_adapter_key = st.text_input("Job Board Identifier", value=selected_company.get("adapter_key", ""), help="The unique identifier for this company on their job board platform (e.g. the slug in the URL).")
-            c_tier = st.number_input("Priority Tier (1 = highest)", min_value=1, max_value=4, value=int(selected_company.get("tier", 2)))
+            c_tier = st.number_input("Priority Tier (1 = highest)", min_value=1, max_value=4, value=int(selected_company.get("tier", 2) or 2))
             c_priority = st.selectbox("Priority", ["high", "medium", "low"], index=["high", "medium", "low"].index(selected_company.get("priority", "medium")) if selected_company.get("priority", "medium") in ["high", "medium", "low"] else 1)
             c_active = st.checkbox("Active (include in job search)", value=bool(selected_company.get("active", True)))
             c_manual_only = st.checkbox("Search Manually (skip automatic scraping)", value=bool(selected_company.get("manual_only", False)))
@@ -1790,14 +2203,14 @@ def main():
             c_site_names = st.text_input(
                 "Source Sites",
                 value=_normalize_editor_value(selected_company.get("site_names", "")),
-                help="Optional comma-separated site names for multi-source adapters like JobSpy.",
+                help=f"Optional comma-separated site names for JobSpy. Available: {', '.join(sorted(ALLOWED_JOBSPY_SITES))}",
             )
             extra_col1, extra_col2, extra_col3, extra_col4 = st.columns(4)
             c_results_wanted = extra_col1.number_input(
                 "Results Wanted",
                 min_value=1,
                 max_value=200,
-                value=int(selected_company.get("results_wanted", selected_company.get("max_results_per_query", 20) or 20)),
+                value=int(selected_company.get("results_wanted", selected_company.get("max_results_per_query", 20) or 20) or 20),
                 step=1,
             )
             c_hours_old = extra_col2.number_input(
@@ -1823,7 +2236,7 @@ def main():
                 "Max Total Results",
                 min_value=1,
                 max_value=500,
-                value=int(selected_company.get("max_total_results", selected_company.get("results_wanted", 20) or 20)),
+                value=int(selected_company.get("max_total_results", selected_company.get("results_wanted", 20) or 20) or 20),
                 step=1,
             )
             c_is_remote = js_cfg2.checkbox(
@@ -1853,32 +2266,32 @@ def main():
 
             if st.button("Save Company"):
                 new_company = {
-                    "name": c_name.strip(),
-                    "domain": c_domain.strip(),
-                    "careers_url": c_careers.strip(),
+                    "name": c_name.strip() if c_name else "",
+                    "domain": c_domain.strip() if c_domain else "",
+                    "careers_url": c_careers.strip() if c_careers else "",
                     "adapter": c_adapter,
-                    "adapter_key": c_adapter_key.strip(),
+                    "adapter_key": c_adapter_key.strip() if c_adapter_key else "",
                     "tier": int(c_tier),
                     "priority": c_priority,
                     "active": bool(c_active),
                     "manual_only": bool(c_manual_only),
                     "status": "manual_only" if c_manual_only else c_status,
-                    "industry": _parse_pipe_list(c_industry) if "|" in c_industry else c_industry.strip(),
-                    "sub_industry": c_sub.strip(),
+                    "industry": _parse_pipe_list(c_industry) if c_industry and "|" in c_industry else (c_industry.strip() if c_industry else ""),
+                    "sub_industry": c_sub.strip() if c_sub else "",
                     "search_queries": normalize_search_queries(c_search_queries),
-                    "location_filter": c_location_filter.strip(),
-                    "site_names": c_site_names.strip(),
+                    "location_filter": c_location_filter.strip() if c_location_filter else "",
+                    "site_names": c_site_names.strip() if c_site_names else "",
                     "results_wanted": int(c_results_wanted),
                     "hours_old": int(c_hours_old),
-                    "country_indeed": c_country_indeed.strip() or "USA",
+                    "country_indeed": (c_country_indeed.strip() if c_country_indeed else "") or "USA",
                     "concurrency": int(c_concurrency),
                     "max_total_results": int(c_max_total_results),
                     "is_remote": bool(c_is_remote),
                     "continue_on_site_failure": bool(c_continue_on_site_failure),
-                    "job_type": c_job_type.strip(),
+                    "job_type": c_job_type.strip() if c_job_type else "",
                     "linkedin_fetch_description": bool(c_linkedin_fetch_description),
-                    "google_search_term_template": c_google_search_term_template.strip() or "{query}",
-                    "notes": c_notes.strip(),
+                    "google_search_term_template": (c_google_search_term_template.strip() if c_google_search_term_template else "") or "{query}",
+                    "notes": c_notes.strip() if c_notes else "",
                 }
                 if not new_company["name"]:
                     st.error("Company name is required.")

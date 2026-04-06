@@ -20,6 +20,10 @@ Characteristics:
 If Python is missing on the target machine:
 - `launch.bat` will offer the bundled signed Python installer from `installer\downloads\python-3.11.9-amd64.exe`
 
+Upgrade note:
+- if you are upgrading from the older split-database v1 release, run the legacy migration script once before launching the new build
+- current builds upgrade the unified SQLite schema in place, but they do not auto-merge the old split DB pair
+
 How to build:
 ```powershell
 installer\portable\build_portable.bat

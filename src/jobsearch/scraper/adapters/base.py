@@ -47,6 +47,7 @@ class BaseAdapter(ABC):
         return response.text
 
     def _request(self, method: str, url: str, **kwargs):
+        from jobsearch.config.settings import settings
         if not self.session:
             import requests
             session = requests
@@ -54,6 +55,18 @@ class BaseAdapter(ABC):
             session = self.session
 
         timeout = kwargs.pop("timeout", None)
+        
+        # Apply global proxies if configured
+        if settings.proxies and "proxies" not in kwargs:
+            proxy_val = settings.proxies.strip()
+            if "://" in proxy_val:
+                kwargs["proxies"] = {"http": proxy_val, "https": proxy_val}
+            else:
+                # Assume it might be a comma-separated list or just one host
+                # For simplicity, we'll support the standard requests proxy dict format 
+                # or a single URL.
+                kwargs["proxies"] = {"http": proxy_val, "https": proxy_val}
+
         response = getattr(session, method)(url, timeout=timeout or self.timeout, **kwargs)
         self._raise_if_blocked(response, url)
         return response

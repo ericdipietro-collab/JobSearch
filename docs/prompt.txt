@@ -1,0 +1,60 @@
+
+Extend the existing JobSpy Experimental pipeline instead of rebuilding it.
+
+Current implementation already exists with:
+- separate registry: config/job_search_companies_jobspy.yaml
+- Include JobSpy (Experimental) run toggle
+- JobSpy Experimental List target-company registry option
+- CLI merge flag: --jobspy-sources
+- lazy-import adapter: src/jobsearch/scraper/adapters/jobspy_experimental.py
+- lower-trust scoring lane via source_lane=jobspy_experimental
+- ATS metrics isolation
+- stronger-lane canonical dedupe
+- default conservative settings:
+  site_names=google, results_wanted=20, hours_old=72, country_indeed=USA, concurrency=1
+- JobSpy results capped to WATCH by default
+
+Build phase-2 hardening and expansion with these requirements:
+
+1. Preserve JobSpy as a separate experimental lane. Do not merge it into the main ATS/default lane.
+2. Expand configurable site support beyond google to:
+   google, linkedin, indeed, glassdoor, zip_recruiter
+   Keep any additional sites disabled unless explicitly configured.
+3. Add typed JobSpy experimental settings in config/job_search_preferences.yaml:
+   enabled_sites, results_wanted_per_site, hours_old, country_indeed, concurrency,
+   is_remote, job_type, linkedin_fetch_description, google_search_term_template,
+   continue_on_site_failure, max_total_results.
+4. Add validation for JobSpy board names and basic per-board parameter requirements.
+5. Add per-board metrics and status reporting:
+   requested, attempted, success/failed/skipped, runtime, raw results, normalized results,
+   deduped results, stronger-lane suppressions, final kept.
+6. Improve intra-JobSpy dedupe/clustering so the same job from multiple JobSpy boards becomes one experimental-lane record with preserved board variants.
+7. Preserve stronger-lane ATS/direct precedence during canonicalization. JobSpy must never overwrite a stronger canonical source except possibly filling missing metadata.
+8. Add provenance fields where practical:
+   source_site, source_site_variants, source_site_count, direct_apply_confidence,
+   suppressed_by_stronger_lane.
+9. Keep JobSpy capped to WATCH by default.
+10. Add tests for:
+   validation, intra-JobSpy clustering, stronger-lane suppression, per-board metrics,
+   graceful missing dependency behavior, and per-board failure isolation.
+
+Prefer minimal invasive changes to existing files:
+- src/jobsearch/config/settings.py
+- src/jobsearch/app_main.py
+- src/jobsearch/cli.py
+- src/jobsearch/scraper/engine.py
+- src/jobsearch/scraper/scoring.py
+- src/jobsearch/services/opportunity_service.py
+- src/jobsearch/scraper/adapters/jobspy_experimental.py
+- config/job_search_companies_jobspy.yaml
+- config/job_search_preferences.yaml
+- tests/test_scraper_adapters.py
+
+You may add focused helper modules if they materially improve maintainability:
+- src/jobsearch/scraper/jobspy_validation.py
+- src/jobsearch/scraper/jobspy_normalization.py
+- src/jobsearch/scraper/jobspy_metrics.py
+- tests/test_jobspy_validation.py
+- tests/test_jobspy_dedupe.py
+
+Do not regress current default behavior: JobSpy stays disabled by default, google-only by default, conservative concurrency, and clean skip when jobspy is not installed.

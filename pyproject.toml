@@ -18,9 +18,11 @@ dependencies = [
     "streamlit==1.37.1",
     "pydantic==2.9.2",
     "pydantic-settings==2.5.2",
-    "click==8.1.7",
+    "click==8.2.1",
+    "numpy==1.26.3",
     "pypdf==5.4.0",
-    "python-jobspy",
+    "jobspy-enhanced-scraper",
+    "google-generativeai",
 ]
 
 [project.scripts]

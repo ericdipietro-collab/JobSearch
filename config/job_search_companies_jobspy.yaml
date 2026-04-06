@@ -3,14 +3,14 @@ companies:
   - name: JobSpy Google Experimental
     source_lane: jobspy_experimental
     adapter: jobspy
-    active: true
+    active: false
     priority: low
     tier: 4
     careers_url: https://www.google.com/search?q=jobs
     domain: google.com
     industry: experimental | aggregator
     status: active
-    notes: Experimental JobSpy discovery lane using Google Jobs only. Keep this as the safest/default JobSpy entry.
+    notes: Experimental JobSpy discovery lane using Google Jobs. Currently unreliable (returning 0 results).
     search_queries:
       - query: senior product manager fintech
         tier: 1
@@ -31,10 +31,31 @@ companies:
     google_search_term_template: "{query}"
     continue_on_site_failure: true
     cooldown_days: 1
+  - name: Google Careers Direct
+    source_lane: employer_ats
+    adapter: google_careers
+    active: true
+    priority: medium
+    tier: 1
+    careers_url: https://www.google.com/about/careers/applications/jobs/results
+    domain: google.com
+    industry: tech | company_portal
+    status: active
+    notes: Specialized Google Careers scraper using AF_initDataCallback extraction. Much more reliable than the aggregator lane.
+    search_queries:
+      - query: solution architect
+        tier: 1
+      - query: product manager fintech
+        tier: 1
+      - query: technical business analyst
+        tier: 2
+    location_filter: United States
+    max_total_results: 50
+    concurrency: 1
   - name: JobSpy Indeed Experimental
     source_lane: jobspy_experimental
     adapter: jobspy
-    active: false
+    active: true
     priority: low
     tier: 4
     careers_url: https://www.indeed.com/jobs
@@ -56,7 +77,7 @@ companies:
     hours_old: 72
     country_indeed: USA
     concurrency: 1
-    is_remote: false
+    is_remote: true
     job_type: ""
     linkedin_fetch_description: false
     google_search_term_template: "{query}"
@@ -72,7 +93,7 @@ companies:
     domain: linkedin.com
     industry: experimental | aggregator
     status: active
-    notes: Experimental JobSpy source for LinkedIn. High-friction and should stay disabled unless explicitly testing it.
+    notes: Experimental JobSpy source for LinkedIn. High-friction (session-dependent) and currently disabled to favor Indeed.
     search_queries:
       - query: senior product manager fintech
         tier: 1
@@ -103,7 +124,7 @@ companies:
     domain: glassdoor.com
     industry: experimental | aggregator
     status: active
-    notes: Experimental JobSpy source for Glassdoor. Keep disabled until the Google lane proves useful.
+    notes: Experimental JobSpy source for Glassdoor. Currently broken (returning 400 errors).
     search_queries:
       - query: senior product manager fintech
         tier: 1
@@ -144,6 +165,60 @@ companies:
         tier: 2
     location_filter: United States
     site_names: zip_recruiter
+    results_wanted: 20
+    max_total_results: 20
+    hours_old: 72
+    country_indeed: USA
+    concurrency: 1
+    is_remote: false
+    job_type: ""
+    linkedin_fetch_description: false
+    google_search_term_template: "{query}"
+    continue_on_site_failure: true
+    cooldown_days: 1
+  - name: JobSpy JobGet Experimental
+    source_lane: jobspy_experimental
+    adapter: jobspy
+    active: false
+    priority: low
+    tier: 4
+    careers_url: https://www.jobget.com/
+    domain: jobget.com
+    industry: experimental | aggregator
+    status: active
+    notes: Experimental JobSpy source for JobGet.
+    search_queries:
+      - query: senior product manager fintech
+        tier: 1
+    location_filter: United States
+    site_names: job_get
+    results_wanted: 20
+    max_total_results: 20
+    hours_old: 72
+    country_indeed: USA
+    concurrency: 1
+    is_remote: false
+    job_type: ""
+    linkedin_fetch_description: false
+    google_search_term_template: "{query}"
+    continue_on_site_failure: true
+    cooldown_days: 1
+  - name: JobSpy Upwork Experimental
+    source_lane: jobspy_experimental
+    adapter: jobspy
+    active: false
+    priority: low
+    tier: 4
+    careers_url: https://www.upwork.com/
+    domain: upwork.com
+    industry: experimental | aggregator
+    status: active
+    notes: Experimental JobSpy source for Upwork.
+    search_queries:
+      - query: senior product manager fintech
+        tier: 1
+    location_filter: United States
+    site_names: upwork
     results_wanted: 20
     max_total_results: 20
     hours_old: 72

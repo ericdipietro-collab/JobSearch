@@ -43,6 +43,7 @@ If you prefer not to use Git, download the source ZIP from GitHub, extract it, o
 Important:
 - release artifacts and the bundled wheel cache are built for Python 3.11
 - other Python versions such as 3.12 or 3.13 may trigger source builds for native dependencies and fail while looking for Visual Studio tools
+- if you are upgrading from the older split-database v1 release, run the legacy migration script once before launching the new build; current builds upgrade the unified SQLite schema in place, but they do not auto-merge the old split DB pair
 
 ### Windows installer and portable zip
 
@@ -54,6 +55,7 @@ Important:
 - these artifacts are unsigned
 - Windows Smart App Control may block them with no bypass option
 - if that happens, use the source-first install path above instead
+- if you are upgrading from the older split-database v1 release, run the legacy migration script once before launching the new build; current builds upgrade the unified SQLite schema in place, but they do not auto-merge the old split DB pair
 
 ### If you choose to disable Smart App Control
 

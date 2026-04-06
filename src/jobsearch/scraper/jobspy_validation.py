@@ -10,6 +10,11 @@ ALLOWED_JOBSPY_SITES = {
     "indeed",
     "glassdoor",
     "zip_recruiter",
+    "bayt",
+    "naukri",
+    "bdjobs",
+    "job_get",
+    "upwork",
 }
 
 _SITE_ALIASES = {
@@ -138,6 +143,7 @@ def load_jobspy_settings(preferences: Dict[str, Any], company_config: Dict[str, 
             _as_bool(cfg.get("continue_on_site_failure"), True),
         ),
         "max_total_results": max_total_results,
+        "proxies": company_config.get("proxies") or cfg.get("proxies"),
     }
 
 

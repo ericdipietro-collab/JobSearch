@@ -1,6 +1,7 @@
 """Scraper engine: orchestrates multi-threaded scraping and persistence."""
 
 import csv
+import json
 import logging
 import random
 import re
@@ -17,8 +18,10 @@ from jobsearch.db.connection import get_connection
 from jobsearch.scraper.adapters.ashby import AshbyAdapter
 from jobsearch.scraper.adapters.adzuna import AdzunaAdapter
 from jobsearch.scraper.adapters.base import BaseAdapter, BlockedSiteError
+from jobsearch.scraper.adapters.crawl4ai_adapter import Crawl4AIAdapter
 from jobsearch.scraper.adapters.dice import DiceAdapter
 from jobsearch.scraper.adapters.generic import GenericAdapter
+from jobsearch.scraper.adapters.google_careers import GoogleCareersAdapter
 from jobsearch.scraper.adapters.greenhouse import GreenhouseAdapter
 from jobsearch.scraper.adapters.indeed_connector import IndeedConnectorAdapter
 from jobsearch.scraper.adapters.jooble import JoobleAdapter
@@ -32,6 +35,7 @@ from jobsearch.scraper.adapters.usajobs import USAJobsAdapter
 from jobsearch.scraper.adapters.workday import WorkdayAdapter
 from jobsearch.scraper.scoring import Scorer
 from jobsearch.services.opportunity_service import upsert_job
+from jobsearch.services.enrichment_service import EnrichmentService
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +94,9 @@ class ScraperEngine:
         "themuse": TheMuseAdapter,
         "indeed_connector": IndeedConnectorAdapter,
         "jobspy": JobSpyExperimentalAdapter,
+        "google_careers": GoogleCareersAdapter,
         "dice": DiceAdapter,
+        "crawl4ai": Crawl4AIAdapter,
         "generic": GenericAdapter,
         "custom_manual": GenericAdapter,
         "custom_site": GenericAdapter,
@@ -140,6 +146,7 @@ class ScraperEngine:
             "themuse": settings.scrape_themuse_concurrency,
             "indeed_connector": settings.scrape_indeed_connector_concurrency,
             "jobspy": int(get_runtime_setting("jobspy_concurrency", str(settings.scrape_jobspy_concurrency)) or settings.scrape_jobspy_concurrency),
+            "google_careers": 2, # Small limit for Google
             "dice": settings.scrape_dice_concurrency,
             "motionrecruitment": settings.scrape_motionrecruitment_concurrency,
             "deep_search": settings.scrape_deep_search_concurrency,
@@ -167,7 +174,7 @@ class ScraperEngine:
             elif "smartrecruiters.com" in careers_url:
                 adapter_name = "smartrecruiters"
             else:
-                adapter_name = "generic"
+                adapter_name = "crawl4ai"
         return adapter_name
 
     def run(self, max_workers: int = 12):
@@ -706,3 +713,102 @@ class ScraperEngine:
             "keep_rate": keep_rate,
         }
         return persisted_count, inserted_count, dropped_count, evaluated_count, process_ms, score_stats, rejected_rows
+
+    def enrich_jobs_with_ai(self, min_score_threshold: float = 60.0, max_jobs: int = 50) -> Dict[str, Any]:
+        """
+        Enriches high-scoring jobs with AI analysis for visa sponsorship, tech stack, and IC vs Manager.
+        This is an optional post-processing step that improves scoring accuracy.
+
+        Args:
+            min_score_threshold: Only enrich jobs with score >= this value
+            max_jobs: Maximum number of jobs to enrich (LLM calls are expensive)
+
+        Returns:
+            Dict with enrichment statistics
+        """
+        enricher = EnrichmentService()
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        # Fetch high-scoring jobs that haven't been enriched yet
+        cursor.execute(
+            """
+            SELECT id, company, role_title_raw, description_excerpt
+            FROM applications
+            WHERE score >= ? AND enriched_data IS NULL
+            ORDER BY score DESC
+            LIMIT ?
+            """,
+            (min_score_threshold, max_jobs),
+        )
+        jobs_to_enrich = cursor.fetchall()
+        logger.info(f"Enriching {len(jobs_to_enrich)} jobs with AI analysis")
+
+        enriched_count = 0
+        failed_count = 0
+
+        for job_id, company, title, description in jobs_to_enrich:
+            if not description:
+                logger.warning(f"Job {job_id} has no description, skipping enrichment")
+                continue
+
+            try:
+                enriched_data = enricher.enrich_job(title, description)
+                enriched_json = json.dumps(enriched_data)
+
+                # Update the database with enriched data
+                cursor.execute(
+                    "UPDATE applications SET enriched_data = ? WHERE id = ?",
+                    (enriched_json, job_id),
+                )
+
+                # Now apply enrichment adjustments to the score
+                if enriched_data.get("enrichment_status") == "success":
+                    cursor.execute("SELECT * FROM applications WHERE id = ?", (job_id,))
+                    job_row = cursor.fetchone()
+                    if job_row:
+                        # Get current score result
+                        cursor.execute(
+                            "SELECT score, fit_band, decision_reason FROM applications WHERE id = ?",
+                            (job_id,),
+                        )
+                        score, fit_band, decision_reason = cursor.fetchone()
+                        score_result = {
+                            "score": float(score or 0.0),
+                            "fit_band": fit_band,
+                            "decision_reason": decision_reason,
+                        }
+
+                        # Apply enrichment adjustments
+                        adjusted_result = self.scorer.apply_enrichment_adjustments(
+                            score_result, enriched_data
+                        )
+
+                        if adjusted_result.get("enrichment_adjustment") != 0:
+                            cursor.execute(
+                                "UPDATE applications SET score = ?, fit_band = ?, decision_reason = ? WHERE id = ?",
+                                (
+                                    adjusted_result["score"],
+                                    adjusted_result["fit_band"],
+                                    adjusted_result["decision_reason"],
+                                    job_id,
+                                ),
+                            )
+                            logger.info(
+                                f"Job {job_id}: enrichment adjustment={adjusted_result['enrichment_adjustment']}, "
+                                f"new_score={adjusted_result['score']}"
+                            )
+
+                enriched_count += 1
+            except Exception as exc:
+                logger.error(f"Failed to enrich job {job_id}: {exc}")
+                failed_count += 1
+
+        conn.commit()
+        conn.close()
+
+        return {
+            "total_enriched": enriched_count,
+            "failed": failed_count,
+            "jobs_processed": len(jobs_to_enrich),
+        }

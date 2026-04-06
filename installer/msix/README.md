@@ -33,6 +33,10 @@ $env:JOBSEARCH_MSIX_PFX_PASSWORD="your-password"
 installer\msix\build_msix.bat
 ```
 
+Upgrade note:
+- if you are upgrading from the older split-database v1 release, run the legacy migration script once before launching the new build
+- current builds upgrade the unified SQLite schema in place, but they do not auto-merge the old split DB pair
+
 Recommended build flow:
 1. Rebuild `installer\wheels` first via `installer\build_installer.bat` if dependencies changed
 2. Then run `installer\msix\build_msix.bat`

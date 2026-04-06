@@ -5,7 +5,7 @@ import sqlite3
 
 from jobsearch.db.migrations import migrate_stage_history
 
-SCHEMA_VERSION: int = 4
+SCHEMA_VERSION: int = 5
 
 # ── DDL Statements ───────────────────────────────────────────────────────────
 
@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS applications (
     penalized_keywords TEXT,
     decision_reason    TEXT,
     description_excerpt TEXT,
+    enriched_data      TEXT,  -- JSON: {visa_sponsor, tech_stack, ic_vs_manager, enrichment_status}
     
     -- CRM & Profile fields
     location           TEXT,
@@ -264,6 +265,17 @@ CREATE TABLE IF NOT EXISTS schema_meta (
 )
 """
 
+_CREATE_LLM_COST_LOG = """
+CREATE TABLE IF NOT EXISTS llm_cost_log (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_date   TEXT    NOT NULL,  -- ISO date YYYY-MM-DD
+    tokens_used INTEGER NOT NULL,
+    model      TEXT    NOT NULL,  -- e.g., "gemini-1.5-flash", "gpt-4o-mini"
+    service    TEXT    NOT NULL,  -- e.g., "enrichment", "profile"
+    created_at TEXT    NOT NULL   -- ISO datetime
+)
+"""
+
 _DDL_STATEMENTS = [
     _CREATE_APPLICATIONS,
     _CREATE_EVENTS,
@@ -279,6 +291,7 @@ _DDL_STATEMENTS = [
     _CREATE_QUESTION_BANK,
     _CREATE_COMPANY_PROFILES,
     _CREATE_SCHEMA_META,
+    _CREATE_LLM_COST_LOG,
 ]
 
 
@@ -316,6 +329,9 @@ def init_db(conn: sqlite3.Connection) -> None:
     _add_column_if_missing(cur, "applications", "weeks_per_year", "weeks_per_year REAL")
     _add_column_if_missing(cur, "applications", "normalized_compensation_usd", "normalized_compensation_usd REAL")
     _add_column_if_missing(cur, "applications", "status", "TEXT NOT NULL DEFAULT 'considering'")
+    _add_column_if_missing(cur, "applications", "ai_analysis", "TEXT")
+    _add_column_if_missing(cur, "applications", "ai_match_score", "REAL")
+    _add_column_if_missing(cur, "applications", "enriched_data", "enriched_data TEXT")
     migrate_stage_history(conn)
     cur.execute("CREATE TABLE IF NOT EXISTS schema_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
     cur.execute(

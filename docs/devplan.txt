@@ -1,0 +1,429 @@
+Plan: ApplyPilot Gap Analysis & Dev Prompts
+
+ Context
+
+ The user wants a product-level comparison between JobSearch (our product) and ApplyPilot (.tmp_applypilot),
+ identifying features worth borrowing, and producing ready-to-use GPT/Claude development prompts to implement them.
+
+ ---
+ Gap Analysis: What ApplyPilot Has That We Don't
+
+ Already Covered (Skip)
+
+ - Multi-source job scraping (we have 15+ ATS adapters + aggregators)
+ - Application CRM / tracking pipeline
+ - Company profiles, contacts, analytics
+ - YAML-driven configuration
+
+ NOT Worth Borrowing
+
+ - Auto-apply browser automation — spray-and-pray is not our positioning; JobSearch is quality-first
+ - CAPTCHA solving (CapSolver) — legal/ethical gray area
+ - Mass volume discovery — we target curated company lists, not firehose scraping
+
+ ---
+ What IS Worth Borrowing (Prioritized)
+
+ Priority 1 — High Value, Reasonable Effort
+
+ A. LLM Scoring Layer
+ ApplyPilot scores each job 1-10 via LLM against the candidate's resume, producing structured output: SCORE / KEYWORDS
+ / REASONING. Our scoring is rule-based keyword matching. LLM scoring can serve as a secondary signal, a tie-breaker
+ for close calls, and a source of human-readable "why this job fits you" copy.
+
+ B. Resume Tailoring Module
+ Per-job resume generation: LLM rewrites bullets using job's language, reorders sections by relevance, respects a
+ skills boundary, and injects real user data (header, metrics) via code (not LLM). Validated by banned-word checker +
+ LLM judge. This is the single highest-value AI feature we lack.
+
+ C. Cover Letter Generation
+ 3-paragraph targeted cover letters: achievement → relevant accomplishment with metrics → company-specific close. Same
+ validation layer as resume tailoring.
+
+ Priority 2 — Moderate Value, Targeted Effort
+
+ D. Multi-Provider LLM Setup
+ Auto-detects Gemini (free), OpenAI, or local models from env vars. Exponential backoff retry with rate-limit
+ awareness. Enables users to bring their own API key (or use Gemini free tier).
+
+ E. Banned Word & Fabrication Validation
+ 100+ banned marketing phrases (leverage, synergy, cutting-edge, seamlessly…) + LLM judge pass to catch subtle
+ fabrications. Critical quality gate before any AI-generated content reaches the user.
+
+ F. Skills Boundary in Profile
+ Structured skills list (languages, frameworks, tools) that constrains what the LLM can claim. With real_metrics and
+ preserved_companies as immutable facts. Our current profile is just raw resume text.
+
+ Priority 3 — Incremental, Lower Urgency
+
+ G. Workday CXS Direct API
+ ApplyPilot reverse-engineered the undocumented Workday CXS JSON API — pure HTTP, no browser. Our Workday adapter
+ currently uses Playwright/requests. Replacing it would improve speed and reliability for the 48 known Workday tenants.
+
+ H. Three-Tier Enrichment Cascade for Generic Adapter
+ For our GenericAdapter, add: JSON-LD structured data → pre-built CSS patterns → LLM extraction as fallback. Reduces
+ scraping failures on custom career sites.
+
+ I. LLM-Extracted ATS Keywords per Job
+ Store the keywords LLM extracts from the job description (as part of scoring). Surface these in the Resume Tailoring
+ tab to show the candidate exactly which terms to incorporate.
+
+ ---
+ Dev Prompts
+
+ ---
+ PROMPT 1 — Multi-Provider LLM Client
+
+ You are implementing a multi-provider LLM client for a Python project called JobSearch.
+
+ The project is at src/jobsearch/llm.py (currently a stub/placeholder).
+
+ Implement a thread-safe LLM client class `LLMClient` with these requirements:
+
+ **Provider auto-detection (in priority order):**
+ 1. Google Gemini — detected via `GEMINI_API_KEY` env var
+    - Try OpenAI-compatible endpoint first: `https://generativelanguage.googleapis.com/v1beta/openai/`
+    - On 403 error, fall back to native `generateContent` REST API
+    - Default model: `gemini-2.0-flash`
+ 2. OpenAI — detected via `OPENAI_API_KEY` env var
+    - Default model: `gpt-4o-mini`
+ 3. Local model — detected via `LLM_URL` env var
+    - OpenAI-compatible endpoint
+    - Default model: `qwen2.5:14b` (prepend `/no_think` to system prompts)
+
+ `LLM_MODEL` env var overrides the default model for whichever provider is active.
+
+ **Retry behavior:**
+ - Exponential backoff: attempts 1-5 with delays 4s, 8s, 16s, 32s, 60s
+ - Respect `Retry-After` headers on 429 responses
+ - 120s request timeout per attempt
+ - Log which attempt number on retry
+
+ **Interface:**
+ ```python
+ class LLMClient:
+     def chat(self, messages: list[dict], temperature: float = 0.3) -> str:
+         """Send messages, return text response. Raises after max retries."""
+
+     @classmethod
+     def get(cls) -> "LLMClient":
+         """Return singleton instance (thread-safe)."""
+
+ Integration points:
+ - Import path: from jobsearch.llm import LLMClient
+ - Settings module: src/jobsearch/config/settings.py (check for any existing env loading)
+ - No dependency on openai package; use httpx or requests for HTTP
+
+ Write the implementation. Include a __main__ block that sends a test message and prints the response.
+
+ ---
+
+ ### PROMPT 2 — LLM Scoring Layer
+
+ You are adding an LLM scoring layer to the JobSearch scoring pipeline.
+
+ Context:
+ - Existing scorer: src/jobsearch/scraper/scoring.py — rule-based keyword scoring, produces score (0-100), fit_band,
+ matched_keywords, penalized_keywords
+ - LLM client: src/jobsearch/llm.py (LLMClient.get())
+ - Database: results/jobsearch.db (SQLite)
+ - Applications table: src/jobsearch/db/schema.py
+
+ Task:
+ Add a new function llm_score_job(job: dict, resume_text: str) -> dict in a new file
+ src/jobsearch/scraper/llm_scoring.py.
+
+ Scoring prompt spec:
+ - Input: candidate resume text + job full description
+ - Output must be constrained to exactly this format (parsed by regex, not JSON):
+ SCORE: [1-10]
+ KEYWORDS: [comma-separated ATS keywords from JD that match candidate]
+ REASONING: [2-3 sentences explaining fit]
+ - Criteria:
+   - 9-10: Perfect match — direct experience in required skills
+   - 7-8: Strong — most skills present, minor gaps
+   - 5-6: Moderate — some relevant skills, missing key ones
+   - 3-4: Weak — significant gaps, needs ramp-up
+   - 1-2: Poor — different field or level entirely
+ - Weight technical skills heavily over soft skills
+
+ Output dict:
+ {
+     "llm_score": int,           # 1-10
+     "llm_keywords": list[str],  # extracted ATS keywords
+     "llm_reasoning": str,       # 2-3 sentence explanation
+     "llm_scored_at": str        # ISO timestamp
+ }
+
+ Database changes:
+ - Add columns to applications table: llm_score INTEGER, llm_keywords TEXT, llm_reasoning TEXT, llm_scored_at TEXT
+ - Add migration in src/jobsearch/db/migrate_*.py (follow existing migration pattern)
+
+ CLI integration:
+ - Add python -m jobsearch.cli llm-score command that:
+   - Loads resume from search settings
+   - Scores all jobs with a full description that haven't been LLM-scored yet
+   - Prints progress and final distribution histogram
+
+ UI integration:
+ - In src/jobsearch/views/tracker_page.py, show llm_score and llm_reasoning in the job detail panel's Overview tab
+ - Show LLM score alongside rule-based score (not replacing it)
+
+ Do not replace the existing rule-based scorer. The LLM score is additive.
+
+ ---
+
+ ### PROMPT 3 — Resume Tailoring Module
+
+ You are implementing a resume tailoring module for the JobSearch application.
+
+ Architecture (critical — follow exactly):
+ - LLM generates resume CONTENT as structured JSON
+ - Python CODE injects the user's real header (name, email, phone, location) — the LLM never sees or modifies these
+ - A validation layer checks the output before saving
+
+ Files to create:
+ - src/jobsearch/services/tailor_service.py — main tailoring logic
+ - src/jobsearch/services/content_validator.py — banned word + fabrication checks
+
+ Context:
+ - LLM client: from jobsearch.llm import LLMClient
+ - User profile (resume text, contact info): loaded from search preferences via src/jobsearch/config/settings.py
+ - Database: applications table with job_id, full_description, matched_keywords
+
+ ---
+ TailorService.tailor(application_id: int) -> Path:
+
+ 1. Load: application full_description, matched_keywords, and user profile (resume text + contact info)
+ 2. Build skills boundary from profile (a structured list of programming_languages, frameworks, tools — if not yet in
+ settings, add these fields to the settings YAML and UI)
+ 3. LLM prompt spec:
+   - Task: Rewrite resume to match this job posting
+   - Reorder sections by relevance to JD
+   - Rewrite every bullet to use JD language (no verbatim copy)
+   - Rebuild summary from scratch (2-3 sentences)
+   - Reorder skills (must-haves from JD first)
+   - Skills boundary: only use languages/frameworks/tools from provided list; allow 2-3 closely related tools as
+ stretch
+   - Preserved facts: company names, project names, real metrics — NEVER alter these
+   - Output: JSON with keys title, summary, skills, experience (list of roles with bullets), projects, education
+   - Fit on 1 page
+ 4. Code-inject header: After LLM returns JSON, inject name, email, phone, city from user profile into the output
+ before rendering
+ 5. Render to plain text (Markdown-like format)
+ 6. Validate (see ContentValidator below)
+ 7. Save to results/tailored_resumes/{application_id}_{company}_{role}.txt
+ 8. Update DB: tailored_resume_path, tailored_at, tailor_attempts
+
+ Retry: Max 3 attempts. Each retry starts a fresh conversation.
+
+ ---
+ ContentValidator.validate(text: str, mode: str = "normal") -> ValidationResult:
+
+ Banned words list (check at word boundary, case-insensitive):
+ leverage, synergy, cutting-edge, transformative, seamlessly, robust, scalable, innovative, spearheaded, orchestrated,
+ revolutionize, paradigm, holistic, proactive, thought leader, best-in-class, deep dive, circle back, bandwidth, move
+ the needle, low-hanging fruit, boilerplate, mission-critical, game-changer, world-class, state-of-the-art, dynamic,
+ passionate, results-driven, detail-oriented, team player, go-getter, self-starter, hard worker, fast-paced, synergize,
+  utilize (when "use" works), leverage (as verb), impactful, learnings, actionable
+
+ Modes:
+ - strict: banned words = errors, fail validation
+ - normal: banned words = warnings only (default)
+ - lenient: skip banned word check entirely
+
+ LLM judge (only in strict/normal modes): Secondary prompt asking "Does this resume contain any fabricated companies,
+ inflated metrics, or tools/skills the candidate clearly doesn't have based on the source resume?" Returns pass/fail
+ with reason.
+
+ Return ValidationResult(passed: bool, warnings: list[str], errors: list[str]).
+
+ ---
+ UI integration:
+ - The Resume Tailoring tab in src/jobsearch/views/tracker_page.py already has placeholder fields
+ - Wire up a "Generate Tailored Resume" button that calls TailorService.tailor(application_id)
+ - Show the tailored resume text in a read-only text area
+ - Show validation warnings/errors in an expander
+ - Show keyword gaps (JD keywords not in tailored resume) as a list
+
+ ---
+
+ ### PROMPT 4 — Cover Letter Generation
+
+ You are adding cover letter generation to the JobSearch application.
+
+ Context:
+ - Tailoring service exists: src/jobsearch/services/tailor_service.py
+ - Validator exists: src/jobsearch/services/content_validator.py
+ - LLM client: from jobsearch.llm import LLMClient
+ - Resume text and profile available via settings
+
+ Create src/jobsearch/services/cover_letter_service.py:
+
+ CoverLetterService.generate(application_id: int) -> Path:
+
+ 1. Load: application full_description, company name, role title, tailored resume (if exists, else base resume)
+ 2. LLM prompt spec — produce exactly 3 paragraphs, max 300 words total:
+   - Paragraph 1: The most specific thing the candidate built that directly solves the hiring manager's stated problem.
+  Never open with "I'm excited to apply" or "I'm passionate about."
+   - Paragraph 2: Two most relevant measurable achievements from resume tied to job requirements. Must contain a number
+  (metric), a tool name, and an outcome in every sentence.
+   - Paragraph 3: One specific thing about this company FROM the job description (not generic praise), then close.
+   - Voice: Engineer's voice — direct, short sentences, no formal hedging
+   - Never include meta-commentary ("As you can see," "This demonstrates," "I believe")
+   - Salutation: "Dear Hiring Manager,"
+   - Sign-off: just the candidate's full name
+ 3. Validate using ContentValidator (normal mode)
+   - Additional banned phrases for cover letters: "I am excited to apply", "I am passionate about", "This
+ demonstrates", "I appreciate the opportunity", "As you can see", "I believe I would be"
+   - Check signature format: must end with just the candidate's name on last line
+ 4. Save to results/cover_letters/{application_id}_{company}_{role}.txt
+ 5. Update DB: cover_letter_path, cover_letter_at, cover_attempts
+
+ Retry: Max 3 attempts with fresh conversation each time.
+
+ UI integration:
+ - Add "Generate Cover Letter" button to the Resume Tailoring tab in the application detail panel
+ - Display cover letter in editable text area (allow user to tweak before saving)
+ - Show word count and warn if > 300 words
+ - "Copy to Clipboard" button
+
+ ---
+
+ ### PROMPT 5 — Structured Skills Profile
+
+ You are adding a structured skills profile to the JobSearch settings system.
+
+ Context:
+ - Settings stored in YAML: config/job_search_preferences.yaml (loaded by src/jobsearch/config/settings.py)
+ - Settings UI: src/jobsearch/views/ (there's a setup/settings page)
+ - This change is needed by the resume tailoring module to enforce a skills boundary
+
+ Task:
+
+ 1. Add these fields to job_search_preferences.yaml (with sensible defaults/placeholders):
+ # Skills Boundary (used for resume tailoring — LLM constrained to these only)
+ skills:
+   programming_languages: []     # e.g. ["Python", "Go", "TypeScript"]
+   frameworks: []                # e.g. ["FastAPI", "React", "Postgres"]
+   tools: []                     # e.g. ["Docker", "AWS", "Terraform", "Kubernetes"]
+
+ # Resume Facts (immutable — LLM never alters these)
+ resume_facts:
+   preserved_companies: []       # e.g. ["Acme Corp", "Startup Inc"]
+   preserved_projects: []        # e.g. ["ProjectX", "OpenSourceLib"]
+   real_metrics: []              # e.g. ["scaled to 1M RPM", "reduced cost by 40%"]
+
+ # Contact Info (injected by code, not LLM)
+ contact:
+   full_name: ""
+   email: ""
+   phone: ""
+   city: ""
+   linkedin_url: ""
+   github_url: ""
+   portfolio_url: ""
+
+ 2. Update src/jobsearch/config/settings.py to load these new fields and expose them as typed properties
+ 3. Add a "Skills Profile" section to the Search Settings page in Streamlit (src/jobsearch/views/):
+   - Comma-separated or tag-style input for each list field
+   - Resume Facts section with text areas
+   - Contact info form (pre-fills from existing data if available)
+   - Save button that writes back to YAML
+
+ Keep it clean — add to an existing settings page tab, don't create a new page unless necessary.
+
+ ---
+
+ ### PROMPT 6 — Workday CXS Direct API Adapter
+
+ You are improving the Workday scraper adapter for JobSearch.
+
+ Context:
+ - Existing Workday adapter: src/jobsearch/scraper/adapters/workday.py
+ - It currently uses requests/Playwright to scrape Workday career pages
+ - ApplyPilot reverse-engineered the undocumented Workday CXS JSON API
+
+ Task:
+ Add a WorkdayCXSAdapter that hits the CXS API directly (no browser) as a faster alternative for known Workday tenants.
+
+ CXS API spec:
+ - Endpoint pattern: https://{tenant}.wd{N}.myworkdayjobs.com/wday/cxs/{tenant}/{site_id}/jobs
+ - Method: POST
+ - Headers: Content-Type: application/json, Accept: application/json
+ - Payload:
+ {
+   "appliedFacets": {},
+   "limit": 20,
+   "offset": 0,
+   "searchText": "software engineer"
+ }
+ - Response: {"jobPostings": [{"title": "...", "externalPath": "/job/...", "locationsText": "...", "postedOn": "...",
+ "bulletFields": [...]}], "total": N}
+ - Full description: Separate GET to https://{tenant}.wd{N}.myworkdayjobs.com/wday/cxs/{tenant}/{site_id}{externalPath}
+  → {"jobPostingInfo": {"jobDescription": "..."}}
+
+ Implement:
+ 1. WorkdayCXSAdapter(BaseAdapter) in src/jobsearch/scraper/adapters/workday_cxs.py
+   - Accepts tenant, site_id, subdomain (wd1..wd25), queries from company config
+   - Iterates paginated results (offset by limit until total exhausted)
+   - Fetches full description per job
+   - Returns standard Job objects
+ 2. Update src/jobsearch/scraper/adapters/workday.py to try CXS first; fall back to existing browser-based method if
+ CXS returns 404/403
+ 3. Add a workday_cxs adapter key to the company registry YAML schema docs
+ 4. Pre-populate config/job_search_companies.yaml with 5 well-known Workday tenants as examples (with correct
+ tenant/site_id values):
+   - nvidia / NVIDIAExternalCareerSite / wd1
+   - salesforce / salesforce / wd1
+   - Add 3 others from your knowledge
+
+ Test: Add a --test-cxs flag to the CLI that hits one tenant and prints the first 5 jobs.
+
+ ---
+
+ ### PROMPT 7 — LLM Keywords in Scoring + Resume Gap Display
+
+ You are wiring LLM-extracted keywords into the JobSearch resume tailoring flow.
+
+ Context:
+ - LLM scoring (Prompt 2) stores llm_keywords TEXT per job in the applications table
+ - These are ATS keywords the LLM extracted from the job description that match the candidate
+ - Resume tailoring tab: src/jobsearch/views/tracker_page.py
+ - Base resume text: in search preferences settings
+
+ Task:
+
+ 1. In the LLM scoring output, also extract "gap keywords" — keywords in the JD that are relevant but NOT found in the
+ candidate's resume. Store as llm_gap_keywords TEXT in the DB.
+
+ 1. Update the scoring prompt: After SCORE/KEYWORDS/REASONING, add:
+ GAP_KEYWORDS: [comma-separated important JD keywords NOT in candidate's resume]
+ 2. In the Resume Tailoring tab of the application detail panel:
+   - Section: "ATS Keywords to Include"
+       - Green badges: llm_keywords (already on resume)
+     - Red badges: llm_gap_keywords (missing from resume — high priority to incorporate)
+   - These update automatically when LLM scoring runs; no button needed
+   - Tooltip on hover: "These came from the job description"
+ 3. In the Analytics page (src/jobsearch/views/analytics_page.py), add a "Resume Keyword Gaps" section:
+   - Aggregate all llm_gap_keywords across jobs scoring 7+ (strong fit)
+   - Show top 20 most frequent gap keywords as a bar chart
+   - Label: "Skills to develop or emphasize — appear most often in your best-matched jobs"
+
+ This surfaces skill-building priorities without requiring the user to manually compare resumes to job descriptions.
+
+ ---
+
+ ## Verification
+
+ After implementing each prompt, verify:
+
+ 1. **LLM Client**: Run `python -m jobsearch.llm` — should print a test response and show which provider was detected
+ 2. **LLM Scoring**: Run `python -m jobsearch.cli llm-score` — should score pending jobs and print histogram
+ 3. **Tailoring**: Open dashboard → any application → Resume Tailoring tab → click Generate → should produce a `.txt`
+ file in `results/tailored_resumes/`
+ 4. **Cover Letter**: Same tab → Generate Cover Letter → should produce a `.txt` file in `results/cover_letters/`
+ 5. **Skills Profile**: Open Search Settings → Skills Profile section → add a skill → save → verify it appears in
+ `config/job_search_preferences.yaml`
+ 6. **Workday CXS**: Run `python -m jobsearch.cli run --test-cxs` → should print jobs from a Workday tenant
+ 7. **Keyword Gaps**: Run llm-score on a few jobs → open Analytics → should see Resume Keyword Gaps chart

@@ -6,6 +6,12 @@ openpyxl==3.1.2
 streamlit==1.37.1
 pydantic==2.9.2
 pydantic-settings==2.5.2
-click==8.1.7
+click==8.2.1
+numpy==1.26.3
 pypdf==5.4.0
-python-jobspy
+jobspy-enhanced-scraper
+google-generativeai
+
+# Optional: for LLM-driven generic scraping (large install ~750MB)
+# crawl4ai
+# After install run: playwright install chromium
