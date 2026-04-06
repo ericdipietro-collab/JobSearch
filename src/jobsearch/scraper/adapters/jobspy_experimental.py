@@ -18,6 +18,65 @@ from jobsearch.scraper.models import Job
 
 class JobSpyExperimentalAdapter(BaseAdapter):
     @staticmethod
+    def _glassdoor_location(location: str) -> str:
+        text = str(location or "").strip()
+        if not text:
+            return ""
+        return text.split(",")[0].strip()
+
+    @staticmethod
+    def _is_transient_error(exc: Exception) -> bool:
+        text = str(exc or "").lower()
+        return any(token in text for token in ("timeout", "429", "connection", "reset", "refused", "substring not found"))
+
+    def _scrape_jobs_with_retry(self, scrape_jobs, *, max_retries: int = 2, backoff_seconds: float = 5.0, **kwargs):
+        last_exc: Exception | None = None
+        for attempt in range(max_retries + 1):
+            try:
+                return scrape_jobs(**kwargs)
+            except Exception as exc:
+                last_exc = exc
+                if attempt >= max_retries or not self._is_transient_error(exc):
+                    raise
+                time.sleep(backoff_seconds * (attempt + 1))
+        if last_exc:
+            raise last_exc
+        return None
+
+    def _location_allowed(self, record: Dict[str, Any], config: Dict[str, Any]) -> bool:
+        scorer = getattr(self, "scorer", None)
+        if scorer is None or not all(
+            hasattr(scorer, attr)
+            for attr in (
+                "us_only",
+                "allow_international_remote",
+                "_is_international_remote",
+                "_is_remote_role",
+                "_is_hybrid_role",
+                "_is_onsite_role",
+                "_matches_local_area",
+                "local_hybrid_enabled",
+                "location_policy",
+            )
+        ):
+            return True
+        location = self._first_non_empty(record, "location", "job_location")
+        description = self._first_non_empty(record, "description", "description_text", "snippet")
+        is_remote = record.get("is_remote")
+        if scorer.us_only and not scorer.allow_international_remote and scorer._is_international_remote(location):
+            return False
+        if scorer._is_remote_role(location, description, is_remote):
+            return True
+        if scorer._is_hybrid_role(location, description) or scorer._is_onsite_role(location, description) or location.strip():
+            local_hybrid_allowed = (
+                scorer.local_hybrid_enabled
+                and scorer.location_policy in {"remote_only", "hybrid_only", "remote_or_hybrid"}
+                and scorer._matches_local_area(location, description)
+            )
+            return local_hybrid_allowed
+        return True
+
+    @staticmethod
     def _first_non_empty(record: Dict[str, Any], *keys: str) -> str:
         for key in keys:
             value = record.get(key)
@@ -110,10 +169,14 @@ class JobSpyExperimentalAdapter(BaseAdapter):
                 metrics.mark_attempted(site)
                 raw_payload = []
                 for query in queries:
-                    payload = scrape_jobs(
+                    site_location = location or None
+                    if site == "glassdoor":
+                        site_location = self._glassdoor_location(location) or None
+                    payload = self._scrape_jobs_with_retry(
+                        scrape_jobs,
                         site_name=[site],
                         search_term=self._query_for_site(query, site, config),
-                        location=location or None,
+                        location=site_location,
                         results_wanted=max(1, results_wanted),
                         hours_old=max(1, hours_old),
                         country_indeed=country_indeed,
@@ -132,6 +195,8 @@ class JobSpyExperimentalAdapter(BaseAdapter):
                     title = self._first_non_empty(record, "title", "job_title", "name")
                     url = self._first_non_empty(record, "job_url", "url", "link")
                     if not title or not url:
+                        continue
+                    if not self._location_allowed(record, config):
                         continue
                     record["canonical_job_url"] = self._canonical_url(record, url)
                     site_records.append(record)

@@ -102,6 +102,30 @@ class _StubScorer:
         return {"score": 0}
 
 
+class _LocationAwareStubScorer(_StubScorer):
+    us_only = True
+    allow_international_remote = False
+    local_hybrid_enabled = True
+    location_policy = "remote_only"
+
+    def _is_international_remote(self, location: str) -> bool:
+        return False
+
+    def _is_remote_role(self, location: str, description: str, is_remote=None) -> bool:
+        if isinstance(is_remote, bool):
+            return is_remote
+        return "remote" in str(location or "").lower()
+
+    def _is_hybrid_role(self, location: str, description: str) -> bool:
+        return "hybrid" in str(location or "").lower()
+
+    def _is_onsite_role(self, location: str, description: str) -> bool:
+        return "onsite" in str(location or "").lower()
+
+    def _matches_local_area(self, location: str, description: str) -> bool:
+        return "denver" in str(location or "").lower()
+
+
 class _FakeWorkdayAdapter(WorkdayAdapter):
     def __init__(self, payload=None, html_by_url=None):
         super().__init__(session=None, scorer=None)
@@ -196,6 +220,54 @@ class _FakeJobSpyModule:
                 "salary_text": "$180,000 - $210,000",
             }
         ]
+
+
+class _RecordingJobSpyModule:
+    calls = []
+
+    @staticmethod
+    def scrape_jobs(**kwargs):
+        _RecordingJobSpyModule.calls.append(kwargs)
+        return []
+
+
+def _jobspy_retry_then_success(**kwargs):
+    state = getattr(_jobspy_retry_then_success, "_state", {"count": 0})
+    state["count"] += 1
+    _jobspy_retry_then_success._state = state
+    if state["count"] < 2:
+        raise RuntimeError("429 too many requests")
+    return [
+        {
+            "title": "Senior Product Manager",
+            "company": "RetryCo",
+            "job_url": "https://www.indeed.com/viewjob?jk=retry-1",
+            "direct_url": "https://jobs.retryco.com/roles/1",
+            "location": "Remote - United States",
+            "description": "Recovered after retry",
+        }
+    ]
+
+
+def _jobspy_location_mix(**kwargs):
+    return [
+        {
+            "title": "Senior Product Manager",
+            "company": "GoodCo",
+            "job_url": "https://www.indeed.com/viewjob?jk=good-1",
+            "direct_url": "https://jobs.goodco.com/roles/1",
+            "location": "Remote - United States",
+            "description": "Remote role",
+        },
+        {
+            "title": "Senior Product Manager",
+            "company": "FarAwayCo",
+            "job_url": "https://www.indeed.com/viewjob?jk=bad-1",
+            "direct_url": "https://jobs.farawayco.com/roles/1",
+            "location": "New York, NY, US",
+            "description": "Onsite role",
+        },
+    ]
 
 
 def _jobspy_multi_site_scrape_jobs(**kwargs):
@@ -392,23 +464,23 @@ class ScraperAdapterRegressionTests(unittest.TestCase):
     def test_jobspy_company_site_names_override_runtime_defaults(self):
         original = sys.modules.get("jobspy")
         sys.modules["jobspy"] = types.SimpleNamespace(scrape_jobs=_FakeJobSpyModule.scrape_jobs)
-        with mock.patch("jobsearch.scraper.jobspy_validation.get_runtime_setting", return_value="indeed"):
-            try:
-                adapter = JobSpyExperimentalAdapter(session=None, scorer=None)
-                jobs = adapter.scrape(
-                    {
-                        "name": "JobSpy Google Experimental",
-                        "search_queries": ["product manager"],
-                        "site_names": "google",
-                    }
-                )
-                self.assertEqual(len(jobs), 1)
-                self.assertIn('"source_site": "google"', jobs[0].notes)
-            finally:
-                if original is None:
-                    sys.modules.pop("jobspy", None)
-                else:
-                    sys.modules["jobspy"] = original
+        try:
+            scorer = types.SimpleNamespace(prefs={"jobspy_experimental": {"enabled_sites": ["indeed"]}})
+            adapter = JobSpyExperimentalAdapter(session=None, scorer=scorer)
+            jobs = adapter.scrape(
+                {
+                    "name": "JobSpy Google Experimental",
+                    "search_queries": ["product manager"],
+                    "site_names": "google",
+                }
+            )
+            self.assertEqual(len(jobs), 1)
+            self.assertIn('"source_site": "google"', jobs[0].notes)
+        finally:
+            if original is None:
+                sys.modules.pop("jobspy", None)
+            else:
+                sys.modules["jobspy"] = original
 
     def test_jobspy_adapter_clusters_same_job_across_sites_and_continues_on_failure(self):
         original = sys.modules.get("jobspy")
@@ -432,6 +504,57 @@ class ScraperAdapterRegressionTests(unittest.TestCase):
             self.assertIn("failed=1", adapter.last_note)
             self.assertIn("google:", adapter.last_note)
             self.assertIn("indeed:", adapter.last_note)
+        finally:
+            if original is None:
+                sys.modules.pop("jobspy", None)
+            else:
+                sys.modules["jobspy"] = original
+
+    def test_jobspy_glassdoor_uses_city_only_location(self):
+        original = sys.modules.get("jobspy")
+        _RecordingJobSpyModule.calls = []
+        sys.modules["jobspy"] = types.SimpleNamespace(scrape_jobs=_RecordingJobSpyModule.scrape_jobs)
+        try:
+            adapter = JobSpyExperimentalAdapter(session=None, scorer=_StubScorer())
+            adapter.scrape(
+                {
+                    "name": "JobSpy Glassdoor Experimental",
+                    "search_queries": ["product manager"],
+                    "site_names": "glassdoor",
+                    "location_filter": "San Francisco, CA",
+                }
+            )
+            self.assertEqual(len(_RecordingJobSpyModule.calls), 1)
+            self.assertEqual(_RecordingJobSpyModule.calls[0]["location"], "San Francisco")
+        finally:
+            if original is None:
+                sys.modules.pop("jobspy", None)
+            else:
+                sys.modules["jobspy"] = original
+
+    def test_jobspy_retries_transient_failures(self):
+        original = sys.modules.get("jobspy")
+        _jobspy_retry_then_success._state = {"count": 0}
+        sys.modules["jobspy"] = types.SimpleNamespace(scrape_jobs=_jobspy_retry_then_success)
+        try:
+            adapter = JobSpyExperimentalAdapter(session=None, scorer=_StubScorer())
+            jobs = adapter.scrape({"name": "JobSpy Indeed Experimental", "search_queries": ["product manager"], "site_names": "indeed"})
+            self.assertEqual(len(jobs), 1)
+            self.assertEqual(_jobspy_retry_then_success._state["count"], 2)
+        finally:
+            if original is None:
+                sys.modules.pop("jobspy", None)
+            else:
+                sys.modules["jobspy"] = original
+
+    def test_jobspy_prefilters_wrong_location_before_scoring(self):
+        original = sys.modules.get("jobspy")
+        sys.modules["jobspy"] = types.SimpleNamespace(scrape_jobs=_jobspy_location_mix)
+        try:
+            adapter = JobSpyExperimentalAdapter(session=None, scorer=_LocationAwareStubScorer())
+            jobs = adapter.scrape({"name": "JobSpy Indeed Experimental", "search_queries": ["product manager"], "site_names": "indeed"})
+            self.assertEqual(len(jobs), 1)
+            self.assertEqual(jobs[0].company, "GoodCo")
         finally:
             if original is None:
                 sys.modules.pop("jobspy", None)
