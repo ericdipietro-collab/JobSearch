@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import re
 from typing import Any, Dict, List
-
 from jobsearch.config.settings import settings
+from jobsearch.scraper.query_tiers import search_query_text_lines
 
 ALLOWED_JOBSPY_SITES = {
     "google",
@@ -61,12 +60,7 @@ def _company_sites(company_config: Dict[str, Any]) -> list[str]:
 
 
 def split_jobspy_queries(raw: Any) -> list[str]:
-    if isinstance(raw, (list, tuple)):
-        parts = [str(item).strip() for item in raw]
-    else:
-        text = str(raw or "").replace("\r", "\n")
-        parts = [part.strip() for part in re.split(r"[\n|]+", text)]
-    return [part for part in parts if part]
+    return search_query_text_lines(raw)
 
 
 def load_jobspy_settings(preferences: Dict[str, Any], company_config: Dict[str, Any]) -> Dict[str, Any]:
@@ -74,7 +68,6 @@ def load_jobspy_settings(preferences: Dict[str, Any], company_config: Dict[str, 
     company_sites = _company_sites(company_config)
     enabled_sites = company_sites or _split_sites(
         cfg.get("enabled_sites")
-        or settings.jobspy_site_names
         or "google"
     )
     valid_sites = [site for site in enabled_sites if site in ALLOWED_JOBSPY_SITES]
@@ -86,8 +79,8 @@ def load_jobspy_settings(preferences: Dict[str, Any], company_config: Dict[str, 
         _as_int(
             company_config.get("results_wanted")
             or cfg.get("results_wanted_per_site")
-            or settings.jobspy_results_per_run,
-            settings.jobspy_results_per_run,
+            or 20,
+            20,
         ),
     )
     max_total_results = max(
@@ -95,9 +88,9 @@ def load_jobspy_settings(preferences: Dict[str, Any], company_config: Dict[str, 
         _as_int(
             company_config.get("max_total_results")
             or cfg.get("max_total_results")
-            or settings.jobspy_max_total_results
+            or 20
             or results_wanted_per_site,
-            settings.jobspy_max_total_results or results_wanted_per_site,
+            results_wanted_per_site,
         ),
     )
     return {
@@ -109,14 +102,13 @@ def load_jobspy_settings(preferences: Dict[str, Any], company_config: Dict[str, 
             _as_int(
                 company_config.get("hours_old")
                 or cfg.get("hours_old")
-                or settings.jobspy_hours_old,
-                settings.jobspy_hours_old,
+                or 72,
+                72,
             ),
         ),
         "country_indeed": str(
             company_config.get("country_indeed")
             or cfg.get("country_indeed")
-            or settings.jobspy_country_indeed
             or "USA"
         ).strip()
         or "USA",
@@ -129,22 +121,21 @@ def load_jobspy_settings(preferences: Dict[str, Any], company_config: Dict[str, 
                 settings.scrape_jobspy_concurrency,
             ),
         ),
-        "is_remote": _as_bool(company_config.get("is_remote"), _as_bool(cfg.get("is_remote"), settings.jobspy_is_remote)),
-        "job_type": str(company_config.get("job_type") or cfg.get("job_type") or settings.jobspy_job_type or "").strip(),
+        "is_remote": _as_bool(company_config.get("is_remote"), _as_bool(cfg.get("is_remote"), False)),
+        "job_type": str(company_config.get("job_type") or cfg.get("job_type") or "").strip(),
         "linkedin_fetch_description": _as_bool(
             company_config.get("linkedin_fetch_description"),
-            _as_bool(cfg.get("linkedin_fetch_description"), settings.jobspy_linkedin_fetch_description),
+            _as_bool(cfg.get("linkedin_fetch_description"), False),
         ),
         "google_search_term_template": str(
             company_config.get("google_search_term_template")
             or cfg.get("google_search_term_template")
-            or settings.jobspy_google_search_term_template
             or "{query}"
         ).strip()
         or "{query}",
         "continue_on_site_failure": _as_bool(
             company_config.get("continue_on_site_failure"),
-            _as_bool(cfg.get("continue_on_site_failure"), settings.jobspy_continue_on_site_failure),
+            _as_bool(cfg.get("continue_on_site_failure"), True),
         ),
         "max_total_results": max_total_results,
     }

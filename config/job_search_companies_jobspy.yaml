@@ -12,9 +12,12 @@ companies:
     status: active
     notes: Experimental JobSpy discovery lane using Google Jobs only. Keep this as the safest/default JobSpy entry.
     search_queries:
-      - senior product manager fintech
-      - solution architect financial services
-      - technical business analyst
+      - query: senior product manager fintech
+        tier: 1
+      - query: solution architect financial services
+        tier: 1
+      - query: technical business analyst
+        tier: 2
     location_filter: United States
     site_names: google
     results_wanted: 20
@@ -40,9 +43,12 @@ companies:
     status: active
     notes: Experimental JobSpy source for Indeed. Leave disabled until Google-only testing looks useful.
     search_queries:
-      - senior product manager fintech
-      - solution architect financial services
-      - technical business analyst
+      - query: senior product manager fintech
+        tier: 1
+      - query: solution architect financial services
+        tier: 1
+      - query: technical business analyst
+        tier: 2
     location_filter: United States
     site_names: indeed
     results_wanted: 20
@@ -68,9 +74,12 @@ companies:
     status: active
     notes: Experimental JobSpy source for LinkedIn. High-friction and should stay disabled unless explicitly testing it.
     search_queries:
-      - senior product manager fintech
-      - solution architect financial services
-      - technical business analyst
+      - query: senior product manager fintech
+        tier: 1
+      - query: solution architect financial services
+        tier: 1
+      - query: technical business analyst
+        tier: 2
     location_filter: United States
     site_names: linkedin
     results_wanted: 20
@@ -96,9 +105,12 @@ companies:
     status: active
     notes: Experimental JobSpy source for Glassdoor. Keep disabled until the Google lane proves useful.
     search_queries:
-      - senior product manager fintech
-      - solution architect financial services
-      - technical business analyst
+      - query: senior product manager fintech
+        tier: 1
+      - query: solution architect financial services
+        tier: 1
+      - query: technical business analyst
+        tier: 2
     location_filter: United States
     site_names: glassdoor
     results_wanted: 20
@@ -124,9 +136,12 @@ companies:
     status: active
     notes: Experimental JobSpy source for ZipRecruiter. Keep disabled until the Google lane proves useful.
     search_queries:
-      - senior product manager fintech
-      - solution architect financial services
-      - technical business analyst
+      - query: senior product manager fintech
+        tier: 1
+      - query: solution architect financial services
+        tier: 1
+      - query: technical business analyst
+        tier: 2
     location_filter: United States
     site_names: zip_recruiter
     results_wanted: 20

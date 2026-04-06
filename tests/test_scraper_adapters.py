@@ -28,6 +28,7 @@ from jobsearch.scraper.adapters.usajobs import USAJobsAdapter
 from jobsearch.scraper.adapters.workday import WorkdayAdapter
 from jobsearch.scraper.engine import ScraperEngine
 from jobsearch.scraper.models import Job
+from jobsearch.scraper.query_tiers import normalize_search_queries, search_queries_for_tier
 from jobsearch.services.healer_service import ATSHealer
 from jobsearch.config.settings import settings
 
@@ -94,6 +95,7 @@ class _FakeRipplingAdapter(RipplingAdapter):
 
 class _StubScorer:
     min_score_to_keep = 35
+    prefs = {}
 
     def score_job(self, job_data):
         title = str(job_data.get("title") or "").lower()
@@ -301,6 +303,18 @@ def _jobspy_multi_site_scrape_jobs(**kwargs):
 
 
 class ScraperAdapterRegressionTests(unittest.TestCase):
+    def test_query_tier_parser_supports_prefixed_lines(self):
+        parsed = normalize_search_queries("exact role\n2: broad role\n3: wide net")
+        self.assertEqual(
+            parsed,
+            [
+                {"query": "exact role", "tier": 1},
+                {"query": "broad role", "tier": 2},
+                {"query": "wide net", "tier": 3},
+            ],
+        )
+        self.assertEqual(search_queries_for_tier(parsed, 2), ["exact role", "broad role"])
+
     def test_usajobs_adapter_parses_search_results(self):
         payload = {
             "SearchResult": {
@@ -343,7 +357,18 @@ class ScraperAdapterRegressionTests(unittest.TestCase):
             ]
         }
         adapter = _FakeAdzunaAdapter([payload])
-        jobs = adapter.scrape({"name": "Adzuna API", "search_queries": ["product manager"], "max_results_per_query": 10, "tier": 4})
+        adapter.scorer = types.SimpleNamespace(prefs={"search": {"query_tiers": {"aggregator_max_tier": 2}}})
+        jobs = adapter.scrape(
+            {
+                "name": "Adzuna API",
+                "search_queries": [
+                    {"query": "product manager", "tier": 1},
+                    {"query": "broad title", "tier": 3},
+                ],
+                "max_results_per_query": 10,
+                "tier": 4,
+            }
+        )
         self.assertEqual(len(jobs), 1)
         self.assertEqual(jobs[0].company, "AdzunaCo")
         self.assertEqual(jobs[0].source_lane, "aggregator")
@@ -476,6 +501,40 @@ class ScraperAdapterRegressionTests(unittest.TestCase):
             )
             self.assertEqual(len(jobs), 1)
             self.assertIn('"source_site": "google"', jobs[0].notes)
+        finally:
+            if original is None:
+                sys.modules.pop("jobspy", None)
+            else:
+                sys.modules["jobspy"] = original
+
+    def test_jobspy_respects_max_query_tier(self):
+        original = sys.modules.get("jobspy")
+        calls = []
+
+        class _RecordingModule:
+            @staticmethod
+            def scrape_jobs(**kwargs):
+                calls.append(kwargs.get("search_term"))
+                return []
+
+        sys.modules["jobspy"] = types.SimpleNamespace(scrape_jobs=_RecordingModule.scrape_jobs)
+        try:
+            scorer = types.SimpleNamespace(prefs={"search": {"query_tiers": {"jobspy_max_tier": 2}}})
+            adapter = JobSpyExperimentalAdapter(session=None, scorer=scorer)
+            adapter.scrape(
+                {
+                    "name": "JobSpy Indeed Experimental",
+                    "search_queries": [
+                        {"query": "exact fintech", "tier": 1},
+                        {"query": "broad finance", "tier": 2},
+                        {"query": "wide product", "tier": 3},
+                    ],
+                    "site_names": "indeed",
+                    "results_wanted": 1,
+                    "max_total_results": 1,
+                }
+            )
+            self.assertEqual(calls, ["exact fintech", "broad finance"])
         finally:
             if original is None:
                 sys.modules.pop("jobspy", None)

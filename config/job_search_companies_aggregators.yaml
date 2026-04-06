@@ -13,9 +13,12 @@ companies:
     notes: Disabled placeholder entry for the first API-first aggregator lane pilot.
     cache_file: aggregator_imports/indeed_connector_results.json
     search_queries:
-      - senior product manager fintech
-      - solution architect financial services
-      - technical program manager data
+      - query: senior product manager fintech
+        tier: 1
+      - query: solution architect financial services
+        tier: 1
+      - query: technical program manager data
+        tier: 2
     location_filter: United States
     max_results_per_query: 50
     concurrency: 1
@@ -32,9 +35,12 @@ companies:
     status: active
     notes: Disabled official API source for federal roles.
     search_queries:
-      - product manager
-      - solution architect
-      - technical program manager
+      - query: product manager
+        tier: 1
+      - query: solution architect
+        tier: 1
+      - query: technical program manager
+        tier: 2
     location_filter: United States
     max_results_per_query: 50
     concurrency: 1
@@ -51,9 +57,12 @@ companies:
     status: active
     notes: Disabled official API source for broad US aggregator coverage.
     search_queries:
-      - senior product manager fintech
-      - solution architect financial services
-      - technical program manager data
+      - query: senior product manager fintech
+        tier: 1
+      - query: solution architect financial services
+        tier: 1
+      - query: technical program manager data
+        tier: 2
     location_filter: United States
     max_results_per_query: 50
     concurrency: 1
@@ -70,9 +79,12 @@ companies:
     status: active
     notes: Disabled official API source for broad aggregator coverage.
     search_queries:
-      - senior product manager fintech
-      - solution architect financial services
-      - technical business analyst
+      - query: senior product manager fintech
+        tier: 1
+      - query: solution architect financial services
+        tier: 1
+      - query: technical business analyst
+        tier: 2
     location_filter: United States
     max_results_per_query: 50
     concurrency: 1
@@ -89,9 +101,12 @@ companies:
     status: active
     notes: Disabled public API source for curated tech and business roles.
     search_queries:
-      - senior product manager fintech
-      - solution architect financial services
-      - technical business analyst
+      - query: senior product manager fintech
+        tier: 1
+      - query: solution architect financial services
+        tier: 1
+      - query: technical business analyst
+        tier: 2
     location_filter: United States
     max_results_per_query: 50
     max_requests_per_run: 3

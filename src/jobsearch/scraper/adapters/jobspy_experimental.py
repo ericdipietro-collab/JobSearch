@@ -8,9 +8,9 @@ from typing import Any, Dict, Iterable, List
 from jobsearch.scraper.adapters.base import BaseAdapter
 from jobsearch.scraper.jobspy_metrics import JobSpyMetrics
 from jobsearch.scraper.jobspy_normalization import cluster_jobspy_records
+from jobsearch.scraper.query_tiers import max_query_tier, search_queries_for_tier
 from jobsearch.scraper.jobspy_validation import (
     load_jobspy_settings,
-    split_jobspy_queries,
     validate_jobspy_settings,
 )
 from jobsearch.scraper.models import Job
@@ -152,7 +152,10 @@ class JobSpyExperimentalAdapter(BaseAdapter):
         hours_old = int(config.get("hours_old") or 72)
         country_indeed = str(config.get("country_indeed") or "USA").strip() or "USA"
         location = str(company_config.get("location_filter") or "").strip()
-        queries = split_jobspy_queries(company_config.get("search_queries"))
+        queries = search_queries_for_tier(
+            company_config.get("search_queries"),
+            max_query_tier(preferences, "jobspy_experimental"),
+        )
         if not queries:
             queries = [str(company_config.get("name") or "").strip() or "jobs"]
         max_total_results = int(config.get("max_total_results") or results_wanted)

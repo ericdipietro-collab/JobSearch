@@ -5,6 +5,7 @@ from typing import Any, Dict, List
 from jobsearch.config.settings import get_runtime_setting, settings
 from jobsearch.scraper.adapters.base import BaseAdapter
 from jobsearch.scraper.models import Job
+from jobsearch.scraper.query_tiers import max_query_tier, search_queries_for_tier
 
 
 class JoobleAdapter(BaseAdapter):
@@ -24,7 +25,11 @@ class JoobleAdapter(BaseAdapter):
             ),
         )
         requests_made = 0
-        queries = [str(q).strip() for q in (company_config.get("search_queries") or []) if str(q).strip()]
+        preferences = getattr(self.scorer, "prefs", {}) or {}
+        queries = search_queries_for_tier(
+            company_config.get("search_queries"),
+            max_query_tier(preferences, "aggregator"),
+        )
         if not queries:
             queries = [""]
         max_results = int(company_config.get("max_results_per_query", 50) or 50)

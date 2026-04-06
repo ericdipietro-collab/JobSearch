@@ -13,7 +13,7 @@ from jobsearch.config.settings import settings
 from jobsearch import ats_db
 from jobsearch import __version__
 from jobsearch.scraper.scoring import Scorer
-from jobsearch.scraper.jobspy_validation import split_jobspy_queries
+from jobsearch.scraper.query_tiers import normalize_search_queries, search_query_text_lines
 from jobsearch.views.style_utils import set_custom_style
 
 # ── Import Views ──────────────────────────────────────────────────────────────
@@ -1150,6 +1150,7 @@ def main():
             s = prefs.setdefault("search", {}); c = s.setdefault("compensation", {})
             geography = s.setdefault("geography", {})
             contractor = s.setdefault("contractor", {})
+            query_tiers = s.setdefault("query_tiers", {})
             local_hybrid = s.setdefault("location_preferences", {}).setdefault("local_hybrid", {})
             remote_us = s.setdefault("location_preferences", {}).setdefault("remote_us", {})
             recency = s.setdefault("recency", {})
@@ -1174,6 +1175,23 @@ def main():
             f_markers = st.text_area("Cities / Areas Near You (one per line)", value="\n".join(local_hybrid.get("markers", [])))
             f_recency_enabled = st.checkbox("Filter Out Old Job Postings", value=bool(recency.get("enforce_job_age", True)))
             f_max_age = st.number_input("Maximum Job Posting Age (days)", min_value=1, max_value=365, value=int(recency.get("max_job_age_days", 21)))
+            st.markdown("#### Query Tiers")
+            st.caption("Use `2: query` or `3: query` in source search queries to mark broader searches. These limits control which tiers API aggregators and JobSpy will execute.")
+            tier_col1, tier_col2 = st.columns(2)
+            f_aggregator_max_tier = tier_col1.number_input(
+                "Max Query Tier For API Aggregators",
+                min_value=1,
+                max_value=5,
+                value=int(query_tiers.get("aggregator_max_tier", 3) or 3),
+                step=1,
+            )
+            f_jobspy_max_tier = tier_col2.number_input(
+                "Max Query Tier For JobSpy Experimental",
+                min_value=1,
+                max_value=5,
+                value=int(query_tiers.get("jobspy_max_tier", 3) or 3),
+                step=1,
+            )
             st.markdown("#### Contractor Preferences")
             f_include_contract = st.checkbox("Include Contract Roles", value=bool(contractor.get("include_contract_roles", True)))
             f_allow_w2 = st.checkbox("Allow W2 Hourly Contracts", value=bool(contractor.get("allow_w2_hourly", True)))
@@ -1206,6 +1224,10 @@ def main():
                     "markers": [line.strip() for line in f_markers.splitlines() if line.strip()],
                 })
                 recency.update({"enforce_job_age": bool(f_recency_enabled), "max_job_age_days": int(f_max_age)})
+                query_tiers.update({
+                    "aggregator_max_tier": int(f_aggregator_max_tier),
+                    "jobspy_max_tier": int(f_jobspy_max_tier),
+                })
                 contractor.update({
                     "include_contract_roles": bool(f_include_contract),
                     "allow_w2_hourly": bool(f_allow_w2),
@@ -1621,8 +1643,8 @@ def main():
             c_sub = st.text_input("Sub-Industry", value=str(selected_company.get("sub_industry", "")))
             c_search_queries = st.text_area(
                 "Search Queries (one per line)",
-                value="\n".join(split_jobspy_queries(selected_company.get("search_queries"))),
-                help="Used by aggregator and JobSpy lanes to search the source. Leave blank for ATS/company sources.",
+                value="\n".join(search_query_text_lines(selected_company.get("search_queries"))),
+                help="Used by aggregator and JobSpy lanes to search the source. Prefix a line with `2:` or `3:` to mark it as a broader tiered query.",
             )
             c_location_filter = st.text_input(
                 "Location Filter",
@@ -1707,7 +1729,7 @@ def main():
                     "status": "manual_only" if c_manual_only else c_status,
                     "industry": _parse_pipe_list(c_industry) if "|" in c_industry else c_industry.strip(),
                     "sub_industry": c_sub.strip(),
-                    "search_queries": [line.strip() for line in c_search_queries.splitlines() if line.strip()],
+                    "search_queries": normalize_search_queries(c_search_queries),
                     "location_filter": c_location_filter.strip(),
                     "site_names": c_site_names.strip(),
                     "results_wanted": int(c_results_wanted),
