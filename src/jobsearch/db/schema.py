@@ -3,6 +3,8 @@
 from __future__ import annotations
 import sqlite3
 
+from jobsearch.db.migrations import migrate_stage_history
+
 SCHEMA_VERSION: int = 4
 
 # ── DDL Statements ───────────────────────────────────────────────────────────
@@ -294,33 +296,6 @@ def _add_column_if_missing(
         cur.execute(f"ALTER TABLE {table} ADD COLUMN {ddl}")
 
 
-def _migrate_stage_history_if_needed(cur: sqlite3.Cursor) -> None:
-    existing = {
-        row[1]
-        for row in cur.execute("PRAGMA table_info(stage_history)").fetchall()
-    }
-    if not existing or "application_id" in existing:
-        return
-    if "opportunity_id" not in existing:
-        return
-
-    legacy_table = "stage_history_legacy"
-    cur.execute("DROP TABLE IF EXISTS stage_history_legacy")
-    cur.execute("ALTER TABLE stage_history RENAME TO stage_history_legacy")
-    cur.execute(_CREATE_STAGE_HISTORY)
-
-    note_expr = "COALESCE(sh.note, '')" if "note" in existing else "''"
-    cur.execute(
-        f"""
-        INSERT INTO stage_history (id, application_id, from_stage, to_stage, timestamp, note)
-        SELECT sh.id, sh.opportunity_id, sh.from_stage, sh.to_stage, sh.timestamp, {note_expr}
-        FROM {legacy_table} AS sh
-        INNER JOIN applications AS a ON a.id = sh.opportunity_id
-        """
-    )
-    cur.execute(f"DROP TABLE {legacy_table}")
-
-
 def init_db(conn: sqlite3.Connection) -> None:
     cur = conn.cursor()
     cur.execute("PRAGMA journal_mode=WAL")
@@ -340,5 +315,14 @@ def init_db(conn: sqlite3.Connection) -> None:
     _add_column_if_missing(cur, "applications", "hours_per_week", "hours_per_week REAL")
     _add_column_if_missing(cur, "applications", "weeks_per_year", "weeks_per_year REAL")
     _add_column_if_missing(cur, "applications", "normalized_compensation_usd", "normalized_compensation_usd REAL")
-    _migrate_stage_history_if_needed(cur)
+    _add_column_if_missing(cur, "applications", "status", "TEXT NOT NULL DEFAULT 'considering'")
+    migrate_stage_history(conn)
+    cur.execute("CREATE TABLE IF NOT EXISTS schema_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+    cur.execute(
+        """
+        INSERT INTO schema_meta (key, value) VALUES (?, ?)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value
+        """,
+        ("schema_version", str(SCHEMA_VERSION)),
+    )
     conn.commit()

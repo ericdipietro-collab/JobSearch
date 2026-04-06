@@ -72,7 +72,6 @@ from jobsearch.views.tracker_page import (
     _tailored_resume_summary,
 )
 import pandas as pd
-from jobsearch.db.schema import init_db as init_schema_db
 
 
 class _FakeAdapter(BaseAdapter):
@@ -368,7 +367,7 @@ class BlockedAndLocationTests(unittest.TestCase):
         )
         conn.commit()
 
-        init_schema_db(conn)
+        db.init_db(conn)
 
         columns = [row[1] for row in conn.execute("PRAGMA table_info(stage_history)").fetchall()]
         self.assertIn("application_id", columns)

@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel
 
 from jobsearch.config.settings import settings
+from jobsearch.db.migrations import migrate_stage_history
 
 _BASE_DIR = settings.base_dir
 BASE_DIR = settings.base_dir
@@ -600,6 +601,7 @@ def init_db(conn: sqlite3.Connection) -> None:
             "salary_low": "INTEGER",
             "salary_high": "INTEGER",
             "salary_text": "TEXT",
+            "status": "TEXT NOT NULL DEFAULT 'considering'",
             "work_type": "TEXT",
             "compensation_unit": "TEXT",
             "hourly_rate": "REAL",
@@ -692,14 +694,6 @@ def init_db(conn: sqlite3.Connection) -> None:
             "application_id": "INTEGER",
         },
     )
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_events_app_date ON events(application_id, event_date)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_interviews_app_date ON interviews(application_id, scheduled_at)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_apps_status ON applications(status)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_job_observations_app_seen ON job_observations(application_id, seen_at)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_email_signals_status ON email_signals(signal_status, signal_type)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_resume_variants_application ON resume_variants(application_id, updated_at DESC)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_workday_target_health_cooldown ON workday_target_health(cooldown_until)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_generic_target_health_cooldown ON generic_target_health(cooldown_until)")
     _add_columns_if_missing(
         conn,
         "workday_target_health",
@@ -715,6 +709,23 @@ def init_db(conn: sqlite3.Connection) -> None:
             "success_count": "INTEGER NOT NULL DEFAULT 0",
             "last_evaluated": "INTEGER NOT NULL DEFAULT 0",
         },
+    )
+    migrate_stage_history(conn)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_events_app_date ON events(application_id, event_date)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_interviews_app_date ON interviews(application_id, scheduled_at)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_apps_status ON applications(status)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_job_observations_app_seen ON job_observations(application_id, seen_at)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_email_signals_status ON email_signals(signal_status, signal_type)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_resume_variants_application ON resume_variants(application_id, updated_at DESC)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_workday_target_health_cooldown ON workday_target_health(cooldown_until)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_generic_target_health_cooldown ON generic_target_health(cooldown_until)")
+    conn.execute("CREATE TABLE IF NOT EXISTS schema_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+    conn.execute(
+        """
+        INSERT INTO schema_meta (key, value) VALUES (?, ?)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value
+        """,
+        ("schema_version", "4"),
     )
     seed_default_templates(conn)
     seed_default_questions(conn)
