@@ -1632,19 +1632,47 @@ def main():
             rescue = prefs.setdefault("policy", {}).setdefault("title_rescue", {})
             adjustments = s_cfg.setdefault("adjustments", {})
             apply_now = s_cfg.setdefault("apply_now", {})
+            location_prefs = prefs.setdefault("search", {}).setdefault("location_preferences", {})
+            remote_us_cfg = location_prefs.setdefault("remote_us", {})
+            local_hybrid_cfg = location_prefs.setdefault("local_hybrid", {})
+            contractor_cfg = prefs.setdefault("search", {}).setdefault("contractor", {})
+
             st.caption("After saving settings, you can re-score saved jobs without rerunning the scraper.")
-            f_min_keep = st.number_input("Minimum Score to Show a Job", min_value=0, max_value=100, value=int(s_cfg.get("minimum_score_to_keep", 35)), help="Jobs scoring below this threshold are hidden from all match views.")
+
+            # Basic thresholds
+            st.markdown("#### Job Visibility Thresholds")
+            f_min_keep = st.slider("Minimum Score to Show a Job", min_value=0, max_value=100, value=int(s_cfg.get("minimum_score_to_keep", 35)), help="Jobs scoring below this threshold are hidden from all match views.")
+
+            # Title vs JD Weighting
             st.markdown("#### Title vs JD Weighting")
             st.caption("Use these caps to control how much total score can come from the title versus the job description keywords.")
-            f_title_max_points = st.number_input("Maximum Score From Title Match", min_value=0, max_value=100, value=int(title_cfg.get("title_max_points", 25)))
-            f_positive_keyword_cap = st.number_input("Maximum Score From JD Keywords", min_value=0, max_value=200, value=int(matching.get("positive_keyword_cap", 60)))
-            f_negative_keyword_cap = st.number_input("Maximum Penalty From JD Negative Keywords", min_value=0, max_value=200, value=int(matching.get("negative_keyword_cap", 45)))
-            f_missing_salary = st.number_input("Score Penalty: No Salary Listed", min_value=0, max_value=50, value=int(adjustments.get("missing_salary_penalty", 6)), help="Points deducted when a job posting has no salary information.")
-            f_salary_target_bonus = st.number_input("Score Bonus: Salary Meets or Exceeds Target", min_value=0, max_value=50, value=int(adjustments.get("salary_at_or_above_target_bonus", 6)))
-            f_salary_floor_bonus = st.number_input("Score Bonus: Salary Meets Minimum", min_value=0, max_value=50, value=int(adjustments.get("salary_meets_floor_bonus", 2)))
-            f_salary_below_penalty = st.number_input("Score Penalty: Salary Below Minimum", min_value=0, max_value=50, value=int(adjustments.get("salary_below_target_penalty", 12)))
+            f_title_max_points = st.slider("Maximum Score From Title Match", min_value=5, max_value=100, value=int(title_cfg.get("title_max_points", 25)), step=1, help="Cap on points awarded for matching the job title")
+            f_positive_keyword_cap = st.slider("Maximum Score From JD Keywords", min_value=10, max_value=200, value=int(matching.get("positive_keyword_cap", 60)), step=5, help="Cap on points from positive keywords in job description")
+            f_negative_keyword_cap = st.slider("Maximum Penalty From JD Negative Keywords", min_value=5, max_value=100, value=int(matching.get("negative_keyword_cap", 45)), step=5, help="Max penalty deducted for negative keywords")
+
+            # Salary adjustments
+            st.markdown("#### Compensation Adjustments")
+            col_sal1, col_sal2 = st.columns(2)
+            f_missing_salary = col_sal1.slider("Penalty: No Salary Listed", min_value=0, max_value=50, value=int(adjustments.get("missing_salary_penalty", 6)), help="Points deducted when salary not listed")
+            f_salary_target_bonus = col_sal2.slider("Bonus: Salary ≥ Target", min_value=0, max_value=50, value=int(adjustments.get("salary_at_or_above_target_bonus", 6)), help="Bonus when salary meets target")
+            col_sal3, col_sal4 = st.columns(2)
+            f_salary_floor_bonus = col_sal3.slider("Bonus: Salary ≥ Minimum", min_value=0, max_value=50, value=int(adjustments.get("salary_meets_floor_bonus", 2)), help="Bonus when salary meets floor")
+            f_salary_below_penalty = col_sal4.slider("Penalty: Salary < Minimum", min_value=0, max_value=50, value=int(adjustments.get("salary_below_target_penalty", 12)), help="Penalty when below minimum")
+            # Contract role adjustments
+            st.markdown("#### Contract Role Adjustments")
+            f_contract_penalty = st.slider("Penalty: Contract Roles", min_value=0, max_value=50, value=int(adjustments.get("contract_role_penalty", 0)), help="Penalty for contract/temporary positions")
+            f_contractor_bonus = st.slider("Bonus: Contractor Target Rate Met", min_value=0, max_value=50, value=int(adjustments.get("contractor_target_bonus", 4)), help="Bonus for contract roles meeting rate target")
+
+            # Location bonuses
+            st.markdown("#### Location Bonuses")
+            col_loc1, col_loc2 = st.columns(2)
+            f_remote_us_bonus = col_loc1.slider("Bonus: US Remote", min_value=0, max_value=50, value=int(remote_us_cfg.get("bonus", 14)), help="Bonus for US-based remote positions")
+            f_hybrid_bonus = col_loc2.slider("Bonus: Local/Hybrid", min_value=0, max_value=50, value=int(local_hybrid_cfg.get("bonus", 4)), help="Bonus for local or hybrid roles")
+
+            # Apply Now settings
+            st.markdown("#### 'Apply Now' Thresholds")
             f_require_strong_title = st.checkbox("'Apply Now' Requires a Strong Title Match", value=bool(apply_now.get("require_strong_title", True)))
-            f_min_role_alignment = st.number_input("'Apply Now' Minimum Title Match Score", min_value=0.0, max_value=20.0, value=float(apply_now.get("min_role_alignment", 6.0)), step=0.5)
+            f_min_role_alignment = st.slider("'Apply Now' Minimum Title Match Score", min_value=0.0, max_value=20.0, value=float(apply_now.get("min_role_alignment", 6.0)), step=0.5, help="Minimum title alignment score to qualify for 'Apply Now'")
             f_direct_title_markers = st.text_area("'Apply Now' Required Title Keywords (one per line)", value="\n".join(apply_now.get("direct_title_markers", [])), help="The job title must contain one of these words to qualify for 'Apply Now'.")
             st.markdown("#### Near-Match Rescue")
             st.caption("These settings allow jobs with a near-matching title to remain visible if the job description content is strong enough.")
@@ -1663,6 +1691,10 @@ def main():
                 adjustments["salary_at_or_above_target_bonus"] = int(f_salary_target_bonus)
                 adjustments["salary_meets_floor_bonus"] = int(f_salary_floor_bonus)
                 adjustments["salary_below_target_penalty"] = int(f_salary_below_penalty)
+                adjustments["contract_role_penalty"] = int(f_contract_penalty)
+                adjustments["contractor_target_bonus"] = int(f_contractor_bonus)
+                remote_us_cfg["bonus"] = int(f_remote_us_bonus)
+                local_hybrid_cfg["bonus"] = int(f_hybrid_bonus)
                 apply_now["require_strong_title"] = bool(f_require_strong_title)
                 apply_now["min_role_alignment"] = float(f_min_role_alignment)
                 apply_now["direct_title_markers"] = [line.strip() for line in f_direct_title_markers.splitlines() if line.strip()]
