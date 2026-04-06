@@ -276,6 +276,39 @@ CREATE TABLE IF NOT EXISTS llm_cost_log (
 )
 """
 
+_CREATE_JOBS_FTS = """
+CREATE VIRTUAL TABLE IF NOT EXISTS jobs_fts USING fts5(
+    company,
+    role,
+    description_excerpt,
+    jd_summary,
+    content='applications',
+    content_rowid='id',
+    tokenize='porter ascii'
+)
+"""
+
+_CREATE_JOBS_FTS_AI = """
+CREATE TRIGGER IF NOT EXISTS jobs_fts_ai AFTER INSERT ON applications BEGIN
+  INSERT INTO jobs_fts(rowid, company, role, description_excerpt, jd_summary)
+  VALUES (new.id, new.company, new.role, new.description_excerpt, new.jd_summary);
+END
+"""
+
+_CREATE_JOBS_FTS_AD = """
+CREATE TRIGGER IF NOT EXISTS jobs_fts_ad AFTER DELETE ON applications BEGIN
+  DELETE FROM jobs_fts WHERE rowid = old.id;
+END
+"""
+
+_CREATE_JOBS_FTS_AU = """
+CREATE TRIGGER IF NOT EXISTS jobs_fts_au AFTER UPDATE ON applications BEGIN
+  DELETE FROM jobs_fts WHERE rowid = old.id;
+  INSERT INTO jobs_fts(rowid, company, role, description_excerpt, jd_summary)
+  VALUES (new.id, new.company, new.role, new.description_excerpt, new.jd_summary);
+END
+"""
+
 _DDL_STATEMENTS = [
     _CREATE_APPLICATIONS,
     _CREATE_EVENTS,
@@ -292,6 +325,10 @@ _DDL_STATEMENTS = [
     _CREATE_COMPANY_PROFILES,
     _CREATE_SCHEMA_META,
     _CREATE_LLM_COST_LOG,
+    _CREATE_JOBS_FTS,
+    _CREATE_JOBS_FTS_AI,
+    _CREATE_JOBS_FTS_AD,
+    _CREATE_JOBS_FTS_AU,
 ]
 
 
@@ -341,4 +378,14 @@ def init_db(conn: sqlite3.Connection) -> None:
         """,
         ("schema_version", str(SCHEMA_VERSION)),
     )
+
+    # Rebuild FTS index if needed (for existing databases)
+    try:
+        fts_count = cur.execute("SELECT COUNT(*) FROM jobs_fts").fetchone()[0]
+        app_count = cur.execute("SELECT COUNT(*) FROM applications").fetchone()[0]
+        if app_count > 0 and fts_count == 0:
+            cur.execute("INSERT INTO jobs_fts(jobs_fts) VALUES('rebuild')")
+    except Exception:
+        pass  # FTS may not be fully initialized; will be rebuilt on next init
+
     conn.commit()

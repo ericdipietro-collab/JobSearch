@@ -17,6 +17,7 @@ from jobsearch.scraper.query_tiers import normalize_search_queries, search_query
 from jobsearch.scraper.jobspy_validation import ALLOWED_JOBSPY_SITES
 from jobsearch.views.style_utils import set_custom_style
 from jobsearch.services.export_service import ExcelReportBuilder
+from jobsearch.services.search_service import search_jobs
 
 # ── Import Views ──────────────────────────────────────────────────────────────
 from jobsearch.views.home_page              import render_home
@@ -1057,8 +1058,57 @@ def main():
             ],
             index=0,
         )
+
+        # Advanced FTS5 search option
+        use_fts_search = st.checkbox(
+            "🔎 Use Full-Text Search (search all jobs across database)",
+            value=False,
+            help="Use database-level full-text search for faster queries on large job lists. Searches by company, role, and description.",
+        )
+
+        if use_fts_search:
+            fts_query = st.text_input(
+                "Full-Text Search",
+                value="",
+                placeholder="Search by company, role, keywords, location…",
+                key="fts_search_input",
+            )
+            if fts_query.strip():
+                try:
+                    search_conn = ats_db.get_connection()
+                    try:
+                        fts_results = search_jobs(search_conn, fts_query, limit=200)
+                        if fts_results:
+                            st.write(f"Found {len(fts_results)} matching jobs")
+                            fts_df = pd.DataFrame(fts_results)
+                            # Convert to display format
+                            fts_df = fts_df.rename(columns={
+                                "company": "Company",
+                                "role": "Role",
+                                "location": "Location",
+                                "score": "Score",
+                                "fit_band": "Fit Band",
+                                "source": "Source",
+                                "url": "URL",
+                            })
+                            st.dataframe(
+                                fts_df[["Company", "Role", "Location", "Score", "Fit Band", "Source"]].head(50),
+                                column_config={"URL": st.column_config.LinkColumn("URL")},
+                                hide_index=True,
+                                use_container_width=True,
+                            )
+                            if len(fts_results) > 50:
+                                st.caption(f"Showing 50 of {len(fts_results)} results. Refine your search for more specific matches.")
+                        else:
+                            st.info("No jobs match your search query.")
+                    finally:
+                        search_conn.close()
+                except Exception as e:
+                    st.error(f"Search failed: {e}")
+            st.divider()
+
         search_query = st.text_input(
-            "Search visible jobs",
+            "Filter visible jobs",
             value="",
             placeholder="Filter by company, title, location, keywords, or scoring details…",
         )
