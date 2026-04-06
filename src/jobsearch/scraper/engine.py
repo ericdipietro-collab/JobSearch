@@ -93,6 +93,7 @@ class ScraperEngine:
         "dice": DiceAdapter,
         "generic": GenericAdapter,
         "custom_manual": GenericAdapter,
+        "custom_site": GenericAdapter,
         "custom_blackrock": GenericAdapter,
         "custom_schwab": GenericAdapter,
         "custom_spglobal": GenericAdapter,
@@ -152,7 +153,7 @@ class ScraperEngine:
     def _resolve_adapter_name(self, company: Dict[str, Any]) -> str:
         adapter_name = str(company.get("adapter", "custom_manual") or "custom_manual").lower()
         careers_url = str(company.get("careers_url", "") or "").lower()
-        if adapter_name in {"custom_manual", "custom_blackrock", "custom_schwab", "custom_spglobal"} or not adapter_name:
+        if adapter_name in {"custom_manual", "custom_site", "custom_blackrock", "custom_schwab", "custom_spglobal"} or not adapter_name:
             if "greenhouse.io" in careers_url:
                 adapter_name = "greenhouse"
             elif "lever.co" in careers_url:

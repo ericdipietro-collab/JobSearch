@@ -72,6 +72,7 @@ from jobsearch.views.tracker_page import (
     _tailored_resume_summary,
 )
 import pandas as pd
+from jobsearch.db.schema import init_db as init_schema_db
 
 
 class _FakeAdapter(BaseAdapter):
@@ -340,6 +341,41 @@ class BlockedAndLocationTests(unittest.TestCase):
         self.assertEqual(int(row["empty_streak"]), 0)
         self.assertEqual(int(row["last_evaluated"]), 42)
         self.assertIsNone(row["cooldown_until"])
+        conn.close()
+
+    def test_schema_initializer_migrates_legacy_stage_history_table(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        conn.execute("CREATE TABLE applications (id INTEGER PRIMARY KEY AUTOINCREMENT, company TEXT NOT NULL, role TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)")
+        conn.execute("INSERT INTO applications (id, company, role, created_at, updated_at) VALUES (42, 'LegacyCo', 'Legacy Role', '2026-04-06T12:00:00+00:00', '2026-04-06T12:00:00+00:00')")
+        conn.execute(
+            """
+            CREATE TABLE stage_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                opportunity_id INTEGER NOT NULL,
+                from_stage TEXT,
+                to_stage TEXT NOT NULL,
+                timestamp TEXT NOT NULL,
+                note TEXT NOT NULL DEFAULT ''
+            )
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO stage_history (opportunity_id, from_stage, to_stage, timestamp, note)
+            VALUES (42, 'Applied', 'Recruiter Screen', '2026-04-06T12:00:00+00:00', 'legacy row')
+            """
+        )
+        conn.commit()
+
+        init_schema_db(conn)
+
+        columns = [row[1] for row in conn.execute("PRAGMA table_info(stage_history)").fetchall()]
+        self.assertIn("application_id", columns)
+        self.assertNotIn("opportunity_id", columns)
+        row = conn.execute("SELECT * FROM stage_history").fetchone()
+        self.assertEqual(int(row["application_id"]), 42)
+        self.assertEqual(row["note"], "legacy row")
         conn.close()
 
     def test_bucket_thresholds_follow_preferences_file(self):
