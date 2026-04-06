@@ -5,23 +5,30 @@ import json
 import logging
 import os
 from typing import Any, Dict, List, Optional
-import google.generativeai as genai
+
+from jobsearch.services.llm_client import LLMClient
 
 logger = logging.getLogger(__name__)
 
 class ProfileService:
-    def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or os.getenv("GOOGLE_API_KEY")
-        if self.api_key:
-            genai.configure(api_key=self.api_key)
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        google_api_key: Optional[str] = None,
+        openai_api_key: Optional[str] = None,
+    ):
+        # Support both legacy api_key and new multi-provider keys
+        google_key = google_api_key or api_key or os.getenv("GOOGLE_API_KEY")
+        openai_key = openai_api_key or os.getenv("OPENAI_API_KEY")
+        self.llm_client = LLMClient(google_api_key=google_key, openai_api_key=openai_key)
 
     def extract_preferences(self, resume_text: str) -> Dict[str, Any]:
         """
         Uses an LLM to extract job search preferences from resume text.
         Returns a dictionary compatible with job_search_preferences.yaml.
         """
-        if not self.api_key:
-            logger.warning("No GOOGLE_API_KEY found. Cannot extract preferences.")
+        if not self.llm_client.get_active_provider() or self.llm_client.get_active_provider() == "none":
+            logger.warning("No LLM provider configured (GOOGLE_API_KEY or OPENAI_API_KEY). Cannot extract preferences.")
             return {}
 
         prompt = f"""
@@ -52,11 +59,10 @@ class ProfileService:
         """
 
         try:
-            model = genai.GenerativeModel("gemini-1.5-flash")
-            response = model.generate_content(prompt)
-            
+            text, _ = self.llm_client.generate(prompt)
+
             # Clean up response text if it has markdown code blocks
-            text = response.text.strip()
+            text = text.strip()
             if text.startswith("```json"):
                 text = text[7:]
             if text.endswith("```"):
@@ -103,19 +109,19 @@ class ProfileService:
         """
         Uses an LLM to analyze how well a job fits the user's resume.
         """
-        if not self.api_key:
+        if not self.llm_client.get_active_provider() or self.llm_client.get_active_provider() == "none":
             return {}
 
         prompt = f"""
         Analyze the fit between this Job and the candidate's Resume.
-        
+
         Job Title: {job_title}
         Job Description:
         {job_description[:5000]} # Truncate to avoid context limits
-        
+
         Candidate Resume:
         {resume_text[:5000]}
-        
+
         Return ONLY a JSON object with:
         {{
             "match_score": int (0-100),
@@ -127,9 +133,8 @@ class ProfileService:
         """
 
         try:
-            model = genai.GenerativeModel("gemini-1.5-flash")
-            response = model.generate_content(prompt)
-            text = response.text.strip()
+            text, _ = self.llm_client.generate(prompt)
+            text = text.strip()
             if text.startswith("```json"):
                 text = text[7:]
             if text.endswith("```"):

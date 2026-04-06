@@ -12,6 +12,9 @@ pypdf==5.4.0
 jobspy-enhanced-scraper
 google-generativeai
 
+# Optional: for OpenAI GPT fallback when Google Gemini is unavailable
+# openai
+
 # Optional: for LLM-driven generic scraping (large install ~750MB)
 # crawl4ai
 # After install run: playwright install chromium

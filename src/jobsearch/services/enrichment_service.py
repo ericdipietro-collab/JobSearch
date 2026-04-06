@@ -11,6 +11,8 @@ from typing import Any, Dict, Optional
 
 import google.generativeai as genai
 
+from jobsearch.services.llm_client import LLMClient
+
 logger = logging.getLogger(__name__)
 
 
@@ -57,32 +59,45 @@ class BudgetExceededError(Exception):
 
 
 class EnrichmentService:
-    """Uses LLM to analyze job descriptions for visa sponsorship, tech stack, and IC vs Manager."""
+    """Uses LLM to analyze job descriptions for visa sponsorship, tech stack, IC vs Manager, and skills gaps."""
 
     def __init__(
         self,
         api_key: Optional[str] = None,
         db_conn: Optional[sqlite3.Connection] = None,
         daily_token_budget: int = 500_000,
+        user_skills: Optional[list[str]] = None,
+        google_api_key: Optional[str] = None,
+        openai_api_key: Optional[str] = None,
     ):
-        self.api_key = api_key or os.getenv("GOOGLE_API_KEY")
+        # Support both legacy api_key and new multi-provider keys
+        google_key = google_api_key or api_key or os.getenv("GOOGLE_API_KEY")
+        openai_key = openai_api_key or os.getenv("OPENAI_API_KEY")
+
+        self.llm_client = LLMClient(google_api_key=google_key, openai_api_key=openai_key)
         self.budget = TokenBudget(daily_budget=daily_token_budget, conn=db_conn)
-        if self.api_key:
-            genai.configure(api_key=self.api_key)
+        self.user_skills = user_skills or []
 
     def enrich_job(self, job_title: str, job_description: str) -> Dict[str, Any]:
         """
         Analyzes a job description for specific attributes.
-        Returns a dict with: visa_sponsor, tech_stack, ic_vs_manager, and enrichment_status.
+        Returns a dict with: visa_sponsor, tech_stack, ic_vs_manager, missing_skills, and enrichment_status.
         """
-        if not self.api_key:
-            logger.warning("No GOOGLE_API_KEY found. Cannot enrich jobs.")
+        if not self.llm_client.get_active_provider() or self.llm_client.get_active_provider() == "none":
+            logger.warning("No LLM provider configured (GOOGLE_API_KEY or OPENAI_API_KEY). Cannot enrich jobs.")
             return {
                 "visa_sponsor": None,
                 "tech_stack": [],
                 "ic_vs_manager": None,
+                "missing_skills": [],
                 "enrichment_status": "skipped_no_api",
             }
+
+        # Build user skills section for the prompt
+        user_skills_section = ""
+        if self.user_skills:
+            user_skills_str = ", ".join(self.user_skills)
+            user_skills_section = f"\n\nUser's Current Skills: {user_skills_str}"
 
         prompt = f"""
         Analyze this job description and extract the following information.
@@ -90,13 +105,14 @@ class EnrichmentService:
 
         Job Title: {job_title}
         Job Description:
-        {job_description[:3000]}
+        {job_description[:3000]}{user_skills_section}
 
         Return exactly this JSON structure:
         {{
             "visa_sponsor": true/false/null,
             "tech_stack": ["technology1", "technology2", ...],
             "ic_vs_manager": "individual_contributor" or "manager" or "mixed" or null,
+            "missing_skills": ["skill1", "skill2", ...],
             "reasoning": "brief explanation of how you determined these values"
         }}
 
@@ -104,17 +120,18 @@ class EnrichmentService:
         - visa_sponsor: true if description explicitly mentions visa sponsorship, false if explicitly says no sponsorship, null if unclear
         - tech_stack: list the primary technologies, frameworks, and languages mentioned (e.g., ["Python", "AWS", "React"])
         - ic_vs_manager: determine if the role is primarily IC (engineer, analyst), manager (lead, manager, director), or mixed
+        - missing_skills: list required skills from the job description that are NOT in the user's current skills. Return empty list if all required skills are present.
         - Keep the response as raw JSON only, no markdown code blocks
         """
 
         try:
-            model = genai.GenerativeModel("gemini-1.5-flash")
-            response = model.generate_content(prompt)
+            text, usage_metadata = self.llm_client.generate(prompt)
 
             # Track token usage
             tokens_used = 0
-            if hasattr(response, "usage_metadata") and response.usage_metadata:
-                tokens_used = response.usage_metadata.total_token_count
+            if usage_metadata and "total_tokens" in usage_metadata:
+                tokens_used = usage_metadata["total_tokens"]
+                provider = usage_metadata.get("provider", "unknown")
                 try:
                     self.budget.check_and_increment(tokens_used)
                 except BudgetExceededError as e:
@@ -123,10 +140,11 @@ class EnrichmentService:
                         "visa_sponsor": None,
                         "tech_stack": [],
                         "ic_vs_manager": None,
+                        "missing_skills": [],
                         "enrichment_status": "failed_budget_exceeded",
                     }
 
-            text = response.text.strip()
+            text = text.strip()
 
             # Remove markdown code blocks if present
             if text.startswith("```json"):
@@ -147,6 +165,7 @@ class EnrichmentService:
                 "visa_sponsor": None,
                 "tech_stack": [],
                 "ic_vs_manager": None,
+                "missing_skills": [],
                 "enrichment_status": "failed_parse",
             }
         except BudgetExceededError:
@@ -158,6 +177,7 @@ class EnrichmentService:
                 "visa_sponsor": None,
                 "tech_stack": [],
                 "ic_vs_manager": None,
+                "missing_skills": [],
                 "enrichment_status": f"failed_{type(exc).__name__}",
             }
 
@@ -181,6 +201,7 @@ class EnrichmentService:
                     "visa_sponsor": None,
                     "tech_stack": [],
                     "ic_vs_manager": None,
+                    "missing_skills": [],
                     "enrichment_status": "failed_budget_exceeded",
                 }
                 enriched_jobs.append(job_copy)

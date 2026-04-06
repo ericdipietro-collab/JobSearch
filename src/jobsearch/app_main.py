@@ -729,6 +729,7 @@ def _render_apply_now_cards(df):
         desc = str(r.get("description_excerpt", "") or "")
         ai_analysis_raw = r.get("ai_analysis")
         ai_score = r.get("ai_match_score")
+        enriched_data_raw = r.get("enriched_data")
 
         c1, c2, c3, c4 = st.columns([4, 1.5, 1.5, 2])
         c1.markdown(f"**{co}** — {ti} <small>score {sc:.0f}</small>", unsafe_allow_html=True)
@@ -738,16 +739,17 @@ def _render_apply_now_cards(df):
             conn = ats_db.get_connection()
             try:
                 google_key = ats_db.get_setting(conn, "google_api_key", default=os.getenv("GOOGLE_API_KEY", ""))
+                openai_key = ats_db.get_setting(conn, "openai_api_key", default=os.getenv("OPENAI_API_KEY", ""))
                 resume_text = ats_db.get_setting(conn, "base_resume_text", default="")
-                
-                if not google_key:
-                    st.error("Add Google API Key in Settings first.")
+
+                if not google_key and not openai_key:
+                    st.error("Add a Google API Key or OpenAI API Key in Settings first.")
                 elif not resume_text:
                     st.error("Upload a Base Resume in Settings first.")
                 else:
                     with st.spinner("AI Analyzing..."):
                         from jobsearch.services.profile_service import ProfileService
-                        profiler = ProfileService(api_key=google_key)
+                        profiler = ProfileService(google_api_key=google_key, openai_api_key=openai_key)
                         analysis = profiler.analyze_job_fit(ti, desc, resume_text)
                         if analysis:
                             now = datetime.now(timezone.utc).isoformat()
@@ -790,6 +792,22 @@ def _render_apply_now_cards(df):
                     """,
                     unsafe_allow_html=True
                 )
+            except: pass
+
+        # Display missing skills from enriched data analysis
+        if enriched_data_raw:
+            try:
+                enriched = json.loads(enriched_data_raw)
+                missing_skills = enriched.get("missing_skills", [])
+                if missing_skills:
+                    st.markdown(
+                        f"""
+                        <div style="background: #1f2937; padding: 10px; border-radius: 5px; border-left: 4px solid #f59e0b; margin-bottom: 10px;">
+                            <strong style="color: #f59e0b">Skills Gap:</strong> {', '.join(missing_skills)}
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
             except: pass
 
         st.markdown("<hr style='margin:2px 0;border-color:#374151'>", unsafe_allow_html=True)
@@ -2011,10 +2029,16 @@ def main():
                 )
                 app_usajobs_api_key = st.text_input("USAJobs API Key", value=usajobs_api_key, type="password")
                 app_google_api_key = st.text_input(
-                    "Google API Key", 
-                    value=ats_db.get_setting(conn, "google_api_key", default=os.getenv("GOOGLE_API_KEY", "")), 
+                    "Google API Key",
+                    value=ats_db.get_setting(conn, "google_api_key", default=os.getenv("GOOGLE_API_KEY", "")),
                     type="password",
                     help="Used for AI-driven resume analysis and preference generation. Get one for free at aistudio.google.com"
+                )
+                app_openai_api_key = st.text_input(
+                    "OpenAI API Key (Optional)",
+                    value=ats_db.get_setting(conn, "openai_api_key", default=os.getenv("OPENAI_API_KEY", "")),
+                    type="password",
+                    help="Optional fallback for AI analysis when Google API is unavailable or you prefer GPT-4o-mini. Get one at platform.openai.com"
                 )
                 adzuna_col1, adzuna_col2 = st.columns(2)
                 app_adzuna_app_id = adzuna_col1.text_input("Adzuna App ID", value=adzuna_app_id)
@@ -2045,6 +2069,7 @@ def main():
                     ats_db.set_setting(conn, "adzuna_country", (app_adzuna_country.strip() or "us").lower())
                     ats_db.set_setting(conn, "jooble_api_key", app_jooble_api_key.strip())
                     ats_db.set_setting(conn, "google_api_key", app_google_api_key.strip())
+                    ats_db.set_setting(conn, "openai_api_key", app_openai_api_key.strip())
                     ats_db.set_setting(conn, "usajobs_max_requests_per_run", str(int(app_usajobs_max_requests)))
                     ats_db.set_setting(conn, "adzuna_max_requests_per_run", str(int(app_adzuna_max_requests)))
                     ats_db.set_setting(conn, "jooble_max_requests_per_run", str(int(app_jooble_max_requests)))
@@ -2508,13 +2533,23 @@ def main():
                 if Path(r_prefs) != settings.prefs_yaml: cmd.extend(["--prefs", str(r_prefs)])
                 if Path(r_companies) != settings.companies_yaml: cmd.extend(["--companies", str(r_companies)])
 
+                # Load jobspy concurrency setting from preferences if JobSpy is included
+                env = {**os.environ, "PYTHONUNBUFFERED": "1", "PYTHONPATH": "src;."}
+                if r_jobspy:
+                    try:
+                        prefs = load_yaml(r_prefs)
+                        jobspy_conc = prefs.get("performance", {}).get("scrape_jobspy_concurrency", settings.scrape_jobspy_concurrency)
+                        env["JOBSEARCH_SCRAPE_JOBSPY_CONCURRENCY"] = str(int(jobspy_conc))
+                    except Exception:
+                        pass  # Use default if loading fails
+
                 log = st.empty(); lines = []
                 proc = subprocess.Popen(
                     cmd,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     encoding="utf-8",
-                    env={**os.environ, "PYTHONUNBUFFERED": "1", "PYTHONPATH": "src;."},
+                    env=env,
                 )
                 for raw in iter(proc.stdout.readline, ""):
                     lines.append(raw.rstrip())

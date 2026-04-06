@@ -3,6 +3,7 @@
 import csv
 import json
 import logging
+import os
 import random
 import re
 import time
@@ -726,8 +727,21 @@ class ScraperEngine:
         Returns:
             Dict with enrichment statistics
         """
-        enricher = EnrichmentService()
-        conn = get_connection()
+        # Extract user skills from preferences for missing-skills detection
+        user_skills = self.prefs.get("profile", {}).get("user_skills", [])
+
+        # Get API keys from database settings or environment
+        enricher_conn = get_connection()
+        google_api_key = db.get_setting(enricher_conn, "google_api_key", default=os.getenv("GOOGLE_API_KEY", ""))
+        openai_api_key = db.get_setting(enricher_conn, "openai_api_key", default=os.getenv("OPENAI_API_KEY", ""))
+
+        enricher = EnrichmentService(
+            google_api_key=google_api_key,
+            openai_api_key=openai_api_key,
+            user_skills=user_skills,
+            db_conn=enricher_conn,
+        )
+        conn = enricher_conn
         cursor = conn.cursor()
 
         # Fetch high-scoring jobs that haven't been enriched yet
