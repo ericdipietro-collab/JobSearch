@@ -650,8 +650,29 @@ class ATSHealer:
         from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FuturesTimeout
 
         # Generate robust site candidates based on company name and slug
-        base_sites = ["External", "Careers", "Jobs", "External_Careers"]
-        custom_sites = [slug.capitalize(), f"{slug.capitalize()}Careers", f"{slug.capitalize()}_Careers", f"{slug.capitalize()}Investments", f"{slug.capitalize()}_External_Careers"]
+        base_sites = ["External", "Careers", "Jobs", "External_Careers", "External_Job_Board"]
+        
+        # Add variants based on company name
+        name_clean = re.sub(r"[^a-zA-Z0-9]", "", name)
+        name_words = name.split()
+        
+        custom_sites = [
+            slug.capitalize(), 
+            f"{slug.capitalize()}Careers", 
+            f"{slug.capitalize()}_Careers", 
+            f"{slug.capitalize()}Investments", 
+            f"{slug.capitalize()}_External_Careers",
+            name_clean,
+            f"{name_clean}Careers",
+            f"{name_clean}Investments"
+        ]
+        # If company name has multiple words, try the first word
+        if name_words:
+            first_word = re.sub(r"[^a-zA-Z0-9]", "", name_words[0])
+            custom_sites.append(f"{first_word}Careers")
+            custom_sites.append(f"{first_word}_Careers")
+            custom_sites.append(f"{first_word}External")
+
         all_site_candidates = list(dict.fromkeys(base_sites + custom_sites))
 
         # Extract any hint number from the existing adapter_key
