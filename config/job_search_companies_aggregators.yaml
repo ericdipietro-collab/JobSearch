@@ -112,3 +112,25 @@ companies:
     max_requests_per_run: 3
     concurrency: 1
     cooldown_days: 1
+  - name: CareerOneStop API
+    source_lane: aggregator
+    adapter: careeronestop
+    active: true
+    priority: medium
+    tier: 4
+    careers_url: https://www.careeronestop.org/
+    domain: careeronestop.org
+    industry: government | aggregator
+    status: active
+    notes: Official API source for the National Labor Exchange (NLx).
+    search_queries:
+      - query: senior product manager
+        tier: 1
+      - query: solution architect
+        tier: 1
+      - query: technical program manager
+        tier: 2
+    location_filter: US
+    max_results_per_query: 50
+    concurrency: 1
+    cooldown_days: 1
