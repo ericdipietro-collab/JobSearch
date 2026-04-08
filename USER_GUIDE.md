@@ -242,6 +242,13 @@ If you find a broken URL or a job from a company that needs a careers page updat
 
 ![Manual Review — edit company URLs in-place](docs/Screenshots/manualreview.png)
 
+### Manual Escape Hatch (Bookmarklet)
+For jobs found on niche boards, Slack, or LinkedIn, use the **Manual Escape Hatch** bookmarklet to inject them directly into your dashboard.
+
+![Manual Escape Hatch — browser bookmarklet setup](docs/Screenshots/escapehatchbookmark.png)
+
+To set this up, go to **Search Settings -> Extensions & Tools** and drag the button to your browser's bookmarks bar.
+
 **Follow-up**
 - Set a follow-up date and note
 - The Home dashboard surfaces overdue follow-ups prominently
