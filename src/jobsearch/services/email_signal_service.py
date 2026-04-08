@@ -70,6 +70,18 @@ MARKETING_PATTERNS = [
     "curated",
     "shop",
     "buy now",
+    "view in browser",
+    "privacy policy",
+    "terms of service",
+    "all rights reserved",
+    "no-reply@",
+    "noreply@",
+    "special offer",
+    "limited time",
+    "exclusive offer",
+    "booking",
+    "cleaning",
+    "reservation",
 ]
 
 MONTH_PATTERN = r"(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)"
@@ -108,7 +120,8 @@ def _extract_company(known_companies: Iterable[str], text: str, sender: str) -> 
     haystack = f"{text} {sender}".lower()
     candidates = sorted({c for c in known_companies if c}, key=len, reverse=True)
     for company in candidates:
-        if company.lower() in haystack:
+        pattern = rf"\b{re.escape(company.lower())}\b"
+        if re.search(pattern, haystack):
             return company
     return None
 
@@ -292,12 +305,12 @@ def signal_resolution_for_existing_application(signal_type: str, linked_status: 
 
 
 def _looks_like_interview_request(text: str, company: Optional[str]) -> bool:
+    if any(pattern in text for pattern in MARKETING_PATTERNS):
+        return False
     if any(pattern in text for pattern in INTERVIEW_CANCELLATION_PATTERNS + INTERVIEW_RESCHEDULE_PATTERNS):
         return True
     if any(pattern in text for pattern in INTERVIEW_PATTERNS):
         return True
-    if any(pattern in text for pattern in MARKETING_PATTERNS):
-        return False
     scheduling_cues = [
         "availability",
         "available to meet",

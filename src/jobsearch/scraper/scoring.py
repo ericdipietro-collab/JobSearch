@@ -34,13 +34,15 @@ class Scorer:
         self.body_positive = self._pref_weight_pairs(kw_cfg.get("body_positive"), [])
         self.body_negative = self._pref_weight_pairs(kw_cfg.get("body_negative"), [])
 
-        scoring_cfg = self.prefs.get("scoring", {})
-        keyword_matching_cfg = scoring_cfg.get("keyword_matching", {})
-        self.min_score_to_keep = scoring_cfg.get("minimum_score_to_keep", 35)
-        self.source_trust_cfg = scoring_cfg.get("source_trust", {})
+        self.scoring_cfg = self.prefs.get("scoring", {})
+        self.apply_now_cfg = self.scoring_cfg.get("apply_now", {})
+        keyword_matching_cfg = self.scoring_cfg.get("keyword_matching", {})
+        self.min_score_to_keep = self.scoring_cfg.get("minimum_score_to_keep", 35)
+        self.source_trust_cfg = self.scoring_cfg.get("source_trust", {})
         self.positive_keyword_cap = int(keyword_matching_cfg.get("positive_keyword_cap", 60))
         self.negative_keyword_cap = int(keyword_matching_cfg.get("negative_keyword_cap", 45))
-        adjustments_cfg = scoring_cfg.get("adjustments", {})
+        adjustments_cfg = self.scoring_cfg.get("adjustments", {})
+
         self.missing_salary_penalty = int(adjustments_cfg.get("missing_salary_penalty", 6))
         self.salary_at_or_above_target_bonus = int(adjustments_cfg.get("salary_at_or_above_target_bonus", 6))
         self.salary_meets_floor_bonus = int(adjustments_cfg.get("salary_meets_floor_bonus", 2))
@@ -579,22 +581,28 @@ class Scorer:
 
         base_score = 0.0
         if self.fast_track_base_score > 0 and any(pts >= self.fast_track_min_weight for _, pts in title_hits):
-            score = self.fast_track_base_score
             base_score = self.fast_track_base_score
 
         title_points = min(title_points, self.title_max_points)
-        score += title_points
+        
+        # Use either the fast-track base or the calculated title points, but not both stacked.
+        # This prevents title matches from immediately hitting 75+ points.
+        score = max(base_score, title_points)
 
         jd_pos_hits = self._match_compiled(jd_blob, self._compiled_body_positive)
         jd_neg_hits = self._match_compiled(jd_blob, self._compiled_body_negative)
         body_positive_points = min(sum(pts for _, pts in jd_pos_hits), self.positive_keyword_cap)
+        
+        # Increased penalty impact: Negatives should be able to nuke a score.
         body_negative_points = min(sum(pts for _, pts in jd_neg_hits), self.negative_keyword_cap)
+        
         score += body_positive_points
         score -= body_negative_points
 
         location_penalty = 0
         location_bonus = 0
-        tier_bonus = {1: 15, 2: 8, 3: 4}.get(company_tier, 0)
+        tier_bonus_cfg = self.scoring_cfg.get("tier_bonuses", {1: 15, 2: 8, 3: 4})
+        tier_bonus = tier_bonus_cfg.get(company_tier, tier_bonus_cfg.get(str(company_tier), 0))
         score += tier_bonus
 
         positive_keyword_gate_bonus = 0
@@ -681,6 +689,8 @@ class Scorer:
                     **comp_data,
                 }
 
+        score += location_bonus
+
         if work_type in {"w2_contract", "1099_contract", "c2c_contract"}:
             if not self.include_contract_roles:
                 contract_adjustment -= 20
@@ -693,6 +703,8 @@ class Scorer:
             if normalized_comp is not None and normalized_comp >= self.target_salary_usd:
                 contract_adjustment += self.contractor_target_bonus
 
+        score += contract_adjustment
+
         if normalized_comp is None:
             if not self.allow_missing_salary:
                 compensation_adjustment -= self.missing_salary_penalty
@@ -704,29 +716,58 @@ class Scorer:
             else:
                 compensation_adjustment -= self.salary_below_target_penalty
 
-        source_penalty -= int(source_trust["score_penalty"])
-        score += compensation_adjustment + contract_adjustment + location_bonus + source_penalty + exp_soft_penalty
+        score += compensation_adjustment
+
+        # Apply source-based trust policy
+        source_penalty = source_trust.get("score_penalty", 0)
+        score -= source_penalty
+
+        # Experience soft penalty
+        score += exp_soft_penalty
+
+        # Final score bounding
         score = max(0.0, min(100.0, score))
 
-        matched_str = ", ".join(sorted(set(term for term, _ in title_hits + partial_hits + jd_pos_hits)))
-        penalized_str = ", ".join(sorted(set(term for term, _ in jd_neg_hits)))
-        if exp_penalty_reason and exp_soft_penalty < 0:
-            penalized_str += (", " if penalized_str else "") + exp_penalty_reason
+        # Action Bucket Logic (internal flags for the dashboard)
+        apply_now_eligible = source_trust.get("apply_now_eligible", True)
+        if self.apply_now_cfg.get("require_strong_title", True):
+            # Check for strong title markers if enabled
+            direct_markers = self.apply_now_cfg.get("direct_title_markers", [])
+            has_direct = any(m.lower() in title_l for m in direct_markers) if direct_markers else True
+            # Also check if title points alone meet a minimum (e.g. 6.0)
+            if title_points < self.apply_now_cfg.get("min_role_alignment", 6.0) and not has_direct:
+                apply_now_eligible = False
 
-        return {
+        fit_band = self.fit_band(score)
+        
+        # Apply hard-gate: if salary is known and below floor, it can never be APPLY NOW
+        if normalized_comp is not None and normalized_comp < self.min_salary_usd:
+            apply_now_eligible = False
+
+        # Build decision reason
+        reasons = []
+        if base_score > 0: reasons.append(f"Title Fast-Track +{base_score} ({[t for t,p in title_hits if p >= self.fast_track_min_weight][0]})")
+        elif title_points > 0: reasons.append(f"Title Match +{title_points} ({', '.join(sorted(set(t for t,p in title_hits + partial_hits)))})")
+        
+        if body_positive_points > 0: reasons.append(f"JD Keywords +{body_positive_points} ({', '.join(sorted(set(t for t,p in jd_pos_hits)))})")
+        if body_negative_points > 0: reasons.append(f"Negative JD -{body_negative_points} ({', '.join(sorted(set(term for term, _ in jd_neg_hits)))})")
+        
+        if location_bonus > 0: reasons.append(f"Location Bonus +{location_bonus}")
+        if tier_bonus > 0: reasons.append(f"Tier {company_tier} Bonus +{tier_bonus}")
+        if contract_adjustment != 0: reasons.append(f"Contract Adj {contract_adjustment:+}")
+        if compensation_adjustment != 0: reasons.append(f"Comp Adj {compensation_adjustment:+}")
+        if source_penalty > 0: reasons.append(f"Source Penalty -{source_penalty}")
+        if exp_soft_penalty < 0: reasons.append(f"Exp Penalty {exp_soft_penalty} ({exp_penalty_reason})")
+        
+        decision_reason = "; ".join(reasons)
+
+        score_result = {
             "score": score,
-            "fit_band": self.fit_band(score),
-            "matched_keywords": matched_str,
-            "penalized_keywords": penalized_str,
-            "decision_reason": (
-                f"score={score:.1f} base={base_score:.1f} "
-                f"title={title_points} body+={body_positive_points} body-={body_negative_points} "
-                f"tier={tier_bonus} partial={partial_title_points} gate={positive_keyword_gate_bonus} "
-                f"location-={location_penalty} location+={location_bonus} comp={compensation_adjustment} contract={contract_adjustment} "
-                f"experience={exp_soft_penalty} source={source_penalty} source_lane={source_trust['key']} "
-                f"work_type={work_type} normalized_comp={normalized_comp if normalized_comp is not None else 'na'} "
-                f"hits={len(title_hits) + len(partial_hits) + len(jd_pos_hits)}"
-            ),
+            "fit_band": fit_band,
+            "matched_keywords": ", ".join(sorted(set(term for term, _ in title_hits + partial_hits + jd_pos_hits))),
+            "penalized_keywords": ", ".join(sorted(set(term for term, _ in jd_neg_hits))),
+            "decision_reason": decision_reason,
+            "apply_now_eligible": apply_now_eligible,
             "score_components": {
                 "base_score": base_score,
                 "title_points": title_points,
@@ -740,11 +781,12 @@ class Scorer:
                 "compensation_adjustment": compensation_adjustment,
                 "contract_adjustment": contract_adjustment,
                 "source_penalty": source_penalty,
-                "experience_penalty": exp_soft_penalty,
-                "source_trust_key": source_trust["key"],
+                "exp_soft_penalty": exp_soft_penalty,
             },
             **comp_data,
         }
+
+        return score_result
 
     def apply_enrichment_adjustments(
         self, score_result: Dict[str, Any], enriched_data: Optional[Dict[str, Any]]

@@ -173,9 +173,9 @@ if "%NEEDS_DEPS%"=="1" (
     if exist "installer\wheels" (
         REM --find-links prefers the bundled wheels for speed; no --no-index so pip
         REM can fall back to PyPI for any transitive deps missing from the bundle.
-        python -m pip install -q --only-binary=:all: --find-links installer\wheels -r requirements.txt
+        python -m pip install -q --find-links installer\wheels -r requirements.txt
     ) else (
-        python -m pip install -q --only-binary=:all: -r requirements.txt
+        python -m pip install -q -r requirements.txt
     )
     REM compat mode adds a .pth file - no C compiler or vswhere.exe needed.
     set SETUPTOOLS_EDITABLE_MODE=compat

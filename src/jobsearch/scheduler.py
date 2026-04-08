@@ -63,8 +63,18 @@ def start_auto_refresh(
 
     def _run_scraper():
         try:
+            import yaml
+            from jobsearch.config.settings import settings
+            
             logger.info(f"Starting auto-refresh (interval={interval_hours}h)")
-            engine = ScraperEngine(conn)
+            
+            # Load preferences and companies
+            with settings.prefs_yaml.open("r", encoding="utf-8") as h:
+                prefs = yaml.safe_load(h) or {}
+            with settings.companies_yaml.open("r", encoding="utf-8") as h:
+                comps = (yaml.safe_load(h) or {}).get("companies", [])
+            
+            engine = ScraperEngine(prefs, comps)
             engine.run()
             _update_last_run(conn)
             _check_for_high_score_alerts(conn)

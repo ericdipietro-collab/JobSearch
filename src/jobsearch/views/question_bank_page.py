@@ -26,6 +26,7 @@ _STAR_FIELDS = [
 
 def render_question_bank(conn) -> None:
     db.init_db(conn)
+    st.title("Interview Question Bank")
     apps = db.get_applications(conn)
     app_options = {f"{a['company']} — {a['role']}": a["id"] for a in apps}
     company_options = sorted({str(a["company"]) for a in apps if a["company"]})

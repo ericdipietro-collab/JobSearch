@@ -152,7 +152,10 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
     # Compute content hash for change detection
     new_hash = compute_content_hash(job.role_title_raw, job.url, job.description_excerpt)
 
-    existing = conn.execute(
+    def _row(r):
+        return dict(r) if r is not None else None
+
+    existing = _row(conn.execute(
         """
         SELECT id, status, description_excerpt, salary_text, location, jd_fingerprint,
                salary_low, salary_high, work_type, compensation_unit,
@@ -162,14 +165,14 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
         WHERE scraper_key = ?
         """,
         (job.id,),
-    ).fetchone()
+    ).fetchone())
 
     source_lane = str(getattr(job, "source_lane", "employer_ats") or "employer_ats").strip().lower() or "employer_ats"
     canonical_job_url = str(getattr(job, "canonical_job_url", "") or "").strip()
     normalized_location = _safe_str(job.location).lower()
 
     if existing is None and source_lane in {"aggregator", "jobspy_experimental"} and canonical_job_url:
-        stronger = conn.execute(
+        stronger = _row(conn.execute(
             """
             SELECT id
             FROM applications
@@ -179,32 +182,34 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
             LIMIT 1
             """,
             (canonical_job_url, canonical_job_url),
-        ).fetchone()
+        ).fetchone())
         if stronger is not None:
             return False, stronger["id"]
 
     if existing is None and canonical_job_url:
-        existing = conn.execute(
+        existing = _row(conn.execute(
             """
             SELECT id, status, description_excerpt, salary_text, location, jd_fingerprint,
                    salary_low, salary_high, work_type, compensation_unit,
-                   hourly_rate, hours_per_week, weeks_per_year, normalized_compensation_usd
+                   hourly_rate, hours_per_week, weeks_per_year, normalized_compensation_usd,
+                   content_hash
             FROM applications
             WHERE canonical_job_url = ? OR job_url = ?
             LIMIT 1
             """,
             (canonical_job_url, canonical_job_url),
-        ).fetchone()
+        ).fetchone())
 
     # Secondary dedup: prevent duplicate rows for the same company+role still in
     # 'considering' state (e.g. when a scraper re-discovers the same job at a
     # slightly different URL, producing a new scraper_key hash).
     if existing is None and job.role_title_normalized:
-        existing = conn.execute(
+        existing = _row(conn.execute(
             """
             SELECT id, status, description_excerpt, salary_text, location, jd_fingerprint,
                    salary_low, salary_high, work_type, compensation_unit,
-                   hourly_rate, hours_per_week, weeks_per_year, normalized_compensation_usd
+                   hourly_rate, hours_per_week, weeks_per_year, normalized_compensation_usd,
+                   content_hash
             FROM applications
             WHERE company = ?
               AND role_normalized = ?
@@ -212,7 +217,7 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
               AND status = 'considering'
             """,
             (job.company, job.role_title_normalized, normalized_location),
-        ).fetchone()
+        ).fetchone())
 
     now = _now_iso()
     status, stage_label = _normalize_status_and_stage(job)
@@ -224,7 +229,7 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
             """
             INSERT INTO applications (
                 company, role, role_normalized, job_url, source, source_lane, canonical_job_url, scraper_key,
-                status, score, fit_band, matched_keywords, penalized_keywords,
+                status, score, fit_band, apply_now_eligible, matched_keywords, penalized_keywords,
                 decision_reason, description_excerpt, location, is_remote,
                 jd_fingerprint, content_hash,
                 salary_text, salary_low, salary_high, work_type, compensation_unit,
@@ -233,7 +238,7 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
                 user_priority, tier, notes, created_at, updated_at
             ) VALUES (
                 :company, :role, :role_normalized, :url, :source, :source_lane, :canonical_job_url, :id,
-                :status, :score, :fit_band, :matched_keywords, :penalized_keywords,
+                :status, :score, :fit_band, :apply_now_eligible, :matched_keywords, :penalized_keywords,
                 :decision_reason, :description_excerpt, :location, :is_remote, :jd_fingerprint, :content_hash,
                 :salary_text, :salary_min, :salary_max, :work_type, :compensation_unit,
                 :hourly_rate, :hours_per_week, :weeks_per_year, :normalized_compensation_usd,
@@ -253,6 +258,7 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
                 "status": status,
                 "score": job.score,
                 "fit_band": job.fit_band,
+                "apply_now_eligible": int(getattr(job, "apply_now_eligible", True)),
                 "matched_keywords": job.matched_keywords,
                 "penalized_keywords": job.penalized_keywords,
                 "decision_reason": job.decision_reason,
@@ -290,6 +296,14 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
 
         # If content hash unchanged, skip update to preserve user annotations
         if old_hash == new_hash:
+            _record_job_observation(conn, app_id, job, now, old_hash)
+            return False, app_id
+
+        # INCREMENTAL SCRAPE SUPPORT: If the scraper provided an empty description, 
+        # it means it's skipping the detail fetch because it already exists.
+        # We update the observation timestamp but don't clear the description.
+        if not str(job.description_excerpt or "").strip() and existing.get("description_excerpt"):
+            _record_job_observation(conn, app_id, job, now, old_hash)
             return False, app_id
 
         old_excerpt = str(existing["description_excerpt"] or "")
@@ -328,6 +342,7 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
             UPDATE applications SET
                 score = :score,
                 fit_band = :fit_band,
+                apply_now_eligible = :apply_now_eligible,
                 matched_keywords = :matched_keywords,
                 penalized_keywords = :penalized_keywords,
                 decision_reason = :decision_reason,
@@ -352,6 +367,7 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
                 "app_id": app_id,
                 "score": job.score,
                 "fit_band": job.fit_band,
+                "apply_now_eligible": int(getattr(job, "apply_now_eligible", True)),
                 "matched_keywords": job.matched_keywords,
                 "penalized_keywords": job.penalized_keywords,
                 "decision_reason": job.decision_reason,

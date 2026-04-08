@@ -12,8 +12,8 @@ companies:
   careers_url: https://jobs.lever.co/accesssoftek
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:10:07.196527'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:40.007917'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Acorns
@@ -29,8 +29,8 @@ companies:
   careers_url: https://jobs.ashbyhq.com/acorns
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:10:06.998958'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:39.284062'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Addepar
@@ -50,8 +50,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/addepar1/jobs/8464433002
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:10:07.370694'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:39.576669'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: ADP
@@ -64,15 +64,13 @@ companies:
   industry:
   - payroll | ledgers | enterprise compliance
   notes: The standard in payroll; requires massive architectural focus on ledger math.
-  status: broken
+  status: active
   heal_skip: true
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-04T13:11:07.271069'
+  discovery_method: User-verified (heal_skip)
+  last_healed: '2026-04-06T22:15:38.721718'
   manual_only: false
-  heal_failure_streak: 1
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-05T19:11:07.266071+00:00'
 - name: Advisor360
   tier: 2
   priority: medium
@@ -85,13 +83,13 @@ companies:
   active: true
   status: broken
   discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-04T13:11:06.874030'
+  last_healed: '2026-04-06T17:45:36.339521'
   adapter_key: _next
   manual_only: false
-  heal_failure_streak: 1
+  heal_failure_streak: 2
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-05T19:11:06.874030+00:00'
+  cooldown_until: '2026-04-09T23:45:36.336522+00:00'
 - name: Advyzon
   tier: 1
   priority: high
@@ -126,8 +124,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/affirm/jobs/7535014003
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:10:07.719896'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:39.348605'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: AgentSync
@@ -142,8 +140,8 @@ companies:
   careers_url: https://ats.rippling.com/agentsync-careers/jobs
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:10:07.885397'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:39.864785'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Airbase
@@ -177,8 +175,8 @@ companies:
   careers_url: https://airbyte.com/company/careers
   active: true
   status: active
-  discovery_method: Embedded ashby found in scripts
-  last_healed: '2026-04-04T13:10:11.210889'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:39.362569'
   manual_only: false
   heal_failure_streak: 0
   manual_only_suggested: false
@@ -194,10 +192,11 @@ companies:
   careers_url: https://akoya.com/careers
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:10:11.689229'
+  discovery_method: Direct greenhouse probe
+  last_healed: '2026-04-06T22:15:44.513174'
   heal_failure_streak: 0
   manual_only_suggested: false
+  manual_only: false
 - name: Alation
   tier: 2
   priority: medium
@@ -226,8 +225,9 @@ companies:
   careers_url: https://albert.com/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:11:07.484913'
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-20T17:24:24.479119+00:00
+    (low_signal)
+  last_healed: '2026-04-06T22:15:39.369549'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Alignment Healthcare
@@ -242,8 +242,8 @@ companies:
   active: true
   adapter_key: alignmenthealthcare.wd12.myworkdayjobs.com/Alignmenthealthcare
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:11:07.810368'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:40.049405'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Alkami Technology
@@ -317,12 +317,12 @@ companies:
   active: true
   status: broken
   discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-04T13:12:09.014157'
+  last_healed: '2026-04-06T17:45:37.611452'
   manual_only: false
-  heal_failure_streak: 1
+  heal_failure_streak: 2
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-05T19:12:09.014157+00:00'
+  cooldown_until: '2026-04-09T23:45:37.608452+00:00'
 - name: Allvue Systems
   tier: 2
   priority: medium
@@ -334,11 +334,13 @@ companies:
   sub_industry: Alt Investment Tech
   careers_url: https://careers.allvuesystems.com/
   active: true
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:11:13.372024'
-  heal_failure_streak: 0
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-06T17:45:42.548350'
+  heal_failure_streak: 1
   manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-07T23:45:42.542392+00:00'
 - name: Ally Financial
   tier: 2
   priority: medium
@@ -349,12 +351,14 @@ companies:
   sub_industry: Digital Banking
   careers_url: https://ally.avature.net/careers
   active: true
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:11:14.672410'
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-06T17:45:38.183483'
   manual_only: false
-  heal_failure_streak: 0
+  heal_failure_streak: 1
   manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-07T23:45:38.176480+00:00'
 - name: Alpaca
   tier: 4
   priority: medium
@@ -368,8 +372,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/alpaca/jobs/5776281004
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:11:15.208825'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:39.826792'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Alteryx
@@ -402,8 +406,8 @@ companies:
   careers_url: https://altruist.com/careers/#open-roles
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:12:08.766081'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:40.249483'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Alviere
@@ -471,11 +475,13 @@ companies:
   sub_industry: Broker-Dealer Tech
   careers_url: https://careers.ameriprise.com/
   active: true
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:12:12.676348'
-  heal_failure_streak: 0
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-06T17:45:42.958112'
+  heal_failure_streak: 1
   manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-07T23:45:42.952606+00:00'
 - name: Anaplan
   tier: 2
   priority: medium
@@ -489,8 +495,8 @@ companies:
   active: true
   adapter_key: anaplan
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:12:12.945741'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:40.024402'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Anchorage Digital
@@ -505,8 +511,8 @@ companies:
   careers_url: https://jobs.lever.co/anchorage
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:12:13.301323'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:40.457616'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Anduin Transactions
@@ -520,12 +526,14 @@ companies:
   sub_industry: Private Markets Tech
   careers_url: https://anduintransact.com/careers
   active: true
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:12:13.784259'
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-06T17:46:40.360459'
   manual_only: false
-  heal_failure_streak: 0
+  heal_failure_streak: 1
   manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-07T23:46:40.353455+00:00'
 - name: Apex Fintech
   tier: 4
   priority: medium
@@ -556,11 +564,13 @@ companies:
   sub_industry: Brokerage / Clearing
   careers_url: https://apexfintechsolutions.com/
   active: true
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:12:20.113201'
-  heal_failure_streak: 0
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-06T17:46:41.383426'
+  heal_failure_streak: 1
   manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-07T23:46:41.378421+00:00'
 - name: Apiture
   tier: 2
   priority: medium
@@ -590,8 +600,8 @@ companies:
   careers_url: https://appfolio.wd1.myworkdayjobs.com/Appfolio
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:13:10.193565'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:40.570171'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Applied Systems
@@ -604,10 +614,10 @@ companies:
   sub_industry: InsureTech
   careers_url: https://globalcareers-appliedsystems.icims.com/jobs/intro?hashed=-435827957
   active: true
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:13:11.022659'
-  manual_only: false
+  status: manual_only
+  discovery_method: 'Unsupported ATS vendor: https://globalcareers-appliedsystems.icims.com/jobs/intro?hashed=-435827957'
+  last_healed: '2026-04-06T17:45:38.704518'
+  manual_only: true
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Arcesium
@@ -627,8 +637,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/arcesiumllc/jobs/4952159007
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:13:10.603501'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:40.259478'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Arch
@@ -662,8 +672,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/archer56/jobs/7499033003
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:13:11.225731'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:40.450615'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Argyle
@@ -714,12 +724,12 @@ companies:
   status: broken
   adapter_key: artisanpartners
   discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-04T13:14:17.390674'
+  last_healed: '2026-04-06T17:46:39.922431'
   manual_only: false
-  heal_failure_streak: 1
+  heal_failure_streak: 2
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-05T19:14:17.387509+00:00'
+  cooldown_until: '2026-04-09T23:46:39.919432+00:00'
 - name: Ascent
   tier: 2
   priority: medium
@@ -731,8 +741,8 @@ companies:
   careers_url: https://careers.ascentregtech.com/auth/login
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:13:21.226933'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:40.757450'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: AssetMark
@@ -748,8 +758,8 @@ companies:
   active: true
   status: active
   adapter_key: assetmark.wd5.myworkdayjobs.com/Assetmark
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:13:21.757332'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:46.665629'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Astra
@@ -764,8 +774,8 @@ companies:
   careers_url: https://jobs.ashbyhq.com/astra
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:13:21.897883'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:40.729446'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Athene
@@ -780,8 +790,8 @@ companies:
   active: true
   adapter_key: athene.wd5.myworkdayjobs.com/Athene
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:13:22.556584'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:41.158736'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: AtoB
@@ -796,8 +806,8 @@ companies:
   careers_url: https://jobs.ashbyhq.com/atob
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:13:22.695818'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:40.812978'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Atomic
@@ -813,8 +823,8 @@ companies:
   careers_url: https://jobs.ashbyhq.com/atomic
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:13:22.872880'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:41.194747'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: AuditBoard
@@ -829,8 +839,8 @@ companies:
   careers_url: https://auditboard.wd12.myworkdayjobs.com/Auditboard
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:13:23.408807'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:41.381607'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Avant
@@ -864,8 +874,8 @@ companies:
   active: true
   adapter_key: avidxchangeinc
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:14:12.334287'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:41.408154'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Baird
@@ -880,8 +890,8 @@ companies:
   active: true
   status: active
   adapter_key: baird.wd1.myworkdayjobs.com/Baird
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:14:12.929756'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:41.780569'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: BambooHR
@@ -895,8 +905,9 @@ companies:
   careers_url: https://www.bamboohr.com
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:14:13.363339'
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-20T17:26:29.293028+00:00
+    (low_signal)
+  last_healed: '2026-04-06T22:15:41.387624'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Bank of America
@@ -930,8 +941,9 @@ companies:
   careers_url: https://www.barchart.com/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:14:15.002653'
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-20T17:26:30.161492+00:00
+    (low_signal)
+  last_healed: '2026-04-06T22:15:41.410156'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: BECU
@@ -947,8 +959,8 @@ companies:
   active: true
   status: active
   adapter_key: becu.wd1.myworkdayjobs.com/Becu
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:14:14.660535'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:42.119764'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Bethpage Federal Credit Union
@@ -981,8 +993,8 @@ companies:
   careers_url: https://www.betterment.com/careers/current-openings
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:14:16.224192'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:42.836450'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Bill.com
@@ -1002,12 +1014,12 @@ companies:
   active: true
   status: broken
   discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-04T13:15:17.075474'
+  last_healed: '2026-04-06T17:46:45.301710'
   manual_only: false
-  heal_failure_streak: 1
+  heal_failure_streak: 2
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-05T19:15:17.072476+00:00'
+  cooldown_until: '2026-04-09T23:46:45.298710+00:00'
 - name: BillingPlatform
   tier: 2
   priority: medium
@@ -1037,8 +1049,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/bitgo/jobs/8428590002
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:14:30.645285'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:41.958661'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: BlackLine
@@ -1076,8 +1088,8 @@ companies:
   careers_url: https://blackrock.wd1.myworkdayjobs.com/Blackrock
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:15:16.227195'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:44.176213'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Blend
@@ -1092,8 +1104,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/blend
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:15:16.362004'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:42.230305'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Blockdaemon
@@ -1108,8 +1120,8 @@ companies:
   careers_url: https://jobs.ashbyhq.com/blockdaemon
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:15:16.498127'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:42.422900'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Bluevine
@@ -1126,8 +1138,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/bluevineus/jobs/7638537003
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:15:16.730154'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:42.635366'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: BMO U.S.
@@ -1161,8 +1173,8 @@ companies:
   careers_url: https://eofe.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/BNY-Careers/jobs?mode=location
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:15:19.822970'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:43.675990'
   manual_only: false
   heal_failure_streak: 0
   manual_only_suggested: false
@@ -1177,8 +1189,8 @@ companies:
   careers_url: https://jobs.bokf.com/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:15:21.536758'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:49.090671'
   manual_only: false
   heal_failure_streak: 0
   manual_only_suggested: false
@@ -1195,8 +1207,8 @@ companies:
   careers_url: https://jobs.ashbyhq.com/boomi
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:15:20.289430'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:43.838068'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Bottomline Technologies
@@ -1211,8 +1223,8 @@ companies:
   active: true
   status: active
   adapter_key: bottomlinetechnologies
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:15:20.548596'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:44.076669'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Braintree (PayPal)
@@ -1247,8 +1259,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/branch
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:15:21.794428'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:44.174215'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Bread Financial
@@ -1281,10 +1293,11 @@ companies:
   careers_url: https://www.brex.com/careers
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:15:31.343907'
+  discovery_method: Direct greenhouse probe
+  last_healed: '2026-04-06T22:15:46.174432'
   heal_failure_streak: 0
   manual_only_suggested: false
+  manual_only: false
 - name: Broadridge Financial
   tier: 1
   priority: high
@@ -1316,8 +1329,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/getbuilt/jobs/4624091005
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:15:32.391078'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:44.404646'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: C2FO
@@ -1331,8 +1344,8 @@ companies:
   careers_url: https://jobs.dayforcehcm.com/en-US/c2fo/CANDIDATEPORTAL
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:15:33.381162'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:45.704862'
   manual_only: false
   heal_failure_streak: 0
   manual_only_suggested: false
@@ -1352,8 +1365,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/cais/jobs/8428807002
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:15:33.577623'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:44.716137'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Canoe Intelligence
@@ -1367,8 +1380,8 @@ companies:
   careers_url: https://careers.canoeintelligence.com/jobs
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:15:34.161633'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:45.323574'
   manual_only: false
   heal_failure_streak: 0
   manual_only_suggested: false
@@ -1405,8 +1418,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/capco
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:16:22.400623'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:45.429113'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: CapIntel
@@ -1421,8 +1434,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/capintel/jobs/5076634007
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:16:22.625877'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:45.749874'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Capital Group
@@ -1457,8 +1470,8 @@ companies:
   careers_url: https://capitalone.wd12.myworkdayjobs.com/Capitalone
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:16:23.377249'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:46.339388'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Carta
@@ -1474,8 +1487,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/carta/jobs/7614162003
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:16:23.165943'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:46.189445'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Catch
@@ -1490,8 +1503,8 @@ companies:
   careers_url: https://jobs.ashbyhq.com/catch
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:16:23.504757'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:46.265958'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: CB Insights
@@ -1507,8 +1520,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/cbinsights/jobs/7776289
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:16:23.740770'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:46.390393'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Cboe Global Markets
@@ -1543,12 +1556,12 @@ companies:
   active: true
   status: broken
   discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-04T13:17:32.718817'
+  last_healed: '2026-04-06T17:46:59.041846'
   manual_only: false
-  heal_failure_streak: 1
+  heal_failure_streak: 2
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-05T19:17:32.718817+00:00'
+  cooldown_until: '2026-04-09T23:46:59.038848+00:00'
 - name: Celigo
   tier: 2
   priority: medium
@@ -1561,8 +1574,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/celigo/jobs/7561625
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:16:35.738789'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:46.483905'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Celtic Bank
@@ -1596,12 +1609,12 @@ companies:
   active: true
   status: broken
   discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-04T13:18:23.743311'
+  last_healed: '2026-04-06T17:47:40.670261'
   manual_only: false
-  heal_failure_streak: 1
+  heal_failure_streak: 2
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-05T19:18:23.743311+00:00'
+  cooldown_until: '2026-04-09T23:47:40.663181+00:00'
 - name: Cetera Financial Group
   tier: 1
   priority: high
@@ -1612,11 +1625,13 @@ companies:
   sub_industry: Broker-Dealer Tech
   careers_url: https://cetera.com/
   active: true
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:17:24.878494'
-  heal_failure_streak: 0
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-06T17:47:43.212490'
+  heal_failure_streak: 1
   manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-07T23:47:43.205350+00:00'
 - name: Chainalysis
   tier: 2
   priority: medium
@@ -1629,8 +1644,9 @@ companies:
   careers_url: https://chainalysis.wd1.myworkdayjobs.com/Chainalysis
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:17:26.817566'
+  discovery_method: Skipped due to workday scrape cooldown until 2026-04-11T00:01:37.639828+00:00
+    (cooldown)
+  last_healed: '2026-04-06T22:15:46.345387'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Chargebee
@@ -1645,8 +1661,8 @@ companies:
   careers_url: https://jobs.chargebee.com:443/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:17:28.185129'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:47.751725'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Charles Schwab
@@ -1664,11 +1680,13 @@ companies:
   sub_industry: Brokerage
   careers_url: https://www.schwabjobs.com/
   active: true
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:17:28.891321'
-  heal_failure_streak: 0
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-06T17:47:44.217856'
+  heal_failure_streak: 1
   manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-07T23:47:44.211856+00:00'
 - name: Check
   tier: 2
   priority: medium
@@ -1681,8 +1699,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/check/jobs/5823742004
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:17:29.200493'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:46.575441'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Checkout.com
@@ -1702,12 +1720,12 @@ companies:
   active: true
   status: broken
   discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-04T13:18:30.730758'
+  last_healed: '2026-04-06T17:47:46.383168'
   manual_only: false
-  heal_failure_streak: 1
+  heal_failure_streak: 2
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-05T19:18:30.723272+00:00'
+  cooldown_until: '2026-04-09T23:47:46.377056+00:00'
 - name: Cherre
   tier: 2
   priority: medium
@@ -1721,8 +1739,8 @@ companies:
   careers_url: https://jobs.lever.co/cherre
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:17:30.747758'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:47.996848'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Chime
@@ -1738,7 +1756,7 @@ companies:
   active: true
   status: active
   discovery_method: Direct greenhouse probe
-  last_healed: '2026-04-04T13:18:04.480256'
+  last_healed: '2026-04-06T22:15:48.448874'
   manual_only: false
   heal_failure_streak: 0
   manual_only_suggested: false
@@ -1754,8 +1772,8 @@ companies:
   careers_url: https://jobs.firstcitizens.com/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:17:33.951414'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:47.506788'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Circle
@@ -1770,8 +1788,8 @@ companies:
   careers_url: https://circle.wd1.myworkdayjobs.com/Circle
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:17:34.424764'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:47.933787'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Citadel Securities
@@ -1805,8 +1823,8 @@ companies:
   careers_url: https://citi.wd5.myworkdayjobs.com/Citi
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:17:43.518046'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:48.404865'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Citizens Bank
@@ -1821,8 +1839,8 @@ companies:
   careers_url: https://jobs.citizensbank.com/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:17:44.059193'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:48.664920'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Clear Street
@@ -1837,8 +1855,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/clearstreet/jobs/7542460
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:17:44.274462'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:48.224195'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Clearcover
@@ -1893,8 +1911,8 @@ companies:
   careers_url: https://clearwateranalytics.wd1.myworkdayjobs.com/Clearwateranalytics
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:18:24.371020'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:48.904518'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Clover Health
@@ -1910,8 +1928,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/cloverhealth/jobs/7429781
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:18:24.859743'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:48.682950'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: CME Group
@@ -1927,8 +1945,8 @@ companies:
   careers_url: https://cmegroup.wd1.myworkdayjobs.com/Cmegroup
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:18:25.399273'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:49.060656'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Coalition
@@ -1944,8 +1962,8 @@ companies:
   careers_url: https://www.coalitioninc.com/jobs
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:18:26.150292'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:49.440234'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Coastal Community Bank
@@ -1977,8 +1995,8 @@ companies:
   careers_url: https://careers.cobank.com/web/iam-portal/login?p_p_id=iam_login_mvc&p_p_lifecycle=0&_iam_login_mvc_redirect=%2F
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:18:31.150333'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:49.191230'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Cohen & Steers
@@ -1993,7 +2011,7 @@ companies:
   active: true
   status: active
   discovery_method: Direct greenhouse probe
-  last_healed: '2026-04-04T13:19:29.071789'
+  last_healed: '2026-04-06T22:15:51.042959'
   adapter_key: cohensteers
   manual_only: false
   heal_failure_streak: 0
@@ -2010,14 +2028,12 @@ companies:
   sub_industry: Digital Assets
   careers_url: https://www.coinbase.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-04T13:19:35.792452'
+  status: active
+  discovery_method: Direct greenhouse probe
+  last_healed: '2026-04-06T22:15:50.223587'
   manual_only: false
-  heal_failure_streak: 1
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-05T19:19:35.789219+00:00'
 - name: Collibra
   tier: 2
   priority: medium
@@ -2031,12 +2047,12 @@ companies:
   active: true
   status: broken
   discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-04T13:19:50.504183'
+  last_healed: '2026-04-06T17:48:14.928020'
   manual_only: false
-  heal_failure_streak: 1
+  heal_failure_streak: 2
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-05T19:19:50.501584+00:00'
+  cooldown_until: '2026-04-09T23:48:14.925043+00:00'
 - name: Column
   tier: 2
   priority: medium
@@ -2049,8 +2065,8 @@ companies:
   careers_url: https://jobs.ashbyhq.com/column
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:19:14.046039'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:49.442214'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Comerica
@@ -2065,8 +2081,8 @@ companies:
   active: true
   adapter_key: comerica.wd1.myworkdayjobs.com/Comerica
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:19:14.624495'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:49.753189'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Commonwealth Financial Network
@@ -2080,12 +2096,12 @@ companies:
   sub_industry: Broker-Dealer Tech
   careers_url: https://careers-commonwealth.icims.com/jobs/search?hashed=-435739486
   active: true
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:19:15.420665'
+  status: manual_only
+  discovery_method: 'Unsupported ATS vendor: https://careers-commonwealth.icims.com/jobs/search?hashed=-435739486'
+  last_healed: '2026-04-06T17:47:41.197198'
   heal_failure_streak: 0
   manual_only_suggested: false
-  manual_only: false
+  manual_only: true
 - name: Concur (SAP)
   tier: 4
   priority: medium
@@ -2123,12 +2139,12 @@ companies:
   active: true
   status: broken
   discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-04T13:20:27.458056'
+  last_healed: '2026-04-06T17:48:41.617767'
   manual_only: false
-  heal_failure_streak: 1
+  heal_failure_streak: 2
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-05T19:20:27.458056+00:00'
+  cooldown_until: '2026-04-09T23:48:41.615768+00:00'
 - name: ConsenSys
   tier: 2
   priority: medium
@@ -2141,8 +2157,8 @@ companies:
   careers_url: https://consensys.io/open-roles
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:19:29.534262'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:49.969273'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Corcentric
@@ -2156,8 +2172,8 @@ companies:
   careers_url: https://apply.workable.com/corcentric/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:19:30.064105'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:49.892749'
   manual_only: false
   heal_failure_streak: 0
   manual_only_suggested: false
@@ -2173,8 +2189,8 @@ companies:
   active: true
   adapter_key: corebridgefinancial.wd1.myworkdayjobs.com/Corebridgefinancial
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:19:36.709600'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:51.184512'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: CoreCard
@@ -2187,11 +2203,13 @@ companies:
   sub_industry: Card Processing
   careers_url: https://www.corecard.com/careers
   active: true
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:19:36.195441'
-  heal_failure_streak: 0
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-06T17:48:48.209003'
+  heal_failure_streak: 1
   manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-07T23:48:48.201384+00:00'
 - name: Corelation
   tier: 4
   priority: medium
@@ -2204,8 +2222,8 @@ companies:
   careers_url: https://recruiting.paylocity.com/Recruiting/Jobs/All/ab9a2564-d82e-4d82-8b71-412c8b403274/Corelation-Inc
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:19:36.765472'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:50.559881'
   manual_only: false
   heal_failure_streak: 0
   manual_only_suggested: false
@@ -2259,8 +2277,8 @@ companies:
   careers_url: https://jobs.lever.co/coupa/6d54f082-7a32-437b-8845-b22c23625ed2
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:19:50.845003'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:50.547881'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Creative Planning
@@ -2273,11 +2291,13 @@ companies:
   sub_industry: WealthTech
   careers_url: https://creativeplanning.com/
   active: true
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:19:51.327231'
-  heal_failure_streak: 0
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-06T17:48:46.796693'
+  heal_failure_streak: 1
   manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-07T23:48:46.790189+00:00'
 - name: Credit Karma
   tier: 2
   priority: medium
@@ -2290,8 +2310,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/creditkarma/jobs/7494918003
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:19:51.573562'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:50.411348'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Cross River
@@ -2306,8 +2326,8 @@ companies:
   careers_url: https://crossriver.wd5.myworkdayjobs.com/Crossriver
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:19:52.156790'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:51.038959'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: CrowdStrike
@@ -2324,8 +2344,8 @@ companies:
   careers_url: https://crowdstrike.wd5.myworkdayjobs.com/Crowdstrike
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:19:52.783339'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:51.166512'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: CU*Answers
@@ -2340,8 +2360,9 @@ companies:
   careers_url: https://www.cuanswers.com/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:19:55.250871'
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-20T17:29:31.990353+00:00
+    (low_signal)
+  last_healed: '2026-04-06T22:15:50.565875'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Current
@@ -2355,8 +2376,8 @@ companies:
   careers_url: https://current.com/careers/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:19:56.106308'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:51.246036'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: DailyPay
@@ -2372,8 +2393,8 @@ companies:
   careers_url: https://jobs.ashbyhq.com/dailypay
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:19:56.248175'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:51.524462'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Dataminr
@@ -2388,8 +2409,8 @@ companies:
   careers_url: https://dataminr.wd12.myworkdayjobs.com/Dataminr
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:19:56.768442'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:51.581453'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: DataRobot
@@ -2404,8 +2425,8 @@ companies:
   careers_url: https://datarobot.wd1.myworkdayjobs.com/Datarobot
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:19:57.290134'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:51.717028'
   adapter_key: datarobot.wd1.myworkdayjobs.com/Datarobot
   heal_failure_streak: 0
   manual_only_suggested: false
@@ -2421,8 +2442,8 @@ companies:
   careers_url: https://jobs.ashbyhq.com/dave
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:19:57.462397'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:51.652992'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: dbt Labs
@@ -2437,8 +2458,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/dbtlabsinc/jobs/4678053005
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:19:57.654470'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:51.418920'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: DealCloud (Intapp)
@@ -2475,8 +2496,8 @@ companies:
   careers_url: https://jobs.ashbyhq.com/deel
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:20:17.875557'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:51.909126'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Denodo
@@ -2493,8 +2514,8 @@ companies:
   careers_url: https://www.denodo.com/en
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:20:18.671357'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:52.352008'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Devoted Health
@@ -2510,12 +2531,12 @@ companies:
   active: true
   status: broken
   discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-04T13:21:25.562391'
+  last_healed: '2026-04-06T17:48:58.021226'
   manual_only: false
-  heal_failure_streak: 1
+  heal_failure_streak: 2
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-05T19:21:25.558729+00:00'
+  cooldown_until: '2026-04-09T23:48:58.018219+00:00'
 - name: Digital Asset
   tier: 2
   priority: medium
@@ -2527,8 +2548,9 @@ companies:
   careers_url: https://www.digitalasset.com/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:20:27.958686'
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-20T17:29:58.227541+00:00
+    (low_signal)
+  last_healed: '2026-04-06T22:15:51.586456'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Dimensional Fund Advisors
@@ -2563,8 +2585,8 @@ companies:
   careers_url: https://discover.wd5.myworkdayjobs.com/Discover
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:20:42.482682'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:52.338979'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: DoubleLine Capital
@@ -2578,8 +2600,8 @@ companies:
   careers_url: https://www.paycom.com/careers/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:20:43.408016'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:52.934626'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Dremio
@@ -2596,12 +2618,12 @@ companies:
   active: true
   status: broken
   discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-04T13:21:44.550563'
+  last_healed: '2026-04-06T17:49:16.978440'
   manual_only: false
-  heal_failure_streak: 1
+  heal_failure_streak: 2
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-05T19:21:44.546652+00:00'
+  cooldown_until: '2026-04-09T23:49:16.975443+00:00'
 - name: DriveTime
   tier: 2
   priority: medium
@@ -2614,8 +2636,8 @@ companies:
   active: true
   status: active
   adapter_key: drivetime.wd1.myworkdayjobs.com/en-US/DriveTime/introduceYourself
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:20:44.722719'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:52.341978'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: DriveWealth
@@ -2649,8 +2671,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/drweng/jobs/7759802
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:20:58.326392'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:52.353015'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: EarnIn
@@ -2666,8 +2688,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/earnin/jobs/7729952
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:20:58.601764'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:52.581298'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: East West Bank
@@ -2680,10 +2702,10 @@ companies:
   sub_industry: Commercial Banking
   careers_url: https://careers-eastwestbank.icims.com/jobs/intro
   active: true
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:20:59.520117'
-  manual_only: false
+  status: manual_only
+  discovery_method: 'Unsupported ATS vendor: https://careers-eastwestbank.icims.com/jobs/intro'
+  last_healed: '2026-04-06T17:48:42.485667'
+  manual_only: true
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Edelman Financial Engines
@@ -2698,8 +2720,8 @@ companies:
   active: true
   status: active
   heal_skip: true
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:21:00.415514'
+  discovery_method: User-verified (heal_skip)
+  last_healed: '2026-04-06T22:15:52.358015'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Edward Jones
@@ -2712,11 +2734,13 @@ companies:
   sub_industry: Broker-Dealer Tech
   careers_url: https://careers.edwardjones.com/
   active: true
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:21:01.202209'
-  heal_failure_streak: 0
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-06T17:49:46.391590'
+  heal_failure_streak: 1
   manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-07T23:49:46.386593+00:00'
 - name: Eightfold AI
   tier: 2
   priority: medium
@@ -2728,8 +2752,9 @@ companies:
   careers_url: https://cultivate.eightfold.ai/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:21:03.345892'
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-20T17:30:50.052442+00:00
+    (low_signal)
+  last_healed: '2026-04-06T22:15:52.387218'
   manual_only: false
   heal_failure_streak: 0
   manual_only_suggested: false
@@ -2781,8 +2806,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/enigmaio/jobs/7473211
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:21:35.248030'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:52.844080'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Enova
@@ -2797,8 +2822,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/enova
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:21:35.423367'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:52.590298'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Entrata
@@ -2813,8 +2838,8 @@ companies:
   careers_url: https://jobs.lever.co/entrata
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:21:36.183850'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:53.162273'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Envestnet
@@ -2834,8 +2859,8 @@ companies:
   careers_url: https://envestnet.wd5.myworkdayjobs.com/Envestnet
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:21:36.909112'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:53.223808'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: EPAM Systems
@@ -2850,8 +2875,8 @@ companies:
   careers_url: https://careers.epam.com/en/jobs
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:21:37.550587'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:54.172619'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Equitable
@@ -2866,8 +2891,9 @@ companies:
   careers_url: https://equitable.com/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:21:38.190068'
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-20T17:31:13.332388+00:00
+    (low_signal)
+  last_healed: '2026-04-06T22:15:52.849083'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: EquityZen
@@ -2882,8 +2908,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/equityzen/jobs/7537651003
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:21:38.540475'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:53.052739'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Ethic
@@ -2915,8 +2941,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/ethoslife/jobs/7939784002
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:21:44.776751'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:53.126276'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Evolve Bank & Trust
@@ -2930,8 +2956,9 @@ companies:
   careers_url: https://www.getevolved.com/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:21:45.371389'
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-20T17:31:15.025186+00:00
+    (low_signal)
+  last_healed: '2026-04-06T22:15:53.059742'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Expensify
@@ -2944,11 +2971,13 @@ companies:
   sub_industry: Spend Management
   careers_url: https://careers.expensify.com/
   active: true
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:21:45.936949'
-  heal_failure_streak: 0
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-06T17:49:52.635189'
+  heal_failure_streak: 1
   manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-07T23:49:52.628180+00:00'
 - name: Experian
   tier: 2
   priority: medium
@@ -2961,8 +2990,8 @@ companies:
   active: true
   status: active
   adapter_key: Experian
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:21:46.637306'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:54.730677'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Facet Wealth
@@ -2975,11 +3004,13 @@ companies:
   sub_industry: WealthTech
   careers_url: https://facet.com/
   active: true
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:21:46.505198'
-  heal_failure_streak: 0
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-06T17:49:57.379299'
+  heal_failure_streak: 1
   manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-07T23:49:57.372979+00:00'
 - name: FactSet
   tier: 2
   priority: medium
@@ -3015,25 +3046,27 @@ companies:
   careers_url: https://job-boards.greenhouse.io/falconx/jobs/4677684005
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:21:46.850079'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:53.348340'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Farther
   tier: 1
   priority: high
-  adapter: generic
+  adapter: greenhouse
   domain: www.farther.com
   industry: wealthtech | digital ria | integrations
   notes: Fast-growing US digital wealth management platform.
   sub_industry: WealthTech
-  careers_url: https://www.farther.com/
+  careers_url: https://job-boards.greenhouse.io/fartherfinance/jobs/4642989005
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:21:47.452985'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:53.366877'
   heal_failure_streak: 0
   manual_only_suggested: false
+  adapter_key: fartherfinance
+  manual_only: false
 - name: Federated Hermes
   tier: 2
   priority: medium
@@ -3044,11 +3077,13 @@ companies:
   sub_industry: Asset Management
   careers_url: https://careers.federatedhermes.com/
   active: true
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:21:47.929326'
-  heal_failure_streak: 0
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-06T17:50:06.261468'
+  heal_failure_streak: 1
   manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-07T23:50:06.255080+00:00'
 - name: FICO
   tier: 2
   priority: medium
@@ -3061,8 +3096,8 @@ companies:
   active: true
   adapter_key: fico.wd1.myworkdayjobs.com/Fico
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:21:48.399878'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:53.725660'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Fidelity Investments
@@ -3082,12 +3117,12 @@ companies:
   active: true
   status: broken
   discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-04T13:22:49.220636'
+  last_healed: '2026-04-06T17:50:17.678343'
   manual_only: false
-  heal_failure_streak: 1
+  heal_failure_streak: 2
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-05T19:22:49.214272+00:00'
+  cooldown_until: '2026-04-09T23:50:17.673344+00:00'
 - name: Fifth Third Bank
   tier: 2
   priority: medium
@@ -3119,8 +3154,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/figure/jobs/8472564002
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:22:34.849181'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:53.577972'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Finix
@@ -3135,8 +3170,8 @@ companies:
   careers_url: https://jobs.lever.co/finix
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:22:40.884703'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:53.911742'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Fireblocks
@@ -3151,8 +3186,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/fireblocks/jobs/4655528006
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:22:39.439699'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:53.799679'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: First Citizens Bank
@@ -3167,8 +3202,8 @@ companies:
   careers_url: https://jobs.firstcitizens.com/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:22:41.796593'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:54.083082'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: First Horizon Bank
@@ -3199,8 +3234,9 @@ companies:
   careers_url: https://www.firsttechfed.com/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:22:42.860595'
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-20T17:31:56.381626+00:00
+    (low_signal)
+  last_healed: '2026-04-06T22:15:53.807214'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: FIS
@@ -3215,8 +3251,8 @@ companies:
   active: true
   adapter_key: fis.wd5.myworkdayjobs.com/Fis
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:22:43.616402'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:54.450851'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Fiserv
@@ -3231,8 +3267,8 @@ companies:
   active: true
   status: active
   adapter_key: fiserv.wd5.myworkdayjobs.com/Fiserv
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:22:44.410959'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:55.183901'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Fisher Investments
@@ -3247,12 +3283,12 @@ companies:
   active: true
   status: broken
   discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-04T13:23:45.530021'
+  last_healed: '2026-04-06T17:50:50.861476'
   manual_only: false
-  heal_failure_streak: 1
+  heal_failure_streak: 2
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-05T19:23:45.529506+00:00'
+  cooldown_until: '2026-04-09T23:50:50.853476+00:00'
 - name: Fivetran
   tier: 1
   priority: high
@@ -3265,14 +3301,12 @@ companies:
   sub_industry: Data Integration
   careers_url: https://www.fivetran.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-04T13:23:48.443332'
+  status: active
+  discovery_method: Direct greenhouse probe
+  last_healed: '2026-04-06T22:15:55.940204'
   manual_only: false
-  heal_failure_streak: 1
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-05T19:23:48.443332+00:00'
 - name: FloQast
   tier: 2
   priority: medium
@@ -3286,8 +3320,8 @@ companies:
   careers_url: https://jobs.lever.co/floqast
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:22:49.544453'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:54.638889'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Flywire
@@ -3303,12 +3337,12 @@ companies:
   active: true
   status: broken
   discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-04T13:23:49.885112'
+  last_healed: '2026-04-06T17:50:56.006292'
   manual_only: false
-  heal_failure_streak: 1
+  heal_failure_streak: 2
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-05T19:23:49.881909+00:00'
+  cooldown_until: '2026-04-09T23:50:56.003292+00:00'
 - name: Forge Global
   tier: 2
   priority: medium
@@ -3321,8 +3355,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/forgeglobal/jobs/5844006004
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:23:12.223029'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:54.675130'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Forter
@@ -3337,8 +3371,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/forter/jobs/8440405002
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:23:12.472782'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:54.824215'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: ForUsAll
@@ -3352,8 +3386,9 @@ companies:
   careers_url: https://www.forusall.com/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:23:12.834802'
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-20T17:32:27.316114+00:00
+    (low_signal)
+  last_healed: '2026-04-06T22:15:54.682132'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Franklin Templeton
@@ -3367,9 +3402,9 @@ companies:
   careers_url: https://franklintempleton.wd5.myworkdayjobs.com/Franklintempleton
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
+  discovery_method: Existing URL confirmed
   adapter_key: franklintempleton.wd5.myworkdayjobs.com/Franklintempleton
-  last_healed: '2026-04-04T13:23:13.437466'
+  last_healed: '2026-04-06T22:15:55.188899'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Frost Bank
@@ -3383,11 +3418,13 @@ companies:
   careers_url: https://frostbank.wd5.myworkdayjobs.com/Frostbank
   active: true
   adapter_key: frostbank.wd5.myworkdayjobs.com/Frostbank
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:23:13.995452'
-  heal_failure_streak: 0
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-06T17:51:02.566000'
+  heal_failure_streak: 1
   manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-07T23:51:02.560001+00:00'
 - name: Funding Circle
   tier: 4
   priority: medium
@@ -3401,8 +3438,8 @@ companies:
   careers_url: https://jobs.ashbyhq.com/fundingcircle
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:23:14.174894'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:55.346422'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Fundrise
@@ -3417,8 +3454,8 @@ companies:
   careers_url: https://jobs.lever.co/fundrise
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:23:14.537309'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:55.113899'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Galaxy Digital
@@ -3434,8 +3471,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/galaxydigitalservices/jobs/5823528004
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:23:14.807431'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:55.488965'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Galileo Financial
@@ -3450,8 +3487,8 @@ companies:
   active: true
   status: active
   adapter_key: galileofinancialtechnologies
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:23:15.092274'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:55.379436'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Gemini
@@ -3466,10 +3503,11 @@ companies:
   careers_url: https://www.gemini.com/careers
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:23:15.959007'
+  discovery_method: Direct greenhouse probe
+  last_healed: '2026-04-06T22:15:57.786873'
   heal_failure_streak: 0
   manual_only_suggested: false
+  manual_only: false
 - name: GeoWealth
   tier: 2
   priority: medium
@@ -3553,11 +3591,13 @@ companies:
   sub_industry: Billing / RevTech
   careers_url: https://gotransverse.com/careers
   active: true
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:23:50.271317'
-  heal_failure_streak: 0
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-06T17:51:15.422418'
+  heal_failure_streak: 1
   manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-07T23:51:15.416442+00:00'
 - name: Green Dot
   tier: 2
   priority: medium
@@ -3588,8 +3628,8 @@ companies:
   careers_url: https://jobs.lever.co/greenlight
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:24:30.432868'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:55.746137'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Guaranteed Rate
@@ -3602,11 +3642,13 @@ companies:
   sub_industry: Mortgage Tech
   careers_url: https://www.rate.com/
   active: true
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:24:30.858419'
-  heal_failure_streak: 0
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-06T17:51:18.582731'
+  heal_failure_streak: 1
   manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-07T23:51:18.576755+00:00'
 - name: Guggenheim Partners
   tier: 1
   priority: high
@@ -3660,8 +3702,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/gusto/jobs/7564086
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:24:47.331751'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:55.616016'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Halo Investing
@@ -3694,8 +3736,8 @@ companies:
   careers_url: https://www.hardingloevner.com/careers/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:24:57.037086'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:57.556542'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Hidden Road
@@ -3711,8 +3753,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/hiddenroad
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:24:57.195718'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:55.712135'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: HighRadius
@@ -3725,15 +3767,13 @@ companies:
   sub_industry: FinTech / Treasury
   careers_url: https://www.highradius.com/about/careers-list/
   active: true
-  status: broken
+  status: active
   adapter_key: highradius
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-04T13:25:58.360474'
+  discovery_method: Direct greenhouse probe
+  last_healed: '2026-04-06T22:15:57.605554'
   manual_only: false
-  heal_failure_streak: 1
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-05T19:25:58.355951+00:00'
 - name: Hightouch
   tier: 2
   priority: medium
@@ -3746,8 +3786,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/hightouch/jobs/5823552004
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:24:57.629599'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:55.944204'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Hippo Insurance
@@ -3761,14 +3801,13 @@ companies:
   sub_industry: InsureTech
   careers_url: https://www.lever.co/
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-04T13:25:59.905165'
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-20T17:33:51.767760+00:00
+    (low_signal)
+  last_healed: '2026-04-06T22:15:55.947205'
   manual_only: false
-  heal_failure_streak: 1
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-05T19:25:59.899954+00:00'
 - name: Hudson River Trading
   tier: 2
   priority: medium
@@ -3781,8 +3820,8 @@ companies:
   careers_url: https://hudsonrivertrading.wd1.myworkdayjobs.com/Hudsonrivertrading
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:25:32.285436'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:57.360927'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Human Interest
@@ -3797,8 +3836,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/humaninterest/jobs/7697332
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:25:32.506829'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:56.124121'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Hummingbird
@@ -3813,25 +3852,29 @@ companies:
   careers_url: https://hummingbird.wd1.myworkdayjobs.com/Hummingbird
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:25:33.871409'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:59.339912'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Huntington National Bank
   tier: 1
   priority: high
-  adapter: generic
+  adapter: smartrecruiters
   domain: huntington-careers.com
   industry: banking | wealthtech | data modeling
   notes: He reverse-engineered their RSU data modeling proposal; massive inside advantage.
   sub_industry: Banking / Wealth
-  careers_url: https://huntington-careers.com/
+  careers_url: https://careers.smartrecruiters.com/HuntingtonNationalBank1
   active: true
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:25:34.562255'
-  heal_failure_streak: 0
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-06T22:17:00.680190'
+  heal_failure_streak: 1
   manual_only_suggested: false
+  adapter_key: fantastic
+  manual_only: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-08T04:17:00.675195+00:00'
 - name: iCapital
   tier: 1
   priority: high
@@ -3848,8 +3891,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/icapitalnetwork/jobs/8012960002
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:25:34.777157'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:57.721877'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: ICE Mortgage Tech
@@ -3881,8 +3924,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/embed/job_board?for=iex
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:25:46.624627'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:57.729886'
   manual_only: false
   heal_failure_streak: 0
   manual_only_suggested: false
@@ -3914,8 +3957,8 @@ companies:
   careers_url: https://insperity.wd12.myworkdayjobs.com/Insperity
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:25:52.409929'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:58.304942'
   adapter_key: insperity.wd12.myworkdayjobs.com/Insperity
   heal_failure_streak: 0
   manual_only_suggested: false
@@ -3932,8 +3975,8 @@ companies:
   active: true
   status: active
   adapter_key: ibkr
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:25:52.632198'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:57.970975'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Intercontinental Exchange
@@ -3966,8 +4009,8 @@ companies:
   active: true
   status: active
   adapter_key: intuit.wd1.myworkdayjobs.com/Intuit
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:25:59.007039'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:58.428802'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Invesco
@@ -3983,8 +4026,8 @@ companies:
   active: true
   adapter_key: invesco.wd1.myworkdayjobs.com/Invesco
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:25:59.582295'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:58.607345'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: InvestCloud
@@ -4014,11 +4057,13 @@ companies:
   sub_industry: Core Banking Tech
   careers_url: https://careers.jackhenry.com/
   active: true
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:26:00.508482'
-  heal_failure_streak: 0
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-06T17:52:02.754184'
+  heal_failure_streak: 1
   manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-07T23:52:02.748189+00:00'
 - name: Jackson Financial
   tier: 2
   priority: medium
@@ -4049,8 +4094,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/janestreet/jobs/8072596002
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:26:35.084192'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:58.548345'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Janus Henderson
@@ -4064,8 +4109,8 @@ companies:
   careers_url: https://www.janushenderson.com/careers/search/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:26:35.835082'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:58.947406'
   manual_only: false
   heal_failure_streak: 0
   manual_only_suggested: false
@@ -4135,8 +4180,8 @@ companies:
   active: true
   adapter_key: jumio
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:26:59.829897'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:58.815080'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Juniper Square
@@ -4152,8 +4197,8 @@ companies:
   careers_url: https://jobs.ashbyhq.com/junipersquare
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:26:59.994998'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:58.700899'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Justt
@@ -4167,8 +4212,8 @@ companies:
   careers_url: https://justt.ai/careers/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:27:00.402345'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:59.180844'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Justworks
@@ -4185,8 +4230,8 @@ companies:
   careers_url: https://careers.smartrecruiters.com/Justworks
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:27:01.221320'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:59.731467'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Keep Financial
@@ -4238,8 +4283,8 @@ companies:
   active: true
   status: active
   adapter_key: keybank.wd5.myworkdayjobs.com/Keybank
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:27:36.712654'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:59.546203'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Kin Insurance
@@ -4253,8 +4298,9 @@ companies:
   careers_url: https://www.kin.com/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:27:37.394696'
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-20T17:35:04.524383+00:00
+    (low_signal)
+  last_healed: '2026-04-06T22:15:59.184846'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Koyfin
@@ -4273,8 +4319,8 @@ companies:
   careers_url: https://jobs.ashbyhq.com/koyfin
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:27:37.606653'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:59.437644'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Kraken
@@ -4290,8 +4336,8 @@ companies:
   careers_url: https://jobs.lever.co/kraken
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:27:37.871716'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:59.693934'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Lead Bank
@@ -4306,8 +4352,8 @@ companies:
   careers_url: https://jobs.ashbyhq.com/leadbank
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:27:38.005625'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:59.802486'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Lemonade
@@ -4323,12 +4369,12 @@ companies:
   active: true
   status: broken
   discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-04T13:28:38.830070'
+  last_healed: '2026-04-06T17:52:03.995615'
   manual_only: false
-  heal_failure_streak: 1
+  heal_failure_streak: 2
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-05T19:28:38.827682+00:00'
+  cooldown_until: '2026-04-09T23:52:03.992616+00:00'
 - name: LendingClub
   tier: 2
   priority: medium
@@ -4341,8 +4387,8 @@ companies:
   active: true
   adapter_key: lendingclub.wd1.myworkdayjobs.com/Lendingclub
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:27:56.421352'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:00.043449'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: LendingTree
@@ -4357,8 +4403,8 @@ companies:
   active: true
   adapter_key: lendingtree
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:27:56.662516'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:15:59.893004'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Liberty Mutual
@@ -4372,8 +4418,8 @@ companies:
   careers_url: https://jobs.libertymutualgroup.com/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:27:57.335396'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:00.290510'
   manual_only: false
   heal_failure_streak: 0
   manual_only_suggested: false
@@ -4389,8 +4435,8 @@ companies:
   careers_url: https://www.comeet.com/jobs/comeet/30.005
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:27:58.473343'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:00.896137'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Lincoln Financial Group
@@ -4422,8 +4468,8 @@ companies:
   active: true
   status: active
   heal_skip: true
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:27:59.131736'
+  discovery_method: User-verified (heal_skip)
+  last_healed: '2026-04-06T22:15:59.893004'
   manual_only: false
   heal_failure_streak: 0
   manual_only_suggested: false
@@ -4439,8 +4485,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/logicgate/jobs/4654101005
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:27:59.348703'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:00.110970'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Lord Abbett
@@ -4453,10 +4499,10 @@ companies:
   sub_industry: Asset Management
   careers_url: https://careers-lordabbett.icims.com/jobs/search?hashed=-435678259
   active: true
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:28:00.242598'
-  manual_only: false
+  status: manual_only
+  discovery_method: 'Unsupported ATS vendor: https://careers-lordabbett.icims.com/jobs/search?hashed=-435678259'
+  last_healed: '2026-04-06T17:51:06.253932'
+  manual_only: true
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: LPL Financial
@@ -4471,8 +4517,8 @@ companies:
   active: true
   status: active
   adapter_key: lplfinancial.wd1.myworkdayjobs.com/Lplfinancial
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:28:00.823806'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:01.016697'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Lukka
@@ -4487,8 +4533,8 @@ companies:
   careers_url: https://lukka.tech/careers/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:28:01.295548'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:00.860138'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: M&T Bank
@@ -4522,8 +4568,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/mantl
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:28:02.509900'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:00.398261'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: MarketAxess
@@ -4562,8 +4608,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/marqeta/jobs/7539542
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:28:10.002919'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:00.879131'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: MassMutual
@@ -4577,8 +4623,8 @@ companies:
   careers_url: https://massmutual.wd1.myworkdayjobs.com/Massmutual
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:28:10.666125'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:01.645691'
   adapter_key: massmutual.wd1.myworkdayjobs.com/Massmutual
   heal_failure_streak: 0
   manual_only_suggested: false
@@ -4595,8 +4641,8 @@ companies:
   careers_url: https://mastercard.wd1.myworkdayjobs.com/Mastercard
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:28:11.302736'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:01.556268'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Matillion
@@ -4612,8 +4658,8 @@ companies:
   careers_url: https://jobs.lever.co/matillion
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:28:11.599209'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:01.307775'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Maxio (Chargify/SaasOptics)
@@ -4646,8 +4692,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/maxwell
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:28:39.036501'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:01.157227'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Melio
@@ -4667,8 +4713,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/melio/jobs/7638858003
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:28:39.270379'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:01.349185'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Mercury
@@ -4683,8 +4729,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/mercury/jobs/5658757004
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:28:39.580143'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:01.473725'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: MeridianLink
@@ -4699,8 +4745,8 @@ companies:
   careers_url: https://jobs.ashbyhq.com/meridianlink
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:28:39.670221'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:01.429730'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: MetricStream
@@ -4769,12 +4815,12 @@ companies:
   active: true
   status: broken
   discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-04T13:30:04.325176'
+  last_healed: '2026-04-06T17:52:10.391752'
   manual_only: false
-  heal_failure_streak: 1
+  heal_failure_streak: 2
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-05T19:30:04.321550+00:00'
+  cooldown_until: '2026-04-09T23:52:10.385987+00:00'
 - name: Morgan Stanley
   tier: 1
   priority: high
@@ -4810,8 +4856,8 @@ companies:
   careers_url: https://morningstar.wd5.myworkdayjobs.com/Morningstar
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:29:41.449089'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:02.228420'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Mountain America Credit Union
@@ -4862,8 +4908,8 @@ companies:
   careers_url: https://msci.wd1.myworkdayjobs.com/Msci
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:30:04.928511'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:03.528091'
   adapter_key: msci.wd1.myworkdayjobs.com/Msci
   heal_failure_streak: 0
   manual_only_suggested: false
@@ -4882,8 +4928,8 @@ companies:
   careers_url: https://careers.salesforce.com/en/jobs/?search=
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:30:05.833512'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:02.393100'
   manual_only: false
   heal_failure_streak: 0
   manual_only_suggested: false
@@ -4900,8 +4946,8 @@ companies:
   careers_url: https://jobs.lever.co/myvest
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:30:05.379636'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:01.993796'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Nasdaq
@@ -4917,8 +4963,8 @@ companies:
   careers_url: https://nasdaq.wd1.myworkdayjobs.com/Nasdaq
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:30:05.980804'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:02.525194'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Nationwide
@@ -4933,8 +4979,8 @@ companies:
   active: true
   adapter_key: nationwide.wd1.myworkdayjobs.com/Nationwide
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:30:06.789541'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:03.250375'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Navan
@@ -4949,8 +4995,8 @@ companies:
   careers_url: https://navan.wd1.myworkdayjobs.com/Navan
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:30:06.471271'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:03.104332'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Navient
@@ -4966,8 +5012,8 @@ companies:
   active: true
   adapter_key: navient.wd1.myworkdayjobs.com/Navient
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:30:07.058581'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:03.197851'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Navy Federal Credit Union
@@ -4982,8 +5028,8 @@ companies:
   careers_url: https://jobs.navyfederal.org/hcmUI/CandidateExperience/en/sites/nfcu
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:30:08.067034'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:04.584765'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: nCino
@@ -4997,9 +5043,9 @@ companies:
   careers_url: https://ncino.wd5.myworkdayjobs.com/Ncino
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
+  discovery_method: Existing URL confirmed
   adapter_key: ncino.wd5.myworkdayjobs.com/Ncino
-  last_healed: '2026-04-04T13:30:08.409664'
+  last_healed: '2026-04-06T22:16:04.806859'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Nelnet
@@ -5014,8 +5060,8 @@ companies:
   active: true
   status: active
   adapter_key: nelnet.wd1.myworkdayjobs.com/Nelnet
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:30:08.695389'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:03.993919'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Neuberger Berman
@@ -5047,11 +5093,13 @@ companies:
   sub_industry: Wealth / InsureTech
   careers_url: https://careers.newyorklife.com/careers
   active: true
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:30:09.779412'
-  heal_failure_streak: 0
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-06T17:52:22.083561'
+  heal_failure_streak: 1
   manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-07T23:52:22.078102+00:00'
 - name: Next Insurance
   tier: 2
   priority: medium
@@ -5063,8 +5111,9 @@ companies:
   careers_url: https://www.nextinsurance.com/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:30:10.563317'
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-20T17:38:18.533979+00:00
+    (low_signal)
+  last_healed: '2026-04-06T22:16:03.530091'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: NICE Actimize
@@ -5096,8 +5145,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/ninjatrader/jobs/4647633006
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:30:14.176069'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:03.782384'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Nitrogen (Riskalyze)
@@ -5147,8 +5196,8 @@ companies:
   careers_url: https://northwesternmutual.wd5.myworkdayjobs.com/Northwesternmutual
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:31:02.436844'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:04.292719'
   adapter_key: northwesternmutual.wd5.myworkdayjobs.com/Northwesternmutual
   heal_failure_streak: 0
   manual_only_suggested: false
@@ -5165,8 +5214,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/novo
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:31:02.582447'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:04.118015'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Numerated
@@ -5216,8 +5265,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/embed/job_board?for=nymbusinc&error=true
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:31:11.837413'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:04.252716'
   manual_only: false
   heal_failure_streak: 0
   manual_only_suggested: false
@@ -5232,8 +5281,9 @@ companies:
   careers_url: https://www.oasispro.com/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:31:12.561905'
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-20T17:38:30.730505+00:00
+    (low_signal)
+  last_healed: '2026-04-06T22:16:04.258720'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Ondo Finance
@@ -5250,12 +5300,12 @@ companies:
   active: true
   status: broken
   discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-04T13:32:13.093517'
+  last_healed: '2026-04-06T17:52:23.090341'
   manual_only: false
-  heal_failure_streak: 1
+  heal_failure_streak: 2
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-05T19:32:13.089476+00:00'
+  cooldown_until: '2026-04-09T23:52:23.079340+00:00'
 - name: OneMain Financial
   tier: 2
   priority: medium
@@ -5302,8 +5352,8 @@ companies:
   careers_url: https://www.opendoor.com/careers/open-positions
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:32:03.331686'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:05.089464'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Openly
@@ -5318,8 +5368,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/openly/jobs/4667928005
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:32:03.630943'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:04.507792'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Oportun
@@ -5334,8 +5384,8 @@ companies:
   active: true
   adapter_key: oportun
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:32:03.866120'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:04.693317'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: OppFi
@@ -5350,8 +5400,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/opploans/jobs/7643812003
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:32:04.072187'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:04.801865'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Optiver
@@ -5366,8 +5416,8 @@ companies:
   careers_url: https://optiver.com/working-at-optiver/career-opportunities/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:32:04.665208'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:05.285890'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Osaic
@@ -5400,8 +5450,8 @@ companies:
   careers_url: https://www.hioscar.com/careers/search
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:32:11.000808'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:05.498516'
   manual_only: false
   heal_failure_streak: 0
   manual_only_suggested: false
@@ -5417,8 +5467,8 @@ companies:
   active: true
   adapter_key: pacificlife.wd1.myworkdayjobs.com/Pacificlife
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:32:11.603724'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:05.361417'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Pagos
@@ -5433,8 +5483,8 @@ companies:
   careers_url: https://jobs.ashbyhq.com/pagos
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:32:11.858833'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:05.301891'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Palo Alto Networks
@@ -5451,8 +5501,8 @@ companies:
   careers_url: https://careers.smartrecruiters.com/PaloAltoNetworks2
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:32:12.930980'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:05.943396'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Pathward
@@ -5467,8 +5517,8 @@ companies:
   active: true
   adapter_key: pathward
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:32:13.170682'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:05.492513'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Paxos
@@ -5483,8 +5533,8 @@ companies:
   careers_url: https://jobs.ashbyhq.com/paxos
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:32:13.351881'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:05.945399'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Payactiv
@@ -5500,8 +5550,8 @@ companies:
   careers_url: https://jobs.lever.co/payactiv
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:32:14.567205'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:06.058946'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Paychex
@@ -5514,11 +5564,13 @@ companies:
   sub_industry: HRIS / Payroll
   careers_url: https://careers.paychex.com/careers
   active: true
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:32:14.242816'
-  heal_failure_streak: 0
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-06T17:53:06.698640'
+  heal_failure_streak: 1
   manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-07T23:53:06.693179+00:00'
 - name: Paycom
   tier: 4
   priority: medium
@@ -5532,8 +5584,9 @@ companies:
   careers_url: https://www.paycom.com/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:32:14.874196'
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-20T17:39:00.792854+00:00
+    (low_signal)
+  last_healed: '2026-04-06T22:16:05.506531'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Paycor
@@ -5547,8 +5600,8 @@ companies:
   careers_url: https://www.paycor.com/hcm-software/career-management-software/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:32:15.082211'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:06.284099'
   heal_failure_streak: 0
   manual_only_suggested: false
   manual_only: false
@@ -5565,8 +5618,8 @@ companies:
   careers_url: https://www.paylocity.com/careers/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:32:15.249115'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:06.334636'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Paystand
@@ -5582,10 +5635,11 @@ companies:
   careers_url: https://www.paystand.com/careers
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:32:15.633963'
+  discovery_method: Direct greenhouse probe
+  last_healed: '2026-04-06T22:16:07.874610'
   heal_failure_streak: 0
   manual_only_suggested: false
+  manual_only: false
 - name: PenFed Credit Union
   tier: 2
   priority: medium
@@ -5597,8 +5651,8 @@ companies:
   careers_url: https://careers.penfed.org/jobs
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:32:15.885148'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:06.542717'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: PennyMac
@@ -5611,11 +5665,13 @@ companies:
   sub_industry: Mortgage Tech
   careers_url: https://careers.pennymac.com/
   active: true
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:32:17.673734'
-  heal_failure_streak: 0
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-06T17:53:10.864222'
+  heal_failure_streak: 1
   manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-07T23:53:10.857223+00:00'
 - name: Personal Capital / Empower
   tier: 4
   priority: medium
@@ -5649,8 +5705,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/pieinsurance/jobs/5684229004
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:32:16.924709'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:06.838492'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Piermont Bank
@@ -5665,8 +5721,8 @@ companies:
   active: true
   adapter_key: piermontbank
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:32:17.116971'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:06.551717'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: PIMCO
@@ -5682,8 +5738,8 @@ companies:
   active: true
   status: active
   adapter_key: pimco.wd1.myworkdayjobs.com/Pimco
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:32:17.837164'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:07.465246'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Pinnacle Financial Partners
@@ -5697,8 +5753,8 @@ companies:
   careers_url: https://www.pnfp.com/grizzlies-banking/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:32:18.727123'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:07.607815'
   manual_only: false
   heal_failure_streak: 0
   manual_only_suggested: false
@@ -5715,8 +5771,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/pinwheelapi/jobs/7680757003
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:32:18.054578'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:07.111620'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Piper Sandler
@@ -5731,8 +5787,8 @@ companies:
   active: true
   status: active
   adapter_key: pipersandler.wd501.myworkdayjobs.com/Piper_Sandler_Careers__;!!NVlXZax1HunXeA!EUboery8kH6uMakdpjvGq-wJ71B-O2V5wcPz1CFwFN2zkfmkAmXAy-ZbRnMbkGx3pBmKaUbtzXCe_GkOFFu-OLM$
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:32:18.956831'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:08.160986'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Plaid
@@ -5752,8 +5808,8 @@ companies:
   careers_url: https://jobs.lever.co/plaid/c6e65e59-4449-419a-88cd-481300fbe12b
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:32:19.054568'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:13.242860'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Planful
@@ -5824,8 +5880,8 @@ companies:
   careers_url: https://jobs.ashbyhq.com/point
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:33:11.771683'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:07.776061'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Pontera (FeeX)
@@ -5841,8 +5897,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/pontera/jobs/5752882004
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:33:12.015109'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:07.973885'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Principal Financial Group
@@ -5856,8 +5912,8 @@ companies:
   careers_url: https://careers.principal.com/careers-home
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:33:13.139899'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:08.813344'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Procore
@@ -5873,8 +5929,8 @@ companies:
   careers_url: https://procore.wd12.myworkdayjobs.com/Procore
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:33:13.610587'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:08.590673'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Prometheum
@@ -5887,11 +5943,13 @@ companies:
   sub_industry: Digital Assets / Clearing
   careers_url: https://www.prometheum.com/careers
   active: true
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:33:14.030549'
-  heal_failure_streak: 0
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-06T17:53:21.372854'
+  heal_failure_streak: 1
   manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-07T23:53:21.365856+00:00'
 - name: Prosper
   tier: 2
   priority: medium
@@ -5904,8 +5962,8 @@ companies:
   careers_url: https://jobs.lever.co/prosper
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:33:14.368927'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:09.869029'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Prove
@@ -5920,8 +5978,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/prove/jobs/5787515004
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:33:14.614396'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:08.834880'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Public.com
@@ -5955,8 +6013,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/pulley/jobs/5157037008
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:33:19.575979'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:09.114029'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Putnam Investments
@@ -6010,8 +6068,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/qualia/jobs/7643692
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:33:22.238453'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:09.108022'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Ramp
@@ -6026,8 +6084,8 @@ companies:
   careers_url: https://jobs.ashbyhq.com/ramp
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:33:22.327423'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:09.238053'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Raymond James
@@ -6041,8 +6099,8 @@ companies:
   careers_url: https://raymondjames.wd1.myworkdayjobs.com/Raymondjames
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:33:22.838461'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:09.743511'
   adapter_key: raymondjames.wd1.myworkdayjobs.com/Raymondjames
   heal_failure_streak: 0
   manual_only_suggested: false
@@ -6074,10 +6132,10 @@ companies:
   sub_industry: PropTech
   careers_url: https://careers-international-realpagepms.icims.com/jobs/search?hashed=-625856947
   active: true
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:33:53.174069'
-  manual_only: false
+  status: manual_only
+  discovery_method: 'Unsupported ATS vendor: https://careers-international-realpagepms.icims.com/jobs/search?hashed=-625856947'
+  last_healed: '2026-04-06T17:52:23.228319'
+  manual_only: true
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Recurly
@@ -6130,8 +6188,8 @@ companies:
   careers_url: https://jobs.lever.co/relay
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:34:20.430673'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:10.342895'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Ridgeline
@@ -6149,14 +6207,12 @@ companies:
   sub_industry: WealthTech / Cloud
   careers_url: https://ridgeline.ai/company/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-04T13:35:21.826357'
+  status: active
+  discovery_method: Direct greenhouse probe
+  last_healed: '2026-04-06T22:16:13.132276'
   manual_only: false
-  heal_failure_streak: 1
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-05T19:35:21.790851+00:00'
 - name: Ripple
   tier: 2
   priority: medium
@@ -6170,12 +6226,12 @@ companies:
   active: true
   status: broken
   discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-04T13:35:22.584086'
+  last_healed: '2026-04-06T17:53:24.072194'
   manual_only: false
-  heal_failure_streak: 1
+  heal_failure_streak: 2
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-05T19:35:22.579886+00:00'
+  cooldown_until: '2026-04-09T23:53:24.070192+00:00'
 - name: River
   tier: 2
   priority: medium
@@ -6188,8 +6244,8 @@ companies:
   careers_url: https://jobs.ashbyhq.com/river
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:34:24.113746'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:10.069529'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Robinhood
@@ -6205,10 +6261,11 @@ companies:
   careers_url: https://careers.robinhood.com/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:34:24.581139'
+  discovery_method: Direct greenhouse probe
+  last_healed: '2026-04-06T22:16:11.364584'
   heal_failure_streak: 0
   manual_only_suggested: false
+  manual_only: false
 - name: Rocket Companies
   tier: 2
   priority: medium
@@ -6220,8 +6277,8 @@ companies:
   careers_url: https://www.rocketcompanies.com/our-team/careers/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:34:25.998272'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:11.380588'
   manual_only: false
   heal_failure_streak: 0
   manual_only_suggested: false
@@ -6237,8 +6294,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/roofstock/jobs/8342347002
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:34:26.166225'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:11.592652'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Root Insurance
@@ -6253,8 +6310,8 @@ companies:
   careers_url: https://ats.rippling.com/joinroot/jobs
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:34:26.938359'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:11.932774'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Routable
@@ -6345,12 +6402,12 @@ companies:
   active: true
   status: broken
   discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-04T13:36:23.068278'
+  last_healed: '2026-04-06T17:53:29.711597'
   manual_only: false
-  heal_failure_streak: 1
+  heal_failure_streak: 2
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-05T19:36:23.066765+00:00'
+  cooldown_until: '2026-04-09T23:53:29.705088+00:00'
 - name: Securitize
   tier: 2
   priority: medium
@@ -6363,8 +6420,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/securitize/jobs/4131684009
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:35:28.541143'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:11.789754'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: SEI Investments
@@ -6397,8 +6454,8 @@ companies:
   careers_url: https://jobs.ashbyhq.com/sentilink
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:36:00.910389'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:12.560660'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Sezzle
@@ -6415,8 +6472,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/sezzle/jobs/7560122003
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:36:01.192196'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:12.244854'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: SigFig
@@ -6432,12 +6489,12 @@ companies:
   active: true
   status: broken
   discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-04T13:37:02.439250'
+  last_healed: '2026-04-06T17:54:08.048406'
   manual_only: false
-  heal_failure_streak: 1
+  heal_failure_streak: 2
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-05T19:37:02.439250+00:00'
+  cooldown_until: '2026-04-09T23:54:08.042407+00:00'
 - name: Signifyd
   tier: 2
   priority: medium
@@ -6451,8 +6508,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/signifyd95/jobs/7580064
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:36:23.301654'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:12.464939'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Sila
@@ -6467,8 +6524,8 @@ companies:
   careers_url: https://jobs.lever.co/sila
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:36:23.763005'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:13.135276'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Slalom
@@ -6484,8 +6541,8 @@ companies:
   careers_url: https://slalom.wd1.myworkdayjobs.com/Slalom
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:36:24.397877'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:13.133277'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: SmartAsset
@@ -6502,8 +6559,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/smartasset/jobs/8460038002
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:36:24.629477'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:13.362391'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: SmartX Advisory Solutions
@@ -6517,8 +6574,8 @@ companies:
   careers_url: https://jobs.recooty.com/smartx-advisory-solutions
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:36:25.199859'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:15.488074'
   manual_only: false
   heal_failure_streak: 0
   manual_only_suggested: false
@@ -6534,8 +6591,8 @@ companies:
   careers_url: https://jobs.ashbyhq.com/snapdocs
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:36:24.634205'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:13.311869'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: SnapLogic
@@ -6550,8 +6607,8 @@ companies:
   careers_url: https://jobs.lever.co/snaplogic
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:36:24.938113'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:13.369393'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Snowflake
@@ -6570,8 +6627,8 @@ companies:
   careers_url: https://jobs.ashbyhq.com/snowflake
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:36:24.747965'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:13.453930'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Socotra
@@ -6586,8 +6643,8 @@ companies:
   careers_url: https://jobs.ashbyhq.com/socotra
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:36:24.882003'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:13.553215'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Socure
@@ -6602,8 +6659,8 @@ companies:
   careers_url: https://jobs.ashbyhq.com/socure
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:36:25.141739'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:13.473925'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: SoFi
@@ -6620,12 +6677,12 @@ companies:
   status: broken
   adapter_key: sofi
   discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-04T13:37:25.781477'
+  last_healed: '2026-04-06T17:54:15.149932'
   manual_only: false
-  heal_failure_streak: 1
+  heal_failure_streak: 2
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-05T19:37:25.770935+00:00'
+  cooldown_until: '2026-04-09T23:54:15.147931+00:00'
 - name: Solid
   tier: 4
   priority: medium
@@ -6638,8 +6695,8 @@ companies:
   careers_url: https://solid.com/careers/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:36:25.558173'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:13.959578'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: SouthState Bank
@@ -6655,8 +6712,8 @@ companies:
   active: true
   status: active
   adapter_key: southstatebank.wd5.myworkdayjobs.com/Southstatebank
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:36:25.792386'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:14.082117'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Spreedly
@@ -6671,8 +6728,8 @@ companies:
   careers_url: https://jobs.lever.co/spreedly/a3f88fa0-ec9d-40ff-bdbf-cc0982ea062f/apply
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:36:25.899087'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:19.232436'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Starburst
@@ -6688,8 +6745,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/starburst/jobs/4968673008
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:36:26.055898'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:14.187407'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Stash
@@ -6706,12 +6763,12 @@ companies:
   active: true
   status: broken
   discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-04T13:37:26.597959'
+  last_healed: '2026-04-06T17:54:23.928537'
   manual_only: false
-  heal_failure_streak: 1
+  heal_failure_streak: 2
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-05T19:37:26.595364+00:00'
+  cooldown_until: '2026-04-09T23:54:23.925537+00:00'
 - name: State Employees' Credit Union
   tier: 2
   priority: medium
@@ -6743,8 +6800,9 @@ companies:
   careers_url: https://statestreet.wd1.myworkdayjobs.com/Statestreet
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:36:30.550452'
+  discovery_method: Skipped due to workday scrape cooldown until 2026-04-11T01:38:13.647089+00:00
+    (cooldown)
+  last_healed: '2026-04-06T22:16:14.087119'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Step
@@ -6757,11 +6815,13 @@ companies:
   sub_industry: Digital Banking
   careers_url: https://step.com:443/careers
   active: true
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:36:30.962543'
-  heal_failure_streak: 0
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-06T17:54:27.852484'
+  heal_failure_streak: 1
   manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-07T23:54:27.846509+00:00'
 - name: Stifel
   tier: 1
   priority: high
@@ -6773,8 +6833,8 @@ companies:
   careers_url: https://stifelinstitutional.com/careers/experienced-professionals/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:36:31.381023'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:14.657635'
   manual_only: false
   heal_failure_streak: 0
   manual_only_suggested: false
@@ -6789,11 +6849,12 @@ companies:
   sub_industry: Institutional Brokerage
   careers_url: https://careers-stonex.icims.com/jobs/intro
   active: true
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:36:32.372841'
+  status: manual_only
+  discovery_method: 'Unsupported ATS vendor: https://careers-stonex.icims.com/jobs/intro'
+  last_healed: '2026-04-06T17:53:30.038930'
   heal_failure_streak: 0
   manual_only_suggested: false
+  manual_only: true
 - name: Strike
   tier: 2
   priority: medium
@@ -6806,8 +6867,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/strike
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:36:32.563906'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:14.321999'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Swan Bitcoin
@@ -6822,8 +6883,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/swanbitcoin
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:36:32.753793'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:14.479057'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Symetra
@@ -6870,8 +6931,8 @@ companies:
   careers_url: https://synchronyfinancial.wd5.myworkdayjobs.com/Synchronyfinancial
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:37:26.427225'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:15.049584'
   adapter_key: synchronyfinancial.wd5.myworkdayjobs.com/Synchronyfinancial
   heal_failure_streak: 0
   manual_only_suggested: false
@@ -6888,8 +6949,8 @@ companies:
   careers_url: https://jobs.ashbyhq.com/synctera
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:37:26.584432'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:14.810226'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Synovus
@@ -6903,8 +6964,8 @@ companies:
   careers_url: https://careers.synovus.com/us/en
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:37:28.441221'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:16.813445'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: T. Rowe Price
@@ -6920,8 +6981,8 @@ companies:
   careers_url: https://troweprice.wd5.myworkdayjobs.com/Troweprice
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:37:27.920583'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:16.429694'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Tala
@@ -6937,8 +6998,8 @@ companies:
   careers_url: https://jobs.lever.co/tala
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:37:28.236321'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:15.882750'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Talend (Qlik)
@@ -6973,8 +7034,8 @@ companies:
   careers_url: https://jobs.ashbyhq.com/Talos-Trading?departmentId=b196e361-c338-44be-87d0-6ab92045e64e
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:37:28.639382'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:16.345193'
   manual_only: false
   heal_failure_streak: 0
   manual_only_suggested: false
@@ -6991,8 +7052,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/tastytrade/jobs/5821393004
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:37:28.852742'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:16.559608'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: TCW Group
@@ -7006,11 +7067,13 @@ companies:
   sub_industry: Asset Management
   careers_url: https://www.tcw.com/careers
   active: true
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:37:29.758247'
-  heal_failure_streak: 0
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-06T17:54:36.710792'
+  heal_failure_streak: 1
   manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-07T23:54:36.704795+00:00'
 - name: The Bancorp
   tier: 2
   priority: medium
@@ -7021,10 +7084,10 @@ companies:
   sub_industry: BaaS / Tech Bank
   careers_url: https://careers-bancorpbank.icims.com/jobs/intro?hashed=-435802139
   active: true
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:37:30.514070'
-  manual_only: false
+  status: manual_only
+  discovery_method: 'Unsupported ATS vendor: https://careers-bancorpbank.icims.com/jobs/intro?hashed=-435802139'
+  last_healed: '2026-04-06T17:54:08.051406'
+  manual_only: true
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: ThetaRay
@@ -7039,8 +7102,8 @@ companies:
   careers_url: https://www.comeet.com/jobs/thetaray/72.00F
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:37:31.620419'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:16.824958'
   manual_only: false
   heal_failure_streak: 0
   manual_only_suggested: false
@@ -7057,8 +7120,8 @@ companies:
   careers_url: https://thoughtmachine.wd3.myworkdayjobs.com/Thoughtmachine
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:37:32.439090'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:17.382692'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Thrivent
@@ -7074,8 +7137,8 @@ companies:
   active: true
   status: active
   adapter_key: thrivent.wd5.myworkdayjobs.com/Thrivent
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:37:32.960586'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:17.551735'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: TIAA
@@ -7090,8 +7153,8 @@ companies:
   active: true
   adapter_key: tiaa.wd1.myworkdayjobs.com/Tiaa
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:37:33.616000'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:17.468228'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Tilled
@@ -7105,15 +7168,13 @@ companies:
   sub_industry: Payments Infrastructure
   careers_url: https://ats.rippling.com/tilledcareers/jobs
   active: true
-  status: broken
+  status: active
   heal_skip: true
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-04T13:38:34.074000'
+  discovery_method: User-verified (heal_skip)
+  last_healed: '2026-04-06T22:16:17.382692'
   manual_only: false
-  heal_failure_streak: 1
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-05T19:38:34.070710+00:00'
 - name: Tipalti
   tier: 4
   priority: medium
@@ -7127,7 +7188,7 @@ companies:
   active: true
   status: active
   discovery_method: Embedded greenhouse found in scripts
-  last_healed: '2026-04-04T13:38:31.293779'
+  last_healed: '2026-04-06T22:17:15.098962'
   adapter_key: embed
   manual_only: false
   heal_failure_streak: 0
@@ -7144,8 +7205,8 @@ companies:
   careers_url: https://jobs.lever.co/totalexpert
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:37:57.898890'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:17.979998'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: TradeDesk
@@ -7181,8 +7242,8 @@ companies:
   active: true
   status: active
   heal_skip: true
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:38:02.938108'
+  discovery_method: User-verified (heal_skip)
+  last_healed: '2026-04-06T22:16:17.551735'
   manual_only: false
   heal_failure_streak: 0
   manual_only_suggested: false
@@ -7198,13 +7259,13 @@ companies:
   active: true
   status: broken
   discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-04T13:39:09.112642'
+  last_healed: '2026-04-06T17:55:25.548579'
   adapter_key: fantastic
   manual_only: false
-  heal_failure_streak: 1
+  heal_failure_streak: 2
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-05T19:39:09.107284+00:00'
+  cooldown_until: '2026-04-09T23:55:25.545581+00:00'
 - name: TradeStation
   tier: 1
   priority: high
@@ -7215,11 +7276,13 @@ companies:
   sub_industry: Brokerage
   careers_url: https://careers.tradestation.com/
   active: true
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:38:31.202541'
-  heal_failure_streak: 0
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-06T17:55:28.601713'
+  heal_failure_streak: 1
   manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-07T23:55:28.594710+00:00'
 - name: Tradeweb
   tier: 1
   priority: high
@@ -7249,8 +7312,9 @@ companies:
   careers_url: https://tradier.com/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:38:31.840596'
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-20T17:43:52.049180+00:00
+    (low_signal)
+  last_healed: '2026-04-06T22:16:17.556738'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: TransUnion
@@ -7265,8 +7329,8 @@ companies:
   active: true
   status: active
   adapter_key: transunion.wd5.myworkdayjobs.com/Transunion
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:38:33.220593'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:19.974187'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Treasury Prime
@@ -7281,8 +7345,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/treasuryprime/jobs/5068405008
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:38:33.428608'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:18.197669'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: TriNet
@@ -7297,8 +7361,8 @@ companies:
   active: true
   adapter_key: trinet
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:38:33.723284'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:18.648333'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Trintech
@@ -7349,12 +7413,12 @@ companies:
   active: true
   status: broken
   discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-04T13:40:03.084185'
+  last_healed: '2026-04-06T17:55:39.939895'
   manual_only: false
-  heal_failure_streak: 1
+  heal_failure_streak: 2
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-05T19:40:03.084185+00:00'
+  cooldown_until: '2026-04-09T23:55:39.937390+00:00'
 - name: TrueML
   tier: 2
   priority: medium
@@ -7367,8 +7431,8 @@ companies:
   careers_url: https://jobs.lever.co/trueml
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:39:09.438345'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:18.847855'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Truework
@@ -7383,8 +7447,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/truework/jobs/6039161003
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:39:09.635228'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:19.025414'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Truist
@@ -7400,8 +7464,8 @@ companies:
   active: true
   status: active
   adapter_key: truist.wd1.myworkdayjobs.com/Truist
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:39:10.289176'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:19.696431'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: TruStage
@@ -7416,8 +7480,8 @@ companies:
   active: true
   status: active
   adapter_key: trustage.wd1.myworkdayjobs.com/Trustage
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:39:11.805689'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:20.682621'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Trustly
@@ -7433,8 +7497,8 @@ companies:
   careers_url: https://jobs.lever.co/trustly
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:39:12.129808'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:19.934193'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Two Sigma
@@ -7517,8 +7581,8 @@ companies:
   careers_url: https://ats.rippling.com/unchained/jobs
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:39:46.326861'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:20.224623'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Unit
@@ -7533,8 +7597,8 @@ companies:
   careers_url: https://jobs.ashbyhq.com/unit
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:39:46.197029'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:20.460205'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Unit21
@@ -7564,10 +7628,10 @@ companies:
   sub_industry: Mortgage Tech
   careers_url: https://careers-uwmcareers.icims.com/jobs/search?ss=1&searchCategory=&searchCompany=&searchZip=&searchRadius=20
   active: true
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:39:47.520297'
-  manual_only: false
+  status: manual_only
+  discovery_method: 'Unsupported ATS vendor: https://careers-uwmcareers.icims.com/jobs/search?ss=1&searchCategory=&searchCompany=&searchZip=&searchRadius=20'
+  last_healed: '2026-04-06T17:54:41.344727'
+  manual_only: true
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Upgrade
@@ -7582,8 +7646,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/upgrade/jobs/4660008005
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:39:47.763745'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:20.428188'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Upstart
@@ -7629,8 +7693,8 @@ companies:
   careers_url: https://jobs.ashbyhq.com/vanilla
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:39:49.032987'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:20.671624'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Varo
@@ -7645,8 +7709,9 @@ companies:
   careers_url: https://www.varo.com/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:39:49.966237'
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-20T17:45:01.962755+00:00
+    (low_signal)
+  last_healed: '2026-04-06T22:16:20.462983'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Varo Bank
@@ -7660,8 +7725,9 @@ companies:
   careers_url: https://www.varomoney.com/
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:39:50.408944'
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-20T17:45:02.228800+00:00
+    (low_signal)
+  last_healed: '2026-04-06T22:16:20.472521'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Velocity Global
@@ -7678,8 +7744,8 @@ companies:
   careers_url: https://jobs.lever.co/velocityglobal
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:39:50.712556'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:21.192479'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Verafin (Nasdaq)
@@ -7715,8 +7781,8 @@ companies:
   careers_url: https://jobs.lever.co/versapay
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:40:03.412041'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:21.683036'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Vertafore
@@ -7730,8 +7796,8 @@ companies:
   careers_url: https://vertafore.wd5.myworkdayjobs.com/Vertafore
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:40:03.899205'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:21.238038'
   adapter_key: vertafore.wd5.myworkdayjobs.com/Vertafore
   heal_failure_streak: 0
   manual_only_suggested: false
@@ -7747,8 +7813,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/vestmark/jobs/7538758
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:40:04.325052'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:21.403577'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Vestwell
@@ -7763,8 +7829,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/vestwell/jobs/6677542003
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:40:04.552317'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:21.458409'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Virtu Financial
@@ -7817,8 +7883,8 @@ companies:
   careers_url: https://careers.smartrecruiters.com/Visa
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:40:48.180126'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:21.976835'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Vise
@@ -7834,8 +7900,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/viseai/jobs/6577506003
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:40:48.372329'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:21.640031'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Vouch Insurance
@@ -7850,8 +7916,8 @@ companies:
   careers_url: https://ats.rippling.com/en-GB/vouch-inc/jobs
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:40:49.434262'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:21.874286'
   manual_only: false
   heal_failure_streak: 0
   manual_only_suggested: false
@@ -7868,8 +7934,8 @@ companies:
   active: true
   manual_only: false
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:40:49.387382'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:22.060357'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: VTS
@@ -7884,8 +7950,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/vts/jobs/4654703005
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:40:49.637756'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:22.069352'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Waystar
@@ -7901,8 +7967,8 @@ companies:
   careers_url: https://waystar.wd1.myworkdayjobs.com/Waystar
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:40:50.168093'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:22.538918'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Wealthfront
@@ -7918,8 +7984,8 @@ companies:
   careers_url: https://jobs.lever.co/wealthfront
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:40:50.007726'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:22.825000'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Webster Bank
@@ -7951,16 +8017,14 @@ companies:
   sub_industry: Brokerage(
   careers_url: https://ats.rippling.com/webull/jobs
   active: true
-  status: broken
+  status: active
   heal_skip: true
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-04T13:41:51.185515'
+  discovery_method: User-verified (heal_skip)
+  last_healed: '2026-04-06T22:16:22.069352'
   manual_only: false
-  heal_failure_streak: 1
+  heal_failure_streak: 0
   manual_only_suggested: false
   adapter_key: _next
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-05T19:41:51.181872+00:00'
 - name: Wellington Management
   tier: 1
   priority: high
@@ -7990,11 +8054,13 @@ companies:
   sub_industry: Banking / Wealth
   careers_url: https://www.wellsfargo.com/
   active: true
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:41:06.500238'
-  heal_failure_streak: 0
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-06T17:55:48.686124'
+  heal_failure_streak: 1
   manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-07T23:55:48.681125+00:00'
 - name: Western Alliance Bank
   tier: 2
   priority: medium
@@ -8007,8 +8073,8 @@ companies:
   active: true
   status: active
   adapter_key: westernalliancebank.wd5.myworkdayjobs.com/Westernalliancebank
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:41:07.080308'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:22.590914'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Western Asset Management
@@ -8062,8 +8128,8 @@ companies:
   active: true
   status: active
   adapter_key: williamblair
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:41:51.890438'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:23.338468'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Wintrust Financial
@@ -8097,8 +8163,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/workato/jobs/8474237002
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:41:52.707628'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:22.919037'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Workday
@@ -8113,8 +8179,8 @@ companies:
   active: true
   status: active
   adapter_key: workday.wd5.myworkdayjobs.com/Workday
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:41:53.288920'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:23.223686'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Workiva
@@ -8168,12 +8234,12 @@ companies:
   active: true
   status: broken
   discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-04T13:43:09.981832'
+  last_healed: '2026-04-06T17:56:11.696476'
   manual_only: false
-  heal_failure_streak: 1
+  heal_failure_streak: 2
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-05T19:43:09.973554+00:00'
+  cooldown_until: '2026-04-09T23:56:11.688479+00:00'
 - name: Zanbato
   tier: 2
   priority: medium
@@ -8220,8 +8286,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/zestai/jobs/5789378004
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:42:53.633251'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:23.121104'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Zinnia
@@ -8236,8 +8302,8 @@ companies:
   careers_url: https://job-boards.greenhouse.io/zinnia/jobs/4592668006
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:42:53.846333'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:23.321938'
   heal_failure_streak: 0
   manual_only_suggested: false
 - name: Zions Bancorporation
@@ -8250,11 +8316,13 @@ companies:
   sub_industry: Regional Banking
   careers_url: https://careers.zionsbancorporation.com/
   active: true
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:42:55.071549'
-  heal_failure_streak: 0
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-06T17:56:26.305695'
+  heal_failure_streak: 1
   manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-07T23:56:26.298138+00:00'
 - name: Zoe Financial
   tier: 4
   priority: medium
@@ -8266,11 +8334,13 @@ companies:
   sub_industry: WealthTech
   careers_url: https://zoefinancial.com/careers
   active: true
-  status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:42:54.367671'
-  heal_failure_streak: 0
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-06T17:56:33.178983'
+  heal_failure_streak: 1
   manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-07T23:56:33.171593+00:00'
 - name: Zuora
   tier: 4
   priority: medium
@@ -8284,7 +8354,7 @@ companies:
   careers_url: https://zuora.wd5.myworkdayjobs.com/Zuora
   active: true
   status: active
-  discovery_method: Existing URL confirmed (forced check)
-  last_healed: '2026-04-04T13:42:54.968943'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-06T22:16:23.803859'
   heal_failure_streak: 0
   manual_only_suggested: false

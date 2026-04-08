@@ -30,6 +30,7 @@ def _render_variable(text: str, company: str, role: str, contact_name: str, my_n
 
 def render_templates(conn) -> None:
     db.init_db(conn)
+    st.title("Message Templates")
 
     st.markdown(
         "Reusable email and message templates. Use `{company}`, `{role}`, `{contact_name}`, "

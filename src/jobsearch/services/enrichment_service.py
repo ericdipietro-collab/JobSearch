@@ -9,8 +9,6 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
-import google.generativeai as genai
-
 from jobsearch.services.llm_client import LLMClient
 
 logger = logging.getLogger(__name__)
@@ -24,7 +22,7 @@ class TokenBudget:
     tokens_used_today: int = 0
     conn: Optional[sqlite3.Connection] = field(default=None, repr=False)
 
-    def check_and_increment(self, tokens: int) -> None:
+    def check_and_increment(self, tokens: int, model: str = "gemini-2.5-flash-lite") -> None:
         """Check if adding tokens exceeds budget; raise if so."""
         new_total = self.tokens_used_today + tokens
         if new_total > self.daily_budget:
@@ -33,15 +31,15 @@ class TokenBudget:
             )
         self.tokens_used_today = new_total
         if self.conn:
-            self._log_usage(tokens)
+            self._log_usage(tokens, model=model)
 
-    def _log_usage(self, tokens: int) -> None:
+    def _log_usage(self, tokens: int, model: str = "gemini-2.5-flash-lite") -> None:
         """Log token usage to database."""
         try:
             now = datetime.now(timezone.utc).isoformat()
             self.conn.execute(
                 "INSERT INTO llm_cost_log (run_date, tokens_used, model, service, created_at) VALUES (?, ?, ?, ?, ?)",
-                (now[:10], tokens, "gemini-1.5-flash", "enrichment", now),
+                (now[:10], tokens, model, "enrichment", now),
             )
         except Exception as e:
             logger.warning(f"Failed to log token usage: {e}")
@@ -69,12 +67,21 @@ class EnrichmentService:
         user_skills: Optional[list[str]] = None,
         google_api_key: Optional[str] = None,
         openai_api_key: Optional[str] = None,
+        preferred_provider: Optional[str] = None,
+        ollama_base_url: Optional[str] = None,
+        ollama_model: Optional[str] = None,
     ):
         # Support both legacy api_key and new multi-provider keys
         google_key = google_api_key or api_key or os.getenv("GOOGLE_API_KEY")
         openai_key = openai_api_key or os.getenv("OPENAI_API_KEY")
 
-        self.llm_client = LLMClient(google_api_key=google_key, openai_api_key=openai_key)
+        self.llm_client = LLMClient(
+            google_api_key=google_key,
+            openai_api_key=openai_key,
+            preferred_provider=preferred_provider,
+            ollama_base_url=ollama_base_url,
+            ollama_model=ollama_model,
+        )
         self.budget = TokenBudget(daily_budget=daily_token_budget, conn=db_conn)
         self.user_skills = user_skills or []
 
@@ -99,30 +106,30 @@ class EnrichmentService:
             user_skills_str = ", ".join(self.user_skills)
             user_skills_section = f"\n\nUser's Current Skills: {user_skills_str}"
 
-        prompt = f"""
-        Analyze this job description and extract the following information.
-        Return ONLY a valid JSON object with no markdown formatting.
+        jd_limit = 1500 if self.llm_client.is_local() else 3000
 
-        Job Title: {job_title}
-        Job Description:
-        {job_description[:3000]}{user_skills_section}
+        # Data first, schema last — optimal for local model recency bias
+        prompt = f"""Analyze this job posting and extract structured metadata.
 
-        Return exactly this JSON structure:
-        {{
-            "visa_sponsor": true/false/null,
-            "tech_stack": ["technology1", "technology2", ...],
-            "ic_vs_manager": "individual_contributor" or "manager" or "mixed" or null,
-            "missing_skills": ["skill1", "skill2", ...],
-            "reasoning": "brief explanation of how you determined these values"
-        }}
+Job Title: {job_title}
+Job Description:
+{job_description[:jd_limit]}{user_skills_section}
 
-        Guidelines:
-        - visa_sponsor: true if description explicitly mentions visa sponsorship, false if explicitly says no sponsorship, null if unclear
-        - tech_stack: list the primary technologies, frameworks, and languages mentioned (e.g., ["Python", "AWS", "React"])
-        - ic_vs_manager: determine if the role is primarily IC (engineer, analyst), manager (lead, manager, director), or mixed
-        - missing_skills: list required skills from the job description that are NOT in the user's current skills. Return empty list if all required skills are present.
-        - Keep the response as raw JSON only, no markdown code blocks
-        """
+Return ONLY this JSON structure:
+{{
+    "visa_sponsor": true,
+    "tech_stack": ["Python", "AWS", "React"],
+    "ic_vs_manager": "individual_contributor",
+    "missing_skills": ["skill not in user skills but required by JD"],
+    "reasoning": "one sentence explaining key signals"
+}}
+
+Rules:
+- visa_sponsor: true if JD explicitly offers sponsorship, false if it says no sponsorship, null if not mentioned
+- tech_stack: primary technologies, frameworks, platforms named in the JD
+- ic_vs_manager: "individual_contributor", "manager", or "mixed" based on responsibilities described
+- missing_skills: skills explicitly required by the JD that are absent from the user's skill list; empty list if all covered
+- reasoning: brief (one sentence) rationale for your determinations"""
 
         try:
             text, usage_metadata = self.llm_client.generate(prompt)
@@ -132,8 +139,9 @@ class EnrichmentService:
             if usage_metadata and "total_tokens" in usage_metadata:
                 tokens_used = usage_metadata["total_tokens"]
                 provider = usage_metadata.get("provider", "unknown")
+                model = usage_metadata.get("model") or f"llm-{provider}"
                 try:
-                    self.budget.check_and_increment(tokens_used)
+                    self.budget.check_and_increment(tokens_used, model=model)
                 except BudgetExceededError as e:
                     logger.warning(f"[enrichment] {e}")
                     return {
@@ -144,18 +152,7 @@ class EnrichmentService:
                         "enrichment_status": "failed_budget_exceeded",
                     }
 
-            text = text.strip()
-
-            # Remove markdown code blocks if present
-            if text.startswith("```json"):
-                text = text[7:]
-            if text.startswith("```"):
-                text = text[3:]
-            if text.endswith("```"):
-                text = text[:-3]
-            text = text.strip()
-
-            data = json.loads(text)
+            data = json.loads(LLMClient.strip_json_response(text))
             data["enrichment_status"] = "success"
             data["tokens_used"] = tokens_used
             return data

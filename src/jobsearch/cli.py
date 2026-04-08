@@ -159,8 +159,19 @@ def main():
 @click.option("--deep", is_flag=True, help="Enable deep heal using Playwright.")
 @click.option("--workers", default=5, help="Number of parallel workers.")
 @click.option("--deep-timeout", default=20.0, type=float, help="Maximum seconds to spend in deep heal per company.")
-def heal(heal_all, force, deep, workers, deep_timeout):
+@click.option("--chronic-only", is_flag=True, help="Target only chronic failures (streak >= 3), bypassing cooldown. Enables --deep automatically.")
+@click.option("--min-streak", default=0, type=int, help="Only process companies with heal_failure_streak >= N (implies force).")
+def heal(heal_all, force, deep, workers, deep_timeout, chronic_only, min_streak):
     """Heal and verify ATS URLs in the company registry."""
+    # --chronic-only implies force + deep since these are the hardest cases
+    if chronic_only:
+        force = True
+        deep = True
+        if min_streak == 0:
+            min_streak = 3
+        if deep_timeout == 20.0:  # user didn't override — use generous timeout for hard cases
+            deep_timeout = 45.0
+
     click.echo(f"Starting ATS Registry Healer with {workers} workers...")
 
     comp_path = settings.companies_yaml
@@ -180,6 +191,12 @@ def heal(heal_all, force, deep, workers, deep_timeout):
     to_heal = []
     skipped = []
     for company in companies:
+        streak = int(company.get("heal_failure_streak") or 0)
+
+        # Streak filter: skip companies that don't meet the minimum streak threshold
+        if min_streak > 0 and streak < min_streak:
+            continue
+
         if not (heal_all or force or company.get("status") != "active"):
             continue
         if not force:
@@ -192,7 +209,10 @@ def heal(heal_all, force, deep, workers, deep_timeout):
         click.echo("Done. No companies need healing.")
         return
 
-    click.echo(f"Total companies to process: {len(to_heal)}")
+    if min_streak > 0:
+        click.echo(f"Targeting {len(to_heal)} companies with streak >= {min_streak} (deep={deep})")
+    else:
+        click.echo(f"Total companies to process: {len(to_heal)}")
 
     import threading
     from concurrent.futures import ThreadPoolExecutor
@@ -376,6 +396,7 @@ def heal(heal_all, force, deep, workers, deep_timeout):
 
 @main.command()
 @click.option("--deep-search", is_flag=True, help="Enable deep search using Playwright.")
+@click.option("--full-refresh", is_flag=True, help="Re-fetch descriptions for all jobs, even if already known.")
 @click.option("--test-companies", is_flag=True, help="Use the test company list.")
 @click.option("--contract-sources", is_flag=True, help="Use the contractor-source company list.")
 @click.option("--aggregator-sources", is_flag=True, help="Include aggregator job board sources.")
@@ -385,7 +406,7 @@ def heal(heal_all, force, deep, workers, deep_timeout):
 @click.option("--companies", type=click.Path(exists=True), help="Path to companies YAML.")
 @click.option("--legacy", is_flag=True, help="Use the legacy scraper script if it exists.")
 @click.argument("extra_args", nargs=-1)
-def run(deep_search, test_companies, contract_sources, aggregator_sources, jobspy_sources, workers, prefs, companies, legacy, extra_args):
+def run(deep_search, full_refresh, test_companies, contract_sources, aggregator_sources, jobspy_sources, workers, prefs, companies, legacy, extra_args):
     """Run the job search pipeline."""
     click.echo("Starting Job Search Pipeline...")
 
@@ -451,7 +472,7 @@ def run(deep_search, test_companies, contract_sources, aggregator_sources, jobsp
                 jobspy_data = (yaml.safe_load(handle) or {}).get("companies", [])
             comp_data = _merge_company_lists(comp_data, jobspy_data)
 
-    engine = ScraperEngine(prefs_data, comp_data, deep_search=deep_search)
+    engine = ScraperEngine(prefs_data, comp_data, deep_search=deep_search, full_refresh=full_refresh)
     engine.run(max_workers=workers)
     click.echo("Pipeline run complete.")
 

@@ -127,6 +127,7 @@ def _activity_minimum_banner(n_activities: int, n_training: int, period_is_singl
 
 def render_activity_report(conn) -> None:
     db.init_db(conn)
+    st.title("Weekly Activity Report")
 
     st.markdown(
         "Use this page to review your job search activity and copy it into your "
@@ -158,17 +159,19 @@ def render_activity_report(conn) -> None:
         default_start, default_end = _week_bounds(1)  # last week as sane default
 
     if preset != "Custom":
-        current_start = st.session_state.get("report_start")
-        current_end = st.session_state.get("report_end")
-        if current_start != default_start:
+        st.session_state["report_start"] = default_start
+        st.session_state["report_end"] = default_end
+    else:
+        # For Custom mode, ensure we have initial values if they haven't been set yet
+        if "report_start" not in st.session_state:
             st.session_state["report_start"] = default_start
-        if current_end != default_end:
+        if "report_end" not in st.session_state:
             st.session_state["report_end"] = default_end
 
     with rc1:
-        start_d = st.date_input("From", value=default_start, key="report_start")
+        start_d = st.date_input("From", key="report_start")
     with rc2:
-        end_d   = st.date_input("To",   value=default_end,   key="report_end")
+        end_d   = st.date_input("To",   key="report_end")
 
     if start_d > end_d:
         st.error("Start date must be before end date.")
@@ -211,11 +214,13 @@ def render_activity_report(conn) -> None:
     follow_ups       = type_counts.get("follow_up_sent", 0)
     training_count   = len(training_rows)
 
-    m1, m2, m3, m4, m5, m6, m7 = st.columns(7)
+    m1, m2, m3, m4 = st.columns(4)
     m1.metric("Applications",  apps_submitted)
     m2.metric("Job Fairs",     job_fairs)
     m3.metric("Networking",    max(networking, 0))
     m4.metric("Recruiter",     recruiter_calls)
+
+    m5, m6, m7 = st.columns(3)
     m5.metric("Screenings",    screens)
     m6.metric("Interviews",    interviews)
     m7.metric("Training",      training_count)

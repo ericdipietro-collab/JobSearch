@@ -646,22 +646,16 @@ class ATSHealer:
         return None
 
     def _probe_workday(self, slug: str, name: str, deadline: Optional[float] = None, adapter_key: str = "") -> Optional[DiscoveryResult]:
-        """Sweep wd1..wd25 (plus outlier numbers) for Workday tenants in priority batches.
-
-        Tries the most common wd-numbers first (wd1-5) with the two most common
-        site names before falling back to the full sweep, saving ~80% of probes
-        when the tenant is found in the first batch.
-
-        If the existing adapter_key or careers_url contains a specific wd-number
-        (e.g. ``wd108``, ``wd501``), that number is probed first so companies that
-        already used an out-of-range tenant are recovered without burning the full sweep.
-        """
+        """Sweep wd1..wd25 (plus outlier numbers) for Workday tenants in priority batches."""
         from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FuturesTimeout
 
-        common_sites = ["External", "Careers"]
-        all_sites = ["External", "Careers", "Jobs", slug.capitalize()]
+        # Generate robust site candidates based on company name and slug
+        base_sites = ["External", "Careers", "Jobs", "External_Careers"]
+        custom_sites = [slug.capitalize(), f"{slug.capitalize()}Careers", f"{slug.capitalize()}_Careers", f"{slug.capitalize()}Investments", f"{slug.capitalize()}_External_Careers"]
+        all_site_candidates = list(dict.fromkeys(base_sites + custom_sites))
 
-        # Extract any hint number from the existing adapter_key (e.g. "slug.wd501.myworkdayjobs.com/External")
+        # Extract any hint number from the existing adapter_key
+        # (e.g. "slug.wd501.myworkdayjobs.com/External")
         hint_nums: List[int] = []
         hint_match = re.search(r"\.wd(\d+)\.", str(adapter_key or ""), re.I)
         if hint_match:
@@ -673,12 +667,13 @@ class ATSHealer:
         outlier_nums = [50, 100, 108, 200, 201, 500, 501, 503]
 
         # Priority batch: hint numbers first, then wd1-5 × common sites.
-        hint_candidates = [(n, s) for n in hint_nums for s in all_sites]
-        priority_candidates = hint_candidates + [(n, s) for n in range(1, 6) for s in common_sites]
-        # Full sweep: wd6-25 × all sites + outlier numbers × common sites, submitted only if batch misses.
+        priority_sites = ["External", "Careers"]
+        hint_candidates = [(n, s) for n in hint_nums for s in all_site_candidates]
+        priority_candidates = hint_candidates + [(n, s) for n in range(1, 6) for s in priority_sites]
+        # Full sweep: wd6-25 × all site candidates + outlier numbers × common sites, submitted only if batch misses.
         remaining_candidates = (
-            [(n, s) for n in ([10, 12, 25] + [n for n in range(6, 26) if n not in (10, 12, 25)]) for s in all_sites]
-            + [(n, s) for n in outlier_nums if n not in hint_nums for s in common_sites]
+            [(n, s) for n in ([10, 12, 25] + [n for n in range(6, 26) if n not in (10, 12, 25)]) for s in all_site_candidates]
+            + [(n, s) for n in outlier_nums if n not in hint_nums for s in priority_sites]
         )
 
         def check_one(n, site):
@@ -1034,17 +1029,18 @@ class ATSHealer:
                         if self._validate_discovery(res, name):
                             return res
 
-        # 2. Check all links for ATS domains
-        links = soup.find_all("a", href=True)
-        for a in links:
-            href = a["href"]
-            if self._is_blacklisted(href): continue
+        # 2. Check all links and iframes for ATS domains
+        # We need to find tags that have either href OR src
+        tags = soup.find_all(["a", "iframe"])
+        for tag in tags:
+            href = tag.get("href") or tag.get("src")
+            if not href or self._is_blacklisted(href): continue
             
             for adapter, marker in self.EMBED_MARKERS:
                 if marker in href:
                     key = self._extract_key(href, adapter)
                     if key:
-                        res = DiscoveryResult(adapter, key, href, "FOUND", f"Link to {adapter} board found")
+                        res = DiscoveryResult(adapter, key, href, "FOUND", f"Link or iframe to {adapter} board found")
                         if self._validate_discovery(res, name):
                             return res
 

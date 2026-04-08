@@ -54,7 +54,7 @@ def search_jobs(
             a.fit_band,
             a.source,
             a.source_lane,
-            a.url,
+            a.job_url,
             a.salary_text,
             a.work_type,
             a.description_excerpt,

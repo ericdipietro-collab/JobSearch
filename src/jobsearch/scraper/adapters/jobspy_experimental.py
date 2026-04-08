@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib
 import json
 import time
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from typing import Any, Dict, Iterable, List
 
 from jobsearch.scraper.adapters.base import BaseAdapter
@@ -120,6 +121,31 @@ class JobSpyExperimentalAdapter(BaseAdapter):
         return ""
 
     @staticmethod
+    def _derive_queries_from_preferences(preferences: Dict[str, Any]) -> List[str]:
+        """
+        Auto-derive search queries from job title preferences when no search_queries
+        are configured. Picks the top high-weight title keywords as search terms,
+        paired with industry context for precision.
+        """
+        titles = (preferences or {}).get("titles", {})
+        weights = titles.get("positive_weights") or []
+        keywords = [
+            k for k, w in (weights if isinstance(weights[0], (list, tuple)) else [])
+            if isinstance(w, (int, float)) and w >= 8
+        ] if weights else []
+
+        # Fall back to positive_keywords if no weighted titles
+        if not keywords:
+            keywords = (titles.get("positive_keywords") or [])[:10]
+
+        # Build diverse queries: title + domain modifier
+        domain_suffix = "fintech"
+        queries = []
+        for kw in keywords[:6]:
+            queries.append(f"{kw} {domain_suffix}")
+        return queries or []
+
+    @staticmethod
     def _query_for_site(query: str, site: str, config: Dict[str, Any]) -> str:
         if site == "google":
             template = str(config.get("google_search_term_template") or "{query}").strip() or "{query}"
@@ -157,9 +183,13 @@ class JobSpyExperimentalAdapter(BaseAdapter):
             max_query_tier(preferences, "jobspy_experimental"),
         )
         if not queries:
+            queries = self._derive_queries_from_preferences(preferences)
+        if not queries:
             queries = [str(company_config.get("name") or "").strip() or "jobs"]
         max_total_results = int(config.get("max_total_results") or results_wanted)
         continue_on_failure = bool(config.get("continue_on_site_failure", True))
+        # Per-site hard timeout: default 10 minutes. Prevents LinkedIn from running for hours.
+        per_site_timeout_s = float(config.get("per_site_timeout_ms") or company_config.get("per_site_timeout_ms") or 600_000) / 1000.0
         metrics = JobSpyMetrics()
 
         normalized_records: list[dict] = []
@@ -171,6 +201,7 @@ class JobSpyExperimentalAdapter(BaseAdapter):
             try:
                 metrics.mark_attempted(site)
                 raw_payload = []
+                site_timed_out = False
                 for query in queries:
                     site_location = location or None
                     if site == "glassdoor":
@@ -194,10 +225,26 @@ class JobSpyExperimentalAdapter(BaseAdapter):
                     else:
                         scrape_kwargs["search_term"] = self._query_for_site(query, site, config)
 
-                    payload = self._scrape_jobs_with_retry(scrape_jobs, **scrape_kwargs)
+                    # Run with hard per-site timeout to prevent LinkedIn from blocking for hours
+                    try:
+                        with ThreadPoolExecutor(max_workers=1) as executor:
+                            future = executor.submit(self._scrape_jobs_with_retry, scrape_jobs, **scrape_kwargs)
+                            payload = future.result(timeout=per_site_timeout_s)
+                    except FuturesTimeoutError:
+                        import logging as _logging
+                        _logging.getLogger(__name__).warning(
+                            f"[jobspy] {site} timed out after {per_site_timeout_s:.0f}s for query '{query}'"
+                        )
+                        metrics.mark_failure(site, runtime_ms=round(per_site_timeout_s * 1000, 1))
+                        site_timed_out = True
+                        break
                     raw_payload.extend(list(self._iter_records(payload)))
                     if len(raw_payload) >= results_wanted:
                         break
+                if site_timed_out:
+                    if not continue_on_failure:
+                        break
+                    continue
                 raw_results = len(raw_payload)
                 site_records = []
                 for record in raw_payload:

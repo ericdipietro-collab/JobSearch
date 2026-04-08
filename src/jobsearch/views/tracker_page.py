@@ -948,6 +948,7 @@ def _render_email_signal_banner(conn) -> None:
 
 def render_tracker(conn) -> None:
     db.init_db(conn)
+    st.title("My Applications")
 
     # Seed from CSV on first load
     csv_path = db._BASE_DIR / "results" / "ApplicationTracker.csv"  # type: ignore[attr-defined]

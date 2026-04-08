@@ -14,6 +14,7 @@ _MOODS = ["", "💪 Energized", "😊 Good", "😐 Neutral", "😔 Low", "😤 F
 
 def render_journal(conn) -> None:
     db.init_db(conn)
+    st.title("Search Journal")
 
     st.markdown(
         "A private log for daily reflections — decisions made, how you're feeling, "

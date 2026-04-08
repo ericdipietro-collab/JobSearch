@@ -23,6 +23,7 @@ _REL_LABELS = {
 
 def render_contacts(conn) -> None:
     db.init_db(conn)
+    st.title("Network Contacts")
 
     # ── Follow-up reminders ────────────────────────────────────────────────────
     overdue = db.network_contacts_follow_up_due(conn)

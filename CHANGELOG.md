@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2026-04-08
+
+### Added
+- **Incremental Scraping Logic** — All ATS adapters now support "Last Run" awareness. Skips re-fetching full job descriptions for URLs already in the database and updated within the last 3 days, significantly reducing run time and token usage.
+- **In-place URL Editor** — Manual Review cards now include a "Fix URL" text input and "Save URL to Registry" button to permanently repair broken career links directly from the dashboard.
+- **Expanded Workday Site Discovery** — Healer now probes for common custom site patterns (e.g., `[Company]Careers`, `[Company]Investments`) when a base Workday URL is provided.
+
+### Fixed
+- **Database Stability & Recovery** — Resolved "malformed disk image" errors in AppData by implementing automatic FTS5 index reconstruction and database VACUUM.
+- **UI Layout & Readability** — Fixed top content being obscured by the Streamlit header on several pages (Journal, Contacts, Training, etc.) by adding consistent title headers.
+- **Scoring Precision** — Fixed title score stacking; logic now uses `max(base_score, title_points)` to prevent score inflation on strong title matches.
+- **Light Mode Accessibility** — Fixed text contrast and readability for AI analysis and score breakdown cards in Streamlit Light Mode.
+- **Weekly Report Enhancements** — Resolved Session State warnings and fixed metric label truncation on standard screen widths.
+- **Data Coercion** — Fixed `ValueError` in company editor when handling string-formatted floats (e.g., "0.0") for integer fields.
+
+### Security & Dependencies
+- **Locked Dependencies** — Explicitly pinned `urllib3<2.0.0` and `pydantic==2.9.2` to resolve `RequestsDependencyWarning` and ensure environment stability across systems.
+
 ## [2.1.0] - 2026-04-06
 
 ### Added

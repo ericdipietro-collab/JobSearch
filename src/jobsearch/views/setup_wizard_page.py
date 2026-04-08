@@ -41,14 +41,39 @@ def _check_companies() -> tuple[bool, str]:
         return False, f"Could not parse company registry: {exc}"
 
 
-def _check_scraper_run() -> tuple[bool, str]:
-    """True if a results file exists from a past scraper run."""
+def _check_scraper_run(conn) -> tuple[bool, str]:
+    """True if the scraper has run at least once (checks DB metrics or results)."""
+    # 1. Check for explicit last run timestamp
+    try:
+        from jobsearch import ats_db
+        last_run = ats_db.get_setting(conn, "last_pipeline_run")
+        if last_run:
+            import datetime
+            try:
+                dt = datetime.datetime.fromisoformat(last_run)
+                return True, f"Scraper run complete (last run {dt.strftime('%b %d, %Y')})."
+            except Exception:
+                return True, "Scraper run complete."
+    except Exception:
+        pass
+
+    # 2. Check health tables for any activity (fallback for older runs or if timestamp missing)
+    try:
+        row = conn.execute("SELECT COUNT(*) FROM workday_target_health").fetchone()
+        if row and row[0] > 0:
+            return True, "Scraper results found in health metrics."
+        row = conn.execute("SELECT COUNT(*) FROM generic_target_health").fetchone()
+        if row and row[0] > 0:
+            return True, "Scraper results found in health metrics."
+    except Exception:
+        pass
+
+    # 3. Check for legacy files (backwards compatibility)
     if _RESULTS_XLSX.exists():
         import datetime
         mtime = datetime.datetime.fromtimestamp(_RESULTS_XLSX.stat().st_mtime)
-        return True, f"Results found (last run {mtime.strftime('%b %d, %Y')})."
-    if _RESULTS_CSV.exists():
-        return True, "Results CSV found."
+        return True, f"Legacy results found ({mtime.strftime('%b %d, %Y')})."
+    
     return False, "No results yet — run the pipeline from **Run Job Search**."
 
 
@@ -69,7 +94,7 @@ def setup_complete(conn) -> bool:
     checks = [
         _check_prefs_customized()[0],
         _check_companies()[0],
-        _check_scraper_run()[0],
+        _check_scraper_run(conn)[0],
         _check_first_app(conn)[0],
     ]
     return all(checks)
@@ -83,7 +108,7 @@ def render_setup_checklist(conn) -> None:
     items = [
         ("Configure search preferences",   *_check_prefs_customized(), "Search Settings"),
         ("Register target companies",       *_check_companies(),        "Target Companies"),
-        ("Run the job search pipeline",     *_check_scraper_run(),      "Run Job Search"),
+        ("Run the job search pipeline",     *_check_scraper_run(conn),   "Run Job Search"),
         ("Track your first application",    *_check_first_app(conn),    "My Applications"),
     ]
 

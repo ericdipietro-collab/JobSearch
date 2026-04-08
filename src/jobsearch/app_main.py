@@ -490,18 +490,14 @@ def _load_jobs_df() -> pd.DataFrame:
                 return "Filtered Out" if tag == "FILTERED OUT" else tag
             sc = float(row.get("score", 0) or 0)
             bucket_name = "Filtered Out"
-            if sc >= thresholds["APPLY NOW"]:
-                # Hard gate: if salary is known and below the minimum, cap at REVIEW TODAY.
-                # Prevents high-keyword-density jobs with low/non-negotiable pay from
-                # appearing as Apply Now regardless of their score.
-                norm_comp = row.get("normalized_compensation_usd")
-                try:
-                    if norm_comp is not None and float(norm_comp) < thresholds["min_salary_usd"]:
-                        bucket_name = "REVIEW TODAY"
-                    else:
-                        bucket_name = "APPLY NOW"
-                except (TypeError, ValueError):
-                    bucket_name = "APPLY NOW"
+            
+            # Check if the job is eligible for APPLY NOW (hard gates from Scorer)
+            # We check the decision_reason or similar if we don't have the flag in DB yet.
+            # But the most reliable way is if we have 'apply_now_eligible' in the row.
+            is_eligible = bool(row.get("apply_now_eligible", True))
+            
+            if sc >= thresholds["APPLY NOW"] and is_eligible:
+                bucket_name = "APPLY NOW"
             elif sc >= thresholds["REVIEW TODAY"]:
                 bucket_name = "REVIEW TODAY"
             elif sc >= thresholds["WATCH"]:
@@ -747,6 +743,30 @@ def _disable_company_in_registry(company_name: str) -> bool:
         save_yaml(settings.companies_yaml, data)
     return changed
 
+def _update_company_url_in_registry(company_name: str, new_url: str) -> bool:
+    # Try to find which registry has the company
+    registries = [
+        settings.companies_yaml,
+        settings.contract_companies_yaml,
+        settings.aggregator_companies_yaml,
+        settings.jobspy_companies_yaml,
+    ]
+    for path in registries:
+        if not path.exists(): continue
+        data = load_yaml(path)
+        companies = data.get("companies", [])
+        changed = False
+        for company in companies:
+            if str(company.get("name", "")).lower() == company_name.lower():
+                company["careers_url"] = new_url.strip()
+                changed = True
+                break
+        if changed:
+            data["companies"] = companies
+            save_yaml(path, data)
+            return True
+    return False
+
 def _render_apply_now_cards(df):
     for _, r in df.iterrows():
         key, co, ti, sc, url = r["_key"], str(r.get("company","")), str(r.get("title","")), r.get("score"), str(r.get("url",""))
@@ -756,7 +776,9 @@ def _render_apply_now_cards(df):
         enriched_data_raw = r.get("enriched_data")
 
         c1, c2, c3, c4 = st.columns([4, 1.5, 1.5, 2])
-        c1.markdown(f"**{co}** — {ti} <small>score {sc:.0f}</small>", unsafe_allow_html=True)
+        lane_label = r.get("source_lane_label", "Employer ATS")
+        source_name = r.get("source", "Direct")
+        c1.markdown(f"**{co}** — {ti} <small>score {sc:.0f}</small>  \n<small style='color: #6b7280'>{source_name} • {lane_label}</small>", unsafe_allow_html=True)
         if url: c2.markdown(f"[🔗 Open]({url})")
         
         if c3.button("✨ AI Analysis", key=f"ai_{key}"):
@@ -798,9 +820,9 @@ def _render_apply_now_cards(df):
             try:
                 analysis = json.loads(ai_analysis_raw)
                 score_color = "#10b981" if ai_score and ai_score >= 80 else "#f59e0b" if ai_score and ai_score >= 60 else "#ef4444"
-                st.markdown(
-                    f"""
-                    <div style="background: #1f2937; padding: 10px; border-radius: 5px; border-left: 4px solid {score_color}; margin-bottom: 10px;">
+                with st.container(border=True):
+                    st.markdown(
+                        f"""
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <strong style="color: {score_color}">AI Match Score: {ai_score:.0f}%</strong>
                         </div>
@@ -812,10 +834,9 @@ def _render_apply_now_cards(df):
                         <div style="font-size: 0.8rem; margin-top: 5px;">
                             <strong style="color: #6366f1">Missing:</strong> {', '.join(analysis.get('missing_skills', []))}
                         </div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
+                        """,
+                        unsafe_allow_html=True
+                    )
             except: pass
 
         # Display missing skills from enriched data analysis
@@ -824,14 +845,13 @@ def _render_apply_now_cards(df):
                 enriched = json.loads(enriched_data_raw)
                 missing_skills = enriched.get("missing_skills", [])
                 if missing_skills:
-                    st.markdown(
-                        f"""
-                        <div style="background: #1f2937; padding: 10px; border-radius: 5px; border-left: 4px solid #f59e0b; margin-bottom: 10px;">
+                    with st.container(border=True):
+                        st.markdown(
+                            f"""
                             <strong style="color: #f59e0b">Skills Gap:</strong> {', '.join(missing_skills)}
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
+                            """,
+                            unsafe_allow_html=True
+                        )
             except: pass
 
         st.markdown("<hr style='margin:2px 0;border-color:#374151'>", unsafe_allow_html=True)
@@ -942,7 +962,12 @@ def _coerce_company_editor_value(key: str, value):
         return str(value).strip().lower() in {"1", "true", "yes", "y"}
     if key in {"tier", "heal_failure_streak"}:
         text = str(value).strip()
-        return int(text) if text else 0
+        if not text:
+            return 0
+        try:
+            return int(float(text))
+        except (ValueError, TypeError):
+            return 0
     if key == "industry":
         text = str(value or "").strip()
         return _parse_pipe_list(text) if "|" in text else text
@@ -1144,29 +1169,13 @@ def main():
                 try:
                     search_conn = ats_db.get_connection()
                     try:
-                        fts_results = search_jobs(search_conn, fts_query, limit=200)
+                        fts_results = search_jobs(search_conn, fts_query, limit=500)
                         if fts_results:
-                            st.write(f"Found {len(fts_results)} matching jobs")
-                            fts_df = pd.DataFrame(fts_results)
-                            # Convert to display format
-                            fts_df = fts_df.rename(columns={
-                                "company": "Company",
-                                "role": "Role",
-                                "location": "Location",
-                                "score": "Score",
-                                "fit_band": "Fit Band",
-                                "source": "Source",
-                                "url": "URL",
-                            })
-                            st.dataframe(
-                                fts_df[["Company", "Role", "Location", "Score", "Fit Band", "Source"]].head(50),
-                                column_config={"URL": st.column_config.LinkColumn("URL")},
-                                hide_index=True,
-                                use_container_width=True,
-                            )
-                            if len(fts_results) > 50:
-                                st.caption(f"Showing 50 of {len(fts_results)} results. Refine your search for more specific matches.")
+                            matching_ids = {r["id"] for r in fts_results}
+                            df_all = df_all[df_all["id"].isin(matching_ids)].copy()
+                            st.write(f"🔍 Found {len(df_all)} jobs matching '{fts_query}'")
                         else:
+                            df_all = df_all.iloc[0:0] # Clear if no matches
                             st.info("No jobs match your search query.")
                     finally:
                         search_conn.close()
@@ -1332,7 +1341,17 @@ def main():
                             + (f"  \nReason: {item.get('note')}" if item.get("note") else "")
                         )
                         if item.get("url"):
-                            st.markdown(f"[Open source URL]({item['url']})")
+                            st.markdown(f"[Open current source URL]({item['url']})")
+                        
+                        new_url = st.text_input("Fix URL", value=item.get("url", ""), key=f"url_edit_{item['company']}_{item.get('queue_source', 'mr')}")
+                        if new_url != item.get("url"):
+                            if st.button("💾 Save URL to Registry", key=f"save_url_{item['company']}_{item.get('queue_source', 'mr')}"):
+                                if _update_company_url_in_registry(item["company"], new_url):
+                                    st.success(f"Updated URL for {item['company']} in registry.")
+                                    st.rerun()
+                                else:
+                                    st.error(f"Could not find {item['company']} in any registry.")
+
                         c1, c2, c3 = st.columns(3)
                         if c1.button("Resolve", key=f"mr_resolve_{item['company']}"):
                             conn = ats_db.get_connection()
@@ -1484,9 +1503,22 @@ def main():
     elif page == "Search Settings":
         st.title("Search Settings")
         prefs = load_yaml(settings.prefs_yaml)
-        t1, t2, t3, t4, t5, t6, t7, t8 = st.tabs(["Compensation & Location", "Job Title Settings", "Job Description Keywords", "Scoring Settings", "Performance & Concurrency", "Advanced Editor", "App Settings", "Base Resume"])
         
-        with t1:
+        section_options = [
+            "Compensation & Location",
+            "Job Title Settings",
+            "Job Description Keywords",
+            "Scoring Settings",
+            "Performance & Concurrency",
+            "Advanced Editor",
+            "App Settings",
+            "Base Resume"
+        ]
+        section = st.selectbox("Settings Section", section_options, index=0)
+        
+        st.divider()
+
+        if section == "Compensation & Location":
             s = prefs.setdefault("search", {}); c = s.setdefault("compensation", {})
             geography = s.setdefault("geography", {})
             contractor = s.setdefault("contractor", {})
@@ -1494,6 +1526,8 @@ def main():
             local_hybrid = s.setdefault("location_preferences", {}).setdefault("local_hybrid", {})
             remote_us = s.setdefault("location_preferences", {}).setdefault("remote_us", {})
             recency = s.setdefault("recency", {})
+            
+            st.markdown("#### Salary & Geography")
             f_min = st.number_input("Minimum Salary (USD)", value=int(c.get("min_salary_usd", 165000)))
             f_target = st.number_input("Target Salary (USD)", value=int(c.get("target_salary_usd", 165000)))
             f_rem = st.number_input("Remote Minimum Salary (USD)", value=int(c.get("preferred_remote_min_salary_usd", c.get("min_salary_usd", 170000))))
@@ -1505,33 +1539,26 @@ def main():
             f_neg_buffer = st.number_input("Negotiation Buffer (%)", min_value=0.0, max_value=1.0, value=float(c.get("negotiation_buffer_pct", 0.05)), step=0.01, format="%.2f")
             f_us_only = st.checkbox("US Only", value=bool(geography.get("us_only", True)))
             f_allow_international_remote = st.checkbox("Allow International Remote Jobs", value=bool(geography.get("allow_international_remote", False)))
+            
+            st.markdown("#### Hybrid & Remote Preferences")
             f_remote_enabled = st.checkbox("Include Remote US Jobs", value=bool(remote_us.get("enabled", True)))
-            f_remote_bonus = st.number_input("Remote Job Score Bonus", min_value=0, max_value=50, value=int(remote_us.get("bonus", 14)))
+            f_remote_bonus = st.number_input("Remote US Score Bonus", min_value=0, max_value=50, value=int(remote_us.get("bonus", 14)))
             f_hybrid_enabled = st.checkbox("Include Local Hybrid Jobs", value=bool(local_hybrid.get("enabled", True)))
+            f_hybrid_bonus = st.number_input("Local Hybrid Score Bonus", min_value=0, max_value=50, value=int(local_hybrid.get("bonus", 4)))
             f_zip = st.text_input("Your ZIP Code", value=str(local_hybrid.get("primary_zip", "80504")))
             f_radius = st.number_input("Local Hybrid Radius (miles)", min_value=1, max_value=250, value=int(local_hybrid.get("radius_miles", 30)))
-            f_hybrid_bonus = st.number_input("Local Hybrid Score Bonus", min_value=0, max_value=50, value=int(local_hybrid.get("bonus", 4)))
             f_hybrid_salary = st.number_input("Show Hybrid Jobs Only If Salary Is At Least (USD)", min_value=0, value=int(local_hybrid.get("allow_if_salary_at_least_usd", 170000)))
             f_markers = st.text_area("Cities / Areas Near You (one per line)", value="\n".join(local_hybrid.get("markers", [])))
+            
+            st.markdown("#### Recency & Tiers")
             f_recency_enabled = st.checkbox("Filter Out Old Job Postings", value=bool(recency.get("enforce_job_age", True)))
             f_max_age = st.number_input("Maximum Job Posting Age (days)", min_value=1, max_value=365, value=int(recency.get("max_job_age_days", 21)))
-            st.markdown("#### Query Tiers")
+            
             st.caption("Use `2: query` or `3: query` in source search queries to mark broader searches. These limits control which tiers API aggregators and JobSpy will execute.")
             tier_col1, tier_col2 = st.columns(2)
-            f_aggregator_max_tier = tier_col1.number_input(
-                "Max Query Tier For API Aggregators",
-                min_value=1,
-                max_value=5,
-                value=int(query_tiers.get("aggregator_max_tier", 3) or 3),
-                step=1,
-            )
-            f_jobspy_max_tier = tier_col2.number_input(
-                "Max Query Tier For JobSpy Experimental",
-                min_value=1,
-                max_value=5,
-                value=int(query_tiers.get("jobspy_max_tier", 3) or 3),
-                step=1,
-            )
+            f_aggregator_max_tier = tier_col1.number_input("Max Query Tier For API Aggregators", min_value=1, max_value=5, value=int(query_tiers.get("aggregator_max_tier", 3) or 3))
+            f_jobspy_max_tier = tier_col2.number_input("Max Query Tier For JobSpy Experimental", min_value=1, max_value=5, value=int(query_tiers.get("jobspy_max_tier", 3) or 3))
+            
             st.markdown("#### Contractor Preferences")
             f_include_contract = st.checkbox("Include Contract Roles", value=bool(contractor.get("include_contract_roles", True)))
             f_allow_w2 = st.checkbox("Allow W2 Hourly Contracts", value=bool(contractor.get("allow_w2_hourly", True)))
@@ -1539,13 +1566,15 @@ def main():
             f_hours = st.number_input("Contract Hours Per Week", min_value=1.0, max_value=80.0, value=float(contractor.get("default_hours_per_week", 40)), step=1.0)
             f_w2_weeks = st.number_input("W2 Contract: Weeks Worked Per Year", min_value=1.0, max_value=52.0, value=float(contractor.get("default_w2_weeks_per_year", 50)), step=1.0)
             f_1099_weeks = st.number_input("1099 Contract: Weeks Worked Per Year", min_value=1.0, max_value=52.0, value=float(contractor.get("default_1099_weeks_per_year", 46)), step=1.0)
-            f_benefits = st.number_input("1099: Estimated Annual Benefits Cost (USD)", min_value=0.0, value=float(contractor.get("benefits_replacement_usd", 18000)), step=1000.0, help="Annual cost of health insurance and benefits you'd need to cover yourself as a 1099 contractor.")
-            f_w2_gap = st.number_input("W2 Hourly: Benefits Gap vs. Salaried (USD)", min_value=0.0, value=float(contractor.get("w2_benefits_gap_usd", 6000)), step=500.0, help="Estimated annual value of benefits you lose on a W2 hourly contract vs. a salaried role.")
-            f_1099_overhead = st.number_input("1099: Self-Employment Overhead Rate (%)", min_value=0.0, max_value=0.75, value=float(contractor.get("overhead_1099_pct", 0.18)), step=0.01, format="%.2f", help="Percentage deducted for self-employment tax and other 1099 overhead costs.")
+            f_benefits = st.number_input("1099: Estimated Annual Benefits Cost (USD)", min_value=0.0, value=float(contractor.get("benefits_replacement_usd", 18000)), step=1000.0)
+            f_w2_gap = st.number_input("W2 Hourly: Benefits Gap vs. Salaried (USD)", min_value=0.0, value=float(contractor.get("w2_benefits_gap_usd", 6000)), step=500.0)
+            f_1099_overhead = st.number_input("1099: Self-Employment Overhead Rate (%)", min_value=0.0, max_value=0.75, value=float(contractor.get("overhead_1099_pct", 0.18)), step=0.01, format="%.2f")
+            
             st.markdown("#### Experience Tolerance")
             experience = s.setdefault("experience", {})
-            f_years_exp = st.number_input("Your Years of Experience", min_value=0.0, max_value=60.0, value=float(experience.get("years", 0)), step=0.5, help="Your professional experience level. Set to 0 to disable experience-based filtering.")
-            f_exp_gap = st.number_input("Experience Gap Tolerance (years)", min_value=0.0, max_value=20.0, value=float(experience.get("gap_tolerance", 0)), step=0.5, help="How many years below the job requirement are you willing to stretch? Jobs exceeding this gap will be filtered out.")
+            f_years_exp = st.number_input("Your Years of Experience", min_value=0.0, max_value=60.0, value=float(experience.get("years", 0)), step=0.5)
+            f_exp_gap = st.number_input("Experience Gap Tolerance (years)", min_value=0.0, max_value=20.0, value=float(experience.get("gap_tolerance", 0)), step=0.5)
+            
             if st.button("Save Compensation & Location Settings"):
                 c.update({
                     "min_salary_usd": int(f_min),
@@ -1558,24 +1587,17 @@ def main():
                 })
                 geography["us_only"] = bool(f_us_only)
                 geography["allow_international_remote"] = bool(f_allow_international_remote)
-                remote_us.update({"enabled": bool(f_remote_enabled), "bonus": int(f_remote_bonus)})
+                remote_us.update({"enabled": bool(f_remote_enabled)})
                 local_hybrid.update({
                     "enabled": bool(f_hybrid_enabled),
                     "primary_zip": f_zip.strip(),
                     "radius_miles": int(f_radius),
-                    "bonus": int(f_hybrid_bonus),
                     "allow_if_salary_at_least_usd": int(f_hybrid_salary),
                     "markers": [line.strip() for line in f_markers.splitlines() if line.strip()],
                 })
                 recency.update({"enforce_job_age": bool(f_recency_enabled), "max_job_age_days": int(f_max_age)})
-                query_tiers.update({
-                    "aggregator_max_tier": int(f_aggregator_max_tier),
-                    "jobspy_max_tier": int(f_jobspy_max_tier),
-                })
-                experience.update({
-                    "years": float(f_years_exp),
-                    "gap_tolerance": float(f_exp_gap),
-                })
+                query_tiers.update({"aggregator_max_tier": int(f_aggregator_max_tier), "jobspy_max_tier": int(f_jobspy_max_tier)})
+                experience.update({"years": float(f_years_exp), "gap_tolerance": float(f_exp_gap)})
                 contractor.update({
                     "include_contract_roles": bool(f_include_contract),
                     "allow_w2_hourly": bool(f_allow_w2),
@@ -1589,60 +1611,43 @@ def main():
                     "overhead_1099_pct": float(f_1099_overhead),
                 })
                 s["location_policy"] = f_pol
-                save_yaml(settings.prefs_yaml, prefs); st.success("Saved.")
+                save_yaml(settings.prefs_yaml, prefs); _invalidate_data_cache(); st.success("✅ Saved!"); st.rerun()
 
             with st.expander("Compensation Calculator", expanded=False):
                 calc_type = st.selectbox("Calculate For", ["salary", "w2_hourly", "1099_hourly"])
                 calc_amount_label = "Annual Salary USD" if calc_type == "salary" else "Hourly Rate USD"
                 calc_amount = st.number_input(calc_amount_label, min_value=0.0, value=float(f_target if calc_type == "salary" else 95.0), step=5.0)
-                calc_hours = st.number_input(
-                    "Calculator Hours / Week",
-                    min_value=1.0,
-                    max_value=80.0,
-                    value=float(f_hours),
-                    step=1.0,
-                    disabled=(calc_type == "salary"),
-                )
+                calc_hours = st.number_input("Calculator Hours / Week", min_value=1.0, max_value=80.0, value=float(f_hours), step=1.0, disabled=(calc_type == "salary"))
                 calc_weeks_default = f_w2_weeks if calc_type == "w2_hourly" else f_1099_weeks
-                calc_weeks = st.number_input(
-                    "Calculator Weeks / Year",
-                    min_value=1.0,
-                    max_value=52.0,
-                    value=float(52.0 if calc_type == "salary" else calc_weeks_default),
-                    step=1.0,
-                    disabled=(calc_type == "salary"),
-                )
-                calc_preview = _annualized_compensation_preview(
-                    calc_type,
-                    calc_amount,
-                    calc_hours,
-                    calc_weeks,
-                    contractor,
-                )
+                calc_weeks = st.number_input("Calculator Weeks / Year", min_value=1.0, max_value=52.0, value=float(52.0 if calc_type == "salary" else calc_weeks_default), step=1.0, disabled=(calc_type == "salary"))
+                calc_preview = _annualized_compensation_preview(calc_type, calc_amount, calc_hours, calc_weeks, contractor)
                 breakeven_w2 = (float(f_target) + float(f_w2_gap)) / max(float(f_hours) * float(f_w2_weeks), 1.0)
                 breakeven_1099 = (float(f_target) + float(f_benefits)) / max((1.0 - float(f_1099_overhead)) * float(f_hours) * float(f_1099_weeks), 1.0)
                 c_calc1, c_calc2, c_calc3 = st.columns(3)
                 c_calc1.metric("Gross Annual Value", f"${calc_preview['gross_annual_usd']:,.0f}")
                 c_calc2.metric("Take-Home Equivalent", f"${calc_preview['normalized_compensation_usd']:,.0f}")
                 c_calc3.metric("Target Salary", f"${float(f_target):,.0f}")
-                st.caption(
-                    f"Break-even hourly rate to match your salary target — W2: ${breakeven_w2:,.2f}/hr | "
-                    f"1099: ${breakeven_1099:,.2f}/hr"
-                )
-        
-        with t2:
+                st.caption(f"Break-even hourly rate to match your salary target — W2: ${breakeven_w2:,.2f}/hr | 1099: ${breakeven_1099:,.2f}/hr")
+
+        elif section == "Job Title Settings":
             t = prefs.setdefault("titles", {})
             constraints = t.setdefault("constraints", {})
-            f_keywords = st.text_area("Job Title Keywords (one per line)", value="\n".join(t.get("positive_keywords", [])), help="Job titles or keywords that indicate a good role match. Listed here without a score — use the Weighted Keywords field below to assign scores.")
-            f_pos = st.text_area("Weighted Title Keywords (keyword: score)", value="\n".join([f"{k}: {v}" for k,v in t.get("positive_weights", {}).items()]), help="Each keyword and the score it adds to the match. Higher scores = stronger title signal.")
+            st.markdown("#### Title Keywords & Filters")
+            f_keywords = st.text_area("Job Title Keywords (one per line)", value="\n".join(t.get("positive_keywords", [])), help="Job titles or keywords that indicate a good role match.")
+            f_pos = st.text_area("Weighted Title Keywords (keyword: score)", value="\n".join([f"{k}: {v}" for k,v in t.get("positive_weights", {}).items()]), help="Each keyword and the score it adds to the match.")
             f_require_positive = st.checkbox("Only Show Jobs With a Matching Title Keyword", value=bool(t.get("require_one_positive_keyword", True)))
-            f_fast_track = st.number_input("Fast-Track Starting Score", min_value=0, max_value=100, value=int(t.get("fast_track_base_score", 0)), help="If a high-weight title keyword matches, start the score at this value instead of 0. Set to 0 to disable (recommended — lets job description keywords drive the score).")
-            f_fast_track_weight = st.number_input("Fast-Track Minimum Keyword Weight", min_value=0, max_value=20, value=int(t.get("fast_track_min_weight", 8)), help="Only apply the fast-track starting score if the matched title keyword has at least this weight.")
-            f_mods = st.text_area("Product Manager: Required Modifiers (one per line)", value="\n".join(constraints.get("product_manager_allowed_modifiers", [])), help="A job title with 'Product Manager' will only pass if it also contains one of these words.")
-            f_arch_mods = st.text_area("Architect: Required Modifiers (one per line)", value="\n".join(constraints.get("architect_allowed_modifiers", [])), help="A job title with 'Architect' will only pass if it also contains one of these words.")
-            f_ba_mods = st.text_area("Business Analyst: Required Modifiers (one per line)", value="\n".join(constraints.get("business_analyst_allowed_modifiers", [])), help="A job title with 'Business Analyst' will only pass if it also contains one of these words.")
-            f_consult_mods = st.text_area("Consultant: Required Modifiers (one per line)", value="\n".join(constraints.get("consultant_allowed_modifiers", [])), help="A job title with 'Consultant' will only pass if it also contains one of these words.")
-            f_neg = st.text_area("Job Title Disqualifiers (one per line)", value="\n".join(t.get("negative_disqualifiers", [])), help="Job titles containing any of these phrases will be automatically filtered out, regardless of score.")
+            f_fast_track = st.number_input("Fast-Track Starting Score", min_value=0, max_value=100, value=int(t.get("fast_track_base_score", 0)))
+            f_fast_track_weight = st.number_input("Fast-Track Minimum Keyword Weight", min_value=0, max_value=20, value=int(t.get("fast_track_min_weight", 8)))
+            
+            st.markdown("#### Mandatory Modifiers")
+            f_mods = st.text_area("Product Manager: Required Modifiers (one per line)", value="\n".join(constraints.get("product_manager_allowed_modifiers", [])))
+            f_arch_mods = st.text_area("Architect: Required Modifiers (one per line)", value="\n".join(constraints.get("architect_allowed_modifiers", [])))
+            f_ba_mods = st.text_area("Business Analyst: Required Modifiers (one per line)", value="\n".join(constraints.get("business_analyst_allowed_modifiers", [])))
+            f_consult_mods = st.text_area("Consultant: Required Modifiers (one per line)", value="\n".join(constraints.get("consultant_allowed_modifiers", [])))
+            
+            st.markdown("#### Disqualifiers")
+            f_neg = st.text_area("Job Title Disqualifiers (one per line)", value="\n".join(t.get("negative_disqualifiers", [])))
+            
             if st.button("Save Job Title Settings"):
                 new_w = {l.split(":")[0].strip(): int(l.split(":")[1]) for l in f_pos.splitlines() if ":" in l}
                 t["positive_keywords"] = [line.strip() for line in f_keywords.splitlines() if line.strip()]
@@ -1655,410 +1660,149 @@ def main():
                 constraints["business_analyst_allowed_modifiers"] = [line.strip() for line in f_ba_mods.splitlines() if line.strip()]
                 constraints["consultant_allowed_modifiers"] = [line.strip() for line in f_consult_mods.splitlines() if line.strip()]
                 t["negative_disqualifiers"] = [line.strip() for line in f_neg.splitlines() if line.strip()]
-                save_yaml(settings.prefs_yaml, prefs); st.success("Saved.")
+                save_yaml(settings.prefs_yaml, prefs); _invalidate_data_cache(); st.success("✅ Saved!"); st.rerun()
 
-        with t3:
+        elif section == "Job Description Keywords":
             k = prefs.setdefault("keywords", {})
             scoring = prefs.setdefault("scoring", {})
             matching = scoring.setdefault("keyword_matching", {})
-            f_bp = st.text_area("Keywords That Boost Score (keyword: score)", value="\n".join([f"{ki}: {vi}" for ki,vi in k.get("body_positive", {}).items()]), help="Words or phrases found in the job description that signal a good fit. Format: keyword: score (one per line).")
-            f_bn = st.text_area("Keywords That Reduce Score (keyword: penalty)", value="\n".join([f"{ki}: {vi}" for ki,vi in k.get("body_negative", {}).items()]), help="Words or phrases in the job description that signal a poor fit. Format: keyword: penalty (one per line). Higher penalty = more negative impact.")
-            f_unique = st.checkbox("Count Each Keyword Only Once", value=bool(matching.get("count_unique_matches_only", True)), help="If checked, a keyword that appears multiple times in the job description only adds its score once.")
+            st.markdown("#### JD Keyword Weights")
+            f_bp = st.text_area("Keywords That Boost Score (keyword: score)", value="\n".join([f"{ki}: {vi}" for ki,vi in k.get("body_positive", {}).items()]))
+            f_bn = st.text_area("Keywords That Reduce Score (keyword: penalty)", value="\n".join([f"{ki}: {vi}" for ki,vi in k.get("body_negative", {}).items()]))
+            f_unique = st.checkbox("Count Each Keyword Only Once", value=bool(matching.get("count_unique_matches_only", True)))
             f_pos_cap = st.number_input("Maximum Score From Positive Keywords", min_value=0, max_value=200, value=int(matching.get("positive_keyword_cap", 60)))
             f_neg_cap = st.number_input("Maximum Penalty From Negative Keywords", min_value=0, max_value=200, value=int(matching.get("negative_keyword_cap", 45)))
+            
             if st.button("Save Keyword Settings"):
                 k["body_positive"] = {l.split(":")[0].strip(): int(l.split(":")[1]) for l in f_bp.splitlines() if ":" in l}
                 k["body_negative"] = {l.split(":")[0].strip(): int(l.split(":")[1]) for l in f_bn.splitlines() if ":" in l}
                 matching["count_unique_matches_only"] = bool(f_unique)
                 matching["positive_keyword_cap"] = int(f_pos_cap)
                 matching["negative_keyword_cap"] = int(f_neg_cap)
-                save_yaml(settings.prefs_yaml, prefs); st.success("Saved.")
+                save_yaml(settings.prefs_yaml, prefs); _invalidate_data_cache(); st.success("✅ Saved!"); st.rerun()
 
-        with t4:
+        elif section == "Scoring Settings":
             s_cfg = prefs.setdefault("scoring", {})
             title_cfg = prefs.setdefault("titles", {})
             matching = s_cfg.setdefault("keyword_matching", {})
             rescue = prefs.setdefault("policy", {}).setdefault("title_rescue", {})
             adjustments = s_cfg.setdefault("adjustments", {})
-            apply_now = s_cfg.setdefault("apply_now", {})
+            apply_now_cfg = s_cfg.setdefault("apply_now", {})
             location_prefs = prefs.setdefault("search", {}).setdefault("location_preferences", {})
             remote_us_cfg = location_prefs.setdefault("remote_us", {})
             local_hybrid_cfg = location_prefs.setdefault("local_hybrid", {})
-            contractor_cfg = prefs.setdefault("search", {}).setdefault("contractor", {})
+            bucket_thresholds = prefs.get("search", {}).get("bucket_thresholds", {})
 
-            st.caption("After saving settings, you can re-score saved jobs without rerunning the scraper.")
+            st.caption("Customize weights and thresholds used to rank jobs. Tightening these will reduce 'noisy' matches.")
+            
+            st.markdown("#### Weight Tuning")
+            c1, c2 = st.columns(2)
+            f_title_max_points = c1.slider("Maximum Score From Title Match", 5, 100, int(title_cfg.get("title_max_points", 25)))
+            f_fast_track = c2.number_input("Fast-Track Starting Score", 0, 100, int(title_cfg.get("fast_track_base_score", 50)), help="Score granted immediately for a strong title match. Recommended: 30-40")
+            
+            f_positive_keyword_cap = c1.slider("Maximum Score From JD Keywords", 10, 200, int(matching.get("positive_keyword_cap", 60)), help="Total cap on positive points from the job description.")
+            f_negative_keyword_cap = c2.slider("Maximum Penalty From JD Keywords", 10, 250, int(matching.get("negative_keyword_cap", 45)), help="Maximum points to deduct for negative keywords. Set high (e.g. 150) to allow negatives to effectively nuke a match.")
 
-            # Basic thresholds
-            st.markdown("#### Job Visibility Thresholds")
-            f_min_keep = st.slider("Minimum Score to Show a Job", min_value=0, max_value=100, value=int(s_cfg.get("minimum_score_to_keep", 35)), help="Jobs scoring below this threshold are hidden from all match views.")
-
-            # Title vs JD Weighting
-            st.markdown("#### Title vs JD Weighting")
-            st.caption("Use these caps to control how much total score can come from the title versus the job description keywords.")
-            f_title_max_points = st.slider("Maximum Score From Title Match", min_value=5, max_value=100, value=int(title_cfg.get("title_max_points", 25)), step=1, help="Cap on points awarded for matching the job title")
-            f_positive_keyword_cap = st.slider("Maximum Score From JD Keywords", min_value=10, max_value=200, value=int(matching.get("positive_keyword_cap", 60)), step=5, help="Cap on points from positive keywords in job description")
-            f_negative_keyword_cap = st.slider("Maximum Penalty From JD Negative Keywords", min_value=5, max_value=100, value=int(matching.get("negative_keyword_cap", 45)), step=5, help="Max penalty deducted for negative keywords")
-
-            # Salary adjustments
-            st.markdown("#### Compensation Adjustments")
-            col_sal1, col_sal2 = st.columns(2)
-            f_missing_salary = col_sal1.slider("Penalty: No Salary Listed", min_value=0, max_value=50, value=int(adjustments.get("missing_salary_penalty", 6)), help="Points deducted when salary not listed")
-            f_salary_target_bonus = col_sal2.slider("Bonus: Salary ≥ Target", min_value=0, max_value=50, value=int(adjustments.get("salary_at_or_above_target_bonus", 6)), help="Bonus when salary meets target")
-            col_sal3, col_sal4 = st.columns(2)
-            f_salary_floor_bonus = col_sal3.slider("Bonus: Salary ≥ Minimum", min_value=0, max_value=50, value=int(adjustments.get("salary_meets_floor_bonus", 2)), help="Bonus when salary meets floor")
-            f_salary_below_penalty = col_sal4.slider("Penalty: Salary < Minimum", min_value=0, max_value=50, value=int(adjustments.get("salary_below_target_penalty", 12)), help="Penalty when below minimum")
-            # Contract role adjustments
-            st.markdown("#### Contract Role Adjustments")
-            f_contract_penalty = st.slider("Penalty: Contract Roles", min_value=0, max_value=50, value=int(adjustments.get("contract_role_penalty", 0)), help="Penalty for contract/temporary positions")
-            f_contractor_bonus = st.slider("Bonus: Contractor Target Rate Met", min_value=0, max_value=50, value=int(adjustments.get("contractor_target_bonus", 4)), help="Bonus for contract roles meeting rate target")
-
-            # Location bonuses
             st.markdown("#### Location Bonuses")
             col_loc1, col_loc2 = st.columns(2)
-            f_remote_us_bonus = col_loc1.slider("Bonus: US Remote", min_value=0, max_value=50, value=int(remote_us_cfg.get("bonus", 14)), help="Bonus for US-based remote positions")
-            f_hybrid_bonus = col_loc2.slider("Bonus: Local/Hybrid", min_value=0, max_value=50, value=int(local_hybrid_cfg.get("bonus", 4)), help="Bonus for local or hybrid roles")
+            f_remote_us_bonus = col_loc1.slider("Bonus: US Remote", 0, 50, int(remote_us_cfg.get("bonus", 14)))
+            f_hybrid_bonus = col_loc2.slider("Bonus: Local/Hybrid", 0, 50, int(local_hybrid_cfg.get("bonus", 4)))
 
-            # Apply Now settings
-            st.markdown("#### 'Apply Now' Thresholds")
-            f_require_strong_title = st.checkbox("'Apply Now' Requires a Strong Title Match", value=bool(apply_now.get("require_strong_title", True)))
-            f_min_role_alignment = st.slider("'Apply Now' Minimum Title Match Score", min_value=0.0, max_value=20.0, value=float(apply_now.get("min_role_alignment", 6.0)), step=0.5, help="Minimum title alignment score to qualify for 'Apply Now'")
-            f_direct_title_markers = st.text_area("'Apply Now' Required Title Keywords (one per line)", value="\n".join(apply_now.get("direct_title_markers", [])), help="The job title must contain one of these words to qualify for 'Apply Now'.")
-            st.markdown("#### Near-Match Rescue")
-            st.caption("These settings allow jobs with a near-matching title to remain visible if the job description content is strong enough.")
-            f_adj_bonus = st.number_input("Near-Match Title Score Bonus", min_value=0, max_value=50, value=int(rescue.get("adjacent_title_bonus", 8)))
-            f_adj_domain_bonus = st.number_input("Near-Match + Strong Domain Score Bonus", min_value=0, max_value=50, value=int(rescue.get("adjacent_title_strong_domain_bonus", 6)))
-            f_adj_min = st.number_input("Near-Match Minimum Score to Show", min_value=0, max_value=100, value=int(rescue.get("adjacent_title_min_score_to_keep", 26)))
-            f_strong_body_markers = st.text_area("Domain Keywords That Strengthen Near-Matches (one per line)", value="\n".join(rescue.get("strong_body_domain_markers", [])))
-            f_adj_markers = st.text_area("Near-Match Title Keywords (one per line)", value="\n".join(rescue.get("adjacent_title_markers", [])))
-            f_analyst_markers = st.text_area("Analyst Variant Keywords (one per line)", value="\n".join(rescue.get("analyst_variant_markers", [])))
+            st.markdown("#### 'Apply Now' Logic")
+            f_require_strong_title = st.checkbox("'Apply Now' Requires a Strong Title Match", value=bool(apply_now_cfg.get("require_strong_title", True)))
+            f_min_role_alignment = st.slider("'Apply Now' Minimum Title Match Score", 0.0, 20.0, float(apply_now_cfg.get("min_role_alignment", 6.0)))
+            
+            st.markdown("#### Bucket Thresholds")
+            t_apply = st.number_input("APPLY NOW Threshold", 0, 100, int(bucket_thresholds.get("apply_now", 85)), help="Raise this (e.g. to 90) to make Apply Now more selective.")
+            t_review = st.number_input("REVIEW TODAY Threshold", 0, 100, int(bucket_thresholds.get("review_today", 70)))
+            t_watch = st.number_input("WATCH Threshold", 0, 100, int(bucket_thresholds.get("watch", 50)))
+
             if st.button("Save Scoring Settings"):
-                s_cfg["minimum_score_to_keep"] = int(f_min_keep)
                 title_cfg["title_max_points"] = int(f_title_max_points)
+                title_cfg["fast_track_base_score"] = int(f_fast_track)
                 matching["positive_keyword_cap"] = int(f_positive_keyword_cap)
                 matching["negative_keyword_cap"] = int(f_negative_keyword_cap)
-                adjustments["missing_salary_penalty"] = int(f_missing_salary)
-                adjustments["salary_at_or_above_target_bonus"] = int(f_salary_target_bonus)
-                adjustments["salary_meets_floor_bonus"] = int(f_salary_floor_bonus)
-                adjustments["salary_below_target_penalty"] = int(f_salary_below_penalty)
-                adjustments["contract_role_penalty"] = int(f_contract_penalty)
-                adjustments["contractor_target_bonus"] = int(f_contractor_bonus)
                 remote_us_cfg["bonus"] = int(f_remote_us_bonus)
                 local_hybrid_cfg["bonus"] = int(f_hybrid_bonus)
-                apply_now["require_strong_title"] = bool(f_require_strong_title)
-                apply_now["min_role_alignment"] = float(f_min_role_alignment)
-                apply_now["direct_title_markers"] = [line.strip() for line in f_direct_title_markers.splitlines() if line.strip()]
-                rescue["adjacent_title_bonus"] = int(f_adj_bonus)
-                rescue["adjacent_title_strong_domain_bonus"] = int(f_adj_domain_bonus)
-                rescue["adjacent_title_min_score_to_keep"] = int(f_adj_min)
-                rescue["strong_body_domain_markers"] = [line.strip() for line in f_strong_body_markers.splitlines() if line.strip()]
-                rescue["adjacent_title_markers"] = [line.strip() for line in f_adj_markers.splitlines() if line.strip()]
-                rescue["analyst_variant_markers"] = [line.strip() for line in f_analyst_markers.splitlines() if line.strip()]
-                save_yaml(settings.prefs_yaml, prefs); st.success("Saved.")
-            if st.button("Re-score Saved Jobs"):
-                conn = ats_db.get_connection()
-                try:
-                    updated = _rescore_saved_jobs(conn)
-                finally:
-                    conn.close()
-                _invalidate_data_cache()
-                st.success(f"Re-scored {updated} saved jobs using the current search settings.")
+                apply_now_cfg["require_strong_title"] = bool(f_require_strong_title)
+                apply_now_cfg["min_role_alignment"] = float(f_min_role_alignment)
+                if "search" not in prefs: prefs["search"] = {}
+                prefs["search"]["bucket_thresholds"] = {"apply_now": int(t_apply), "review_today": int(t_review), "watch": int(t_watch)}
+                save_yaml(settings.prefs_yaml, prefs); _invalidate_data_cache(); st.success("✅ Saved!"); st.rerun()
+            
+            st.divider()
+            if st.button("🔄 Re-score Saved Jobs"):
+                with st.spinner("Re-scoring using current preferences..."):
+                    conn = ats_db.get_connection()
+                    try:
+                        from jobsearch.scraper.scoring import Scorer
+                        scorer = Scorer(prefs)
+                        apps = ats_db.get_applications(conn)
+                        updated = 0
+                        for app in apps:
+                            job_data = {
+                                "title": app["role"],
+                                "description": " ".join(filter(None, [
+                                    app["job_description"],
+                                    app["description_excerpt"],
+                                    app["jd_summary"]
+                                ])),
+                                "location": app["location"],
+                                "tier": app["tier"],
+                                "is_remote": app["is_remote"],
+                                "salary_min": app["salary_low"],
+                                "salary_max": app["salary_high"],
+                                "work_type": app["work_type"],
+                                "source_lane": app["source_lane"],
+                            }
+                            res = scorer.score_job(job_data)
+                            
+                            conn.execute(
+                                """
+                                UPDATE applications 
+                                SET score=?, fit_band=?, matched_keywords=?, penalized_keywords=?, decision_reason=?, 
+                                    normalized_compensation_usd=?, updated_at=?
+                                WHERE id=?
+                                """,
+                                (
+                                    res["score"], res["fit_band"], res["matched_keywords"], res["penalized_keywords"], 
+                                    res["decision_reason"], res["normalized_compensation_usd"], 
+                                    datetime.now(timezone.utc).isoformat(), app["id"]
+                                )
+                            )
+                            updated += 1
+                        conn.commit()
+                        st.success(f"Successfully re-scored {updated} jobs.")
+                    finally:
+                        conn.close()
+                    _invalidate_data_cache(); st.rerun()
 
-        with t5:
-            conn = ats_db.get_connection()
-            try:
-                perf = prefs.setdefault("performance", {})
-                st.caption("Adjust scraper concurrency and timeout settings. Higher concurrency speeds up scraping but may trigger rate limits. Timeouts are in milliseconds.")
+        elif section == "Performance & Concurrency":
+            perf = prefs.setdefault("performance", {})
+            st.markdown("#### Scraper Concurrency")
+            f_workday = st.number_input("Workday Concurrency", 1, 10, int(perf.get("scrape_workday_concurrency", settings.scrape_workday_concurrency)))
+            f_greenhouse = st.number_input("Greenhouse Concurrency", 1, 10, int(perf.get("scrape_greenhouse_concurrency", settings.scrape_greenhouse_concurrency)))
+            f_lever = st.number_input("Lever Concurrency", 1, 10, int(perf.get("scrape_lever_concurrency", settings.scrape_lever_concurrency)))
+            f_jobspy = st.number_input("JobSpy Concurrency", 1, 10, int(perf.get("scrape_jobspy_concurrency", settings.scrape_jobspy_concurrency)))
+            
+            if st.button("Save Performance Settings"):
+                perf.update({
+                    "scrape_workday_concurrency": int(f_workday),
+                    "scrape_greenhouse_concurrency": int(f_greenhouse),
+                    "scrape_lever_concurrency": int(f_lever),
+                    "scrape_jobspy_concurrency": int(f_jobspy),
+                })
+                save_yaml(settings.prefs_yaml, prefs); _invalidate_data_cache(); st.success("✅ Saved!"); st.rerun()
 
-                st.markdown("#### Adapter Concurrency")
-                st.caption("Number of parallel workers for each job board type. Higher = faster but may hit rate limits.")
-
-                perf_col1, perf_col2 = st.columns(2)
-                f_jobspy_conc = perf_col1.number_input(
-                    "JobSpy Concurrency",
-                    min_value=1,
-                    max_value=10,
-                    value=int(perf.get("scrape_jobspy_concurrency", settings.scrape_jobspy_concurrency)),
-                    step=1,
-                    help="Speed up multi-site job aggregation. Default: 1"
-                )
-                f_workday_conc = perf_col2.number_input(
-                    "Workday Concurrency",
-                    min_value=1,
-                    max_value=10,
-                    value=int(perf.get("scrape_workday_concurrency", settings.scrape_workday_concurrency)),
-                    step=1,
-                    help="Default: 2"
-                )
-
-                perf_col3, perf_col4 = st.columns(2)
-                f_generic_conc = perf_col3.number_input(
-                    "Generic Adapter Concurrency",
-                    min_value=1,
-                    max_value=10,
-                    value=int(perf.get("scrape_generic_concurrency", settings.scrape_generic_concurrency)),
-                    step=1,
-                    help="Default: 3"
-                )
-                f_greenhouse_conc = perf_col4.number_input(
-                    "Greenhouse Concurrency",
-                    min_value=1,
-                    max_value=10,
-                    value=int(perf.get("scrape_greenhouse_concurrency", settings.scrape_greenhouse_concurrency)),
-                    step=1,
-                    help="Default: 4"
-                )
-
-                perf_col5, perf_col6 = st.columns(2)
-                f_lever_conc = perf_col5.number_input(
-                    "Lever Concurrency",
-                    min_value=1,
-                    max_value=10,
-                    value=int(perf.get("scrape_lever_concurrency", settings.scrape_lever_concurrency)),
-                    step=1,
-                    help="Default: 4"
-                )
-                f_ashby_conc = perf_col6.number_input(
-                    "Ashby Concurrency",
-                    min_value=1,
-                    max_value=10,
-                    value=int(perf.get("scrape_ashby_concurrency", settings.scrape_ashby_concurrency)),
-                    step=1,
-                    help="Default: 4"
-                )
-
-                perf_col7, perf_col8 = st.columns(2)
-                f_rippling_conc = perf_col7.number_input(
-                    "Rippling Concurrency",
-                    min_value=1,
-                    max_value=10,
-                    value=int(perf.get("scrape_rippling_concurrency", settings.scrape_rippling_concurrency)),
-                    step=1,
-                    help="Default: 2"
-                )
-                f_smartrecruiters_conc = perf_col8.number_input(
-                    "SmartRecruiters Concurrency",
-                    min_value=1,
-                    max_value=10,
-                    value=int(perf.get("scrape_smartrecruiters_concurrency", settings.scrape_smartrecruiters_concurrency)),
-                    step=1,
-                    help="Default: 2"
-                )
-
-                perf_col9, perf_col10 = st.columns(2)
-                f_dice_conc = perf_col9.number_input(
-                    "Dice Concurrency",
-                    min_value=1,
-                    max_value=10,
-                    value=int(perf.get("scrape_dice_concurrency", settings.scrape_dice_concurrency)),
-                    step=1,
-                    help="Default: 2"
-                )
-                f_motionrecruitment_conc = perf_col10.number_input(
-                    "Motion Recruitment Concurrency",
-                    min_value=1,
-                    max_value=10,
-                    value=int(perf.get("scrape_motionrecruitment_concurrency", settings.scrape_motionrecruitment_concurrency)),
-                    step=1,
-                    help="Default: 2"
-                )
-
-                perf_col11, perf_col12 = st.columns(2)
-                f_indeed_conc = perf_col11.number_input(
-                    "Indeed Connector Concurrency",
-                    min_value=1,
-                    max_value=10,
-                    value=int(perf.get("scrape_indeed_connector_concurrency", settings.scrape_indeed_connector_concurrency)),
-                    step=1,
-                    help="Default: 1"
-                )
-                f_usajobs_conc = perf_col12.number_input(
-                    "USAJobs Concurrency",
-                    min_value=1,
-                    max_value=10,
-                    value=int(perf.get("scrape_usajobs_concurrency", settings.scrape_usajobs_concurrency)),
-                    step=1,
-                    help="Default: 1"
-                )
-
-                perf_col13, perf_col14 = st.columns(2)
-                f_adzuna_conc = perf_col13.number_input(
-                    "Adzuna Concurrency",
-                    min_value=1,
-                    max_value=10,
-                    value=int(perf.get("scrape_adzuna_concurrency", settings.scrape_adzuna_concurrency)),
-                    step=1,
-                    help="Default: 1"
-                )
-                f_jooble_conc = perf_col14.number_input(
-                    "Jooble Concurrency",
-                    min_value=1,
-                    max_value=10,
-                    value=int(perf.get("scrape_jooble_concurrency", settings.scrape_jooble_concurrency)),
-                    step=1,
-                    help="Default: 1"
-                )
-
-                perf_col15, perf_col16 = st.columns(2)
-                f_themuse_conc = perf_col15.number_input(
-                    "The Muse Concurrency",
-                    min_value=1,
-                    max_value=10,
-                    value=int(perf.get("scrape_themuse_concurrency", settings.scrape_themuse_concurrency)),
-                    step=1,
-                    help="Default: 1"
-                )
-                f_deep_search_conc = perf_col16.number_input(
-                    "Deep Search Concurrency",
-                    min_value=1,
-                    max_value=10,
-                    value=int(perf.get("scrape_deep_search_concurrency", settings.scrape_deep_search_concurrency)),
-                    step=1,
-                    help="Default: 1"
-                )
-
-                st.markdown("#### Timeouts & Budgets (milliseconds)")
-                timeout_col1, timeout_col2 = st.columns(2)
-                f_heal_discovery_budget = timeout_col1.number_input(
-                    "Healer Discovery Budget",
-                    min_value=1000,
-                    max_value=300000,
-                    value=int(perf.get("heal_discovery_budget_ms", settings.heal_discovery_budget_ms)),
-                    step=5000,
-                    help="Max time to discover ATS platforms. Default: 60000 ms"
-                )
-                f_heal_waterfall_budget = timeout_col2.number_input(
-                    "Healer Waterfall Follow Budget",
-                    min_value=1000,
-                    max_value=60000,
-                    value=int(perf.get("heal_waterfall_follow_budget_ms", settings.heal_waterfall_follow_budget_ms)),
-                    step=1000,
-                    help="Max time per URL in fallback chain. Default: 12000 ms"
-                )
-
-                timeout_col3, timeout_col4 = st.columns(2)
-                f_scrape_jitter_min = timeout_col3.number_input(
-                    "Scrape Jitter Min (ms)",
-                    min_value=0,
-                    max_value=5000,
-                    value=int(perf.get("scrape_jitter_min_ms", settings.scrape_jitter_min_ms)),
-                    step=10,
-                    help="Min random delay between requests. Default: 100 ms"
-                )
-                f_scrape_jitter_max = timeout_col4.number_input(
-                    "Scrape Jitter Max (ms)",
-                    min_value=100,
-                    max_value=10000,
-                    value=int(perf.get("scrape_jitter_max_ms", settings.scrape_jitter_max_ms)),
-                    step=10,
-                    help="Max random delay between requests. Default: 500 ms"
-                )
-
-                timeout_col5, timeout_col6 = st.columns(2)
-                f_heal_jitter_min = timeout_col5.number_input(
-                    "Healer Jitter Min (ms)",
-                    min_value=0,
-                    max_value=5000,
-                    value=int(perf.get("heal_jitter_min_ms", settings.heal_jitter_min_ms)),
-                    step=10,
-                    help="Default: 100 ms"
-                )
-                f_heal_jitter_max = timeout_col6.number_input(
-                    "Healer Jitter Max (ms)",
-                    min_value=100,
-                    max_value=10000,
-                    value=int(perf.get("heal_jitter_max_ms", settings.heal_jitter_max_ms)),
-                    step=10,
-                    help="Default: 500 ms"
-                )
-
-                st.markdown("#### Cooldown & Recovery")
-                cooldown_col1, cooldown_col2 = st.columns(2)
-                f_workday_empty_cooldown = cooldown_col1.number_input(
-                    "Workday Empty Result Cooldown (days)",
-                    min_value=1,
-                    max_value=30,
-                    value=int(perf.get("workday_empty_cooldown_days", settings.workday_empty_cooldown_days)),
-                    step=1,
-                    help="Skip Workday sites if they return empty. Default: 7 days"
-                )
-                f_workday_empty_threshold = cooldown_col2.number_input(
-                    "Workday Empty Threshold (count)",
-                    min_value=1,
-                    max_value=10,
-                    value=int(perf.get("workday_empty_cooldown_threshold", settings.workday_empty_cooldown_threshold)),
-                    step=1,
-                    help="Trigger cooldown after N empty results. Default: 2"
-                )
-
-                cooldown_col3, cooldown_col4 = st.columns(2)
-                f_generic_empty_cooldown = cooldown_col3.number_input(
-                    "Generic Adapter Empty Cooldown (days)",
-                    min_value=1,
-                    max_value=30,
-                    value=int(perf.get("generic_empty_cooldown_days", settings.generic_empty_cooldown_days)),
-                    step=1,
-                    help="Default: 7 days"
-                )
-                f_generic_empty_threshold = cooldown_col4.number_input(
-                    "Generic Empty Threshold (count)",
-                    min_value=1,
-                    max_value=10,
-                    value=int(perf.get("generic_empty_cooldown_threshold", settings.generic_empty_cooldown_threshold)),
-                    step=1,
-                    help="Default: 3"
-                )
-
-                f_generic_low_signal_cooldown = st.number_input(
-                    "Generic Low-Signal Cooldown (days)",
-                    min_value=1,
-                    max_value=30,
-                    value=int(perf.get("generic_low_signal_cooldown_days", settings.generic_low_signal_cooldown_days)),
-                    step=1,
-                    help="Skip sites after returning mostly low-scoring results. Default: 14 days"
-                )
-
-                if st.button("Save Performance Settings"):
-                    perf.update({
-                        "scrape_jobspy_concurrency": int(f_jobspy_conc),
-                        "scrape_workday_concurrency": int(f_workday_conc),
-                        "scrape_generic_concurrency": int(f_generic_conc),
-                        "scrape_greenhouse_concurrency": int(f_greenhouse_conc),
-                        "scrape_lever_concurrency": int(f_lever_conc),
-                        "scrape_ashby_concurrency": int(f_ashby_conc),
-                        "scrape_rippling_concurrency": int(f_rippling_conc),
-                        "scrape_smartrecruiters_concurrency": int(f_smartrecruiters_conc),
-                        "scrape_dice_concurrency": int(f_dice_conc),
-                        "scrape_motionrecruitment_concurrency": int(f_motionrecruitment_conc),
-                        "scrape_indeed_connector_concurrency": int(f_indeed_conc),
-                        "scrape_usajobs_concurrency": int(f_usajobs_conc),
-                        "scrape_adzuna_concurrency": int(f_adzuna_conc),
-                        "scrape_jooble_concurrency": int(f_jooble_conc),
-                        "scrape_themuse_concurrency": int(f_themuse_conc),
-                        "scrape_deep_search_concurrency": int(f_deep_search_conc),
-                        "heal_discovery_budget_ms": int(f_heal_discovery_budget),
-                        "heal_waterfall_follow_budget_ms": int(f_heal_waterfall_budget),
-                        "scrape_jitter_min_ms": int(f_scrape_jitter_min),
-                        "scrape_jitter_max_ms": int(f_scrape_jitter_max),
-                        "heal_jitter_min_ms": int(f_heal_jitter_min),
-                        "heal_jitter_max_ms": int(f_heal_jitter_max),
-                        "workday_empty_cooldown_days": int(f_workday_empty_cooldown),
-                        "workday_empty_cooldown_threshold": int(f_workday_empty_threshold),
-                        "generic_empty_cooldown_days": int(f_generic_empty_cooldown),
-                        "generic_empty_cooldown_threshold": int(f_generic_empty_threshold),
-                        "generic_low_signal_cooldown_days": int(f_generic_low_signal_cooldown),
-                    })
-                    save_yaml(settings.prefs_yaml, prefs)
-                    st.success("Performance settings saved.")
-            finally:
-                pass
-
-        with t6:
+        elif section == "Advanced Editor":
             raw = settings.prefs_yaml.read_text(encoding="utf-8") if settings.prefs_yaml.exists() else ""
-            st.caption("Direct YAML editor — for advanced users only. Incorrect formatting will break your settings. Use the other tabs for normal edits.")
+            st.caption("Direct YAML editor — for advanced users only.")
             new_raw = st.text_area("Raw Configuration", value=raw, height=600)
-            if st.button("Save Configuration"): settings.prefs_yaml.write_text(new_raw, encoding="utf-8"); st.success("Saved.")
+            if st.button("Save Configuration"):
+                settings.prefs_yaml.write_text(new_raw, encoding="utf-8")
+                _invalidate_data_cache(); st.success("✅ Saved!"); st.rerun()
 
-        with t7:
+        elif section == "App Settings":
             conn = ats_db.get_connection()
             try:
                 weekly_goal = int(ats_db.get_setting(conn, "weekly_activity_goal", default="3") or "3")
@@ -2075,31 +1819,57 @@ def main():
                 adzuna_max_requests = int(ats_db.get_setting(conn, "adzuna_max_requests_per_run", default=str(settings.adzuna_max_requests_per_run)) or settings.adzuna_max_requests_per_run)
                 jooble_max_requests = int(ats_db.get_setting(conn, "jooble_max_requests_per_run", default=str(settings.jooble_max_requests_per_run)) or settings.jooble_max_requests_per_run)
                 themuse_max_requests = int(ats_db.get_setting(conn, "themuse_max_requests_per_run", default=str(settings.themuse_max_requests_per_run)) or settings.themuse_max_requests_per_run)
+                llm_provider = ats_db.get_setting(conn, "llm_provider", default="gemini") or "gemini"
+                ollama_base_url = ats_db.get_setting(conn, "ollama_base_url", default="http://localhost:11434") or "http://localhost:11434"
+                ollama_model = ats_db.get_setting(conn, "ollama_model", default="llama3.2") or "llama3.2"
+                
                 st.markdown("#### Dashboard Settings")
                 app_weekly_goal = st.number_input("Weekly Activity Goal", min_value=1, max_value=50, value=weekly_goal, step=1)
 
                 st.markdown("#### Gmail Sync")
                 st.caption("Stored locally in the app settings table. Gmail app passwords are recommended over your normal account password.")
-                with st.expander("How to set up a Gmail App Password", expanded=False):
-                    st.markdown(
-                        "\n".join(
-                            [
-                                "1. Turn on Google 2-Step Verification for the account you want to sync.",
-                                "2. Open `https://myaccount.google.com/apppasswords` while signed into that account.",
-                                "3. Create a new App Password with a label like `JobSearch Dashboard`.",
-                                "4. Paste the generated 16-character password into `Gmail App Password` below.",
-                                "5. Save settings, then use `Sync Gmail Inbox` from `My Applications`.",
-                            ]
-                        )
-                    )
-                    st.info(
-                        "Use a Google App Password, not your regular Gmail password. "
-                        "If `App passwords` is missing, the account may be managed by an organization "
-                        "or protected by a policy that disables IMAP app passwords."
-                    )
                 app_gmail_address = st.text_input("Gmail Address", value=gmail_address)
                 app_gmail_password = st.text_input("Gmail App Password", value=gmail_app_password, type="password")
                 app_gmail_host = st.text_input("IMAP Host", value=gmail_imap_host or "imap.gmail.com")
+
+                st.markdown("#### AI / LLM Settings")
+                st.caption("Choose which AI provider to use for job analysis, preference generation, and enrichment.")
+                _provider_options = ["gemini", "openai", "ollama"]
+                _provider_index = _provider_options.index(llm_provider) if llm_provider in _provider_options else 0
+                app_llm_provider = st.selectbox(
+                    "AI Provider",
+                    options=_provider_options,
+                    index=_provider_index,
+                    format_func=lambda x: {"gemini": "Google Gemini", "openai": "OpenAI", "ollama": "Ollama (Local)"}[x],
+                    help="Gemini and OpenAI require API keys below. Ollama runs locally — no API key needed.",
+                )
+                app_google_api_key = st.text_input(
+                    "Google API Key",
+                    value=ats_db.get_setting(conn, "google_api_key", default=os.getenv("GOOGLE_API_KEY", "")),
+                    type="password",
+                    help="Required when using Google Gemini. Get one for free at aistudio.google.com",
+                )
+                app_openai_api_key = st.text_input(
+                    "OpenAI API Key",
+                    value=ats_db.get_setting(conn, "openai_api_key", default=os.getenv("OPENAI_API_KEY", "")),
+                    type="password",
+                    help="Required when using OpenAI (GPT-4o-mini). Get one at platform.openai.com",
+                )
+                if app_llm_provider == "ollama":
+                    ollama_col1, ollama_col2 = st.columns(2)
+                    app_ollama_base_url = ollama_col1.text_input(
+                        "Ollama Base URL",
+                        value=ollama_base_url,
+                        help="URL of your running Ollama instance. Default: http://localhost:11434",
+                    )
+                    app_ollama_model = ollama_col2.text_input(
+                        "Ollama Model",
+                        value=ollama_model,
+                        help="Model name as it appears in 'ollama list', e.g. llama3.2, mistral, phi3",
+                    )
+                else:
+                    app_ollama_base_url = ollama_base_url
+                    app_ollama_model = ollama_model
 
                 st.markdown("#### Aggregator API Settings")
                 st.caption("Stored locally in the app settings table. Environment variables still override these values when present.")
@@ -2109,18 +1879,6 @@ def main():
                     help="USAJobs requires the registered email address in the User-Agent header.",
                 )
                 app_usajobs_api_key = st.text_input("USAJobs API Key", value=usajobs_api_key, type="password")
-                app_google_api_key = st.text_input(
-                    "Google API Key",
-                    value=ats_db.get_setting(conn, "google_api_key", default=os.getenv("GOOGLE_API_KEY", "")),
-                    type="password",
-                    help="Used for AI-driven resume analysis and preference generation. Get one for free at aistudio.google.com"
-                )
-                app_openai_api_key = st.text_input(
-                    "OpenAI API Key (Optional)",
-                    value=ats_db.get_setting(conn, "openai_api_key", default=os.getenv("OPENAI_API_KEY", "")),
-                    type="password",
-                    help="Optional fallback for AI analysis when Google API is unavailable or you prefer GPT-4o-mini. Get one at platform.openai.com"
-                )
                 adzuna_col1, adzuna_col2 = st.columns(2)
                 app_adzuna_app_id = adzuna_col1.text_input("Adzuna App ID", value=adzuna_app_id)
                 app_adzuna_app_key = adzuna_col2.text_input("Adzuna App Key", value=adzuna_app_key, type="password")
@@ -2136,7 +1894,6 @@ def main():
                 rate_col3, rate_col4 = st.columns(2)
                 app_jooble_max_requests = rate_col3.number_input("Jooble Max Requests / Run", min_value=1, max_value=50, value=jooble_max_requests, step=1)
                 app_themuse_max_requests = rate_col4.number_input("The Muse Max Requests / Run", min_value=1, max_value=50, value=themuse_max_requests, step=1)
-                st.caption("Use conservative per-run caps for free tiers. Increase only after you confirm the source is useful.")
 
                 if st.button("Save App Settings"):
                     ats_db.set_setting(conn, "weekly_activity_goal", str(int(app_weekly_goal)))
@@ -2151,125 +1908,76 @@ def main():
                     ats_db.set_setting(conn, "jooble_api_key", app_jooble_api_key.strip())
                     ats_db.set_setting(conn, "google_api_key", app_google_api_key.strip())
                     ats_db.set_setting(conn, "openai_api_key", app_openai_api_key.strip())
+                    ats_db.set_setting(conn, "llm_provider", app_llm_provider)
+                    ats_db.set_setting(conn, "ollama_base_url", app_ollama_base_url.strip())
+                    ats_db.set_setting(conn, "ollama_model", app_ollama_model.strip())
                     ats_db.set_setting(conn, "usajobs_max_requests_per_run", str(int(app_usajobs_max_requests)))
                     ats_db.set_setting(conn, "adzuna_max_requests_per_run", str(int(app_adzuna_max_requests)))
                     ats_db.set_setting(conn, "jooble_max_requests_per_run", str(int(app_jooble_max_requests)))
                     ats_db.set_setting(conn, "themuse_max_requests_per_run", str(int(app_themuse_max_requests)))
-                    st.success("App settings saved.")
+                    st.success("✅ Saved!"); st.rerun()
             finally:
                 conn.close()
 
-        with t8:
+        elif section == "Base Resume":
             conn = ats_db.get_connection()
             try:
-                resume_name = ats_db.get_setting(conn, "base_resume_name", default="Master Resume")
-                resume_source_url = ats_db.get_setting(conn, "base_resume_source_url", default="")
-                resume_text = ats_db.get_setting(conn, "base_resume_text", default="")
-                resume_notes = ats_db.get_setting(conn, "base_resume_notes", default="")
-                keyword_focus = ats_db.get_setting(conn, "base_resume_keyword_focus", default="")
-                keyword_ignore = ats_db.get_setting(conn, "base_resume_keyword_ignore", default="")
+                st.markdown("#### Master Resume")
+                existing_name = ats_db.get_setting(conn, "base_resume_name", "Master Resume")
+                existing_text = ats_db.get_setting(conn, "base_resume_text", "")
+                
+                f_res_name = st.text_input("Resume Name", value=existing_name)
+                f_upload = st.file_uploader("Upload New Master Resume", type=["docx", "pdf", "txt"])
+                if f_upload:
+                    text, fmt = _extract_resume_text(f_upload)
+                    if st.button("💾 Replace Resume With Uploaded File"):
+                        ats_db.set_setting(conn, "base_resume_name", f_res_name)
+                        ats_db.set_setting(conn, "base_resume_source_url", f_upload.name)
+                        ats_db.set_setting(conn, "base_resume_text", text)
+                        st.success("✅ Imported!"); st.rerun()
+                
+                st.divider()
+                f_res_text = st.text_area("Manual Resume Text", value=existing_text, height=500)
+                if st.button("Update Resume Text"):
+                    ats_db.set_setting(conn, "base_resume_name", f_res_name)
+                    ats_db.set_setting(conn, "base_resume_text", f_res_text)
+                    st.success("✅ Updated!"); st.rerun()
 
-                st.session_state.setdefault("base_resume_name_input", resume_name)
-                st.session_state.setdefault("base_resume_source_input", resume_source_url)
-                st.session_state.setdefault("base_resume_notes_input", resume_notes)
-                st.session_state.setdefault("base_resume_text_input", resume_text)
-                st.session_state.setdefault("base_resume_focus_input", keyword_focus)
-                st.session_state.setdefault("base_resume_ignore_input", keyword_ignore)
-
-                st.caption(
-                    "Store the canonical resume text here, then use it as the source-of-truth for tailored resumes "
-                    "and keyword-gap analysis."
-                )
-                uploaded_resume = st.file_uploader(
-                    "Upload Base Resume (.txt, .docx, .pdf)",
-                    type=["txt", "docx", "pdf"],
-                    help="The extracted text populates the editable base resume field below. You can review and edit it before saving.",
-                )
-                if uploaded_resume is not None and st.button("Load Uploaded Resume"):
-                    try:
-                        extracted_text, source_type = _extract_resume_text(uploaded_resume)
-                        if not extracted_text.strip():
-                            st.warning("The uploaded file was read, but no extractable text was found.")
-                        else:
-                            st.session_state["base_resume_text_input"] = extracted_text
-                            st.session_state["base_resume_source_input"] = uploaded_resume.name
-                            if not str(st.session_state.get("base_resume_name_input", "")).strip():
-                                st.session_state["base_resume_name_input"] = Path(uploaded_resume.name).stem
-                            st.success(f"Loaded {uploaded_resume.name} ({source_type.upper()}). Review and save when ready.")
-                            st.rerun()
-                    except Exception as exc:
-                        st.error(f"Could not extract resume text: {exc}")
-
-                if st.session_state.get("base_resume_text_input"):
-                    if st.button("✨ Auto-Generate Search Preferences", help="Use AI to extract job titles and keywords from this resume and add them to your Search Settings."):
+                if existing_text:
+                    st.divider()
+                    st.markdown("#### Heuristic Alignment")
+                    st.caption("Automatically update your search preferences (titles and keywords) based on your master resume using AI.")
+                    if st.button("✨ Auto-Generate Search Preferences", help="Analyzes your resume to extract job titles and keywords, then merges them into your current Search Settings."):
                         from jobsearch.services.profile_service import ProfileService
-                        import yaml
                         
+                        # Load current provider settings
+                        llm_provider = ats_db.get_setting(conn, "llm_provider", default="gemini")
                         google_key = ats_db.get_setting(conn, "google_api_key", default=os.getenv("GOOGLE_API_KEY", ""))
-                        if not google_key:
-                            st.error("Google API Key not found. Please add it in the **App Settings** tab first.")
-                        else:
-                            with st.spinner("Analyzing resume and generating preferences..."):
-                                try:
-                                    profiler = ProfileService(api_key=google_key)
-                                    extracted = profiler.extract_preferences(st.session_state["base_resume_text_input"])
-                                    if not extracted:
-                                        st.error("AI could not extract preferences. Check your API key or resume text.")
-                                    else:
-                                        # Load current prefs
-                                        prefs_path = settings.prefs_yaml
-                                        current_prefs = {}
-                                        if prefs_path.exists():
-                                            current_prefs = yaml.safe_load(prefs_path.read_text(encoding="utf-8")) or {}
-                                        
-                                        merged = profiler.merge_preferences(current_prefs, extracted)
-                                        prefs_path.write_text(yaml.safe_dump(merged, sort_keys=False), encoding="utf-8")
-                                        
-                                        st.success("✅ Preferences updated! Go to **Search Settings** to review your new titles and keywords.")
-                                        st.balloons()
-                                except Exception as exc:
-                                    st.error(f"Failed to generate preferences: {exc}")
-                br1, br2 = st.columns(2)
-                base_resume_name = br1.text_input("Resume Name", key="base_resume_name_input")
-                base_resume_source = br2.text_input("Source URL", key="base_resume_source_input", placeholder="Optional link to the living master resume")
-                base_resume_notes = st.text_area(
-                    "Resume Notes",
-                    key="base_resume_notes_input",
-                    height=80,
-                    placeholder="Role focus, intended audience, or editing notes.",
-                )
-                base_resume_text = st.text_area(
-                    "Base Resume Text",
-                    key="base_resume_text_input",
-                    height=360,
-                    placeholder="Paste the full canonical resume text here.",
-                )
-                kf1, kf2 = st.columns(2)
-                base_keyword_focus = kf1.text_area(
-                    "Priority Keywords / Phrases",
-                    key="base_resume_focus_input",
-                    height=120,
-                    placeholder="One per line. Optional emphasis list for tailoring.",
-                )
-                base_keyword_ignore = kf2.text_area(
-                    "Ignore Keywords / Phrases",
-                    key="base_resume_ignore_input",
-                    height=120,
-                    placeholder="One per line. Terms to ignore in gap analysis.",
-                )
+                        openai_key = ats_db.get_setting(conn, "openai_api_key", default=os.getenv("OPENAI_API_KEY", ""))
+                        ollama_url = ats_db.get_setting(conn, "ollama_base_url", default="http://localhost:11434")
+                        ollama_model = ats_db.get_setting(conn, "ollama_model", default="llama3.2")
 
-                stats1, stats2 = st.columns(2)
-                stats1.metric("Characters", len(base_resume_text or ""))
-                stats2.metric("Lines", len([line for line in str(base_resume_text or "").splitlines() if line.strip()]))
-
-                if st.button("Save Base Resume"):
-                    ats_db.set_setting(conn, "base_resume_name", base_resume_name.strip() or "Master Resume")
-                    ats_db.set_setting(conn, "base_resume_source_url", base_resume_source.strip())
-                    ats_db.set_setting(conn, "base_resume_text", base_resume_text)
-                    ats_db.set_setting(conn, "base_resume_notes", base_resume_notes.strip())
-                    ats_db.set_setting(conn, "base_resume_keyword_focus", base_keyword_focus.strip())
-                    ats_db.set_setting(conn, "base_resume_keyword_ignore", base_keyword_ignore.strip())
-                    st.success("Base resume saved.")
+                        with st.spinner("Analyzing resume and updating preferences..."):
+                            try:
+                                profiler = ProfileService(
+                                    google_api_key=google_key,
+                                    openai_api_key=openai_key,
+                                    preferred_provider=llm_provider,
+                                    ollama_base_url=ollama_url,
+                                    ollama_model=ollama_model
+                                )
+                                extracted = profiler.extract_preferences(existing_text)
+                                if not extracted:
+                                    st.error("AI could not extract preferences. Check your LLM settings.")
+                                else:
+                                    current_prefs = load_yaml(settings.prefs_yaml)
+                                    merged = profiler.merge_preferences(current_prefs, extracted)
+                                    save_yaml(settings.prefs_yaml, merged)
+                                    _invalidate_data_cache()
+                                    st.success("✅ Preferences updated! Go to **Search Settings** to review and then click **Re-score Saved Jobs**.")
+                                    st.balloons()
+                            except Exception as exc:
+                                st.error(f"Failed to generate preferences: {exc}")
             finally:
                 conn.close()
 
@@ -2558,6 +2266,7 @@ def main():
         t1, t2, t3 = st.tabs(["Run Search", "Recent Run Log", "Manual Job Targets"])
         with t1:
             r_deep = st.checkbox("Deep Search (slower — uses browser to find jobs on complex sites)", value=False)
+            r_full = st.checkbox("Full Refresh (ignore known jobs and re-fetch all descriptions)", value=False)
             r_test = st.checkbox("Use Test Company List (for testing only)", value=False)
             r_contract = st.checkbox("Include Contractor Sources", value=False)
             r_aggregator = st.checkbox("Include Aggregator Sources", value=False)
@@ -2664,6 +2373,7 @@ def main():
             if st.button("🚀 Start Pipeline", type="primary"):
                 cmd = [sys.executable, "-m", "jobsearch.cli", "run", "--workers", str(int(r_workers))]
                 if r_deep: cmd.append("--deep-search")
+                if r_full: cmd.append("--full-refresh")
                 if r_test: cmd.append("--test-companies")
                 if r_contract: cmd.append("--contract-sources")
                 if r_aggregator: cmd.append("--aggregator-sources")

@@ -17,6 +17,9 @@ logger = logging.getLogger(__name__)
 class WorkdayAdapter(BaseAdapter):
     def __init__(self, session=None, scorer=None):
         super().__init__(session=session, scorer=scorer)
+        # Workday makes many small API calls — 30s per-request is too long.
+        # Cap at 10s so empty companies fail fast rather than burning 90s per company.
+        self.timeout = 10
         self.last_status = "ok"
         self.last_note = ""
 
@@ -151,6 +154,33 @@ class WorkdayAdapter(BaseAdapter):
                 if job_url in seen_urls:
                     continue
                 seen_urls.add(job_url)
+
+                # Incremental Scrape: Skip detail fetch if we already have this job and it's fresh.
+                # 'Fresh' means we've seen it in the last 3 days. This satisfies the requirement
+                # to catch JD changes eventually while skipping them on daily runs.
+                if self.known_urls and job_url in self.known_urls:
+                    from datetime import datetime, timezone, timedelta
+                    last_updated = self.known_urls[job_url]
+                    if datetime.now(timezone.utc) - last_updated < timedelta(days=3):
+                        # Return a minimal job entry. ScraperEngine._process_and_save_jobs 
+                        # will see the same hash (if description empty) or we can 
+                        # just mark it as skipped.
+                        # Actually, to update 'last seen', we need to return it.
+                        # We'll use a special flag or just the title.
+                        jobs.append(
+                            Job(
+                                id=hashlib.md5(f"{company_config.get('name', 'Unknown')}{title}{job_url}".encode()).hexdigest(),
+                                company=company_config.get("name", "Unknown"),
+                                role_title_raw=title,
+                                location=location,
+                                url=job_url,
+                                source="Workday",
+                                adapter="workday",
+                                tier=str(company_config.get("tier", 4)),
+                                description_excerpt="", # Empty signals to upsert_job to keep existing description
+                            )
+                        )
+                        continue
 
                 # Pre-screen: score with no description to skip detail fetches for
                 # titles that have no keyword signal and can't reach the keep threshold

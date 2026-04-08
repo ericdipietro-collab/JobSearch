@@ -87,7 +87,7 @@ class Settings:
         self.jobspy_google_search_term_template = os.getenv("JOBSEARCH_JOBSPY_GOOGLE_SEARCH_TERM_TEMPLATE", "{query}").strip() or "{query}"
         self.jobspy_continue_on_site_failure = str(os.getenv("JOBSEARCH_JOBSPY_CONTINUE_ON_SITE_FAILURE", "true")).strip().lower() in {"1", "true", "yes", "on"}
         self.jobspy_max_total_results = int(os.getenv("JOBSEARCH_JOBSPY_MAX_TOTAL_RESULTS", "20"))
-        self.workday_scrape_budget_ms = int(os.getenv("JOBSEARCH_WORKDAY_SCRAPE_BUDGET_MS", "60000"))
+        self.workday_scrape_budget_ms = int(os.getenv("JOBSEARCH_WORKDAY_SCRAPE_BUDGET_MS", "35000"))
         self.workday_html_fallback_budget_ms = int(os.getenv("JOBSEARCH_WORKDAY_HTML_FALLBACK_BUDGET_MS", "10000"))
         self.workday_empty_cooldown_days = int(os.getenv("JOBSEARCH_WORKDAY_EMPTY_COOLDOWN_DAYS", "7"))
         self.workday_empty_cooldown_threshold = int(os.getenv("JOBSEARCH_WORKDAY_EMPTY_COOLDOWN_THRESHOLD", "2"))

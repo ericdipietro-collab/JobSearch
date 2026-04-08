@@ -14,6 +14,7 @@ from jobsearch import ats_db as db
 
 def render_company_profiles(conn) -> None:
     db.init_db(conn)
+    st.title("Company Profiles")
 
     st.markdown(
         "Research notes that persist across all applications to the same company. "

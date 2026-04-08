@@ -173,6 +173,7 @@ class Opportunity(BaseModel):
     normalized_compensation_usd: Optional[float] = None
     score: float = 0.0
     fit_band: str = ""
+    apply_now_eligible: bool = True
     current_stage: str = "New"
     date_discovered: Optional[str] = None
     last_updated: Optional[str] = None
@@ -585,8 +586,49 @@ def init_db(conn: sqlite3.Connection) -> None:
             note TEXT,
             timestamp TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS llm_cost_log (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            run_date   TEXT    NOT NULL,
+            tokens_used INTEGER NOT NULL,
+            model      TEXT    NOT NULL,
+            service    TEXT    NOT NULL,
+            created_at TEXT    NOT NULL
+        );
+        CREATE VIRTUAL TABLE IF NOT EXISTS jobs_fts USING fts5(
+            company,
+            role,
+            description_excerpt,
+            jd_summary,
+            content='applications',
+            content_rowid='id',
+            tokenize='porter ascii'
+        );
+        CREATE TRIGGER IF NOT EXISTS jobs_fts_ai AFTER INSERT ON applications BEGIN
+          INSERT INTO jobs_fts(rowid, company, role, description_excerpt, jd_summary)
+          VALUES (new.id, new.company, new.role, new.description_excerpt, new.jd_summary);
+        END;
+        CREATE TRIGGER IF NOT EXISTS jobs_fts_ad AFTER DELETE ON applications BEGIN
+          DELETE FROM jobs_fts WHERE rowid = old.id;
+        END;
+        CREATE TRIGGER IF NOT EXISTS jobs_fts_au AFTER UPDATE ON applications BEGIN
+          DELETE FROM jobs_fts WHERE rowid = old.id;
+          INSERT INTO jobs_fts(rowid, company, role, description_excerpt, jd_summary)
+          VALUES (new.id, new.company, new.role, new.description_excerpt, new.jd_summary);
+        END;
         """
     )
+    # Rebuild FTS index if it appears empty (MATCH returns nothing even if applications exist)
+    try:
+        app_count = conn.execute("SELECT COUNT(*) FROM applications").fetchone()[0]
+        if app_count > 0:
+            # Check if index is actually populated by searching for a common token or using fts5 vocabulary
+            # Simpler: just check if ANY search works.
+            fts_test = conn.execute("SELECT rowid FROM jobs_fts WHERE jobs_fts MATCH 'Senior OR Product OR Manager OR Architect' LIMIT 1").fetchone()
+            if not fts_test:
+                conn.execute("INSERT INTO jobs_fts(jobs_fts) VALUES('rebuild')")
+    except Exception:
+        pass
+
     _add_columns_if_missing(
         conn,
         "applications",
@@ -725,7 +767,7 @@ def init_db(conn: sqlite3.Connection) -> None:
         INSERT INTO schema_meta (key, value) VALUES (?, ?)
         ON CONFLICT(key) DO UPDATE SET value = excluded.value
         """,
-        ("schema_version", "4"),
+        ("schema_version", "6"),
     )
     seed_default_templates(conn)
     seed_default_questions(conn)

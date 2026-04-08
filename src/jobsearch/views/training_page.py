@@ -45,6 +45,7 @@ def _fmt_date(iso: Optional[str]) -> str:
 
 def render_training(conn) -> None:
     db.init_db(conn)
+    st.title("Skills & Training")
 
     counts = db.training_status_counts(conn)
     total  = sum(counts.values())

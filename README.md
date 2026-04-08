@@ -1,4 +1,4 @@
-# Job Search Automation Platform v2.1
+# Job Search Automation Platform v2.1.1
 
 A comprehensive, local job-search dashboard that discovers jobs from target companies, scores them against your preferences, auto-refreshes on a schedule, and tracks your entire search lifecycle in a single SQLite database on your own machine.
 
@@ -105,7 +105,7 @@ After changing the setting, rerun the installer or launcher.
 
 ### Home dashboard
 
-![Home dashboard](docs/Screenshots/Homepage.png)
+![Home dashboard](docs/Screenshots/dashboard.png)
 
 ### Job matches
 

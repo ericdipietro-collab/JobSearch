@@ -106,8 +106,10 @@ class ScraperEngine:
         "custom_spglobal": GenericAdapter,
     }
 
-    def __init__(self, preferences: Dict[str, Any], companies: List[Dict[str, Any]], deep_search: bool = False):
+    def __init__(self, preferences: Dict[str, Any], companies: List[Dict[str, Any]], deep_search: bool = False, full_refresh: bool = False):
         self.prefs = preferences
+        self.deep_search = deep_search
+        self.full_refresh = full_refresh
         self.companies = [
             company
             for company in companies
@@ -119,8 +121,11 @@ class ScraperEngine:
             )
         ]
         self.scorer = Scorer(preferences)
-        self.deep_search = deep_search
         self.session = get_shared_session()
+        self._adapter_semaphores = self._init_semaphores()
+        self.bulk_cooldowns: Dict[str, datetime] = {}
+        self.known_urls: Dict[str, datetime] = {}
+
         self._deep_playwright = None
         if self.deep_search:
             try:
@@ -190,6 +195,39 @@ class ScraperEngine:
         total_companies = len(self.companies)
         rejected_csv_path = settings.rejected_csv
         main_conn = get_connection()
+
+        # Pre-fetch all cooldowns to avoid per-worker DB overhead
+        self.bulk_cooldowns: Dict[str, datetime] = {}
+        self.known_urls: Dict[str, datetime] = {}
+        try:
+            now = datetime.now(timezone.utc)
+            for table in ["workday_target_health", "generic_target_health"]:
+                rows = main_conn.execute(f"SELECT company, cooldown_until FROM {table} WHERE cooldown_until IS NOT NULL").fetchall()
+                for r in rows:
+                    try:
+                        until = datetime.fromisoformat(str(r["cooldown_until"]))
+                        if until.tzinfo is None:
+                            until = until.replace(tzinfo=timezone.utc)
+                        if until > now:
+                            self.bulk_cooldowns[r["company"]] = until
+                    except Exception:
+                        pass
+            
+            # Pre-load known job URLs to support incremental scraping
+            if not self.full_refresh:
+                job_rows = main_conn.execute("SELECT job_url, updated_at FROM applications WHERE job_url IS NOT NULL").fetchall()
+                for r in job_rows:
+                    try:
+                        updated_at = datetime.fromisoformat(str(r["updated_at"]))
+                        if updated_at.tzinfo is None:
+                            updated_at = updated_at.replace(tzinfo=timezone.utc)
+                        self.known_urls[r["job_url"]] = updated_at
+                    except Exception:
+                        pass
+                if self.known_urls:
+                    logger.info("Loaded %d known URLs for incremental scraping", len(self.known_urls))
+        except Exception as e:
+            logger.warning("Failed to pre-fetch cooldowns or known URLs: %s", e)
 
         try:
             with log_path.open("a", encoding="utf-8") as log_handle:
@@ -316,6 +354,13 @@ class ScraperEngine:
                     except Exception:
                         pass
                     log_msg(f"Rejected jobs saved: {len(rejected_rows)} -> {settings.rejected_csv.name}")
+                
+                # Update last run timestamp in settings table
+                try:
+                    db.set_setting(main_conn, "last_pipeline_run", datetime.now(timezone.utc).isoformat())
+                except Exception:
+                    pass
+
                 if blocked_companies:
                     try:
                         manual_review_path = settings.manual_review_file
@@ -338,7 +383,21 @@ class ScraperEngine:
         max_jitter = max(settings.scrape_jitter_min_ms, settings.scrape_jitter_max_ms) / 1000.0
         time.sleep(random.uniform(min_jitter, max_jitter))
         started_at = time.perf_counter()
+        name = company.get("name", "")
         adapter_hint = self._resolve_adapter_name(company)
+
+        # FAST EXIT: Check pre-fetched cooldowns
+        if hasattr(self, "bulk_cooldowns") and name in self.bulk_cooldowns:
+            until = self.bulk_cooldowns[name]
+            return {
+                "jobs": [],
+                "adapter": adapter_hint,
+                "scrape_ms": 0.0,
+                "used_deep_search": False,
+                "status": "cooldown",
+                "note": f"Cooldown until {until.isoformat()}",
+            }
+
         cooldown_adapter, cooldown_reason = self._cooldown_reason(company)
         if cooldown_reason:
             return {
@@ -364,6 +423,7 @@ class ScraperEngine:
             logger.warning("No semaphore configured for adapter %r; defaulting to concurrency=1", adapter_hint)
             scrape_semaphore = BoundedSemaphore(1)
         with scrape_semaphore:
+            started_at = time.perf_counter()
             try:
                 jobs, adapter_name, adapter_status, adapter_note = self._scrape_company(company)
                 if not jobs and self.deep_search:
@@ -424,6 +484,11 @@ class ScraperEngine:
 
         adapter_cls = self.ADAPTER_MAP.get(adapter_name, GenericAdapter)
         adapter = adapter_cls(session=self.session, scorer=self.scorer)
+        
+        # Support incremental scraping if the adapter allows it
+        if hasattr(adapter, "set_known_urls") and hasattr(self, "known_urls"):
+            adapter.set_known_urls(self.known_urls)
+            
         jobs = adapter.scrape(company)
         if not isinstance(jobs, list):
             raise TypeError(f"{adapter_cls.__name__}.scrape returned {type(jobs).__name__}, expected list")
@@ -657,6 +722,7 @@ class ScraperEngine:
             score_results = self.scorer.score_job(scoring_data)
             job.score = score_results["score"]
             job.fit_band = score_results["fit_band"]
+            job.apply_now_eligible = score_results.get("apply_now_eligible", True)
             job.matched_keywords = score_results["matched_keywords"]
             job.penalized_keywords = score_results["penalized_keywords"]
             job.decision_reason = score_results["decision_reason"]
@@ -734,10 +800,16 @@ class ScraperEngine:
         enricher_conn = get_connection()
         google_api_key = db.get_setting(enricher_conn, "google_api_key", default=os.getenv("GOOGLE_API_KEY", ""))
         openai_api_key = db.get_setting(enricher_conn, "openai_api_key", default=os.getenv("OPENAI_API_KEY", ""))
+        preferred_provider = db.get_setting(enricher_conn, "llm_provider", default="")
+        ollama_base_url = db.get_setting(enricher_conn, "ollama_base_url", default="")
+        ollama_model = db.get_setting(enricher_conn, "ollama_model", default="")
 
         enricher = EnrichmentService(
             google_api_key=google_api_key,
             openai_api_key=openai_api_key,
+            preferred_provider=preferred_provider or None,
+            ollama_base_url=ollama_base_url or None,
+            ollama_model=ollama_model or None,
             user_skills=user_skills,
             db_conn=enricher_conn,
         )

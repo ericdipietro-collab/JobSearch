@@ -202,7 +202,7 @@ def set_custom_style():
         
         /* Improve spacing in the main app container */
         .block-container {
-            padding-top: 2rem;
+            padding-top: 4rem;
             padding-bottom: 2rem;
             max-width: 1200px;
         }

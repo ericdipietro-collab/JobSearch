@@ -1,4 +1,5 @@
 from typing import List, Optional, Dict, Any
+from datetime import datetime
 from abc import ABC, abstractmethod
 from jobsearch.scraper.models import Job, RejectedJob
 
@@ -15,6 +16,11 @@ class BaseAdapter(ABC):
         self.session = session
         self.scorer = scorer
         self.timeout = 30 # Default 30s timeout for all network calls
+        self.known_urls: Dict[str, datetime] = {}
+
+    def set_known_urls(self, urls: Dict[str, datetime]):
+        """Inject known URLs from the database to support incremental scraping."""
+        self.known_urls = urls
 
     @abstractmethod
     def scrape(self, company_config: Dict[str, Any]) -> List[Job]:
@@ -110,12 +116,26 @@ class BaseAdapter(ABC):
                 continue
             segments.append(seg)
         
-        # unique preserve
+        # Build a robust list of candidate site names
+        base_variants = ["External", "Careers", "Search", "Jobs", "External_Careers"]
+        tenant_variants = []
+        if tenant:
+            t_cap = tenant.capitalize()
+            tenant_variants = [
+                tenant, t_cap,
+                f"{tenant}Careers", f"{t_cap}Careers",
+                f"{tenant}_Careers", f"{t_cap}_Careers",
+                f"{tenant}Investments", f"{t_cap}Investments",
+                f"{tenant}_External_Careers", f"{t_cap}_External_Careers",
+                f"{tenant}External", f"{t_cap}External"
+            ]
+        
+        # Combine all candidates, preserving order and uniqueness
         seen = set()
         sites = []
-        common_site_variants = ["External", "Careers", "Search", "Jobs"]
-        for s in segments + common_site_variants + [tenant]:
+        for s in segments + base_variants + tenant_variants:
             if s and s not in seen:
                 sites.append(s)
                 seen.add(s)
+        
         return host, tenant, sites
