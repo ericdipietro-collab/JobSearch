@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 import os, re, json, subprocess, sys, io, zipfile
+import urllib.parse
 from datetime import datetime, timezone
 from pathlib import Path
 from xml.etree import ElementTree as ET
@@ -18,6 +19,7 @@ from jobsearch.scraper.jobspy_validation import ALLOWED_JOBSPY_SITES
 from jobsearch.views.style_utils import set_custom_style
 from jobsearch.services.export_service import ExcelReportBuilder
 from jobsearch.services.search_service import search_jobs
+from jobsearch.services.api_service import start_api_server
 from jobsearch import scheduler
 
 # ── Import Views ──────────────────────────────────────────────────────────────
@@ -1055,6 +1057,7 @@ def _extract_resume_text(uploaded_file) -> tuple[str, str]:
     raise ValueError(f"Unsupported resume format: {suffix or 'unknown'}")
 
 def main():
+    start_api_server()
     st.set_page_config(page_title="Job Search", page_icon="💼", layout="wide")
     set_custom_style()
     
@@ -1510,6 +1513,7 @@ def main():
             "Job Description Keywords",
             "Scoring Settings",
             "Performance & Concurrency",
+            "Extensions & Tools",
             "Advanced Editor",
             "App Settings",
             "Base Resume"
@@ -1518,7 +1522,101 @@ def main():
         
         st.divider()
 
-        if section == "Compensation & Location":
+        if section == "Extensions & Tools":
+            st.markdown("#### Manual Escape Hatch")
+            st.write("Found a job on a niche board or Slack? Use this bookmarklet to inject it directly into your dashboard.")
+            
+            st.info("💡 **Requirement:** You must have an **AI Provider (Gemini or OpenAI)** configured in **App Settings** for automatic parsing and scoring to work.")
+            
+            # Minify and escape the JS for use in a bookmarklet
+            # We use backticks (`) for internal strings to avoid quote hell
+            raw_js = """(function(){
+  const selection = window.getSelection().toString();
+  const jobData = {
+    url: window.location.href,
+    title: document.title,
+    text: selection || document.body.innerText.substring(0, 10000),
+    html: document.body.innerHTML.substring(0, 20000)
+  };
+  const div = document.createElement('div');
+  div.style.position = 'fixed';
+  div.style.top = '20px';
+  div.style.right = '20px';
+  div.style.padding = '20px';
+  div.style.background = '#3b82f6';
+  div.style.color = 'white';
+  div.style.zIndex = '999999';
+  div.style.borderRadius = '8px';
+  div.style.fontFamily = 'sans-serif';
+  div.style.boxShadow = '0 4px 6px rgba(0,0,0,0.3)';
+  div.innerText = `🚀 Sending to Dashboard...`;
+  document.body.appendChild(div);
+  fetch('http://127.0.0.1:8505/inject-job', {
+    method: 'POST',
+    mode: 'cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(jobData)
+  })
+  .then(function(r){
+    if(!r.ok) return r.json().then(function(err){ throw new Error(`Server Error: ${err.detail || r.status}`); });
+    return r.json();
+  })
+  .then(function(data){
+    div.style.background = '#10b981';
+    div.innerText = `✅ Injected: ${data.company}\\nScore: ${data.score} (${data.fit_band})`;
+    setTimeout(function(){ if(div) div.remove(); }, 5000);
+  })
+  .catch(function(e){
+    const msg = e.message || '';
+    const isNetwork = msg.includes('NetworkError') || msg.includes('fetch') || msg.includes('Failed to fetch');
+    div.style.background = '#ef4444';
+    if (isNetwork) {
+      div.innerHTML = `<b>❌ Connection Blocked</b><br>The browser is blocking the request.<br><br><b>Fix for Firefox:</b> Click the 🛡️ Shield icon in the address bar and select "Disable protection for now".`;
+    } else {
+      div.innerHTML = `<b>❌ ${msg}</b><br>Check dashboard console for details.`;
+    }
+    div.style.cursor = 'pointer';
+    div.onclick = function(){ div.remove(); };
+    setTimeout(function(){ if(div) div.remove(); }, 12000);
+  });
+})()"""
+            # Strict cleanup and URL encode
+            minified_js = " ".join([line.strip() for line in raw_js.splitlines() if line.strip()])
+            bookmarklet_js = f"javascript:{urllib.parse.quote(minified_js)}"
+
+            st.info("💡 **How to use:** Drag the button below to your browser's Bookmarks Bar. When you are on a job page, click it to send the job to your dashboard.")
+            
+            # Use a more standard button style that won't get caught by markdown parsers
+            button_html = f'''
+                <a href="{bookmarklet_js}" 
+                   style="display: inline-block; padding: 12px 24px; background-color: #3b82f6; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 10px 0; border: none; cursor: pointer;">
+                   🚀 Send to Dashboard
+                </a>
+            '''
+            st.markdown(button_html, unsafe_allow_html=True)
+            
+            with st.expander("⚠️ How to fix 'Connection Blocked' or 'NetworkError'", expanded=True):
+                st.markdown("""
+                Modern browsers naturally protect you by blocking **secure (HTTPS)** sites from talking to **local (HTTP)** tools like this dashboard.
+                
+                **To enable this for your favorite job sites:**
+                
+                **If you use Chrome or Edge:**
+                1. Click the **Settings icon** (left of the address bar).
+                2. Select **Site settings**.
+                3. Find **Insecure content** and set it to **Allow**.
+                
+                **If you use Firefox:**
+                1. Look for a small **Shield icon** 🛡️ that appears in the address bar *after* you click the bookmark.
+                2. Click the shield and select **Disable protection for now**.
+                
+                *Once you've done this for a site (like LinkedIn or Breezy), the bookmark will work every time!*
+                """)
+                
+            with st.expander("Manual Copy (if dragging fails)"):
+                st.code(bookmarklet_js, language="javascript")
+
+        elif section == "Compensation & Location":
             s = prefs.setdefault("search", {}); c = s.setdefault("compensation", {})
             geography = s.setdefault("geography", {})
             contractor = s.setdefault("contractor", {})

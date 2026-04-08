@@ -156,7 +156,7 @@ _COMPANY_STOPWORDS = {
 class Opportunity(BaseModel):
     id: str
     company: str
-    role_title_raw: str
+    role_title_raw: str = ""
     role_title_normalized: str = ""
     location: str = ""
     is_remote: bool = False

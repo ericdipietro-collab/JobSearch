@@ -27,6 +27,8 @@ dependencies = [
     "google-genai",
     "openai",
     "APScheduler>=3.10",
+    "fastapi",
+    "uvicorn",
 ]
 
 [project.scripts]

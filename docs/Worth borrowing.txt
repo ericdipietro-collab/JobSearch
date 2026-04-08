@@ -1,0 +1,243 @@
+Worth borrowing
+
+  1. A cleaner separation of discovery lanes
+     ApplyPilot’s split is simple and defensible:
+
+  - board aggregators via jobspy
+  - Workday via direct API
+  - direct sites via a separate “smart extract” path
+
+  Your architecture is already more mature on ATS-specific adapters, but you should keep leaning into that split. The
+  part worth borrowing is the product framing and orchestration: treat each lane as a distinct source family with
+  separate metrics and failure handling, not as one blended scraper.
+
+  2. Structured fallback before expensive extraction
+     In C:/users/liker/documents/github/jobsearch.tmp_applypilot/src/applypilot/discovery/smartextract.py, they try:
+
+  - JSON-LD
+  - API responses / __NEXT_DATA__
+  - DOM/card heuristics
+    before escalating further
+
+  That is worth borrowing selectively. Not the whole Playwright+LLM discovery path, but the discipline of preferring:
+
+  - embedded JSON
+  - hidden API payloads
+  - framework hydration blobs
+    before generic parsing
+
+  3. Direct Workday API bias
+     Their Workday path is close to the right instinct: use Workday’s JSON endpoints as the primary source of truth. You
+     already do this. The only useful comparison is that their direct API lane is conceptually clean, but your current
+     Workday handling is operationally better because you already added budgets, health tracking, cooldowns, and HTML
+     fallback.
+  4. Site-specific config for direct sources
+     Their sites.yaml / employers.yaml pattern is worth keeping in mind. You already have the same basic concept. The
+     thing to borrow is not the files themselves, but the idea that “direct site” scraping should be driven by
+     structured config, not ad hoc code paths.
+
+Best ideas to take
+
+  1. Add a lightweight hidden-API/JSON-LD probe to the generic/direct lane
+     For direct sites that are still generic, check for:
+
+  - application/ld+json
+  - __NEXT_DATA__
+  - obvious JSON/XHR payloads
+    before declaring the page low-signal
+
+  2. Keep source-family metrics visible
+     ApplyPilot’s pipeline is easy to reason about because each source family is explicit. You should do the same in
+     your UI/logging for:
+
+  - ATS/direct
+  - contractor
+  - aggregator
+  - JobSpy experimental
+
+  3. Treat direct-site discovery as config-driven
+     If you expand beyond current ATS adapters, prefer:
+
+  - registry/config entries
+  - known selectors / known JSON paths
+  - targeted site modules
+    instead of one universal browser+LLM discovery engine
+
+
+  ApplyPilot vs JobSearch: Comparison
+
+  What ApplyPilot is
+
+  A 6-stage autonomous pipeline: Discover → Enrich → Score → Tailor → Cover Letter → Auto-Apply. Its unique value is
+  that it submits applications using Chrome + Claude Code + Playwright MCP. JobSearch stops at "find and organize."
+
+  ---
+  Top Features Worth Borrowing (ranked by value/effort ratio)
+
+  1. LLM Provider Abstraction (src/applypilot/llm.py) — Easy, High Leverage
+
+  - Single client that auto-detects Gemini, OpenAI, or local Ollama/llama.cpp from env vars
+  - Exponential backoff, Retry-After header support, respects free tier rate limits (Gemini: 15 RPM, 1M tokens/day)
+  - This is the prerequisite infrastructure for everything below
+  - Effort: 1-2 days
+
+  2. Resume Tailoring + Validator (scoring/tailor.py, scoring/validator.py) — High Value
+
+  - Per-job LLM rewriting that never fabricates: uses a skills_boundary (allowed tools/languages) and resume_facts (real
+   companies, real metrics) from a profile JSON to constrain the LLM
+  - Validator checks for 27 banned words ("passionate", "robust", "synergy"), LLM leak phrases, hallucinated credentials
+   — auto-retries up to 5x
+  - Effort: 3-4 weeks
+
+  3. Cover Letter Generation — Moderate Value, Low Effort
+
+  - 3-paragraph format: specific work → 2 achievements → company-specific close
+  - Same validator as tailoring
+  - Depends on #2
+  - Effort: 1-2 weeks
+
+  4. Autonomous Application Submission (apply/launcher.py, chrome.py, prompt.py) — Highest Value, Hardest
+
+  - Spawns isolated Chrome instances per worker (CDP)
+  - Feeds each job to a Claude Code agent with Playwright MCP configured
+  - Agent reads profile for screening questions (visa, salary, availability)
+  - Supports N parallel workers, dry-run mode, continuous polling
+  - Effort: 6-8 weeks, requires Node.js + Playwright MCP
+
+  5. Smart Extraction (discovery/smartextract.py) — Nice to Have
+
+  - For unknown sites: analyzes DOM, picks extraction strategy (JSON-LD → parse; API → HTTP; other → LLM-generated CSS
+  selector)
+  - 100+ searchable sites in config/sites.yaml (config-driven, no new adapter code)
+  - Our approach (explicit adapters) is more maintainable; theirs is faster to extend to new sites
+  - Effort: 2-3 weeks
+
+  ---
+  What We Already Do Better
+
+  - Persistent Streamlit dashboard with history, interview notes, offer comparison
+  - Gmail signal sync for auto-detecting rejections/interviews
+  - Deterministic scoring with salary normalization, location geography, multi-lane W2/1099 — better for high-volume
+  filtering than their LLM 1-10 score
+  - ATS Healer for maintaining long-lived company target lists
+  - Modular ATS adapters (Greenhouse, Lever, Ashby, Workday, etc.)
+
+  ---
+  Recommended Sequence
+
+  ┌───────┬──────────────────────────────┬─────────────────────────────────┐
+  │ Phase │             Work             │             Outcome             │
+  ├───────┼──────────────────────────────┼─────────────────────────────────┤
+  │ 1     │ Port llm.py abstraction      │ Free Gemini/local model support │
+  ├───────┼──────────────────────────────┼─────────────────────────────────┤
+  │ 2     │ Resume tailoring + validator │ Per-job resume customization    │
+  ├───────┼──────────────────────────────┼─────────────────────────────────┤
+  │ 3     │ Cover letter generation      │ Full application bundle         │
+  ├───────┼──────────────────────────────┼─────────────────────────────────┤
+  │ 4     │ Autonomous submission        │ Hands-free applying             │
+  └───────┴──────────────────────────────┴─────────────────────────────────┘
+
+  The validator in ApplyPilot is especially worth studying — it's what makes LLM-generated resumes safe to use without
+  human review. That anti-fabrication logic (skills_boundary + resume_facts + banned words) is a critical pattern.
+
+  Want me to start on any of these? The LLM abstraction layer is the natural first step.
+
+
+ Discovery-Specific Improvements Worth Borrowing
+                                                                                                                         
+ 1. Tiered Query System — Quick Win
+ApplyPilot's searches.yaml assigns each query a tier (1=exact, 2=strong, 3=wide net):
+
+  queries:
+    - query: "software engineer"
+      tier: 1
+    - query: "python engineer"
+      tier: 2
+    - query: "systems engineer"
+      tier: 3
+
+  Then Workday only runs tier <= workday_max_tier (default 2), while JobSpy runs all tiers. This prevents wide-net
+  queries from hammering every Workday portal with 20+ searches. We have no equivalent — all queries run everywhere.
+  Easy to add to our config YAML and filter in the engine.
+
+  ---
+  2. Glassdoor Gets a Separate Call — Quick Win
+
+  In jobspy.py:206-255, ApplyPilot splits Glassdoor out of the multi-site scrape_jobs() call and runs it separately with
+   a simplified location (city only, no state):
+
+  gd_location = glassdoor_map.get(s["location"], s["location"].split(",")[0])
+  # "San Francisco, CA" → "San Francisco"
+
+  Glassdoor's search breaks with "City, State" format. Our JobSpyExperimentalAdapter passes the full location string to
+  all sites in one call — likely getting zero Glassdoor results silently. This is a one-line config + a small loop
+  change.
+
+  ---
+  3. Pre-Storage Location Filtering for JobSpy — Quick Win
+
+  ApplyPilot filters by location_accept / location_reject_non_remote before inserting into the DB (jobspy.py:272-276).
+  We store everything and filter later during scoring. For high-volume JobSpy runs this creates a lot of garbage rows.
+  Their location filter logic (_location_ok) also has a nice rule: remote jobs always pass, only non-remote jobs need to
+   match an accept pattern. Worth porting into our JobSpyExperimentalAdapter.
+
+  ---
+  4. Workday Parallel Scraping — Medium Effort
+
+  Their workday.py:scrape_employers() accepts a workers parameter and uses ThreadPoolExecutor to search multiple
+  employers concurrently. Each employer gets its own connection. Our WorkdayAdapter processes one company at a time.
+  With 20+ Workday targets, parallel scraping would cut run time significantly.
+
+  Their employers.yaml also has 48 pre-configured employers (Canadian banks, US tech companies, financial firms) that we
+   could just import. Our equivalent is job_search_companies.yaml but it's config-per-company rather than a shared
+  registry.
+
+  ---
+  5. Retry-with-Backoff on JobSpy Calls — Quick Win
+
+  Their _scrape_with_retry() (jobspy.py:61-74) retries on transient errors (timeout, 429, connection reset) with linear
+  backoff (5s, 10s). We have no retry on JobSpy failures — a transient 429 from LinkedIn kills that site's results for
+  the entire run.
+
+  ---
+  6. Additional Job Sites (Static + Search) — Medium Effort
+
+  Their sites.yaml has 25+ sites beyond what JobSpy covers that we don't touch at all:
+
+  ┌──────────────┬─────────────────────────────────────────────────────────────────────┐
+  │   Category   │                                Sites                                │
+  ├──────────────┼─────────────────────────────────────────────────────────────────────┤
+  │ Remote-first │ RemoteOK, WeWorkRemotely, Remotive, Himalayas, JustRemote, 4DayWeek │
+  ├──────────────┼─────────────────────────────────────────────────────────────────────┤
+  │ Startup      │ Wellfound (AngelList), Startup.jobs, Techstars, WelcomeToTheJungle  │
+  ├──────────────┼─────────────────────────────────────────────────────────────────────┤
+  │ General      │ SimplyHired, PowerToFly, Otta, BuiltIn Remote                       │
+  └──────────────┴─────────────────────────────────────────────────────────────────────┘
+
+  Their SmartExtract (requires Playwright + LLM) handles these generically. We could add the ones with clean APIs
+  (Wellfound, Remotive, WeWorkRemotely) as lightweight adapters without the LLM machinery.
+
+  ---
+  What NOT to Bother With
+
+  - SmartExtract (LLM-powered CSS selector generation) — requires Playwright + LLM just for discovery. High complexity
+  for marginal gain given our adapter architecture is already solid.
+  - Their scoring — our deterministic scorer is better than their LLM 1-10 rating for high-volume filtering.
+
+  ---
+  Recommended Order
+
+  1. Glassdoor location fix — 30 min, likely recovers hidden Glassdoor results
+  2. JobSpy retry-with-backoff — 1 hour, prevents silent failures
+  3. Pre-storage location filtering in JobSpy — 2 hours, reduces DB noise
+  4. Tiered queries — half day, reduces Workday load significantly
+  5. Workday parallel scraping — 1-2 days, major speedup for large company lists
+  6. Import their employers.yaml entries we're missing — 1 hour of config work
+
+
+  1. Glassdoor location fix in JobSpy
+  2. JobSpy retry-with-backoff
+  3. Pre-storage location filtering in JobSpy
+  4. Tiered queries
+  5. Selective employer registry import
+  6. Workday internal parallelism only if runtime still justifies it

@@ -14,6 +14,8 @@ free-proxy>=1.1.1
 jobspy-enhanced-scraper==1.3.7
 google-genai
 APScheduler>=3.10
+fastapi
+uvicorn
 
 # Optional: for OpenAI GPT fallback when Google Gemini is unavailable
 openai
