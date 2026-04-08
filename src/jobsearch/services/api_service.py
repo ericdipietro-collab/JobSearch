@@ -65,22 +65,46 @@ async def inject_job(req: JobInjectionRequest):
     description = req.description or req.text or req.html or ""
     
     # Heuristic: try to find company name in typical places in the URL or title
-    if company == "Unknown Company":
+    # Normalize check to handle casing or slight variations
+    if company.lower() in ("unknown company", "unknown", ""):
         # Breezy.hr often has company in the subdomain: company.breezy.hr
-        if "breezy.hr" in req.url:
-            match = re.search(r"https?://([^.]+)\.breezy\.hr", req.url)
+        if "breezy.hr" in req.url.lower():
+            match = re.search(r"https?://([^.]+)\.breezy\.hr", req.url, re.I)
             if match:
-                company = match.group(1).replace("-", " ").title()
+                company = match.group(1).replace("-", " ").replace("_", " ").title()
         # Greenhouse often has company in path: boards.greenhouse.io/company
-        elif "greenhouse.io" in req.url:
-            match = re.search(r"greenhouse\.io/([^/]+)", req.url)
+        elif "greenhouse.io" in req.url.lower():
+            match = re.search(r"greenhouse\.io/([^/]+)", req.url, re.I)
             if match:
-                company = match.group(1).replace("-", " ").title()
+                company = match.group(1).replace("-", " ").replace("_", " ").title()
         # Lever often has company in path: jobs.lever.co/company
-        elif "lever.co" in req.url:
-            match = re.search(r"lever\.co/([^/]+)", req.url)
+        elif "lever.co" in req.url.lower():
+            match = re.search(r"lever\.co/([^/]+)", req.url, re.I)
             if match:
-                company = match.group(1).replace("-", " ").title()
+                company = match.group(1).replace("-", " ").replace("_", " ").title()
+        # Fallback: Check if title contains company name (often "Job Title at Company")
+        elif " at " in title:
+            parts = title.split(" at ")
+            if len(parts) > 1:
+                company = parts[-1].strip()
+
+    # Dedup check: If this exact URL already exists, return the existing ID
+    conn = ats_db.get_connection()
+    try:
+        existing = conn.execute("SELECT id, company, role, score, fit_band FROM applications WHERE job_url = ? OR canonical_job_url = ?", (req.url, req.url)).fetchone()
+        if existing:
+            return {
+                "status": "success",
+                "inserted": False,
+                "id": existing["id"],
+                "company": existing["company"],
+                "title": existing["role"],
+                "score": existing["score"],
+                "fit_band": existing["fit_band"],
+                "note": "Job already exists in database."
+            }
+    finally:
+        conn.close()
 
     # Use LLM to refine details
     conn = ats_db.get_connection()
