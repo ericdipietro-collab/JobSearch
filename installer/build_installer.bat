@@ -94,7 +94,7 @@ if not exist "wheels" mkdir "wheels"
 echo.
 echo  Preparing offline wheel bundle ...
 del /q "wheels\*" >nul 2>&1
-%BUILD_PY% -m pip download --only-binary=:all: -r "..\requirements.txt" -d "wheels"
+%BUILD_PY% -m pip download -r "..\requirements.txt" -d "wheels"
 if errorlevel 1 (
     echo.
     echo  ERROR: Failed to download runtime wheels.
@@ -102,7 +102,7 @@ if errorlevel 1 (
     exit /b 1
 )
 REM pyaml is a transitive dep of streamlit not listed in requirements.txt directly
-%BUILD_PY% -m pip download --only-binary=:all: pyaml -d "wheels"
+%BUILD_PY% -m pip download pyaml -d "wheels"
 if errorlevel 1 (
     echo  WARNING: Could not download pyaml wheel ^(non-fatal, PyPI fallback available^).
 )
