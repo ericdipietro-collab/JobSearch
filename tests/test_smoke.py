@@ -18,7 +18,7 @@ from jobsearch.scraper.scoring import Scorer
 
 class SmokeTests(unittest.TestCase):
     def test_version_is_release_aligned(self):
-        self.assertEqual(__version__, "2.0.0")
+        self.assertEqual(__version__, "2.1.1")
 
     def test_rotate_log_file_keeps_current_log(self):
         with tempfile.TemporaryDirectory() as tmpdir:

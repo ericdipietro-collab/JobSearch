@@ -803,40 +803,6 @@ companies:
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: '2026-04-10T17:59:15.080411+00:00'
-- name: Pinecone Systems
-  tier: 2
-  priority: medium
-  adapter: generic
-  domain: www.pinecone.io
-  industry:
-  - vector database|retrieval infrastructure
-  notes: Duplicate normalized Pinecone entry kept out in de-dup.
-  sub_industry: Vector Database
-  careers_url: https://www.pinecone.io/careers/
-  active: true
-  status: active
-  discovery_method: Existing URL confirmed
-  last_healed: '2026-04-09T11:57:35.755942'
-  heal_failure_streak: 0
-  manual_only_suggested: false
-- name: Scale
-  tier: 1
-  priority: high
-  adapter: generic
-  domain: scale.com
-  industry:
-  - AI data infrastructure|evaluation
-  notes: Duplicate normalized Scale AI entry kept out in de-dup.
-  sub_industry: AI Data Infrastructure
-  careers_url: https://scale.com/careers
-  active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:59:15.056397'
-  heal_failure_streak: 1
-  manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T17:59:15.050393+00:00'
 - name: C3 AI
   tier: 2
   priority: medium
@@ -855,21 +821,3 @@ companies:
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: '2026-04-10T17:59:15.282244+00:00'
-- name: MosaicML
-  tier: 2
-  priority: medium
-  adapter: generic
-  domain: www.databricks.com
-  industry:
-  - LLM training|foundation model infrastructure
-  notes: MosaicML brand now within Databricks ecosystem; relevant AI infra signal.
-  sub_industry: LLM Infrastructure
-  careers_url: https://www.databricks.com/company/careers
-  active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:59:15.885564'
-  heal_failure_streak: 1
-  manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T17:59:15.877513+00:00'

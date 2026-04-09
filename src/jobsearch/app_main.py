@@ -1561,55 +1561,67 @@ def main():
             # Minify and escape the JS for use in a bookmarklet
             # We use backticks (`) for internal strings to avoid quote hell
             raw_js = """(function(){
-  const selection = window.getSelection().toString();
-  const jobData = {
-    url: window.location.href,
-    title: document.title,
-    text: selection || document.body.innerText.substring(0, 10000),
-    html: document.body.innerHTML.substring(0, 20000)
-  };
-  const div = document.createElement('div');
-  div.style.position = 'fixed';
-  div.style.top = '20px';
-  div.style.right = '20px';
-  div.style.padding = '20px';
-  div.style.background = '#3b82f6';
-  div.style.color = 'white';
-  div.style.zIndex = '999999';
-  div.style.borderRadius = '8px';
-  div.style.fontFamily = 'sans-serif';
-  div.style.boxShadow = '0 4px 6px rgba(0,0,0,0.3)';
-  div.innerText = `🚀 Sending to Dashboard...`;
-  document.body.appendChild(div);
-  fetch('http://127.0.0.1:8505/inject-job', {
-    method: 'POST',
-    mode: 'cors',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(jobData)
-  })
-  .then(function(r){
-    if(!r.ok) return r.json().then(function(err){ throw new Error(`Server Error: ${err.detail || r.status}`); });
-    return r.json();
-  })
-  .then(function(data){
-    div.style.background = '#10b981';
-    div.innerText = `✅ Injected: ${data.company}\\nScore: ${data.score} (${data.fit_band})`;
-    setTimeout(function(){ if(div) div.remove(); }, 5000);
-  })
-  .catch(function(e){
-    const msg = e.message || '';
-    const isNetwork = msg.includes('NetworkError') || msg.includes('fetch') || msg.includes('Failed to fetch');
-    div.style.background = '#ef4444';
-    if (isNetwork) {
-      div.innerHTML = `<b>❌ Connection Blocked</b><br>The browser is blocking the request.<br><br><b>Fix for Firefox:</b> Click the 🛡️ Shield icon in the address bar and select "Disable protection for now".`;
-    } else {
-      div.innerHTML = `<b>❌ ${msg}</b><br>Check dashboard console for details.`;
-    }
-    div.style.cursor = 'pointer';
-    div.onclick = function(){ div.remove(); };
-    setTimeout(function(){ if(div) div.remove(); }, 12000);
-  });
-})()"""
+            const selection = window.getSelection().toString();
+            const jobData = {
+            url: window.location.href,
+            title: document.title,
+            text: selection || document.body.innerText.substring(0, 10000),
+            html: document.body.innerHTML.substring(0, 20000)
+            };
+            const div = document.createElement('div');
+            div.style.position = 'fixed';
+            div.style.top = '20px';
+            div.style.right = '20px';
+            div.style.padding = '20px';
+            div.style.background = '#3b82f6';
+            div.style.color = 'white';
+            div.style.zIndex = '999999';
+            div.style.borderRadius = '8px';
+            div.style.fontFamily = 'sans-serif';
+            div.style.boxShadow = '0 4px 6px rgba(0,0,0,0.3)';
+            div.innerText = `🚀 Sending to Dashboard...`;
+            document.body.appendChild(div);
+            fetch('http://localhost:8505/inject-job', {
+            method: 'POST',
+            mode: 'cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(jobData)
+            })
+            .then(function(r){
+            if(!r.ok) return r.json().then(function(err){ throw new Error(`Server Error: ${err.detail || r.status}`); });
+            return r.json();
+            })
+            .then(function(data){
+            div.style.background = '#10b981';
+            div.innerText = `✅ Injected: ${data.company}\\nScore: ${data.score} (${data.fit_band})`;
+            setTimeout(function(){ if(div) div.remove(); }, 5000);
+            })
+            .catch(function(e){
+            const msg = e.message || '';
+            const isNetwork = msg.includes('NetworkError') || msg.includes('fetch') || msg.includes('Failed to fetch');
+            if (isNetwork) {
+            div.style.background = '#3b82f6';
+            div.innerHTML = `<b>🛡️ CSP Blocked Connection</b><br>Greenhouse security is blocking background requests.<br><br>Attempting <b>Popup Bypass</b>...`;
+            const popupUrl = 'http://localhost:8505/inject-job?url=' + encodeURIComponent(jobData.url) + '&title=' + encodeURIComponent(jobData.title);
+            const win = window.open(popupUrl, 'job_injector', 'width=400,height=300');
+            if (win) {
+            div.style.background = '#10b981';
+            div.innerText = '✅ Popup opened! Check the new tab for confirmation.';
+            setTimeout(function(){ if(div) div.remove(); }, 5000);
+            } else {
+            div.style.background = '#ef4444';
+            div.innerHTML = '<b>❌ Popup Blocked</b><br>Please allow popups for this site to use the CSP bypass.';
+            }
+            } else {
+            div.style.background = '#ef4444';
+            div.innerHTML = `<b>❌ Error: ${msg}</b><br>Check dashboard console for details.`;
+            }
+            div.style.cursor = 'pointer';
+            div.onclick = function(){ div.remove(); };
+            setTimeout(function(){ if(div) div.remove(); }, 12000);
+            });
+            })()"""
+
             # Strict cleanup and URL encode
             minified_js = " ".join([line.strip() for line in raw_js.splitlines() if line.strip()])
             bookmarklet_js = f"javascript:{urllib.parse.quote(minified_js)}"
@@ -2130,10 +2142,22 @@ def main():
             if name == "job_search_companies": name = "General"
             return f"{name} Company List"
 
-        # Create map for radio button
-        registry_options = {get_reg_label(p): p for p in discovered_regs}
+        # Create map for radio button.
+        # Note: labels can collide (e.g., multiple dynamic registries mapping to the same "X Company List"),
+        # and a dict comprehension would silently drop entries. Ensure labels are unique so users can
+        # actually switch lists.
+        registry_options: dict[str, Path] = {}
+        for p in discovered_regs:
+            base = get_reg_label(p)
+            if base in registry_options:
+                # Rename the existing entry to include its filename, then add this one similarly.
+                prev_path = registry_options.pop(base)
+                registry_options[f"{base} ({prev_path.name})"] = prev_path
+                registry_options[f"{base} ({p.name})"] = p
+            else:
+                registry_options[base] = p
         
-        registry_label = st.radio("Company List", list(registry_options.keys()), horizontal=True)
+        registry_label = st.radio("Company List", list(registry_options.keys()), horizontal=True, key="target_companies_registry")
         registry_path = registry_options[registry_label]
         data = load_yaml(registry_path)
         cos = data.get("companies", [])
@@ -2328,25 +2352,61 @@ def main():
                 save_yaml(registry_path, data)
                 st.success(f"Company deleted from {registry_path.name}.")
         with t3:
-            if registry_path != settings.companies_yaml:
-                st.info("Automatic job board discovery is only available for the main company list. Contractor, aggregator, and JobSpy experimental sources should be edited directly in their registry.")
-            else:
-                h_all = st.checkbox("Include All Companies (not just broken ones)", value=True)
-                h_deep = st.checkbox("Deep Search (slower — uses browser to find hidden job boards)", value=False)
-                h_force = st.checkbox("Also Re-check Already-Active Companies", value=False)
-                h_workers = st.number_input("Parallel Workers", min_value=1, max_value=20, value=5, step=1)
-                h_deep_timeout = st.number_input("Browser Timeout (seconds)", min_value=5, max_value=120, value=20, step=5)
-                if st.button("🚀 Run Fix Job Listings"):
-                    cmd = [sys.executable, "-m", "jobsearch.cli", "heal"]
-                    if h_all: cmd.append("--all")
-                    if h_deep: cmd.append("--deep")
-                    if h_force: cmd.append("--force")
-                    cmd.extend(["--workers", str(int(h_workers))])
-                    cmd.extend(["--deep-timeout", str(float(h_deep_timeout))])
-                    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding="utf-8", env={**os.environ, "PYTHONPATH": "src;."})
-                    log = st.empty(); lines = []
-                    for raw in iter(proc.stdout.readline, ""): lines.append(raw.rstrip()); log.code("\n".join(lines[-20:]))
-                    proc.wait(); st.success("Healer complete.")
+            st.caption(
+                "Run the ATS healer against the selected company list. "
+                "This will update `careers_url`, `adapter`, and `adapter_key` where possible, "
+                "or mark companies `manual_only` when an ATS board is blocked/unsupported."
+            )
+            h_all_registries = st.checkbox(
+                "Heal ALL Company Lists",
+                value=False,
+                help="If enabled, runs the healer across every job_search_companies*.yaml file in your config folder. Otherwise only the currently selected list is healed.",
+            )
+            h_ignore_cooldown = st.checkbox(
+                "Ignore Cooldowns",
+                value=False,
+                help="Bypass healer cooldown_until/manual_only skip checks so you can re-test discovery changes without healing every active company.",
+            )
+            h_disable_waterfall = st.checkbox(
+                "Disable Domain Waterfall",
+                value=False,
+                help="Skip probing jobs.<domain>/careers.<domain>/etc. Useful when DNS is flaky or you want to test search/direct ATS probes only.",
+            )
+            h_all = st.checkbox("Include All Companies (not just broken ones)", value=True)
+            h_deep = st.checkbox("Deep Search (slower — uses browser to find hidden job boards)", value=False)
+            h_force = st.checkbox("Also Re-check Already-Active Companies", value=False)
+            h_workers = st.number_input("Parallel Workers", min_value=1, max_value=20, value=5, step=1)
+            h_deep_timeout = st.number_input("Browser Timeout (seconds)", min_value=5, max_value=120, value=20, step=5)
+            if st.button("🚀 Run Fix Job Listings"):
+                cmd = [sys.executable, "-m", "jobsearch.cli", "heal"]
+                if not h_all_registries:
+                    cmd.extend(["--registry", str(registry_path)])
+                if h_all:
+                    cmd.append("--all")
+                if h_ignore_cooldown:
+                    cmd.append("--ignore-cooldown")
+                if h_disable_waterfall:
+                    cmd.append("--no-waterfall")
+                if h_deep:
+                    cmd.append("--deep")
+                if h_force:
+                    cmd.append("--force")
+                cmd.extend(["--workers", str(int(h_workers))])
+                cmd.extend(["--deep-timeout", str(float(h_deep_timeout))])
+                proc = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    encoding="utf-8",
+                    env={**os.environ, "PYTHONPATH": "src;."},
+                )
+                log = st.empty()
+                lines = []
+                for raw in iter(proc.stdout.readline, ""):
+                    lines.append(raw.rstrip())
+                    log.code("\n".join(lines[-20:]))
+                proc.wait()
+                st.success("Healer complete.")
         with t4:
             st.caption("Direct YAML editor — for advanced users only. Use the List or Add / Edit tabs for normal changes.")
             raw = registry_path.read_text(encoding="utf-8") if registry_path.exists() else ""

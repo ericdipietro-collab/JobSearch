@@ -176,18 +176,22 @@ def main():
 @main.command()
 @click.option("--all", "heal_all", is_flag=True, help="Scan all companies.")
 @click.option("--force", is_flag=True, help="Process all companies, including active ones.")
+@click.option("--ignore-cooldown", is_flag=True, help="Bypass cooldown_until/manual_only skip logic without forcing active companies.")
+@click.option("--no-waterfall", is_flag=True, help="Disable company-domain waterfall probing (search + direct ATS probes only).")
 @click.option("--deep", is_flag=True, help="Enable deep heal using Playwright.")
 @click.option("--workers", default=5, help="Number of parallel workers.")
 @click.option("--deep-timeout", default=20.0, type=float, help="Maximum seconds to spend in deep heal per company.")
 @click.option("--chronic-only", is_flag=True, help="Target only chronic failures (streak >= 3), bypassing cooldown. Enables --deep automatically.")
 @click.option("--min-streak", default=0, type=int, help="Only process companies with heal_failure_streak >= N (implies force).")
 @click.option("--registry", "registry_path", type=click.Path(exists=True), help="Path to a specific company registry YAML to heal.")
-def heal(heal_all, force, deep, workers, deep_timeout, chronic_only, min_streak, registry_path):
+def heal(heal_all, force, ignore_cooldown, no_waterfall, deep, workers, deep_timeout, chronic_only, min_streak, registry_path):
     """Heal and verify ATS URLs in the company registry."""
     # --chronic-only implies force + deep since these are the hardest cases
     if chronic_only:
         force = True
         deep = True
+        ignore_cooldown = True
+        no_waterfall = True
         if min_streak == 0:
             min_streak = 3
         if deep_timeout == 20.0:  # user didn't override — use generous timeout for hard cases
@@ -240,7 +244,7 @@ def heal(heal_all, force, deep, workers, deep_timeout, chronic_only, min_streak,
 
     log_msg(
         f"Heal run start | all={heal_all} force={force} deep={deep} "
-        f"workers={workers} deep_timeout_s={deep_timeout} registries={len(registries)}"
+        f"ignore_cooldown={ignore_cooldown} no_waterfall={no_waterfall} workers={workers} deep_timeout_s={deep_timeout} registries={len(registries)}"
     )
 
     lock = threading.Lock()
@@ -265,7 +269,7 @@ def heal(heal_all, force, deep, workers, deep_timeout, chronic_only, min_streak,
 
             if not (heal_all or force or company.get("status") != "active"):
                 continue
-            if not force:
+            if not force and not ignore_cooldown:
                 skip_reason = _healer_cooldown_reason(company, now_utc)
                 if skip_reason:
                     skipped.append((company.get("name", "Unknown"), skip_reason))
@@ -297,7 +301,13 @@ def heal(heal_all, force, deep, workers, deep_timeout, chronic_only, min_streak,
             name = company.get("name", "Unknown")
 
             started_at = time.perf_counter()
-            result = healer.discover(company, force=force, deep=deep)
+            result = healer.discover(
+                company,
+                force=force,
+                deep=deep,
+                ignore_cooldown=ignore_cooldown,
+                disable_waterfall=no_waterfall,
+            )
             elapsed_ms = round((time.perf_counter() - started_at) * 1000, 1)
 
             with lock:

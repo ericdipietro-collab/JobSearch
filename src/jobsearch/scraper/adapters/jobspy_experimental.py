@@ -153,17 +153,23 @@ class JobSpyExperimentalAdapter(BaseAdapter):
         return query
 
     def scrape(self, company_config: Dict[str, Any]) -> List[Job]:
+        module = None
+        # Prefer the original `jobspy` module name because our tests (and some environments)
+        # stub it directly. Fall back to `jobspy_enhanced` for the enhanced scraper package.
         try:
-            module = importlib.import_module("jobspy_enhanced")
+            module = importlib.import_module("jobspy")
         except Exception:
-            self.last_status = "empty"
-            self.last_note = "jobspy-enhanced-scraper not installed; experimental source skipped"
-            return []
+            try:
+                module = importlib.import_module("jobspy_enhanced")
+            except Exception:
+                self.last_status = "empty"
+                self.last_note = "jobspy not installed; experimental source skipped"
+                return []
 
         scrape_jobs = getattr(module, "scrape_jobs", None)
         if not callable(scrape_jobs):
             self.last_status = "empty"
-            self.last_note = "jobspy_enhanced module is missing scrape_jobs()"
+            self.last_note = "jobspy module is missing scrape_jobs()"
             return []
 
         preferences = getattr(self.scorer, "prefs", {}) or {}

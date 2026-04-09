@@ -46,6 +46,12 @@ class JobInjectionRequest(BaseModel):
 async def health():
     return {"status": "ok"}
 
+@app.get("/inject-job")
+async def inject_job_get(url: str, title: Optional[str] = None, company: Optional[str] = None):
+    """GET version of inject-job for CSP-safe bypass using window.open."""
+    req = JobInjectionRequest(url=url, title=title, company=company)
+    return await inject_job(req)
+
 @app.post("/inject-job")
 async def inject_job(req: JobInjectionRequest):
     """Inject a job from an external source."""

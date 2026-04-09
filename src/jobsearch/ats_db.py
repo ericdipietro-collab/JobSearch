@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel
 
 from jobsearch.config.settings import settings
-from jobsearch.db.migrations import migrate_stage_history
+from jobsearch.db.migrations import migrate_stage_history, migrate_content_hash
 
 _BASE_DIR = settings.base_dir
 BASE_DIR = settings.base_dir
@@ -594,40 +594,12 @@ def init_db(conn: sqlite3.Connection) -> None:
             service    TEXT    NOT NULL,
             created_at TEXT    NOT NULL
         );
-        CREATE VIRTUAL TABLE IF NOT EXISTS jobs_fts USING fts5(
-            company,
-            role,
-            description_excerpt,
-            jd_summary,
-            content='applications',
-            content_rowid='id',
-            tokenize='porter ascii'
-        );
-        CREATE TRIGGER IF NOT EXISTS jobs_fts_ai AFTER INSERT ON applications BEGIN
-          INSERT INTO jobs_fts(rowid, company, role, description_excerpt, jd_summary)
-          VALUES (new.id, new.company, new.role, new.description_excerpt, new.jd_summary);
-        END;
-        CREATE TRIGGER IF NOT EXISTS jobs_fts_ad AFTER DELETE ON applications BEGIN
-          DELETE FROM jobs_fts WHERE rowid = old.id;
-        END;
-        CREATE TRIGGER IF NOT EXISTS jobs_fts_au AFTER UPDATE ON applications BEGIN
-          DELETE FROM jobs_fts WHERE rowid = old.id;
-          INSERT INTO jobs_fts(rowid, company, role, description_excerpt, jd_summary)
-          VALUES (new.id, new.company, new.role, new.description_excerpt, new.jd_summary);
-        END;
         """
     )
-    # Rebuild FTS index if it appears empty (MATCH returns nothing even if applications exist)
-    try:
-        app_count = conn.execute("SELECT COUNT(*) FROM applications").fetchone()[0]
-        if app_count > 0:
-            # Check if index is actually populated by searching for a common token or using fts5 vocabulary
-            # Simpler: just check if ANY search works.
-            fts_test = conn.execute("SELECT rowid FROM jobs_fts WHERE jobs_fts MATCH 'Senior OR Product OR Manager OR Architect' LIMIT 1").fetchone()
-            if not fts_test:
-                conn.execute("INSERT INTO jobs_fts(jobs_fts) VALUES('rebuild')")
-    except Exception:
-        pass
+
+    # Backfill schema changes for older DBs created before migrations were added.
+    migrate_stage_history(conn)
+    migrate_content_hash(conn)
 
     _add_columns_if_missing(
         conn,
@@ -694,6 +666,7 @@ def init_db(conn: sqlite3.Connection) -> None:
             "penalized_keywords": "TEXT",
             "decision_reason": "TEXT",
             "description_excerpt": "TEXT",
+            "apply_now_eligible": "INTEGER NOT NULL DEFAULT 1",
             "source_lane": "TEXT NOT NULL DEFAULT 'employer_ats'",
             "canonical_job_url": "TEXT",
             "jd_fingerprint": "TEXT",
@@ -702,6 +675,45 @@ def init_db(conn: sqlite3.Connection) -> None:
             "jd_needs_review": "INTEGER DEFAULT 0",
         },
     )
+
+    # Full-text search lives off application text fields; ensure columns exist before creating triggers.
+    conn.executescript(
+        """
+        CREATE VIRTUAL TABLE IF NOT EXISTS jobs_fts USING fts5(
+            company,
+            role,
+            description_excerpt,
+            jd_summary,
+            content='applications',
+            content_rowid='id',
+            tokenize='porter ascii'
+        );
+        CREATE TRIGGER IF NOT EXISTS jobs_fts_ai AFTER INSERT ON applications BEGIN
+          INSERT INTO jobs_fts(rowid, company, role, description_excerpt, jd_summary)
+          VALUES (new.id, new.company, new.role, new.description_excerpt, new.jd_summary);
+        END;
+        CREATE TRIGGER IF NOT EXISTS jobs_fts_ad AFTER DELETE ON applications BEGIN
+          DELETE FROM jobs_fts WHERE rowid = old.id;
+        END;
+        CREATE TRIGGER IF NOT EXISTS jobs_fts_au AFTER UPDATE ON applications BEGIN
+          DELETE FROM jobs_fts WHERE rowid = old.id;
+          INSERT INTO jobs_fts(rowid, company, role, description_excerpt, jd_summary)
+          VALUES (new.id, new.company, new.role, new.description_excerpt, new.jd_summary);
+        END;
+        """
+    )
+
+    # Rebuild FTS index if it appears empty (MATCH returns nothing even if applications exist)
+    try:
+        app_count = conn.execute("SELECT COUNT(*) FROM applications").fetchone()[0]
+        if app_count > 0:
+            fts_test = conn.execute(
+                "SELECT rowid FROM jobs_fts WHERE jobs_fts MATCH 'Senior OR Product OR Manager OR Architect' LIMIT 1"
+            ).fetchone()
+            if not fts_test:
+                conn.execute("INSERT INTO jobs_fts(jobs_fts) VALUES('rebuild')")
+    except Exception:
+        pass
     _add_columns_if_missing(
         conn,
         "email_signals",
@@ -752,7 +764,6 @@ def init_db(conn: sqlite3.Connection) -> None:
             "last_evaluated": "INTEGER NOT NULL DEFAULT 0",
         },
     )
-    migrate_stage_history(conn)
     conn.execute("CREATE INDEX IF NOT EXISTS idx_events_app_date ON events(application_id, event_date)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_interviews_app_date ON interviews(application_id, scheduled_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_apps_status ON applications(status)")

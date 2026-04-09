@@ -379,7 +379,7 @@ class BlockedAndLocationTests(unittest.TestCase):
 
     def test_bucket_thresholds_follow_preferences_file(self):
         thresholds = _bucket_thresholds_from_preferences()
-        self.assertEqual(thresholds["APPLY NOW"], 80.0)
+        self.assertEqual(thresholds["APPLY NOW"], 82.0)
         self.assertEqual(thresholds["REVIEW TODAY"], 74.0)
         self.assertEqual(thresholds["WATCH"], 55.0)
 

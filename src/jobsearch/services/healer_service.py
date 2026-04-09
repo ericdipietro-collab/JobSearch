@@ -6,6 +6,7 @@ import time
 import random
 import logging
 import requests
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
@@ -39,14 +40,24 @@ class ATSHealer:
         "workday": 5,
     }
 
+    # Limit concurrency against public search endpoints (DDG/Yahoo) to reduce dropped connections / throttling.
+    # This is intentionally low because heal runs already parallelize across companies.
+    _SEARCH_ENGINE_SEMAPHORE = threading.BoundedSemaphore(2)
+
+    # Circuit breaker for public search providers (DDG/Yahoo). When a provider is consistently failing due to
+    # DNS/proxy/throttling/connection drops, stop spending the entire heal budget on retries.
+    SEARCH_BREAKER_FAIL_THRESHOLD = 3      # consecutive failures within window to open breaker
+    SEARCH_BREAKER_WINDOW_S = 60.0         # window for counting failures
+    SEARCH_BREAKER_OPEN_S = 90.0           # how long to keep breaker open once tripped
+
     # Common patterns for direct ATS host detection
     ATS_PATTERNS = {
         "greenhouse": [
-            re.compile(r"(?:job-boards|boards)\.greenhouse\.io/([\w.-]+)", re.I),
-            re.compile(r"board=([\w.-]+)", re.I),
-            re.compile(r"for=([\w.-]+)", re.I),
             re.compile(r"js\?for=([\w.-]+)", re.I), # Catch Greenhouse widget embeds
+            re.compile(r"(?:\\?|&)for=([\w.-]+)", re.I),
+            re.compile(r"board=([\w.-]+)", re.I),
             re.compile(r"gh_src=([\w.-]+)", re.I),
+            re.compile(r"(?:job-boards|boards)\.greenhouse\.io/([\w.-]+)", re.I),
         ],
         "lever": [
             re.compile(r"jobs\.lever\.co/([\w.-]+)", re.I),
@@ -67,6 +78,16 @@ class ATSHealer:
     }
 
     BLACKLISTED_SUBDOMAINS = ["support.", "help.", "docs.", "developers.", "api.", "community.", "hc."]
+    SEARCH_NOISE_HOST_MARKERS = [
+        "linkedin.com",
+        "indeed.com",
+        "glassdoor.com",
+        "ziprecruiter.com",
+        "monster.com",
+        "simplyhired.com",
+        "greenhouse.io",  # handled as ATS host separately
+        "lever.co",       # handled as ATS host separately
+    ]
 
     # ATS domains that require an account / API key or use an unsupported vendor.
     # Companies whose careers_url resolves to one of these are routed to manual_only
@@ -97,6 +118,76 @@ class ATSHealer:
     def _is_blacklisted(self, url: str) -> bool:
         return any(b in url.lower() for b in self.BLACKLISTED_SUBDOMAINS)
 
+    def _url_domain(self, url: str) -> str:
+        try:
+            return (urlparse(str(url or "")).netloc or "").lower()
+        except Exception:
+            return ""
+
+    def _normalize_company_domain(self, domain: str) -> str:
+        """Normalize a company 'domain' field to a registrable-ish host (no scheme/path, no leading www.)."""
+        raw = str(domain or "").strip()
+        if not raw:
+            return ""
+        try:
+            # If user stored a full URL, extract host.
+            if "://" in raw:
+                raw = urlparse(raw).netloc or raw
+            # Strip path fragments if present.
+            raw = raw.split("/")[0]
+            raw = raw.strip().lower().strip(".")
+            if raw.startswith("www."):
+                raw = raw[4:]
+            return raw
+        except Exception:
+            return str(domain or "").strip().lower()
+
+    def _domain_slug_candidates(self, domain: str) -> List[str]:
+        """Heuristic slug candidates derived from a company domain (often better than name-based slugging)."""
+        host = self._normalize_company_domain(domain)
+        if not host:
+            return []
+        labels = [p for p in host.split(".") if p]
+        if not labels:
+            return []
+        ignore = {"www", "careers", "career", "jobs", "job", "apply", "ats"}
+        candidates: List[str] = []
+        for idx, label in enumerate(labels[:3]):
+            if label in ignore:
+                continue
+            # Prefer the earliest non-noise label.
+            candidates.append(re.sub(r"[^a-z0-9]+", "", label.lower()))
+            break
+        # If the first label was noise, try the next one.
+        if not candidates and len(labels) >= 2:
+            for label in labels[1:3]:
+                if label in ignore:
+                    continue
+                candidates.append(re.sub(r"[^a-z0-9]+", "", label.lower()))
+                break
+        return [c for c in candidates if c]
+
+    def _matches_domain_suffix(self, host: str, domain: str) -> bool:
+        host = str(host or "").lower().strip(".")
+        domain = str(domain or "").lower().strip(".")
+        if not host or not domain:
+            return False
+        return host == domain or host.endswith("." + domain)
+
+    def _classify_known_ats_host(self, url: str) -> Optional[str]:
+        """Return suggested adapter if URL is on a known ATS host; otherwise None."""
+        host = self._url_domain(url)
+        if not host:
+            return None
+        for adapter, dom in self.KNOWN_ATS_HOSTS:
+            if self._matches_domain_suffix(host, dom):
+                return adapter
+        # Also treat SEARCH_DOMAINS as ATS hosts even if not in KNOWN_ATS_HOSTS.
+        for dom in self.SEARCH_DOMAINS:
+            if self._matches_domain_suffix(host, dom):
+                return "generic"
+        return None
+
     def _url_has_ats_signal(self, url: str) -> bool:
         """Return True if the URL contains a path that suggests an ATS-specific endpoint
         rather than just a company homepage or generic marketing page."""
@@ -104,9 +195,40 @@ class ATSHealer:
         ats_indicators = [
             "greenhouse", "lever", "ashby", "workday", "myworkdayjobs",
             "rippling", "smartrecruiters", "icims", "eightfold",
-            "/jobs", "/careers/", "/open-positions", "/job-search",
+            "/jobs", "/jobs/", "/careers", "/careers/", "/open-positions", "/job-search",
         ]
         return any(ind in url_l for ind in ats_indicators)
+
+    def _looks_like_careersish_url(self, url: str) -> bool:
+        """Loose heuristic for careers pages when we don't know the company domain yet."""
+        try:
+            p = urlparse(str(url or ""))
+            host = (p.netloc or "").lower()
+            if not host or any(m in host for m in self.SEARCH_NOISE_HOST_MARKERS):
+                return False
+            path = (p.path or "").lower()
+            if any(marker in path for marker in self.GENERIC_POSITIVE_URL_MARKERS):
+                return True
+            # Common variants that don't exactly match our markers.
+            if "/careers" in path or "/jobs" in path or "/openings" in path:
+                return True
+            return False
+        except Exception:
+            return False
+
+    def _should_try_workday_sweep(self, company: Dict[str, Any], existing_url: str, domain_hint: Optional[str]) -> bool:
+        adapter = str(company.get("adapter", "") or "").lower()
+        adapter_key = str(company.get("adapter_key", "") or "").lower()
+        if "myworkdayjobs.com" in str(existing_url or "").lower():
+            return True
+        if adapter in {"workday", "workday_manual"}:
+            return True
+        if domain_hint == "workday":
+            return True
+        # Some registries store Workday-ish adapter_keys (e.g., wdN hints or tenant paths).
+        if "wd" in adapter_key or "workday" in adapter_key:
+            return True
+        return False
 
     def _url_is_generic_ats_homepage(self, url: str) -> bool:
         """Return True if careers_url points to the generic ATS vendor homepage (not a company board)."""
@@ -127,6 +249,8 @@ class ATSHealer:
     # Enhanced detection markers for embedded boards
     EMBED_MARKERS = [
         ("greenhouse", "greenhouse.io"),
+        ("greenhouse", "boards.greenhouse.io"),
+        ("greenhouse", "job-boards.greenhouse.io"),
         ("greenhouse", "grnh.js"),
         ("lever", "lever.co"),
         ("ashby", "ashbyhq.com"),
@@ -189,18 +313,132 @@ class ATSHealer:
         "contact sales",
     ]
 
+    # Comprehensive list of job board domains for targeted search discovery
+    SEARCH_DOMAINS = [
+        "greenhouse.io",
+        "lever.co",
+        "ashbyhq.com",
+        "myworkdayjobs.com",
+        "rippling.com",
+        "smartrecruiters.com",
+        "bamboohr.com",
+        "icims.com",
+        "jobvite.com",
+        "taleo.net",
+        "eightfold.ai",
+        "workable.com",
+        "breezy.hr",
+        "personio.com",
+        "recruitee.com",
+        "freshteam.com",
+        "applytojob.com", # JazzHR
+        "oraclecloud.com",
+        "successfactors.com",
+        "paylocity.com",
+    ]
+
+    # Domains we can treat as "ATS-like" during discovery. Used to:
+    # - accept search results from known ATS hosts (even if not embedded on the company site)
+    # - fast-classify unsupported vendors to BLOCKED
+    # - improve coverage when a job board is hosted off-domain
+    KNOWN_ATS_HOSTS = [
+        # Supported adapters
+        ("greenhouse", "boards.greenhouse.io"),
+        ("greenhouse", "job-boards.greenhouse.io"),
+        ("greenhouse", "greenhouse.io"),
+        ("lever", "jobs.lever.co"),
+        ("lever", "lever.co"),
+        ("ashby", "jobs.ashbyhq.com"),
+        ("ashby", "ashbyhq.com"),
+        ("workday", "myworkdayjobs.com"),
+        ("rippling", "rippling.com"),
+        ("smartrecruiters", "smartrecruiters.com"),
+
+        # Known ATS / recruiting platforms (scrape support varies; discovery still useful)
+        ("generic", "workable.com"),
+        ("generic", "breezy.hr"),
+        ("generic", "personio.com"),
+        ("generic", "recruitee.com"),
+        ("generic", "freshteam.com"),
+        ("generic", "applytojob.com"),  # JazzHR
+        ("generic", "jobvite.com"),
+        ("generic", "paylocity.com"),
+
+        # Usually unsupported/blocked for automated scraping in this project
+        ("generic", "icims.com"),
+        ("generic", "bamboohr.com"),
+        ("generic", "taleo.net"),
+        ("generic", "successfactors.com"),
+        ("generic", "oraclecloud.com"),
+        ("generic", "eightfold.ai"),
+    ]
+
     def __init__(self, session: Optional[requests.Session] = None, deep_timeout_s: float = 20.0):
-        self.session = session or get_shared_session()
+        # Use a dedicated, no-retry session by default. The shared session in settings.py is tuned for scraping
+        # and will retry transient network errors, which is counterproductive for healer discovery (slow + noisy).
+        self.session = session or self._build_healer_session()
         self.deep_timeout_s = deep_timeout_s
         self.discovery_budget_ms = settings.heal_discovery_budget_ms
         self._validate_url_cache: Dict[str, Tuple[float, bool]] = {}
         self._discovery_validation_cache: Dict[Tuple[str, str, str], Tuple[float, bool]] = {}
+        self._search_breaker_lock = threading.Lock()
+        # provider -> (opened_until_perf, first_failure_perf, failure_count)
+        self._search_breakers: Dict[str, Tuple[float, float, int]] = {}
         # Optional Deep Heal integration
         try:
             from deep_search import playwright_adapter
             self.playwright = playwright_adapter if playwright_adapter.is_available() else None
         except ImportError:
             self.playwright = None
+
+    def _build_healer_session(self) -> requests.Session:
+        session = requests.Session()
+        retry_strategy = Retry(total=0, backoff_factor=0)
+        adapter = HTTPAdapter(pool_connections=20, pool_maxsize=20, max_retries=retry_strategy)
+        session.mount("https://", adapter)
+        session.mount("http://", adapter)
+        return session
+
+    def _search_provider_allowed(self, provider: str, deadline: Optional[float]) -> bool:
+        if self._timed_out(deadline):
+            return False
+        now = time.perf_counter()
+        with self._search_breaker_lock:
+            state = self._search_breakers.get(provider)
+            if not state:
+                return True
+            opened_until, _, _ = state
+            if opened_until > now:
+                return False
+            # When opened_until == 0, the breaker isn't open; keep failure counters.
+            if opened_until == 0.0:
+                return True
+            # Breaker expired
+            self._search_breakers.pop(provider, None)
+            return True
+
+    def _search_record_success(self, provider: str) -> None:
+        with self._search_breaker_lock:
+            # Any success closes the breaker and resets counters for that provider.
+            self._search_breakers.pop(provider, None)
+
+    def _search_record_failure(self, provider: str) -> None:
+        now = time.perf_counter()
+        with self._search_breaker_lock:
+            opened_until, first_fail, count = self._search_breakers.get(provider, (0.0, now, 0))
+            if opened_until > now:
+                # Already open; don't extend it repeatedly.
+                return
+            if (now - first_fail) > float(self.SEARCH_BREAKER_WINDOW_S):
+                first_fail = now
+                count = 0
+            count += 1
+            if count >= int(self.SEARCH_BREAKER_FAIL_THRESHOLD):
+                opened_until = now + float(self.SEARCH_BREAKER_OPEN_S)
+                logger.warning("[healer] search circuit breaker opened for %s for %.0fs", provider, float(self.SEARCH_BREAKER_OPEN_S))
+                self._search_breakers[provider] = (opened_until, first_fail, count)
+            else:
+                self._search_breakers[provider] = (0.0, first_fail, count)
 
     def _get_headers(self, referer: Optional[str] = None) -> Dict[str, str]:
         return get_headers(referer)
@@ -227,6 +465,25 @@ class ATSHealer:
         if remaining <= 0.0:
             return 0.1
         return max(0.5, min(preferred, remaining))
+
+    def _scan_existing_careers_url(self, url: str, name: str, deadline: Optional[float]) -> Optional[DiscoveryResult]:
+        """Fetch an existing careers URL and scan HTML for embedded ATS signals (fast-path)."""
+        if not url or self._timed_out(deadline) or self._is_blacklisted(url):
+            return None
+        try:
+            resp = self.session.get(
+                url,
+                headers=self._get_headers(),
+                timeout=self._request_timeout(None, deadline, default=6),
+                allow_redirects=True,
+            )
+            if resp.status_code == 200:
+                return self._scan_content(resp.text, resp.url, name)
+            if resp.status_code == 403 and self._looks_like_careersish_url(resp.url or url):
+                return DiscoveryResult("generic", None, resp.url or url, "FALLBACK", "Potential blocked career page")
+        except Exception:
+            return None
+        return None
 
     def _cache_get(self, cache: Dict[Any, Tuple[float, bool]], key: Any) -> Optional[bool]:
         entry = cache.get(key)
@@ -339,7 +596,14 @@ class ATSHealer:
         finally:
             conn.close()
 
-    def discover(self, company: Dict[str, Any], force: bool = False, deep: bool = False) -> DiscoveryResult:
+    def discover(
+        self,
+        company: Dict[str, Any],
+        force: bool = False,
+        deep: bool = False,
+        ignore_cooldown: bool = False,
+        disable_waterfall: bool = False,
+    ) -> DiscoveryResult:
         name = company.get("name", "Unknown")
         existing_url = company.get("careers_url", "")
         deadline = time.perf_counter() + (float(self.discovery_budget_ms) / 1000.0)
@@ -349,7 +613,7 @@ class ATSHealer:
         if company.get("heal_skip") and not force:
             return DiscoveryResult(None, None, existing_url, "VALID", "User-verified (heal_skip)")
 
-        if not force:
+        if not force and not ignore_cooldown:
             health_skip_reason = self._persistent_health_skip_reason(company)
             if health_skip_reason:
                 return DiscoveryResult(
@@ -397,11 +661,44 @@ class ATSHealer:
         if " " in name:
             slug_full = name.replace(" ", "").lower()
             if slug_full != slug: slug_candidates.append(slug_full)
-        
-        domain = company.get("domain", "")
-        if not domain:
-            domain = slug + ".com"
+         
+        # Do not guess a domain (e.g. slug + ".com") as it causes lots of DNS failures
+        # and wastes the discovery budget. If domain is missing, rely on search + embed
+        # extraction to find a real careers URL first.
+        domain = self._normalize_company_domain(str(company.get("domain", "") or "").strip())
+        # Add domain-derived slug(s) (e.g., wandb.ai -> wandb) to improve direct ATS probe accuracy.
+        for dom_slug in self._domain_slug_candidates(domain):
+            if dom_slug and dom_slug not in slug_candidates:
+                slug_candidates.append(dom_slug)
+        # Also derive slug(s) from the existing careers_url host when present (some registries omit domain).
+        if existing_url:
+            for dom_slug in self._domain_slug_candidates(self._url_domain(existing_url)):
+                if dom_slug and dom_slug not in slug_candidates:
+                    slug_candidates.append(dom_slug)
         domain_hint = self._domain_suggested_adapter(domain)
+        deep_tried = False
+
+        # 1d. Fast-path: if we already have a careers URL on the company domain, scan it for embeds
+        # before burning time on global slug guessing.
+        if existing_url and not self._timed_out(deadline):
+            scanned = self._scan_existing_careers_url(existing_url, name, deadline)
+            # If we can extract an ATS board from the page HTML, return immediately.
+            if scanned and scanned.status == "FOUND":
+                return scanned
+            # If the careers page is blocked (403), keep it as a fallback hint but continue.
+            # This is important: many companies (e.g. OpenAI) block their marketing site while
+            # their ATS board (Ashby/Greenhouse/etc.) remains accessible and discoverable via direct probes.
+            if scanned and scanned.status == "FALLBACK":
+                res = scanned
+
+            # When waterfall is disabled, the existing careers URL is often the best starting point.
+            # If it is JS-rendered or blocked, try Playwright immediately rather than spending
+            # most of the discovery budget on search retries and slug guessing.
+            if deep and disable_waterfall and self.playwright and not self._timed_out(deadline):
+                deep_tried = True
+                deep_res = self._deep_heal(existing_url, name, domain, deadline)
+                if deep_res:
+                    return deep_res
 
         # 2. "Company First" - Waterfall Discovery + Parallel Search
         # We now run the targeted search phase concurrently with the domain waterfall
@@ -410,24 +707,25 @@ class ATSHealer:
             # Task A: Waterfall (Domain probing)
             existing_url_has_signal = existing_url and self._url_has_ats_signal(existing_url)
             waterfall_future = None
-            if not existing_url_has_signal and not existing_url:
+            # Never run the waterfall without a real domain; it generates invalid URLs like https:///careers.
+            if domain and (not disable_waterfall) and (not existing_url_has_signal and not existing_url):
                 waterfall_future = outer_executor.submit(self._waterfall_discovery, domain, name, deadline)
-            elif existing_url_has_signal:
+            elif domain and (not disable_waterfall) and existing_url_has_signal:
                 waterfall_future = outer_executor.submit(self._waterfall_discovery, domain, name, deadline)
-            
+             
             # Task B: Targeted Search (The Cheat Code)
             search_future = outer_executor.submit(self._search_discovery, name, domain, deadline)
             
             # Use whichever finds a valid board first
             try:
                 # Prioritize search results as they are usually more accurate deep-paths
-                res = search_future.result(timeout=12)
+                res = search_future.result(timeout=max(0.5, min(12.0, self._remaining_budget_s(deadline))))
                 if res and res.status == "FOUND":
                     outer_executor.shutdown(wait=False, cancel_futures=True)
                     return res
                 
                 if waterfall_future:
-                    res = waterfall_future.result(timeout=10)
+                    res = waterfall_future.result(timeout=max(0.5, min(10.0, self._remaining_budget_s(deadline))))
                     if res and res.status == "FOUND":
                         return res
             except Exception:
@@ -447,35 +745,59 @@ class ATSHealer:
         if domain_hint in direct_probe_order:
             direct_probe_order = [domain_hint] + [adapter for adapter in direct_probe_order if adapter != domain_hint]
 
-        for s in slug_candidates:
-            if self._timed_out(deadline):
-                break
+        # Cap time spent on slug guessing so we don't burn the entire discovery budget.
+        probe_deadline = self._phase_deadline(deadline, 15000)
+        slugs_to_try = list(slug_candidates)
+        if disable_waterfall:
+            # When skipping the waterfall, be more conservative with guessing to avoid 60s timeouts.
+            slugs_to_try = slugs_to_try[:2]
+
+        def _direct_probe_tasks(slug: str):
+            tasks: List[Tuple[str, str, str]] = []
             for adapter_name in direct_probe_order:
-                if self._timed_out(deadline):
-                    break
                 if adapter_name == "greenhouse":
                     for gh_domain in ["job-boards.greenhouse.io", "boards.greenhouse.io"]:
-                        if self._timed_out(deadline):
-                            break
-                        probe = self._probe_direct(f"https://{gh_domain}/{s}", "greenhouse", s, name, deadline)
-                        if probe:
-                            return probe
+                        tasks.append(("greenhouse", f"https://{gh_domain}/{slug}", slug))
                 elif adapter_name == "lever":
-                    probe = self._probe_direct(f"https://jobs.lever.co/{s}", "lever", s, name, deadline)
-                    if not probe:
-                        probe = self._probe_direct(f"https://api.lever.co/v0/postings/{s}?mode=json", "lever", s, name, deadline)
-                    if probe:
-                        return probe
+                    tasks.append(("lever", f"https://jobs.lever.co/{slug}", slug))
+                    tasks.append(("lever", f"https://api.lever.co/v0/postings/{slug}?mode=json", slug))
                 elif adapter_name == "ashby":
-                    probe = self._probe_direct(f"https://jobs.ashbyhq.com/{s}", "ashby", s, name, deadline)
-                    if not probe:
-                        probe = self._probe_direct(f"https://api.ashbyhq.com/posting-api/job-board/{s}", "ashby", s, name, deadline)
-                    if probe:
-                        return probe
+                    tasks.append(("ashby", f"https://jobs.ashbyhq.com/{slug}", slug))
+                    tasks.append(("ashby", f"https://api.ashbyhq.com/posting-api/job-board/{slug}", slug))
+            return tasks
+
+        probe_candidates: List[Tuple[str, str, str]] = []
+        for s in slugs_to_try:
+            probe_candidates.extend(_direct_probe_tasks(s))
+
+        if probe_candidates and not self._timed_out(probe_deadline):
+            # Run probes in parallel so a single slow endpoint doesn't consume the entire budget.
+            with ThreadPoolExecutor(max_workers=6) as executor:
+                futures = [
+                    executor.submit(self._probe_direct, url, adapter, key, name, probe_deadline)
+                    for (adapter, url, key) in probe_candidates
+                ]
+                try:
+                    remaining = max(1.0, self._remaining_budget_s(probe_deadline))
+                    for fut in as_completed(futures, timeout=remaining):
+                        probe = fut.result()
+                        if probe:
+                            executor.shutdown(wait=False, cancel_futures=True)
+                            return probe
+                except Exception:
+                    executor.shutdown(wait=False, cancel_futures=True)
 
         # 6. Workday Sweep (Guessing wd1..wd25 + outliers)
-        wd_res = self._probe_workday(slug, name, deadline, adapter_key=str(company.get("adapter_key") or ""))
-        if wd_res: return wd_res
+        # This is relatively expensive; only attempt when there is a Workday hint.
+        if self._should_try_workday_sweep(company, existing_url, domain_hint):
+            wd_res = self._probe_workday(slug, name, deadline, adapter_key=str(company.get("adapter_key") or ""))
+            if wd_res:
+                return wd_res
+
+        # If we already have a blocked/fallback company careers URL and have attempted deep heal,
+        # don't burn the remaining budget on crawl4ai/extra heuristics in no-waterfall mode.
+        if disable_waterfall and deep_tried and res and res.status == "FALLBACK":
+            return res
 
         # 7. Crawl4AI ATS Discovery (LLM-powered detection for complex pages)
         # Even if Workday probe missed, crawl4ai might find the embedded iframe
@@ -493,10 +815,11 @@ class ATSHealer:
             return res
 
         # 9. Deep Heal (Final Attempt)
-        if deep and not self._timed_out(deadline) and self.playwright:
+        if deep and not self._timed_out(deadline) and self.playwright and (existing_url or domain):
             target_url = existing_url or f"https://{domain}"
             deep_res = self._deep_heal(target_url, name, domain, deadline)
-            if deep_res: return deep_res
+            if deep_res:
+                return deep_res
 
         if self._timed_out(deadline):
             return DiscoveryResult(None, None, None, "NOT_FOUND", "Discovery budget exhausted")
@@ -816,31 +1139,58 @@ class ATSHealer:
     def _waterfall_discovery(self, domain: str, name: str, deadline: Optional[float] = None) -> Optional[DiscoveryResult]:
         from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FuturesTimeout
 
-        bases = [f"jobs.{domain}", f"careers.{domain}", f"www.{domain}", domain]
-        paths = [
-            "", "/careers", "/jobs", "/positions", "/open-positions", "/all-jobs",
-            "/en/jobs", "/en-us/jobs", "/about/careers", "/join-us", "/search-jobs",
-            "/careers/search", "/careers/positions", "/careers/openings",
-            "/careers/", "/jobs/", "/en/jobs/", "/en-us/jobs/"
+        # Prefer canonical hosts first. Some enterprises have invalid/parked `jobs.` subdomains
+        # that trigger SSL hostname mismatch warnings and waste the entire waterfall budget.
+        bases = [f"www.{domain}", domain, f"careers.{domain}", f"jobs.{domain}"]
+        # Keep the waterfall tight: too many permutations + network flakiness is the main driver of
+        # "Discovery budget exhausted". Prioritize the highest-signal paths first.
+        high_signal_paths = [
+            "/careers", "/careers/",
+            "/jobs", "/jobs/",
+            "/careers/search",
+            "/search-jobs",
+            "/open-positions",
+            "/positions",
+            "/careers/openings",
+            "/careers/positions",
+            "/about/careers",
+            "/join-us",
         ]
+        # For subdomains like careers./jobs., probing root path is often useful.
+        root_first_paths = ["", *high_signal_paths]
+
+        def paths_for_base(base: str) -> List[str]:
+            if base.startswith(("careers.", "jobs.")):
+                return root_first_paths
+            return high_signal_paths
+
+        bad_bases: set[str] = set()
+        bad_bases_lock = threading.Lock()
 
         checked_urls = set()
         candidates = []
         for b in bases:
-            for p in paths:
+            for p in paths_for_base(b):
                 url = urljoin(f"https://{b}", p)
                 if url not in checked_urls:
                     candidates.append((b, url))
                     checked_urls.add(url)
 
+        # Hard cap the number of waterfall probes per company to avoid eating the entire discovery budget.
+        # The outer heal already has search/direct-probe/deep paths; waterfall is a "cheap hint" mechanism.
+        candidates = candidates[:24]
+
         def check_url(base, url):
             if self._timed_out(deadline):
                 return None
+            with bad_bases_lock:
+                if base in bad_bases:
+                    return None
             try:
                 resp = self.session.get(
                     url,
                     headers=self._get_headers(),
-                    timeout=self._request_timeout(None, deadline, default=5),
+                    timeout=self._request_timeout(None, deadline, default=3),
                     allow_redirects=True,
                 )
                 if resp.status_code == 200:
@@ -856,7 +1206,7 @@ class ATSHealer:
                                 sub_resp = self.session.get(
                                     link,
                                     headers=self._get_headers(),
-                                    timeout=self._request_timeout(None, follow_deadline, default=5),
+                                    timeout=self._request_timeout(None, follow_deadline, default=3),
                                     allow_redirects=True,
                                 )
                                 if sub_resp.status_code == 200:
@@ -867,6 +1217,13 @@ class ATSHealer:
                                 continue
                 elif resp.status_code == 403 and any(x in url.lower() for x in ["jobs", "careers", "positions", "openings"]):
                     return DiscoveryResult("generic", None, url, "FALLBACK", "Potential blocked career page")
+            except requests.exceptions.SSLError as exc:
+                msg = str(exc or "").lower()
+                # Hostname mismatch / bad cert on a subdomain: don't keep probing 15 other paths.
+                if any(token in msg for token in ("hostname", "doesn't match", "does not match", "certificate")):
+                    with bad_bases_lock:
+                        bad_bases.add(base)
+                logger.debug("Waterfall SSL probe failed for %s at %s: %s", name, url, exc)
             except Exception:
                 logger.debug("Waterfall probe failed for %s at %s", name, url)
             return None
@@ -905,77 +1262,124 @@ class ATSHealer:
                 candidates.append(urljoin(base_url, href))
         return list(set(candidates))[:8] # Top 8 candidates
 
-    def _search_links_duckduckgo(self, name: str, domain: str, deadline: Optional[float]) -> List[str]:
-        """Fetch candidate career page URLs from DuckDuckGo HTML search (no API key required)."""
+    def _search_links_duckduckgo(self, name: str, domain: str, deadline: Optional[float], restricted_sites: Optional[List[str]] = None) -> List[str]:
+        """Fetch candidate career page URLs from DuckDuckGo HTML search."""
         from urllib.parse import quote, unquote
-        query = quote(f"{name} careers jobs")
-        url = f"https://html.duckduckgo.com/html/?q={query}&kl=us-en"
+        if not self._search_provider_allowed("ddg", deadline):
+            return []
+        query = quote(name)
+        # DDG will sometimes drop connections under load; keep a fallback host.
+        urls_to_try = [
+            f"https://html.duckduckgo.com/html/?q={query}&kl=us-en",
+            f"https://duckduckgo.com/html/?q={query}&kl=us-en",
+        ]
+        if restricted_sites:
+            # Append &sites parameter to restrict results to specific domains.
+            # DDG's HTML endpoint accepts "sites" in some deployments; keep it best-effort.
+            try:
+                cleaned = [str(s).strip().lstrip(".") for s in restricted_sites if str(s or "").strip()]
+                if cleaned:
+                    urls_to_try = [u + "&sites=" + quote(",".join(cleaned)) for u in urls_to_try]
+            except Exception:
+                pass
+            
         try:
-            resp = self.session.get(
-                url,
-                headers={**self._get_headers(), "Accept": "text/html,application/xhtml+xml"},
-                timeout=self._request_timeout(None, deadline, default=10),
-                allow_redirects=True,
-            )
-            if resp.status_code != 200:
+            resp = None
+            with self._SEARCH_ENGINE_SEMAPHORE:
+                for url in urls_to_try:
+                    try:
+                        resp = self.session.get(
+                            url,
+                            headers={**self._get_headers(), "Accept": "text/html,application/xhtml+xml"},
+                            # Keep this fairly low; healer already parallelizes across companies and
+                            # long search timeouts are the main cause of "budget exhausted" runs.
+                            timeout=self._request_timeout(None, deadline, default=7),
+                            allow_redirects=True,
+                        )
+                        if resp.status_code == 200:
+                            break
+                    except Exception:
+                        resp = None
+                        continue
+            if not resp or resp.status_code != 200:
+                self._search_record_failure("ddg")
                 return []
+            self._search_record_success("ddg")
             soup = BeautifulSoup(resp.text, "html.parser")
             links = []
             for a in soup.find_all("a", href=True):
                 href = a["href"]
-                # DDG wraps result links in /l/?uddg=<encoded-url> redirects
                 if "uddg=" in href:
                     m = re.search(r"uddg=([^&]+)", href)
                     if m:
                         href = unquote(m.group(1))
                 if not href.startswith("http") or "duckduckgo.com" in href:
                     continue
-                
-                # Allow if matches company domain OR any known ATS marker
-                matches_domain = domain and domain in href
-                matches_ats = any(marker in href for _, marker in self.EMBED_MARKERS)
-                
-                if matches_domain or matches_ats:
+
+                href_l = href.lower()
+                matches_company_domain = False
+                if domain:
+                    # Accept either exact host or suffix match (avoid substring-in-URL false positives).
+                    matches_company_domain = self._matches_domain_suffix(self._url_domain(href), domain)
+
+                matches_ats_host = self._classify_known_ats_host(href) is not None
+                matches_embed_marker = any(marker in href_l for _, marker in self.EMBED_MARKERS)
+                matches_careersish = self._looks_like_careersish_url(href)
+
+                # If we don't have a reliable company domain, keep careers-ish links too and validate later.
+                if matches_company_domain or matches_ats_host or matches_embed_marker or (not domain and matches_careersish):
                     links.append(href)
             return list(dict.fromkeys(links))[:10]
         except Exception:
             logger.debug("DuckDuckGo search failed for %s", name)
+            self._search_record_failure("ddg")
             return []
 
-    def _search_links_yahoo(self, name: str, domain: str, deadline: Optional[float]) -> List[str]:
-        """Fetch candidate career page URLs from Yahoo web search."""
-        from urllib.parse import quote, unquote
-        query = quote(f"{name} careers")
-        url = f"https://search.yahoo.com/search?p={query}"
+    def _search_links_yahoo(self, query: str, domain: str, deadline: Optional[float]) -> List[str]:
+        """Fetch candidate career URLs from Yahoo search (HTML) as fallback when DDG yields none."""
+        from urllib.parse import quote
+
+        if self._timed_out(deadline):
+            return []
+        if not self._search_provider_allowed("yahoo", deadline):
+            return []
+
+        url = f"https://search.yahoo.com/search?p={quote(query)}"
         try:
-            resp = self.session.get(
-                url,
-                headers=self._get_headers(),
-                timeout=self._request_timeout(None, deadline, default=10),
-                allow_redirects=True,
-            )
+            with self._SEARCH_ENGINE_SEMAPHORE:
+                resp = self.session.get(
+                    url,
+                    headers={**self._get_headers(), "Accept": "text/html,application/xhtml+xml"},
+                    timeout=self._request_timeout(None, deadline, default=7),
+                    allow_redirects=True,
+                )
             if resp.status_code != 200:
+                self._search_record_failure("yahoo")
                 return []
+            self._search_record_success("yahoo")
             soup = BeautifulSoup(resp.text, "html.parser")
-            links = []
+            links: List[str] = []
             for a in soup.find_all("a", href=True):
-                href = a["href"]
-                if "/RU=" in href:
-                    m = re.search(r"RU=([^/]+)", href)
-                    if m:
-                        href = unquote(m.group(1))
-                if not href.startswith("http") or "yahoo.com" in href:
+                href = a.get("href") or ""
+                if not href.startswith("http"):
                     continue
-                
-                # Allow if matches company domain OR any known ATS marker
-                matches_domain = domain and domain in href
-                matches_ats = any(marker in href for _, marker in self.EMBED_MARKERS)
-                
-                if matches_domain or matches_ats:
+                href_l = href.lower()
+                if "search.yahoo.com" in href_l or "r.search.yahoo.com" in href_l:
+                    continue
+
+                matches_company_domain = False
+                if domain:
+                    matches_company_domain = self._matches_domain_suffix(self._url_domain(href), domain)
+                matches_ats_host = self._classify_known_ats_host(href) is not None
+                matches_embed_marker = any(marker in href_l for _, marker in self.EMBED_MARKERS)
+                matches_careersish = self._looks_like_careersish_url(href)
+
+                if matches_company_domain or matches_ats_host or matches_embed_marker or (not domain and matches_careersish):
                     links.append(href)
             return list(dict.fromkeys(links))[:10]
         except Exception:
-            logger.debug("Yahoo search failed for %s", name)
+            logger.debug("Yahoo search failed for %s", query)
+            self._search_record_failure("yahoo")
             return []
 
     def _search_discovery(self, name: str, domain: str, deadline: Optional[float] = None) -> Optional[DiscoveryResult]:
@@ -985,27 +1389,35 @@ class ATSHealer:
         if self._timed_out(deadline):
             return None
 
+        # If all search providers are currently tripped, don't waste budget building queries.
+        if not self._search_provider_allowed("ddg", deadline) and not self._search_provider_allowed("yahoo", deadline):
+            return None
+
         # 1. Broad search
-        links = self._search_links_duckduckgo(name, domain, deadline)
+        links = self._search_links_duckduckgo(f"{name} careers jobs", domain, deadline)
         
-        # 2. Targeted ATS searches (The "Cheat Code" for all adapters)
-        # We try site-specific searches for Workday, Greenhouse, Lever, etc.
+        # 2. Global "Cheat Code" using consolidated site: OR queries
+        # We cluster domains to keep query length reasonable but comprehensive
+        cluster_size = 6
         ats_search_queries = []
-        for adapter, marker in self.EMBED_MARKERS:
-            if marker and "." in marker and marker not in {"onetrust.com", "happydance.com"}:
-                ats_search_queries.append(f"{name} careers site:{marker}")
+        for i in range(0, len(self.SEARCH_DOMAINS), cluster_size):
+            cluster = self.SEARCH_DOMAINS[i : i + cluster_size]
+            site_query = " OR ".join([f"site:{d}" for d in cluster])
+            ats_search_queries.append(f"{name} careers {site_query}")
         
-        # Run targeted searches in parallel
+        # Run consolidated searches in parallel
         with ThreadPoolExecutor(max_workers=3) as executor:
-            search_futures = [executor.submit(self._search_links_duckduckgo, q, "", deadline) for q in ats_search_queries[:5]]
+            # Try top 3 clusters (covers ~18 most popular ATS domains)
+            search_futures = [executor.submit(self._search_links_duckduckgo, q, "", deadline) for q in ats_search_queries[:3]]
             try:
-                for f in as_completed(search_futures, timeout=10):
+                # Don't block longer than the remaining discovery budget for this company.
+                for f in as_completed(search_futures, timeout=max(0.5, min(10.0, self._remaining_budget_s(deadline)))):
                     links.extend(f.result() or [])
             except Exception:
                 pass
 
         if not links and not self._timed_out(deadline):
-            links = self._search_links_yahoo(name, domain, deadline)
+            links = self._search_links_yahoo(f"{name} careers jobs", domain, deadline)
         
         # Unique preserve
         links = list(dict.fromkeys(links))
@@ -1017,6 +1429,25 @@ class ATSHealer:
                 return None
             try:
                 url_l = url.lower()
+
+                # Reject generic ATS marketing homepages (stale / not company-specific boards).
+                if self._url_is_generic_ats_homepage(url):
+                    return None
+
+                # If it's on an ATS vendor we can't scrape, return BLOCKED so CLI can route to manual_only.
+                if self._url_is_unsupported_ats(url):
+                    return DiscoveryResult(None, None, url, "BLOCKED", f"Unsupported ATS vendor: {url}")
+
+                # If it's on a known ATS host, often we can fast-return without parsing HTML.
+                known_adapter = self._classify_known_ats_host(url)
+                if known_adapter:
+                    p0 = urlparse(url)
+                    path0 = (p0.path or "").strip("/")
+                    # Require a non-trivial path so root/login pages aren't mistaken for boards.
+                    if path0 and len(path0) >= 3:
+                        key0 = self._extract_key(url, known_adapter) if known_adapter not in {"generic"} else None
+                        return DiscoveryResult(known_adapter, key0, url, "FOUND", f"{known_adapter} (Search host match)")
+
                 # If it's a known ATS domain, try to extract and return immediately
                 for adapter, marker in self.EMBED_MARKERS:
                     if marker in url_l:
@@ -1037,6 +1468,9 @@ class ATSHealer:
                 )
                 if v_resp.status_code == 200:
                     return self._scan_content(v_resp.text, v_resp.url, name)
+                if v_resp.status_code == 403 and self._classify_known_ats_host(v_resp.url or url):
+                    # Some ATS boards block without a browser; keep the URL as a fallback.
+                    return DiscoveryResult("generic", None, v_resp.url or url, "FALLBACK", "Potential blocked ATS board")
             except Exception:
                 pass
             return None
@@ -1058,6 +1492,23 @@ class ATSHealer:
         if not self._looks_like_html(html):
             return None
         soup = BeautifulSoup(html, "html.parser")
+
+        def canonical_board_url(adapter: str, key: str, raw: str) -> str:
+            # For script-embed cases we often only have a key/slug. Construct a canonical board URL
+            # so validation can hit the actual ATS board rather than re-validating the company page.
+            try:
+                key = str(key or "").strip().strip("/")
+            except Exception:
+                key = ""
+            if not key:
+                return raw
+            if adapter == "greenhouse":
+                return f"https://boards.greenhouse.io/{key}"
+            if adapter == "lever":
+                return f"https://jobs.lever.co/{key}"
+            if adapter == "ashby":
+                return f"https://jobs.ashbyhq.com/{key}"
+            return raw
         
         # 1. Search for script tags or data attributes commonly used by embeds
         scripts = soup.find_all("script", src=True)
@@ -1070,7 +1521,8 @@ class ATSHealer:
                     key = self._extract_key(src, adapter)
                     if key:
                         # Verify the key is actually a company board
-                        res = DiscoveryResult(adapter, key, url, "FOUND", f"Embedded {adapter} found in scripts")
+                        board_url = canonical_board_url(adapter, key, url)
+                        res = DiscoveryResult(adapter, key, board_url, "FOUND", f"Embedded {adapter} found in scripts")
                         if self._validate_discovery(res, name):
                             return res
 
@@ -1156,11 +1608,13 @@ class ATSHealer:
 
     def _looks_like_known_ats_url(self, url: str) -> bool:
         url_l = url.lower()
-        return any(
+        if any(
             marker in url_l
             for _, marker in self.EMBED_MARKERS
             if marker not in {"onetrust.com", "happydance.com"}
-        )
+        ):
+            return True
+        return self._classify_known_ats_host(url) is not None
 
     def _looks_like_html(self, text: str) -> bool:
         if not text:

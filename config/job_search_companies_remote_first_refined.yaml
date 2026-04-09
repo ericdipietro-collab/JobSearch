@@ -99,6 +99,8 @@ companies:
   last_healed: '2026-04-09T12:40:49.295203'
   heal_failure_streak: 0
   manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:42:33.664666+00:00'
 - name: Deel
   tier: 2
   priority: medium
@@ -319,6 +321,8 @@ companies:
   last_healed: '2026-04-09T12:40:49.293203'
   heal_failure_streak: 0
   manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:44:14.269627+00:00'
 - name: Samsara
   tier: 2
   priority: medium
@@ -645,40 +649,6 @@ companies:
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: '2026-04-10T18:42:33.679753+00:00'
-- name: Veeva
-  tier: 1
-  priority: high
-  adapter: generic
-  domain: careers.veeva.com
-  industry:
-  - life sciences cloud|work from anywhere
-  notes: Work anywhere policy remains a notable differentiator.
-  sub_industry: Work-Anywhere Enterprise Software
-  careers_url: https://careers.veeva.com/
-  active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:42:33.672665'
-  heal_failure_streak: 1
-  manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:42:33.664666+00:00'
-- name: Wikimedia
-  tier: 2
-  priority: medium
-  adapter: generic
-  domain: wikimediafoundation.org
-  industry:
-  - knowledge platform|remote distributed
-  notes: Duplicate normalized entry kept out in de-dup.
-  sub_industry: Remote Platform
-  careers_url: https://wikimediafoundation.org/about/jobs/
-  active: true
-  status: active
-  discovery_method: Existing URL confirmed
-  last_healed: '2026-04-09T12:40:51.719950'
-  heal_failure_streak: 0
-  manual_only_suggested: false
 - name: GitHub
   tier: 1
   priority: high
@@ -832,21 +802,3 @@ companies:
   last_healed: '2026-04-09T12:42:32.002748'
   heal_failure_streak: 0
   manual_only_suggested: false
-- name: Twilio Segment
-  tier: 2
-  priority: medium
-  adapter: generic
-  domain: careers.twilio.com
-  industry:
-  - customer data|distributed
-  notes: Customer data/API platform inside remote-friendly Twilio.
-  sub_industry: Customer Data Platform
-  careers_url: https://careers.twilio.com/
-  active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:44:14.276685'
-  heal_failure_streak: 1
-  manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:44:14.269627+00:00'

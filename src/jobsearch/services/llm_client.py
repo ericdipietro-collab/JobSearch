@@ -62,29 +62,55 @@ class LLMClient:
 
         return None
 
+    def _get_fallback_chain(self) -> list[str]:
+        """Return an ordered list of providers to try based on preference and keys."""
+        chain = []
+        if self.preferred_provider:
+            chain.append(self.preferred_provider)
+
+        # Add remaining available providers in order: Gemini -> OpenAI -> Ollama
+        for p in ["gemini", "openai", "ollama"]:
+            if p not in chain:
+                if p == "gemini" and self.google_api_key:
+                    chain.append(p)
+                elif p == "openai" and self.openai_api_key:
+                    chain.append(p)
+                elif p == "ollama":
+                    chain.append(p)
+        return chain
+
     def generate(self, prompt: str) -> tuple[str, Optional[dict]]:
         """
-        Generate text from LLM with automatic retry + backoff on rate limits.
-
-        Returns:
-            Tuple of (generated_text, usage_metadata_dict)
-            usage_metadata_dict contains: {"total_tokens": int, "provider": str}
+        Generate text from LLM with automatic multi-provider fallback.
+        Tries providers in order of preference until one succeeds.
         """
-        provider = self._detect_provider()
-
-        if not provider:
+        chain = self._get_fallback_chain()
+        if not chain:
             raise ValueError(
                 "No LLM provider configured. Set GOOGLE_API_KEY, OPENAI_API_KEY, or configure Ollama."
             )
 
-        if provider == "gemini":
-            return self._generate_with_retry(prompt)
-        elif provider == "openai":
-            return self._generate_openai(prompt)
-        elif provider == "ollama":
-            return self._generate_ollama(prompt)
-        else:
-            raise ValueError(f"Unknown provider: {provider}")
+        last_exc = None
+        for provider in chain:
+            try:
+                if provider == "gemini":
+                    if not self._gemini_client:
+                        continue
+                    return self._generate_with_retry(prompt)
+                elif provider == "openai":
+                    if not self.openai_api_key:
+                        continue
+                    return self._generate_openai(prompt)
+                elif provider == "ollama":
+                    return self._generate_ollama(prompt)
+            except Exception as e:
+                logger.warning(f"LLM provider '{provider}' failed, trying next in fallback chain. Error: {e}")
+                last_exc = e
+                continue
+
+        if last_exc:
+            raise last_exc
+        raise ValueError("Fallback chain exhausted with no successful generation.")
 
     def _is_rate_limit_error(self, e: Exception) -> bool:
         s = str(e)
@@ -152,7 +178,7 @@ class LLMClient:
         try:
             from openai import OpenAI
 
-            client = OpenAI(api_key=self.openai_api_key)
+            client = OpenAI(api_key=self.openai_api_key, timeout=15.0)
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[{"role": "user", "content": prompt}],
@@ -177,6 +203,7 @@ class LLMClient:
             client = OpenAI(
                 base_url=f"{self.ollama_base_url}/v1",
                 api_key="ollama",  # Ollama doesn't require a real key
+                timeout=10.0,
             )
             # Local models need a strong system prompt for reliable JSON output.
             # Temperature 0.0 suppresses hallucinated preamble/postamble.

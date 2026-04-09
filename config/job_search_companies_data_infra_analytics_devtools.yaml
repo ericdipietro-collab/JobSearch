@@ -823,58 +823,6 @@ companies:
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: '2026-04-10T18:25:13.781685+00:00'
-- name: Talend
-  tier: 2
-  priority: medium
-  adapter: generic
-  domain: www.qlik.com
-  industry:
-  - data integration|quality|ETL
-  notes: Longstanding data integration and quality tooling brand within Qlik.
-  sub_industry: Data Integration
-  careers_url: https://www.qlik.com/us/company/careers
-  active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:25:14.520198'
-  heal_failure_streak: 1
-  manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:25:14.514063+00:00'
-- name: Sigma Computing
-  tier: 2
-  priority: medium
-  adapter: generic
-  domain: www.sigmacomputing.com
-  industry:
-  - cloud analytics|BI
-  notes: Cloud analytics platform with strong modern BI reputation.
-  sub_industry: Cloud BI
-  careers_url: https://www.sigmacomputing.com/careers
-  active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:25:14.411875'
-  heal_failure_streak: 1
-  manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:25:14.404367+00:00'
-- name: Monte Carlo Data
-  tier: 2
-  priority: medium
-  adapter: generic
-  domain: www.montecarlodata.com
-  industry:
-  - data observability|data quality
-  notes: Focused data observability/data reliability company.
-  sub_industry: Data Observability
-  careers_url: https://www.montecarlodata.com/careers/
-  active: true
-  status: active
-  discovery_method: Existing URL confirmed
-  last_healed: '2026-04-09T12:23:34.048809'
-  heal_failure_streak: 0
-  manual_only_suggested: false
 - name: Unstructured
   tier: 2
   priority: medium

@@ -824,21 +824,3 @@ companies:
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: '2026-04-10T18:32:09.971439+00:00'
-- name: Oscar
-  tier: 2
-  priority: medium
-  adapter: generic
-  domain: www.hioscar.com
-  industry:
-  - health insurance|digital health
-  notes: Duplicate normalized Oscar entry kept out in de-dup.
-  sub_industry: Health Insurance
-  careers_url: https://www.hioscar.com/careers
-  active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:32:09.932488'
-  heal_failure_streak: 1
-  manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:32:09.925484+00:00'

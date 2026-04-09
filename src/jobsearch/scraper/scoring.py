@@ -274,31 +274,49 @@ class Scorer:
         location_l = self.clean(location).lower()
         if "remote" in location_l:
             return True
-        blob = self._location_blob(location, description)
-        return "remote" in blob or "work from home" in blob or "work-from-home" in blob or "telecommute" in blob
+        # If location explicitly says onsite, don't look for remote keywords in description boilerplate
+        if any(marker in location_l for marker in self._onsite_markers):
+            return False
+        
+        # Check for remote in description but ONLY if it looks like a primary designation, 
+        # not just mentioned in a list of office locations.
+        blob = self.clean(description).lower()
+        # Look for explicit "Remote - US" or "Remote, United States" or "This is a remote position"
+        # Using word boundaries to avoid catching substrings in longer words
+        if re.search(r"\bthis is a remote (position|role)\b", blob, flags=re.IGNORECASE):
+            return True
+        if re.search(r"\bremote\s*-\s*u\.?s\.?\b", blob, flags=re.IGNORECASE):
+            return True
+        if re.search(r"\bremote\s*,\s*united states\b", blob, flags=re.IGNORECASE):
+            return True
+        
+        return False
 
     def _is_hybrid_role(self, location: str, description: str) -> bool:
         location_l = self.clean(location).lower()
         if any(marker in location_l for marker in self._hybrid_markers):
             return True
-        blob = self._location_blob(location, description)
-        return any(marker in blob for marker in self._hybrid_markers)
+        if any(marker in location_l for marker in self._onsite_markers):
+            return False
+        # Do not check description for hybrid - too much boilerplate noise
+        return False
 
     def _is_onsite_role(self, location: str, description: str) -> bool:
         location_l = self.clean(location).lower()
         if any(marker in location_l for marker in self._onsite_markers):
             return True
-        blob = self._location_blob(location, description)
-        return any(marker in blob for marker in self._onsite_markers)
+        # If it has a location but not remote/hybrid, it's onsite by default
+        if location_l and not "remote" in location_l and not any(m in location_l for m in self._hybrid_markers):
+            return True
+        return False
 
     def _matches_local_area(self, location: str, description: str) -> bool:
+        # STRICT: Only check the location field for local markers.
+        # Checking description causes too many false positives from "Our offices in Austin..." boilerplate.
         location_l = self.clean(location).lower()
-        if any(marker in location_l for marker in self.local_hybrid_markers):
-            return True
-        blob = self._location_blob(location, description)
-        if not blob:
+        if not location_l:
             return False
-        return any(marker in blob for marker in self.local_hybrid_markers)
+        return any(marker in location_l for marker in self.local_hybrid_markers)
 
     def _extract_required_years_experience(self, title: str, description: str) -> Optional[float]:
         """Extract minimum required years of experience from job posting."""
@@ -371,19 +389,19 @@ class Scorer:
                 self.clean(job_data.get("salary_text")),
             ]
         ).lower()
-        if any(marker in blob for marker in ["internship", "co-op", "co op"]) or re.search(r"\bintern\b", blob):
+        if re.search(r"\b(internship|intern|co-op|co op)\b", blob, flags=re.IGNORECASE):
             return "internship"
-        if any(marker in blob for marker in ["part-time", "part time"]):
+        if re.search(r"\b(part-time|part time)\b", blob, flags=re.IGNORECASE):
             return "part_time"
-        if any(marker in blob for marker in ["temporary", "temp-to-hire", "temp to hire", "seasonal"]):
+        if re.search(r"\b(temporary|temp-to-hire|temp to hire|seasonal)\b", blob, flags=re.IGNORECASE):
             return "temporary"
-        if any(marker in blob for marker in ["full-time", "full time", "permanent", "regular full time"]):
+        if re.search(r"\b(full-time|full time|permanent|regular full time)\b", blob, flags=re.IGNORECASE):
             return "fte"
-        if any(marker in blob for marker in ["1099", "independent contractor", "self employed", "self-employed"]):
+        if re.search(r"\b(1099|independent contractor|self employed|self-employed)\b", blob, flags=re.IGNORECASE):
             return "1099_contract"
-        if any(marker in blob for marker in ["c2c", "corp-to-corp", "corp to corp", "contract-to-hire", "contract to hire"]):
+        if re.search(r"\b(c2c|corp-to-corp|corp to corp|contract-to-hire|contract to hire)\b", blob, flags=re.IGNORECASE):
             return "c2c_contract"
-        if any(marker in blob for marker in ["w2", "w-2", "hourly contract", "contract role", "contract position", "contract opportunity", "contract assignment", "contractor role"]):
+        if re.search(r"\b(w2|w-2|hourly contract|contract role|contract position|contract opportunity|contract assignment|contractor role)\b", blob, flags=re.IGNORECASE):
             return "w2_contract"
         if "hourly" in blob:
             return "w2_contract"
@@ -521,6 +539,7 @@ class Scorer:
         jd_blob = description.lower()
 
         if self.is_disqualified(title):
+            source_key = self._source_trust_key(job_data)
             _work_type = self._derive_work_type(job_data)
             _comp_unit = self._compensation_unit(job_data, _work_type)
             return {
@@ -530,6 +549,7 @@ class Scorer:
                 "penalized_keywords": "Title Disqualified",
                 "decision_reason": "Hard-Drop: Disqualifier in title",
                 "score_components": {
+                    "source_trust_key": source_key,
                     "base_score": 0.0,
                     "title_points": 0,
                     "body_positive_points": 0,
@@ -540,6 +560,7 @@ class Scorer:
                     "location_penalty": 0,
                     "compensation_adjustment": 0,
                     "contract_adjustment": 0,
+                    "source_penalty": 0,
                 },
                 "work_type": _work_type,
                 "compensation_unit": _comp_unit,
@@ -553,6 +574,7 @@ class Scorer:
         exp_passes_check, exp_penalty_reason = self._check_experience_fit(title, description)
         if not exp_passes_check:
             # Hard-drop: experience gap exceeds tolerance
+            source_key = self._source_trust_key(job_data)
             _work_type = self._derive_work_type(job_data)
             _comp_unit = self._compensation_unit(job_data, _work_type)
             return {
@@ -562,6 +584,7 @@ class Scorer:
                 "penalized_keywords": "Experience Gap",
                 "decision_reason": f"Hard-Drop: {exp_penalty_reason}",
                 "score_components": {
+                    "source_trust_key": source_key,
                     "base_score": 0.0,
                     "title_points": 0,
                     "body_positive_points": 0,
@@ -572,6 +595,7 @@ class Scorer:
                     "location_penalty": 0,
                     "compensation_adjustment": 0,
                     "contract_adjustment": 0,
+                    "source_penalty": 0,
                 },
                 "work_type": _work_type,
                 "compensation_unit": _comp_unit,
@@ -644,7 +668,13 @@ class Scorer:
         is_onsite_role = self._is_onsite_role(location, description)
         local_match = self._matches_local_area(location, description)
 
+        # Priority resolution for type
+        # If it's explicitly onsite, it's NOT remote even if boilerplate says so
+        if is_onsite_role:
+            is_remote_role = False
+        
         if self.us_only and not self.allow_international_remote and self._is_international_remote(location):
+            source_key = self._source_trust_key(job_data)
             return {
                 "score": 0.0,
                 "fit_band": "Filtered Out",
@@ -652,6 +682,7 @@ class Scorer:
                 "penalized_keywords": "international remote",
                 "decision_reason": "Hard-Drop: location mismatch (international remote)",
                 "score_components": {
+                    "source_trust_key": source_key,
                     "base_score": base_score,
                     "title_points": title_points,
                     "body_positive_points": body_positive_points,
@@ -663,6 +694,7 @@ class Scorer:
                     "location_bonus": 0,
                     "compensation_adjustment": 0,
                     "contract_adjustment": 0,
+                    "source_penalty": 0,
                 },
                 **comp_data,
             }
@@ -670,9 +702,37 @@ class Scorer:
         if is_remote_role:
             if self.remote_us_enabled and self.location_policy in {"remote_only", "remote_or_hybrid"}:
                 location_bonus += self.remote_us_bonus
-        elif is_hybrid_role or is_onsite_role or location.strip():
+            else:
+                # If remote is not allowed by policy
+                source_key = self._source_trust_key(job_data)
+                return {
+                    "score": 0.0,
+                    "fit_band": "Filtered Out",
+                    "matched_keywords": ", ".join(sorted(set(term for term, _ in title_hits + partial_hits + jd_pos_hits))),
+                    "penalized_keywords": "location mismatch (remote policy)",
+                    "decision_reason": "Hard-Drop: location mismatch (remote policy)",
+                    "score_components": {
+                        "source_trust_key": source_key,
+                        "base_score": base_score,
+                        "title_points": title_points,
+                        "body_positive_points": body_positive_points,
+                        "body_negative_points": body_negative_points,
+                        "tier_bonus": tier_bonus,
+                        "partial_title_bonus": partial_title_points,
+                        "positive_keyword_gate_bonus": positive_keyword_gate_bonus,
+                        "location_penalty": 100,
+                        "location_bonus": 0,
+                        "compensation_adjustment": 0,
+                        "contract_adjustment": 0,
+                        "source_penalty": 0,
+                    },
+                    **comp_data,
+                }
+        elif location.strip():
+            # If there's a location but it's not remote, it MUST be a local hybrid match
             local_hybrid_salary_ok = (
-                normalized_comp is not None and normalized_comp >= self.local_hybrid_salary_floor
+                normalized_comp is None # Allow if salary is missing but location matches
+                or normalized_comp >= self.local_hybrid_salary_floor
             )
             local_hybrid_allowed = (
                 self.local_hybrid_enabled
@@ -680,15 +740,17 @@ class Scorer:
                 and local_match
                 and local_hybrid_salary_ok
             )
+            
             if local_hybrid_allowed:
                 location_bonus += self.local_hybrid_bonus
             else:
+                # This is the hard-drop for on-site or hybrid roles in the wrong city
                 return {
                     "score": 0.0,
                     "fit_band": "Filtered Out",
                     "matched_keywords": ", ".join(sorted(set(term for term, _ in title_hits + partial_hits + jd_pos_hits))),
                     "penalized_keywords": "location mismatch",
-                    "decision_reason": "Hard-Drop: location mismatch",
+                    "decision_reason": f"Hard-Drop: location mismatch ({location})",
                     "score_components": {
                         "base_score": base_score,
                         "title_points": title_points,
@@ -704,6 +766,7 @@ class Scorer:
                     },
                     **comp_data,
                 }
+        # If no location text at all, we proceed but don't give a bonus
 
         score += location_bonus
 
@@ -785,6 +848,7 @@ class Scorer:
             "decision_reason": decision_reason,
             "apply_now_eligible": apply_now_eligible,
             "score_components": {
+                "source_trust_key": source_trust.get("key"),
                 "base_score": base_score,
                 "title_points": title_points,
                 "body_positive_points": body_positive_points,
@@ -796,7 +860,8 @@ class Scorer:
                 "location_bonus": location_bonus,
                 "compensation_adjustment": compensation_adjustment,
                 "contract_adjustment": contract_adjustment,
-                "source_penalty": source_penalty,
+                # Store the signed delta for downstream explanations (negative = penalty).
+                "source_penalty": -source_penalty,
                 "exp_soft_penalty": exp_soft_penalty,
             },
             **comp_data,
