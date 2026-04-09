@@ -173,3 +173,16 @@ companies:
     notes: Structured RSS feed for remote tech roles.
     category: remote-product-jobs
     cooldown_days: 1
+  - name: Findwork API
+    source_lane: aggregator
+    adapter: findwork
+    active: true
+    priority: high
+    tier: 4
+    careers_url: https://findwork.dev/
+    domain: findwork.dev
+    industry: tech | aggregator
+    status: active
+    notes: Tech-only job aggregator API.
+    query: product manager
+    cooldown_days: 1

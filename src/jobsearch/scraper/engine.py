@@ -24,6 +24,7 @@ from jobsearch.scraper.adapters.careeronestop import CareerOneStopAdapter
 from jobsearch.scraper.adapters.remotive import RemotiveAdapter
 from jobsearch.scraper.adapters.remoteok import RemoteOKAdapter
 from jobsearch.scraper.adapters.wwr import WWRAdapter
+from jobsearch.scraper.adapters.findwork import FindworkAdapter
 from jobsearch.scraper.adapters.dice import DiceAdapter
 from jobsearch.scraper.adapters.generic import GenericAdapter
 from jobsearch.scraper.adapters.google_careers import GoogleCareersAdapter
@@ -102,6 +103,7 @@ class ScraperEngine:
         "remotive": RemotiveAdapter,
         "remoteok": RemoteOKAdapter,
         "wwr": WWRAdapter,
+        "findwork": FindworkAdapter,
         "jobspy": JobSpyExperimentalAdapter,
         "google_careers": GoogleCareersAdapter,
         "dice": DiceAdapter,
@@ -163,6 +165,7 @@ class ScraperEngine:
             "remotive": 1, # Remotive is very fast and doesn't need high concurrency
             "remoteok": 1,
             "wwr": 1,
+            "findwork": 1,
             "google_careers": 2, # Small limit for Google
             "dice": settings.scrape_dice_concurrency,
             "motionrecruitment": settings.scrape_motionrecruitment_concurrency,
