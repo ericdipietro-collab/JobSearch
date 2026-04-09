@@ -1,0 +1,875 @@
+companies:
+- name: OpenAI
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: openai.com
+  industry:
+  - AI platform|foundation models|developer platform
+  notes: Frontier AI company with major product/platform opportunities.
+  sub_industry: Foundation Models / AI Platform
+  careers_url: https://openai.com/careers/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:52:22.340055'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:52:22.333052+00:00'
+- name: Anthropic
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: www.anthropic.com
+  industry:
+  - AI safety|foundation models|developer platform
+  notes: Frontier model company with strong enterprise and platform focus.
+  sub_industry: Foundation Models
+  careers_url: https://www.anthropic.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:52:21.523659'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:52:21.516634+00:00'
+- name: Cohere
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: cohere.com
+  industry:
+  - enterprise AI|LLMs|developer platform
+  notes: Enterprise model/platform company with strong B2B orientation.
+  sub_industry: Enterprise AI Platform
+  careers_url: https://cohere.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:52:21.918197'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:52:21.912186+00:00'
+- name: Hugging Face
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: huggingface.co
+  industry:
+  - open source AI|model hub|ML tooling
+  notes: Key open AI ecosystem platform and tooling employer.
+  sub_industry: Open AI Platform
+  careers_url: https://huggingface.co/jobs
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:52:22.332043'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:52:22.325536+00:00'
+- name: Scale AI
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: scale.com
+  industry:
+  - data labeling|AI infrastructure|models
+  notes: Critical AI data and evaluation infrastructure company.
+  sub_industry: AI Data Infrastructure
+  careers_url: https://scale.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:52:22.475557'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:52:22.469046+00:00'
+- name: Weights & Biases
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: wandb.careers
+  industry:
+  - ML ops|experiment tracking|developer tools
+  notes: Core MLOps/devtools platform.
+  sub_industry: MLOps
+  careers_url: https://wandb.careers/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:52:22.544743'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:52:22.530713+00:00'
+- name: Pinecone
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: www.pinecone.io
+  industry:
+  - vector database|AI retrieval|developer platform
+  notes: Strong fit for AI data infrastructure and retrieval systems.
+  sub_industry: Vector Database
+  careers_url: https://www.pinecone.io/careers/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T11:50:41.067852'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: LangChain
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.langchain.com
+  industry:
+  - AI app framework|developer tools|agents
+  notes: Important AI app/orchestration ecosystem company.
+  sub_industry: AI Application Framework
+  careers_url: https://www.langchain.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:52:22.555254'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:52:22.550742+00:00'
+- name: Modal
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: modal.com
+  industry:
+  - AI compute|serverless|developer platform
+  notes: Modern AI inference/training platform.
+  sub_industry: AI Compute Platform
+  careers_url: https://modal.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:52:21.544683'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:52:21.524660+00:00'
+- name: Replicate
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: replicate.com
+  industry:
+  - model hosting|AI developer platform
+  notes: Model-hosting platform with strong developer-product relevance.
+  sub_industry: AI Model Platform
+  careers_url: https://replicate.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:52:22.244884'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:52:22.239373+00:00'
+- name: Runway
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: runwayml.com
+  industry:
+  - generative AI|video AI|creative tooling
+  notes: Generative AI platform for creative/media workflows.
+  sub_industry: Generative AI Platform
+  careers_url: https://runwayml.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:52:23.510921'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:52:23.503921+00:00'
+- name: Perplexity
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.perplexity.ai
+  industry:
+  - AI search|LLMs|consumer AI
+  notes: High-profile AI search company with strong product intensity.
+  sub_industry: AI Search
+  careers_url: https://www.perplexity.ai/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:54:04.438780'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:54:04.433414+00:00'
+- name: Together AI
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.together.ai
+  industry:
+  - AI cloud|inference|open models
+  notes: Open-model and inference infrastructure company.
+  sub_industry: AI Cloud Platform
+  careers_url: https://www.together.ai/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:54:04.433414'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:54:04.428410+00:00'
+- name: Groq
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: groq.com
+  industry:
+  - AI hardware|inference|accelerators
+  notes: AI inference infrastructure company.
+  sub_industry: AI Inference Infrastructure
+  careers_url: https://groq.com/careers/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:54:06.245288'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:54:06.238289+00:00'
+- name: Cerebras
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.cerebras.ai
+  industry:
+  - AI hardware|training infrastructure
+  notes: Large-scale AI compute/training infrastructure provider.
+  sub_industry: AI Compute
+  careers_url: https://www.cerebras.ai/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:54:05.600649'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:54:05.593135+00:00'
+- name: SambaNova
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: sambanova.ai
+  industry:
+  - AI hardware|enterprise AI infrastructure
+  notes: Enterprise AI infrastructure and model-serving company.
+  sub_industry: AI Infrastructure
+  careers_url: https://sambanova.ai/careers/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:54:06.607801'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:54:06.600283+00:00'
+- name: Lambda
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: lambda.ai
+  industry:
+  - GPU cloud|AI infrastructure|developer platform
+  notes: GPU cloud/infrastructure company relevant to AI platform roles.
+  sub_industry: AI Cloud Infrastructure
+  careers_url: https://lambda.ai/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:54:05.619890'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:54:05.605649+00:00'
+- name: Writer
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: writer.com
+  industry:
+  - enterprise genAI|AI platform|applications
+  notes: Enterprise AI company with strong B2B platform/product orientation.
+  sub_industry: Enterprise GenAI
+  careers_url: https://writer.com/careers/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:54:06.746592'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:54:06.740083+00:00'
+- name: Glean
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.glean.com
+  industry:
+  - enterprise AI search|knowledge platform
+  notes: Enterprise AI search/knowledge company.
+  sub_industry: Enterprise AI Search
+  careers_url: https://www.glean.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:54:06.052736'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:54:06.029413+00:00'
+- name: Grammarly
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.grammarly.com
+  industry:
+  - AI writing|productivity|platform
+  notes: Large-scale AI productivity company with strong platform needs.
+  sub_industry: AI Productivity
+  careers_url: https://www.grammarly.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:54:06.029413'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:54:06.022906+00:00'
+- name: DataRobot
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.datarobot.com
+  industry:
+  - enterprise AI|AutoML|platform
+  notes: Enterprise AI platform with mature product organization.
+  sub_industry: Enterprise AI Platform
+  careers_url: https://www.datarobot.com/careers/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:54:06.790421'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:54:06.784421+00:00'
+- name: Snorkel AI
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: snorkel.ai
+  industry:
+  - AI data development|ML tooling
+  notes: AI data tooling company relevant to model/data operations.
+  sub_industry: AI Data Tooling
+  careers_url: https://snorkel.ai/careers/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:55:48.284574'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:55:48.279068+00:00'
+- name: Labelbox
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: labelbox.com
+  industry:
+  - data labeling|AI infrastructure
+  notes: AI training data infrastructure company.
+  sub_industry: AI Data Infrastructure
+  careers_url: https://labelbox.com/company/careers/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:55:48.080930'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:55:48.072926+00:00'
+- name: Arize AI
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: arize.com
+  industry:
+  - AI observability|ML monitoring
+  notes: Strong fit for model/data observability roles.
+  sub_industry: AI Observability
+  careers_url: https://arize.com/careers/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T11:54:06.348808'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Fiddler AI
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.fiddler.ai
+  industry:
+  - model monitoring|AI observability|governance
+  notes: AI observability and governance platform.
+  sub_industry: AI Observability / Governance
+  careers_url: https://www.fiddler.ai/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:55:48.501069'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:55:48.495069+00:00'
+- name: Humanloop
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: humanloop.com
+  industry:
+  - LLM ops|evaluation|AI tooling
+  notes: LLM ops/evals tooling company.
+  sub_industry: LLMOps
+  careers_url: https://humanloop.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:55:49.113179'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:55:49.105677+00:00'
+- name: Vellum
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.vellum.ai
+  industry:
+  - LLM orchestration|prompt ops|platform
+  notes: Platform for prompt/workflow orchestration.
+  sub_industry: LLMOps / Workflow
+  careers_url: https://www.vellum.ai/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:55:49.158310'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:55:49.151790+00:00'
+- name: ElevenLabs
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: elevenlabs.io
+  industry:
+  - voice AI|foundation models
+  notes: Fast-growing voice AI platform.
+  sub_industry: Voice AI
+  careers_url: https://elevenlabs.io/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:55:49.582098'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:55:49.574100+00:00'
+- name: AssemblyAI
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.assemblyai.com
+  industry:
+  - speech AI|developer APIs
+  notes: Speech AI API platform with strong developer-product fit.
+  sub_industry: Speech AI
+  careers_url: https://www.assemblyai.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:55:49.608826'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:55:49.602317+00:00'
+- name: Deepgram
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: deepgram.com
+  industry:
+  - speech AI|APIs|inference
+  notes: Speech AI infrastructure/API company.
+  sub_industry: Speech AI Infrastructure
+  careers_url: https://deepgram.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:55:49.824149'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:55:49.816639+00:00'
+- name: Unstructured
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: unstructured.io
+  industry:
+  - unstructured data|AI pipelines|ETL
+  notes: Useful bridge between data infra and AI-ready data platforms.
+  sub_industry: AI Data Pipelines
+  careers_url: https://unstructured.io/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:55:49.934319'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:55:49.928813+00:00'
+- name: Baseten
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.baseten.co
+  industry:
+  - model serving|AI inference platform
+  notes: AI inference and model-deployment platform.
+  sub_industry: AI Inference Platform
+  careers_url: https://www.baseten.co/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:55:49.953852'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:55:49.948350+00:00'
+- name: Fireworks AI
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: fireworks.ai
+  industry:
+  - inference platform|AI cloud
+  notes: AI inference cloud/platform company.
+  sub_industry: AI Inference Platform
+  careers_url: https://fireworks.ai/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:57:30.473635'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:57:30.466620+00:00'
+- name: Anyscale
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.anyscale.com
+  industry:
+  - distributed compute|Ray|AI platform
+  notes: Distributed compute and AI application platform.
+  sub_industry: Distributed AI Platform
+  careers_url: https://www.anyscale.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:57:30.973279'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:57:30.965762+00:00'
+- name: Hebbia
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.hebbia.com
+  industry:
+  - agentic AI|enterprise knowledge work
+  notes: AI workflow company with strong enterprise use cases.
+  sub_industry: Enterprise AI Applications
+  careers_url: https://www.hebbia.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:57:31.337393'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:57:31.331392+00:00'
+- name: Harvey
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.harvey.ai
+  industry:
+  - vertical AI|legal AI|enterprise
+  notes: High-profile enterprise vertical AI company.
+  sub_industry: Vertical AI
+  careers_url: https://www.harvey.ai/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:57:32.063194'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:57:32.055684+00:00'
+- name: Abridge
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.abridge.com
+  industry:
+  - clinical AI|ambient documentation
+  notes: Strong healthcare AI infrastructure/application crossover.
+  sub_industry: Clinical AI
+  careers_url: https://www.abridge.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:57:32.121507'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:57:32.114483+00:00'
+- name: Suki
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.suki.ai
+  industry:
+  - clinical AI|voice assistant
+  notes: Clinical AI assistant company.
+  sub_industry: Clinical AI
+  careers_url: https://www.suki.ai/careers/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T11:55:51.161569'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Notion
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.notion.so
+  industry:
+  - AI productivity|knowledge platform
+  notes: Broad productivity/knowledge platform with meaningful AI platform work.
+  sub_industry: AI Productivity
+  careers_url: https://www.notion.so/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:57:32.280226'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:57:32.273196+00:00'
+- name: Atlassian
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.atlassian.com
+  industry:
+  - AI productivity|developer collaboration
+  notes: Large software employer with growing AI platform strategy.
+  sub_industry: AI Productivity / Dev Collaboration
+  careers_url: https://www.atlassian.com/company/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:57:33.222749'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:57:33.214241+00:00'
+- name: Dropbox
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: jobs.dropbox.com
+  industry:
+  - AI productivity|collaboration
+  notes: Strong remote-friendly employer with AI product/platform initiatives.
+  sub_industry: AI Productivity / Collaboration
+  careers_url: https://jobs.dropbox.com/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:57:33.986398'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:57:33.962230+00:00'
+- name: Box
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: careers.box.com
+  industry:
+  - enterprise content AI|cloud
+  notes: Enterprise content/cloud company with AI data/document workflow relevance.
+  sub_industry: Enterprise Content / AI
+  careers_url: https://careers.box.com/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:57:32.477585'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:57:32.471584+00:00'
+- name: NVIDIA
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: www.nvidia.com
+  industry:
+  - AI compute|platform|developer ecosystem
+  notes: Elite AI compute/platform company.
+  sub_industry: AI Compute Platform
+  careers_url: https://www.nvidia.com/en-us/about-nvidia/careers/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:57:34.622705'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:57:34.617198+00:00'
+- name: Snowflake
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: careers.snowflake.com
+  industry:
+  - data cloud|AI data platform
+  notes: Major AI data-cloud employer.
+  sub_industry: AI Data Platform
+  careers_url: https://careers.snowflake.com/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:59:13.240442'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:59:13.233444+00:00'
+- name: Databricks
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: www.databricks.com
+  industry:
+  - AI data platform|lakehouse
+  notes: Strong data+AI platform employer.
+  sub_industry: AI Data Platform
+  careers_url: https://www.databricks.com/company/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:59:15.086630'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:59:15.080411+00:00'
+- name: Pinecone Systems
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.pinecone.io
+  industry:
+  - vector database|retrieval infrastructure
+  notes: Duplicate normalized Pinecone entry kept out in de-dup.
+  sub_industry: Vector Database
+  careers_url: https://www.pinecone.io/careers/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T11:57:35.755942'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Scale
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: scale.com
+  industry:
+  - AI data infrastructure|evaluation
+  notes: Duplicate normalized Scale AI entry kept out in de-dup.
+  sub_industry: AI Data Infrastructure
+  careers_url: https://scale.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:59:15.056397'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:59:15.050393+00:00'
+- name: C3 AI
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: c3.ai
+  industry:
+  - enterprise AI|software platform
+  notes: Large enterprise AI software/platform vendor.
+  sub_industry: Enterprise AI Software
+  careers_url: https://c3.ai/careers/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:59:15.289243'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:59:15.282244+00:00'
+- name: MosaicML
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.databricks.com
+  industry:
+  - LLM training|foundation model infrastructure
+  notes: MosaicML brand now within Databricks ecosystem; relevant AI infra signal.
+  sub_industry: LLM Infrastructure
+  careers_url: https://www.databricks.com/company/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T11:59:15.885564'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T17:59:15.877513+00:00'

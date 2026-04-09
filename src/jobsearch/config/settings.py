@@ -85,6 +85,7 @@ class Settings:
         self.findwork_api_key = os.getenv("JOBSEARCH_FINDWORK_API_KEY", "").strip()
         self.jooble_max_requests_per_run = int(os.getenv("JOBSEARCH_JOOBLE_MAX_REQUESTS_PER_RUN", "3"))
         self.themuse_max_requests_per_run = int(os.getenv("JOBSEARCH_THEMUSE_MAX_REQUESTS_PER_RUN", "3"))
+        self.themuse_api_key = os.getenv("JOBSEARCH_THEMUSE_API_KEY", "").strip()
         self.jobspy_site_names = os.getenv("JOBSEARCH_JOBSPY_SITE_NAMES", "google").strip()
         self.jobspy_results_per_run = int(os.getenv("JOBSEARCH_JOBSPY_RESULTS_PER_RUN", "20"))
         self.jobspy_hours_old = int(os.getenv("JOBSEARCH_JOBSPY_HOURS_OLD", "72"))

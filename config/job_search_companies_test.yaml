@@ -6,14 +6,20 @@ companies:
   adapter_key: addepar1
   domain: job-boards.greenhouse.io
   industry:
-    - wealth management
-    - portfolio analytics
-    - financial data
-    - investment
-  notes: Wealth mgmt data + portfolio analytics — Aladdin-adjacent, direct domain match
+  - wealth management
+  - portfolio analytics
+  - financial data
+  - investment
+  notes: Wealth mgmt data + portfolio analytics — Aladdin-adjacent, direct domain
+    match
   sub_industry: Wealth Data
   careers_url: https://job-boards.greenhouse.io/addepar1
   status: active
+  active: true
+  heal_failure_streak: 0
+  manual_only_suggested: false
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:44:15.372737'
 - name: Affirm
   tier: 1
   priority: high
@@ -21,15 +27,20 @@ companies:
   adapter_key: affirm
   domain: boards.greenhouse.io
   industry:
-    - financial reporting
-    - capital platform
-    - reconciliation
-    - fintech
-    - payments
+  - financial reporting
+  - capital platform
+  - reconciliation
+  - fintech
+  - payments
   notes: 3 active applications — financial reporting + capital platform
   sub_industry: FinTech / Payments
   careers_url: https://job-boards.greenhouse.io/affirm
   status: active
+  active: true
+  heal_failure_streak: 0
+  manual_only_suggested: false
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:44:15.386246'
 - name: Bill.com
   tier: 1
   priority: high
@@ -37,14 +48,19 @@ companies:
   adapter_key: billcom
   domain: job-boards.greenhouse.io
   industry:
-    - b2b payments
-    - financial operations
-    - ap ar automation
-    - reconciliation
+  - b2b payments
+  - financial operations
+  - ap ar automation
+  - reconciliation
   notes: B2B financial ops + AP/AR automation — payments + data integration fit
   sub_industry: B2B Payments / Financial Ops
   careers_url: https://job-boards.greenhouse.io/billcom
   status: active
+  active: true
+  heal_failure_streak: 0
+  manual_only_suggested: false
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:44:16.996477'
 - name: CAIS
   tier: 2
   priority: medium
@@ -52,14 +68,19 @@ companies:
   adapter_key: cais
   domain: boards.greenhouse.io
   industry:
-    - alternative investments
-    - alts distribution
-    - wealth management
-    - platform
+  - alternative investments
+  - alts distribution
+  - wealth management
+  - platform
   notes: Alts distribution platform — same buyer/user profile as SUBSCRIBE + iCapital
   sub_industry: Alts Platform
   careers_url: https://job-boards.greenhouse.io/cais
   status: active
+  active: true
+  heal_failure_streak: 0
+  manual_only_suggested: false
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:44:15.377738'
 - name: Carta
   tier: 1
   priority: high
@@ -67,13 +88,18 @@ companies:
   adapter_key: carta
   domain: carta.com
   industry:
-    - equity management
-    - cap tables
-    - api
+  - equity management
+  - cap tables
+  - api
   notes: Designed a custom data model for RSUs and stock options; perfect domain match.
   sub_industry: Equity Management
   careers_url: https://job-boards.greenhouse.io/carta
   status: active
+  active: true
+  heal_failure_streak: 0
+  manual_only_suggested: false
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:44:16.047713'
 - name: Charles Schwab
   tier: 2
   priority: medium
@@ -81,15 +107,20 @@ companies:
   adapter_key: ''
   domain: jobs.schwabjobs.com
   industry:
-    - brokerage
-    - custody
-    - trading
-    - wealth management
-    - financial services
+  - brokerage
+  - custody
+  - trading
+  - wealth management
+  - financial services
   notes: Custodian PM — NFS/DTCC background directly relevant post-TDA merger
   sub_industry: Brokerage
   careers_url: https://jobs.schwabjobs.com/
   status: active
+  active: true
+  heal_failure_streak: 0
+  manual_only_suggested: false
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:44:18.984038'
 - name: Clearwater Analytics
   tier: 1
   priority: high
@@ -97,14 +128,20 @@ companies:
   adapter_key: clearwateranalytics
   domain: cwan.com
   industry:
-    - investment accounting
-    - reconciliation
-    - financial reporting
-    - investment data
+  - investment accounting
+  - reconciliation
+  - financial reporting
+  - investment data
   notes: Investment accounting + reconciliation + reporting — direct Allstate overlap
   sub_industry: Investment Accounting
   careers_url: https://www.cwan.com/careers
-  status: active
+  status: broken
+  heal_failure_streak: 1
+  heal_last_failure_detail: Discovery budget exhausted
+  manual_only_suggested: false
+  cooldown_until: '2026-04-10T18:45:56.679402+00:00'
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:45:56.682403'
 - name: Confluent
   tier: 2
   priority: medium
@@ -112,15 +149,22 @@ companies:
   adapter_key: confluent
   domain: boards.greenhouse.io
   industry:
-    - data streaming
-    - financial services
-    - integration
-    - platform
-    - messaging
-  notes: JMS/messaging pivot at InvestCloud IS Kafka territory — apply sooner than other T2
+  - data streaming
+  - financial services
+  - integration
+  - platform
+  - messaging
+  notes: JMS/messaging pivot at InvestCloud IS Kafka territory — apply sooner than
+    other T2
   sub_industry: Data Streaming
   careers_url: https://job-boards.greenhouse.io/confluent
-  status: active
+  status: broken
+  heal_failure_streak: 1
+  heal_last_failure_detail: Discovery budget exhausted
+  manual_only_suggested: false
+  cooldown_until: '2026-04-10T18:45:58.273425+00:00'
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:45:58.276426'
 - name: Envestnet
   tier: 1
   priority: high
@@ -128,15 +172,20 @@ companies:
   adapter_key: ''
   domain: envestnet.wd5.myworkdayjobs.com
   industry:
-    - wealth management
-    - advisor technology
-    - financial data
-    - integration
-    - platform
+  - wealth management
+  - advisor technology
+  - financial data
+  - integration
+  - platform
   notes: Advisor tech ecosystem — major platform integrations across wealth management
   sub_industry: WealthTech
   careers_url: https://envestnet.wd5.myworkdayjobs.com/en-US/Envestnet_Careers
   status: active
+  active: true
+  heal_failure_streak: 0
+  manual_only_suggested: false
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:44:15.315763'
 - name: FactSet
   tier: 2
   priority: medium
@@ -144,14 +193,20 @@ companies:
   adapter_key: ''
   domain: factset.wd108.myworkdayjobs.com
   industry:
-    - capital markets
-    - financial data
-    - investment
-    - portfolio analytics
+  - capital markets
+  - financial data
+  - investment
+  - portfolio analytics
   notes: Capital markets data + workflow PM — Aladdin/IDW background applies
   sub_industry: Financial Data
   careers_url: https://factset.wd108.myworkdayjobs.com/FactSetCareers
   status: active
+  active: true
+  heal_failure_streak: 0
+  manual_only_suggested: false
+  discovery_method: Skipped due to workday scrape cooldown until 2026-04-10T05:05:53.412255+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:44:14.372233'
 - name: Fidelity Investments
   tier: 2
   priority: medium
@@ -159,15 +214,21 @@ companies:
   adapter_key: ''
   domain: jobs.fidelity.com
   industry:
-    - brokerage
-    - custody
-    - wealth management
-    - financial services
-    - nfs
+  - brokerage
+  - custody
+  - wealth management
+  - financial services
+  - nfs
   notes: NFS platform is primary proof point — custodian PM roles exist
   sub_industry: Brokerage / Clearing
   careers_url: https://jobs.fidelity.com
-  status: active
+  status: broken
+  heal_failure_streak: 1
+  heal_last_failure_detail: Discovery budget exhausted
+  manual_only_suggested: false
+  cooldown_until: '2026-04-10T18:45:51.142594+00:00'
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:45:51.145590'
 - name: Gusto
   tier: 1
   priority: high
@@ -175,15 +236,20 @@ companies:
   adapter_key: gusto
   domain: boards.greenhouse.io
   industry:
-    - payroll
-    - b2b payments
-    - financial data
-    - reconciliation
-    - fintech
+  - payroll
+  - b2b payments
+  - financial data
+  - reconciliation
+  - fintech
   notes: Payroll infrastructure + financial data + reconciliation — already applied
   sub_industry: Payroll / FinTech
   careers_url: https://job-boards.greenhouse.io/gusto
   status: active
+  active: true
+  heal_failure_streak: 0
+  manual_only_suggested: false
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:44:15.545938'
 - name: iCapital
   tier: 1
   priority: high
@@ -191,14 +257,19 @@ companies:
   adapter_key: icapitalnetwork
   domain: boards.greenhouse.io
   industry:
-    - alternative investments
-    - wealth management
-    - alts distribution
-    - fintech
+  - alternative investments
+  - wealth management
+  - alts distribution
+  - fintech
   notes: Closest analog to SUBSCRIBE — alts distribution for wealth managers
   sub_industry: Alts Platform
   careers_url: https://job-boards.greenhouse.io/icapitalnetwork
   status: active
+  active: true
+  heal_failure_streak: 0
+  manual_only_suggested: false
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:44:15.557453'
 - name: Koyfin
   tier: 2
   priority: medium
@@ -206,14 +277,20 @@ companies:
   adapter_key: ''
   domain: www.koyfin.com
   industry:
-    - advisor technology
-    - portfolio analytics
-    - wealth management
-    - financial data
+  - advisor technology
+  - portfolio analytics
+  - wealth management
+  - financial data
   notes: Strong domain fit. Eyes open on options/quant depth gap.
   sub_industry: WealthTech
   careers_url: https://www.koyfin.com/about/careers/
-  status: active
+  status: broken
+  heal_failure_streak: 1
+  heal_last_failure_detail: Discovery budget exhausted
+  manual_only_suggested: false
+  cooldown_until: '2026-04-10T18:45:59.200455+00:00'
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:45:59.203458'
 - name: Marqeta
   tier: 1
   priority: high
@@ -221,15 +298,20 @@ companies:
   adapter_key: marqeta
   domain: boards.greenhouse.io
   industry:
-    - card issuing
-    - b2b payments
-    - api platform
-    - integration
-    - fintech
+  - card issuing
+  - b2b payments
+  - api platform
+  - integration
+  - fintech
   notes: Card issuing infrastructure + B2B API platform
   sub_industry: Card Issuing APIs
   careers_url: https://job-boards.greenhouse.io/marqeta
   status: active
+  active: true
+  heal_failure_streak: 0
+  manual_only_suggested: false
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:44:15.567965'
 - name: Morningstar
   tier: 2
   priority: medium
@@ -237,15 +319,21 @@ companies:
   adapter_key: ''
   domain: careers.morningstar.com
   industry:
-    - financial data
-    - investment
-    - analytics
-    - advisor tools
-    - capital markets
+  - financial data
+  - investment
+  - analytics
+  - advisor tools
+  - capital markets
   notes: Data + analytics + advisor tools — strong domain match
   sub_industry: Financial Data
   careers_url: https://careers.morningstar.com
-  status: active
+  status: broken
+  heal_failure_streak: 1
+  heal_last_failure_detail: Discovery budget exhausted
+  manual_only_suggested: false
+  cooldown_until: '2026-04-10T18:45:58.211323+00:00'
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:45:58.214323'
 - name: Plaid
   tier: 1
   priority: high
@@ -253,15 +341,20 @@ companies:
   adapter_key: plaid
   domain: jobs.lever.co
   industry:
-    - financial data
-    - api
-    - integration
-    - fintech
-    - brokerage
+  - financial data
+  - api
+  - integration
+  - fintech
+  - brokerage
   notes: Financial data connectivity + API-first — integration depth maps directly
   sub_industry: FinTech Infrastructure / Data APIs
   careers_url: https://jobs.lever.co/plaid
   status: active
+  active: true
+  heal_failure_streak: 0
+  manual_only_suggested: false
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:44:22.862647'
 - name: Ridgeline
   tier: 2
   priority: medium
@@ -269,14 +362,19 @@ companies:
   adapter_key: ridgeline
   domain: boards.greenhouse.io
   industry:
-    - investment management
-    - portfolio management
-    - financial data
-    - platform
+  - investment management
+  - portfolio management
+  - financial data
+  - platform
   notes: Investment management platform — monitor for right roles
   sub_industry: WealthTech / Cloud
   careers_url: https://job-boards.greenhouse.io/ridgeline
   status: active
+  active: true
+  heal_failure_streak: 0
+  manual_only_suggested: false
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:44:17.478421'
 - name: Snowflake
   tier: 3
   priority: low
@@ -284,11 +382,16 @@ companies:
   adapter_key: ''
   domain: careers.snowflake.com
   industry:
-    - data platform
-    - cloud
-    - financial services
-    - data warehouse
+  - data platform
+  - cloud
+  - financial services
+  - data warehouse
   notes: Target once AWS + Snowflake training complete — financial services PM angle
   sub_industry: Data Platform
   careers_url: https://careers.snowflake.com/us/en/
   status: active
+  active: true
+  heal_failure_streak: 0
+  manual_only_suggested: false
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:44:17.255445'

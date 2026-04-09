@@ -29,6 +29,7 @@ dependencies = [
     "APScheduler>=3.10",
     "fastapi",
     "uvicorn",
+    "feedparser",
 ]
 
 [project.scripts]

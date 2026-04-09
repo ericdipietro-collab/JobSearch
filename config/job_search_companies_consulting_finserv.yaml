@@ -1,0 +1,612 @@
+companies:
+- name: Accenture
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: www.accenture.com
+  industry:
+  - consulting|financial services|technology
+  notes: Global consulting leader with major finserv transformation practice.
+  sub_industry: FinServ Consulting
+  careers_url: https://www.accenture.com/us-en/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:11:25.770310'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:11:25.765311+00:00'
+- name: Deloitte
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: www2.deloitte.com
+  industry:
+  - consulting|financial services|technology
+  notes: Top consulting firm for banking, wealth, and insurance transformation.
+  sub_industry: FinServ Consulting
+  careers_url: https://www2.deloitte.com/us/en/careers.html
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:09:43.508891'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: EY
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: careers.ey.com
+  industry:
+  - consulting|wealth management|transformation
+  notes: Strong fit for wealth/asset-management transformation and architecture roles.
+  sub_industry: FinServ Consulting
+  careers_url: https://careers.ey.com/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:11:26.140882'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:11:26.133377+00:00'
+- name: PwC
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: www.pwc.com
+  industry:
+  - consulting|financial services|strategy
+  notes: Major financial services consulting and transformation practice.
+  sub_industry: FinServ Consulting
+  careers_url: https://www.pwc.com/us/en/careers.html
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:09:42.723829'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: KPMG
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: kpmg.com
+  industry:
+  - consulting|financial services|risk
+  notes: Large finserv advisory and transformation practice.
+  sub_industry: FinServ Consulting
+  careers_url: https://kpmg.com/us/en/careers.html
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:11:26.687701'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:11:26.682699+00:00'
+- name: Capco
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: www.capco.com
+  industry:
+  - financial services consulting|technology
+  notes: Pure-play financial services consulting brand.
+  sub_industry: FinServ Consulting
+  careers_url: https://www.capco.com/Careers
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:09:43.193918'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Alpha FMC
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: alphafmc.com
+  industry:
+  - asset management consulting|wealth|fintech
+  notes: Specialist wealth and asset management consulting firm.
+  sub_industry: Wealth / Asset Mgmt Consulting
+  careers_url: https://alphafmc.com/careers/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:09:43.131407'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Synechron
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: www.synechron.com
+  industry:
+  - fintech consulting|digital engineering
+  notes: Finserv-focused consultancy with strong platform modernization work.
+  sub_industry: FinTech Consulting
+  careers_url: https://www.synechron.com/en-us/careers
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:09:43.043893'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Publicis Sapient
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: careers.publicissapient.com
+  industry:
+  - digital transformation|financial services
+  notes: Strong digital transformation practice across banking/payments/wealth.
+  sub_industry: Digital / FinServ Consulting
+  careers_url: https://careers.publicissapient.com/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:11:24.788634'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:11:24.781635+00:00'
+- name: Slalom
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.slalom.com
+  industry:
+  - consulting|transformation|technology
+  notes: Strong transformation employer with finserv client work.
+  sub_industry: Technology Consulting
+  careers_url: https://www.slalom.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:11:24.884149'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:11:24.876149+00:00'
+- name: West Monroe
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.westmonroe.com
+  industry:
+  - consulting|financial services|technology
+  notes: Well-known mid-market consulting firm with financial services practice.
+  sub_industry: FinServ Consulting
+  careers_url: https://www.westmonroe.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:11:25.765311'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:11:25.758314+00:00'
+- name: Credera
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.credera.com
+  industry:
+  - consulting|data|technology
+  notes: Strong tech/data consulting shop with financial services exposure.
+  sub_industry: Technology Consulting
+  careers_url: https://www.credera.com/en-us/careers
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:09:44.368824'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Guidehouse
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: guidehouse.com
+  industry:
+  - consulting|risk|financial services
+  notes: Large consulting firm with financial services and regulatory work.
+  sub_industry: Risk / FinServ Consulting
+  careers_url: https://guidehouse.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:11:26.338139'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:11:26.333139+00:00'
+- name: Cognizant
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: careers.cognizant.com
+  industry:
+  - IT services|consulting|financial services
+  notes: Large consulting/services employer with substantial banking and insurance
+    work.
+  sub_industry: FinServ Technology Consulting
+  careers_url: https://careers.cognizant.com/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:11:26.710698'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:11:26.704699+00:00'
+- name: Infosys Consulting
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.infosys.com
+  industry:
+  - consulting|financial services|technology
+  notes: Large-scale consulting partner for financial services modernization.
+  sub_industry: FinServ Technology Consulting
+  careers_url: https://www.infosys.com/careers.html
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:11:26.666698'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:11:26.658699+00:00'
+- name: TCS
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.tcs.com
+  industry:
+  - IT services|consulting|banking
+  notes: Major global services player in banking/wealth/insurance.
+  sub_industry: FinServ Technology Consulting
+  careers_url: https://www.tcs.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:11:26.945725'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:11:26.938726+00:00'
+- name: Wipro
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: careers.wipro.com
+  industry:
+  - IT services|consulting|financial services
+  notes: Large services/consulting player with finserv footprint.
+  sub_industry: FinServ Technology Consulting
+  careers_url: https://careers.wipro.com/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:13:07.242038'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:13:07.235037+00:00'
+- name: IBM Consulting
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.ibm.com
+  industry:
+  - consulting|hybrid cloud|financial services
+  notes: Large enterprise transformation and systems integration practice.
+  sub_industry: Enterprise / FinServ Consulting
+  careers_url: https://www.ibm.com/careers/us-en/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:11:26.527675'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Capgemini
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.capgemini.com
+  industry:
+  - consulting|financial services|technology
+  notes: Large consulting and SI firm with strong finserv practice.
+  sub_industry: FinServ Technology Consulting
+  careers_url: https://www.capgemini.com/careers/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:11:26.425166'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: NTT DATA
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: careers.nttdata.com
+  industry:
+  - consulting|financial services|technology
+  notes: Large transformation/SI player with banking and insurance clients.
+  sub_industry: FinServ Technology Consulting
+  careers_url: https://careers.nttdata.com/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:13:08.329049'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:13:08.323048+00:00'
+- name: Protiviti
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.protiviti.com
+  industry:
+  - advisory|risk|financial services
+  notes: Strong advisory/risk/transformation practice across financial services.
+  sub_industry: Risk / Advisory
+  careers_url: https://www.protiviti.com/us-en/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:13:10.562757'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:13:10.556758+00:00'
+- name: RSM
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: rsmus.com
+  industry:
+  - consulting|wealth|financial services
+  notes: Strong middle-market advisory presence.
+  sub_industry: Advisory / FinServ
+  careers_url: https://rsmus.com/careers.html
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:11:27.429288'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: BDO
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.bdo.com
+  industry:
+  - advisory|financial services|risk
+  notes: Major advisory firm with financial services capabilities.
+  sub_industry: Advisory / FinServ
+  careers_url: https://www.bdo.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:13:09.456993'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:13:09.450994+00:00'
+- name: Grant Thornton
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.grantthornton.com
+  industry:
+  - advisory|financial services|transformation
+  notes: Advisory firm with financial services transformation exposure.
+  sub_industry: Advisory / FinServ
+  careers_url: https://www.grantthornton.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:13:09.594398'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:13:09.588398+00:00'
+- name: Huron
+  tier: 3
+  priority: low
+  adapter: generic
+  domain: www.huronconsultinggroup.com
+  industry:
+  - consulting|operations|transformation
+  notes: Broader consulting firm with regulated-industry transformation work.
+  sub_industry: Consulting / Transformation
+  careers_url: https://www.huronconsultinggroup.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:13:09.734939'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:13:09.728912+00:00'
+- name: BearingPoint
+  tier: 3
+  priority: low
+  adapter: generic
+  domain: www.bearingpoint.com
+  industry:
+  - consulting|financial services
+  notes: Specialist transformation consulting brand with finserv pedigree.
+  sub_industry: FinServ Consulting
+  careers_url: https://www.bearingpoint.com/en/careers/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:11:27.877566'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Booz Allen Hamilton
+  tier: 3
+  priority: low
+  adapter: generic
+  domain: www.boozallen.com
+  industry:
+  - consulting|technology|risk
+  notes: Mostly public-sector, but strong systems/architecture consulting brand.
+  sub_industry: Technology Consulting
+  careers_url: https://www.boozallen.com/careers.html
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:13:10.911331'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:13:10.905331+00:00'
+- name: SEI
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: careers.seic.com
+  industry:
+  - fintech|wealthtech|consulting
+  notes: Combination of product, managed services, and consulting for wealth/asset
+    management.
+  sub_industry: WealthTech / Consulting
+  careers_url: https://careers.seic.com/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:13:10.852329'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:13:10.845329+00:00'
+- name: FIS Global Consulting
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: careers.fisglobal.com
+  industry:
+  - fintech|payments|banking technology
+  notes: Major banking/payments technology provider with advisory/consulting roles.
+  sub_industry: Banking Technology Consulting
+  careers_url: https://careers.fisglobal.com/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:13:10.897333'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:13:10.890330+00:00'
+- name: Fiserv
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: www.careers.fiserv.com
+  industry:
+  - fintech|banking|payments
+  notes: Major banking/payments vendor with consulting/solutions roles.
+  sub_industry: Banking Technology Consulting
+  careers_url: https://www.careers.fiserv.com/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:13:10.957845'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:13:10.950844+00:00'
+- name: SS&C Technologies
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: careers.ssctech.com
+  industry:
+  - fintech|wealthtech|asset servicing
+  notes: Large financial software/services employer with consulting-style solution
+    roles.
+  sub_industry: FinTech / WealthTech Services
+  careers_url: https://careers.ssctech.com/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:14:49.503674'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:14:49.495672+00:00'
+- name: Broadridge
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: www.broadridge.com
+  industry:
+  - capital markets|wealthtech|services
+  notes: Strong fit for capital-markets/wealth transformation programs.
+  sub_industry: Capital Markets Consulting / Solutions
+  careers_url: https://www.broadridge.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:14:50.729640'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:14:50.721637+00:00'
+- name: FNZ
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: www.fnz.com
+  industry:
+  - wealth platform|consulting|transformation
+  notes: Wealth-platform operator with implementation and transformation roles.
+  sub_industry: Wealth Platform Consulting
+  careers_url: https://www.fnz.com/careers/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:13:10.690272'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Temenos
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.temenos.com
+  industry:
+  - banking software|transformation|core modernization
+  notes: Banking software leader with consulting and transformation roles.
+  sub_industry: Banking Transformation
+  careers_url: https://www.temenos.com/about-us/careers/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:14:53.063274'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:14:53.057273+00:00'
+- name: Mambu
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: mambu.com
+  industry:
+  - core banking|SaaS|consulting
+  notes: Cloud core-banking platform with implementation/solution roles.
+  sub_industry: Banking Platform Consulting
+  careers_url: https://mambu.com/en/company/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:14:53.731553'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:14:53.723551+00:00'

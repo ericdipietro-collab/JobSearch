@@ -1,24 +1,33 @@
 companies:
-  - name: Motion Recruitment Contract
-    active: true
-    priority: low
-    tier: 4
-    adapter: motionrecruitment
-    contractor_source: true
-    careers_url: https://motionrecruitment.com/tech-jobs/contract
-    domain: motionrecruitment.com
-    industry: staffing | contract
-    status: active
-    notes: Contractor source with dedicated Motion Recruitment detail-link extraction.
-
-  - name: Dice Contract
-    active: true
-    priority: low
-    tier: 4
-    adapter: dice
-    contractor_source: true
-    careers_url: https://www.dice.com/jobs/jtype-Contracts--jobs
-    domain: dice.com
-    industry: job board | contract
-    status: active
-    notes: Contractor source with dedicated Dice adapter for job-detail extraction.
+- name: Motion Recruitment Contract
+  active: true
+  priority: low
+  tier: 4
+  adapter: motionrecruitment
+  contractor_source: true
+  careers_url: https://motionrecruitment.com/tech-jobs/contract
+  domain: motionrecruitment.com
+  industry: staffing | contract
+  status: active
+  notes: Contractor source with dedicated Motion Recruitment detail-link extraction.
+  heal_failure_streak: 0
+  manual_only_suggested: false
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:14:55.007970'
+- name: Dice Contract
+  active: true
+  priority: low
+  tier: 4
+  adapter: dice
+  contractor_source: true
+  careers_url: https://www.dice.com/jobs/jtype-Contracts--jobs
+  domain: dice.com
+  industry: job board | contract
+  status: broken
+  notes: Contractor source with dedicated Dice adapter for job-detail extraction.
+  heal_failure_streak: 1
+  heal_last_failure_detail: Discovery budget exhausted
+  manual_only_suggested: false
+  cooldown_until: '2026-04-10T18:16:37.572415+00:00'
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:16:37.576416'

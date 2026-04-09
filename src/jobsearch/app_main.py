@@ -1,6 +1,7 @@
 """src/jobsearch/app_main.py — Full Feature Dashboard with Structural Reinforcements."""
 
 from __future__ import annotations
+import logging
 import os, re, json, subprocess, sys, io, zipfile
 import urllib.parse
 from datetime import datetime, timezone
@@ -584,8 +585,13 @@ def _parse_manual_review_lines(lines):
 
 
 def _load_registry_companies() -> list[dict]:
-    data = load_yaml(settings.companies_yaml)
-    return list(data.get("companies", []) or [])
+    all_companies = []
+    for path in settings.get_company_registries():
+        if not path.exists():
+            continue
+        data = load_yaml(path)
+        all_companies.extend(list(data.get("companies", []) or []))
+    return all_companies
 
 
 def _registry_company_lookup() -> dict[str, dict]:
@@ -667,16 +673,25 @@ def _build_manual_review_items() -> list[dict]:
         adapter = str(company.get("adapter", "") or "")
         status = str(company.get("status", "") or "")
         manual_only = bool(company.get("manual_only"))
+        manual_suggested = bool(company.get("manual_only_suggested"))
         notes = str(company.get("notes", "") or "").strip()
-        if manual_only or status == "manual_only":
+        if manual_only or status == "manual_only" or status == "broken" or manual_suggested:
+            note = notes
+            if not note:
+                if status == "broken":
+                    note = "Marked broken in registry (healer failed)."
+                elif manual_suggested:
+                    note = "Manual review suggested in registry."
+                else:
+                    note = "Marked manual review / manual-only in registry."
             _upsert(
                 {
                     "company": company_name,
                     "adapter": adapter,
                     "url": url,
-                    "note": notes or "Marked manual review / manual-only in registry.",
+                    "note": note,
                     "queue_source": "manual_only",
-                    "status": "manual_only",
+                    "status": status if status else "manual_only",
                 }
             )
 
@@ -1015,7 +1030,10 @@ def _companies_file_label(path: Path) -> str:
         return f"{name} (jobspy experimental list)"
     if name == "job_search_companies_contract_test.yaml":
         return f"{name} (legacy test list)"
-    return name
+    
+    # Prettify dynamic registry names: job_search_companies_fintech.yaml -> fintech list
+    label = name.replace("job_search_companies_", "").replace(".yaml", "").replace("_", " ")
+    return f"{name} ({label} list)"
 
 
 def _extract_docx_text(file_bytes: bytes) -> str:
@@ -1057,6 +1075,18 @@ def _extract_resume_text(uploaded_file) -> tuple[str, str]:
     raise ValueError(f"Unsupported resume format: {suffix or 'unknown'}")
 
 def main():
+    # Initialize logging for the dashboard session
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+        datefmt="%H:%M:%S",
+        handlers=[logging.StreamHandler(sys.stdout)],
+    )
+    # Reduce noise from third-party libraries
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+    logging.getLogger("selenium").setLevel(logging.WARNING)
+    logging.getLogger("playwright").setLevel(logging.WARNING)
+
     start_api_server()
     st.set_page_config(page_title="Job Search", page_icon="💼", layout="wide")
     set_custom_style()
@@ -2385,20 +2415,10 @@ def main():
             r_contract = st.checkbox("Include Contractor Sources", value=False)
             r_aggregator = st.checkbox("Include Aggregator Sources", value=False)
             r_jobspy = st.checkbox("Include JobSpy (Experimental)", value=False)
+            r_all_companies = st.checkbox("Search ALL Company Lists", value=False, help="Search across every company registry file in your config folder.")
             r_workers = st.number_input("Parallel Workers", min_value=1, max_value=20, value=8, step=1)
             pref_options = [path for path in [settings.prefs_yaml, settings.config_dir / "job_search_preferences_test.yaml"] if path.exists()]
-            comp_options = [
-                path
-                for path in [
-                    settings.companies_yaml,
-                    settings.config_dir / "job_search_companies_test.yaml",
-                    settings.contract_companies_yaml,
-                    settings.aggregator_companies_yaml,
-                    settings.jobspy_companies_yaml,
-                    settings.config_dir / "job_search_companies_contract_test.yaml",
-                ]
-                if path.exists()
-            ]
+            comp_options = settings.get_company_registries()
             default_companies = settings.companies_yaml
             if r_test and (settings.config_dir / "job_search_companies_test.yaml") in comp_options:
                 default_companies = settings.config_dir / "job_search_companies_test.yaml"
@@ -2492,8 +2512,9 @@ def main():
                 if r_contract: cmd.append("--contract-sources")
                 if r_aggregator: cmd.append("--aggregator-sources")
                 if r_jobspy: cmd.append("--jobspy-sources")
+                if r_all_companies: cmd.append("--all-companies")
                 if Path(r_prefs) != settings.prefs_yaml: cmd.extend(["--prefs", str(r_prefs)])
-                if Path(r_companies) != settings.companies_yaml: cmd.extend(["--companies", str(r_companies)])
+                if not r_all_companies and Path(r_companies) != settings.companies_yaml: cmd.extend(["--companies", str(r_companies)])
 
                 # Load jobspy concurrency setting from preferences if JobSpy is included
                 env = {**os.environ, "PYTHONUNBUFFERED": "1", "PYTHONPATH": "src;."}

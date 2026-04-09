@@ -1,0 +1,983 @@
+companies:
+- name: Elevations Credit Union
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: careers.elevationscu.com
+  industry:
+  - credit union
+  - banking
+  - financial services
+  notes: Top-ranked Colorado employer with strong local reputation and a substantial
+    Colorado footprint.
+  sub_industry: Credit Union
+  careers_url: https://careers.elevationscu.com/
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:06:09.347871+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:06:14.175471'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Pinnacol Assurance
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: www.pinnacol.com
+  industry:
+  - insurance
+  - workers compensation
+  - enterprise operations
+  notes: Repeatedly recognized as a top Colorado workplace; large Denver-based employer.
+  sub_industry: Insurance
+  careers_url: https://www.pinnacol.com/careers
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:06:09.842956+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:06:14.082958'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: FirstBank
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: www.efirstbank.com
+  industry:
+  - banking
+  - financial services
+  - commercial banking
+  notes: Colorado-rooted bank with durable local reputation and broad business footprint.
+  sub_industry: Banking
+  careers_url: https://www.efirstbank.com/about/careers
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:04:30.572181+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:06:13.977636'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Ibotta
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: home.ibotta.com
+  industry:
+  - consumer fintech
+  - retail tech
+  - data platform
+  notes: Major Denver tech employer with strong product organization and local brand
+    recognition.
+  sub_industry: Consumer FinTech
+  careers_url: https://home.ibotta.com/careers/
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:02:45.461025+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:06:13.999637'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Pax8
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: www.pax8.com
+  industry:
+  - cloud marketplace
+  - channel software
+  - enterprise tech
+  notes: Well-known Colorado tech employer with strong growth and partner ecosystem
+    exposure.
+  sub_industry: Cloud Distribution
+  careers_url: https://www.pax8.com/en-us/careers/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:06:13.996637'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Red Canary
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: redcanary.com
+  industry:
+  - cybersecurity
+  - software
+  - security operations
+  notes: Highly regarded Denver cybersecurity company with strong technical employer
+    reputation.
+  sub_industry: Cybersecurity
+  careers_url: https://redcanary.com/company/careers/
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:02:46.007627+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:06:14.143957'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Guild
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: guild.com
+  industry:
+  - hr tech
+  - education benefits
+  - enterprise software
+  notes: High-profile Denver company with a strong mission-driven employer brand.
+  sub_industry: HR Tech
+  careers_url: https://guild.com/careers/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:06:14.021637'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Quantum Metric
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: www.quantummetric.com
+  industry:
+  - product analytics
+  - software
+  - digital experience
+  notes: Colorado product analytics company with strong reputation and recurring local
+    recognition.
+  sub_industry: Product Analytics
+  careers_url: https://www.quantummetric.com/company/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:07:49.305770'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:07:49.299772+00:00'
+- name: JumpCloud
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: jumpcloud.com
+  industry:
+  - identity
+  - device management
+  - security
+  notes: Boulder-based SaaS company with strong technical depth and employer visibility.
+  sub_industry: Identity / Security
+  careers_url: https://jumpcloud.com/about/careers
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:02:45.003063+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:06:13.995637'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Moov
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: moov.io
+  industry:
+  - payments
+  - fintech
+  - apis
+  notes: Colorado fintech with modern payments/API stack and strong relevance for
+    platform roles.
+  sub_industry: Payments
+  careers_url: https://moov.io/careers/
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:04:29.685620+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:06:14.112957'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Vertafore
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: www.vertafore.com
+  industry:
+  - insurtech
+  - enterprise software
+  - platform
+  notes: Longstanding Denver software company with strong local presence and enterprise
+    product work.
+  sub_industry: InsureTech
+  careers_url: https://www.vertafore.com/about/careers
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:02:44.068169+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:06:14.000636'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Ursa Major
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.ursamajor.com
+  industry:
+  - aerospace
+  - manufacturing tech
+  - software
+  notes: Fast-growing Colorado aerospace company with strong local employer reputation.
+  sub_industry: Aerospace
+  careers_url: https://www.ursamajor.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:07:57.543493'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:07:57.530476+00:00'
+- name: Boom Supersonic
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: boomsupersonic.com
+  industry:
+  - aerospace
+  - advanced manufacturing
+  - software
+  notes: High-visibility Colorado aerospace company with ambitious product and engineering
+    work.
+  sub_industry: Aerospace
+  careers_url: https://boomsupersonic.com/careers
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:02:45.993118+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:06:14.010635'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Sovrn
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.sovrn.com
+  industry:
+  - adtech
+  - data
+  - software
+  notes: Established Boulder adtech company with durable local tech presence.
+  sub_industry: AdTech
+  careers_url: https://www.sovrn.com/careers/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:07:48.377740'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:07:48.371740+00:00'
+- name: Ping Identity
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.pingidentity.com
+  industry:
+  - identity
+  - security
+  - enterprise software
+  notes: Colorado-founded security company with deep enterprise identity expertise.
+  sub_industry: Identity / Security
+  careers_url: https://www.pingidentity.com/en/company/careers.html
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:02:46.001627+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:06:14.037638'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Apex Fintech Solutions
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: www.apexfintechsolutions.com
+  industry:
+  - fintech
+  - brokerage infrastructure
+  - clearing
+  notes: Strong Colorado fintech employer with clear relevance for platform and integration
+    roles.
+  sub_industry: Brokerage Infrastructure
+  careers_url: https://www.apexfintechsolutions.com/careers/
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:04:28.914334+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:06:14.023639'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Alteryx
+  tier: 2
+  priority: medium
+  adapter: workday
+  adapter_key: alteryx.wd108.myworkdayjobs.com
+  domain: alteryx.wd108.myworkdayjobs.com
+  industry:
+  - analytics
+  - data
+  - software
+  notes: Major analytics company with Colorado presence and established enterprise
+    software reputation.
+  sub_industry: Analytics
+  careers_url: https://alteryx.wd108.myworkdayjobs.com
+  active: true
+  status: active
+  discovery_method: Skipped due to workday scrape cooldown until 2026-04-10T04:55:12.755536+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:06:14.025637'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Workiva
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.workiva.com
+  industry:
+  - financial reporting
+  - governance
+  - enterprise software
+  notes: Strong enterprise SaaS employer with Colorado hiring presence.
+  sub_industry: Financial SaaS
+  careers_url: https://www.workiva.com/careers
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:01:01.272601+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:06:14.026638'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: SendGrid (Twilio)
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.twilio.com
+  industry:
+  - communications api
+  - software
+  - platform
+  notes: Denver-rooted tech brand inside Twilio; still a strong Colorado-name employer.
+  sub_industry: Communications API
+  careers_url: https://www.twilio.com/company/jobs
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:06:15.063053'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Zayo
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.zayo.com
+  industry:
+  - network infrastructure
+  - telecom
+  - enterprise tech
+  notes: Large Colorado-based infrastructure company with meaningful enterprise technology
+    scope.
+  sub_industry: Network Infrastructure
+  careers_url: https://www.zayo.com/company/careers/
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:06:13.127037+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:06:14.038636'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Trimble
+  tier: 2
+  priority: medium
+  adapter: workday
+  adapter_key: trimble.wd1.myworkdayjobs.com
+  domain: trimble.wd1.myworkdayjobs.com
+  industry:
+  - industrial tech
+  - software
+  - geospatial
+  notes: Large Colorado tech employer with broad product and platform opportunities.
+  sub_industry: Industrial Software
+  careers_url: https://trimble.wd1.myworkdayjobs.com/TrimbleCareers
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:06:14.795104'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Maxar
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.maxar.com
+  industry:
+  - space tech
+  - imagery
+  - data
+  notes: Major Westminster-based space/data company with sophisticated product and
+    platform work.
+  sub_industry: Space Data
+  careers_url: https://www.maxar.com/careers
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:02:43.924289+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:06:14.041639'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Sierra Space
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.sierraspace.com
+  industry:
+  - space
+  - aerospace
+  - advanced systems
+  notes: Prominent Colorado aerospace employer with strong long-term strategic relevance.
+  sub_industry: Aerospace
+  careers_url: https://www.sierraspace.com/careers/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:06:14.043635'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Arrow Electronics
+  tier: 2
+  priority: medium
+  adapter: workday
+  adapter_key: careers.arrow.com
+  domain: careers.arrow.com
+  industry:
+  - electronics
+  - distribution
+  - enterprise technology
+  notes: Fortune-scale Colorado employer with extensive technical and product-adjacent
+    roles.
+  sub_industry: Electronics / Distribution
+  careers_url: https://careers.arrow.com/us/en
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:07:50.080626'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:07:50.072627+00:00'
+- name: Gusto
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: gusto.com
+  industry:
+  - payroll
+  - hr tech
+  - fintech
+  notes: Frequently highlighted by Built In Colorado and a strong modern product employer.
+  sub_industry: HR / Payroll
+  careers_url: https://gusto.com/about/careers
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:01:01.295135+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:06:14.085954'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Klaviyo
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.klaviyo.com
+  industry:
+  - marketing tech
+  - data platform
+  - software
+  notes: Strong employer brand and visible Colorado hiring footprint in Built In Colorado.
+  sub_industry: Marketing Tech
+  careers_url: https://www.klaviyo.com/careers
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:00:59.612645+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:06:14.087955'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Datadog
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.datadoghq.com
+  industry:
+  - observability
+  - cloud
+  - security
+  notes: Top-tier software employer with Colorado hiring visibility and strong engineering
+    reputation.
+  sub_industry: Observability
+  careers_url: https://careers.datadoghq.com/
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:01:00.639557+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:06:14.089955'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: ServiceNow
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: careers.servicenow.com
+  industry:
+  - enterprise software
+  - workflow
+  - platform
+  notes: Strong overall employer brand with current Colorado workplace-reputation
+    coverage.
+  sub_industry: Enterprise Software
+  careers_url: https://careers.servicenow.com/
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:01:00.254133+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:06:14.092955'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: TransUnion
+  tier: 2
+  priority: medium
+  adapter: workday
+  adapter_key: transunion.wd5.myworkdayjobs.com
+  domain: transunion.wd5.myworkdayjobs.com
+  industry:
+  - data
+  - credit
+  - fintech
+  notes: Built In Colorado highlighted for work-life balance and technical hiring
+    presence.
+  sub_industry: Data / Credit
+  careers_url: https://transunion.wd5.myworkdayjobs.com/TransUnion
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:06:14.624230'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Cisco
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: jobs.cisco.com
+  industry:
+  - networking
+  - security
+  - enterprise tech
+  notes: Globally strong workplace reputation with Colorado hiring relevance.
+  sub_industry: Networking
+  careers_url: https://jobs.cisco.com/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:06:15.840592'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Salesforce
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: careers.salesforce.com
+  industry:
+  - crm
+  - cloud
+  - enterprise software
+  notes: Strong national employer brand with Colorado hiring and ecosystem presence.
+  sub_industry: Enterprise Software
+  careers_url: https://careers.salesforce.com/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:07:57.566493'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:07:57.545492+00:00'
+- name: NVIDIA
+  tier: 2
+  priority: medium
+  adapter: workday
+  adapter_key: nvidia.wd5.myworkdayjobs.com
+  domain: nvidia.wd5.myworkdayjobs.com
+  industry:
+  - ai
+  - hardware
+  - software
+  notes: Elite employer brand with Colorado opportunity set for high-end technical
+    roles.
+  sub_industry: AI / Hardware
+  careers_url: https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:06:14.678591'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: CrowdStrike
+  tier: 2
+  priority: medium
+  adapter: workday
+  adapter_key: crowdstrike.wd5.myworkdayjobs.com/Crowdstrike
+  domain: crowdstrike.wd5.myworkdayjobs.com
+  industry:
+  - cybersecurity
+  - cloud
+  - software
+  notes: Strong workplace reputation and Colorado hiring visibility.
+  sub_industry: Cybersecurity
+  careers_url: https://crowdstrike.wd5.myworkdayjobs.com/Crowdstrike
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:06:15.793592'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Block
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: block.xyz
+  industry:
+  - payments
+  - fintech
+  - software
+  notes: Strong employer brand and Colorado visibility in work-life-balance coverage.
+  sub_industry: Payments
+  careers_url: https://block.xyz/careers
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:01:00.263643+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:06:14.682591'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Charles Schwab
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: www.schwabjobs.com
+  industry:
+  - brokerage
+  - wealth management
+  - financial services
+  notes: Top Workplaces 2025 honoree with major Colorado operations.
+  sub_industry: Brokerage
+  careers_url: https://www.schwabjobs.com/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:07:57.525478'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:07:57.518478+00:00'
+- name: Progressive Insurance
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.progressive.com
+  industry:
+  - insurance
+  - claims
+  - financial services
+  notes: Top-ranked Colorado Top Workplaces 2025 employer with a significant state
+    presence.
+  sub_industry: Insurance
+  careers_url: https://www.progressive.com/careers/
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:06:12.355181+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:06:14.798106'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: LINX
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: linxus.com
+  industry:
+  - technology services
+  - systems integration
+  - infrastructure
+  notes: Top Workplaces 2025 honoree and one of the larger Colorado technology integrators.
+  sub_industry: Technology Services
+  careers_url: https://linxus.com/careers/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:07:56.732010'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:07:56.724961+00:00'
+- name: Xentity
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: xentity.com
+  industry:
+  - consulting
+  - data
+  - government tech
+  notes: Colorado Top Workplaces 2025 honoree with a clearly data-oriented consulting
+    focus.
+  sub_industry: Data Consulting
+  careers_url: https://xentity.com/careers/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:07:58.594625'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:07:58.587626+00:00'
+- name: CoralTree Hospitality
+  tier: 3
+  priority: medium
+  adapter: generic
+  domain: www.coraltreehospitality.com
+  industry:
+  - hospitality
+  - operations
+  - real estate
+  notes: Top Workplaces 2025 honoree and a well-regarded Colorado-headquartered hospitality
+    company.
+  sub_industry: Hospitality
+  careers_url: https://www.coraltreehospitality.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:07:59.030699'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:07:59.023699+00:00'
+- name: Homewatch CareGivers
+  tier: 3
+  priority: medium
+  adapter: generic
+  domain: homewatchcareers.com
+  industry:
+  - healthcare
+  - franchise
+  - services
+  notes: No. 1 in the 50-149 Colorado Top Workplaces 2025 category.
+  sub_industry: Healthcare Services
+  careers_url: https://homewatchcareers.com/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:07:59.057730'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:07:59.051729+00:00'
+- name: Summit Wealth Group
+  tier: 3
+  priority: medium
+  adapter: generic
+  domain: www.summitwealthgroup.com
+  industry:
+  - wealth management
+  - financial services
+  notes: Highly ranked Colorado Top Workplaces 2025 employer in the mid-size cohort.
+  sub_industry: Wealth Management
+  careers_url: https://www.summitwealthgroup.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:09:31.019391'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:09:31.012391+00:00'
+- name: Bloom Healthcare
+  tier: 3
+  priority: medium
+  adapter: generic
+  domain: bloomhealthcare.com
+  industry:
+  - healthcare
+  - home care
+  - operations
+  notes: Top Workplaces 2025 honoree with meaningful Colorado presence.
+  sub_industry: Healthcare
+  careers_url: https://bloomhealthcare.com/careers/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:09:32.415839'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:09:32.407838+00:00'
+- name: Spectrum
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: jobs.spectrum.com
+  industry:
+  - telecom
+  - software
+  - infrastructure
+  notes: Large employer consistently visible in Built In Colorado company listings.
+  sub_industry: Telecom / Software
+  careers_url: https://jobs.spectrum.com/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:07:50.952974'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Boeing
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: jobs.boeing.com
+  industry:
+  - aerospace
+  - defense
+  - software
+  notes: Large Colorado employer with meaningful engineering and platform work.
+  sub_industry: Aerospace / Defense
+  careers_url: https://jobs.boeing.com/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:07:50.955974'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Skillsoft
+  tier: 3
+  priority: medium
+  adapter: generic
+  domain: www.skillsoft.com
+  industry:
+  - edtech
+  - software
+  - enterprise learning
+  notes: Visible in Built In Colorado and a reputable enterprise software employer.
+  sub_industry: EdTech
+  careers_url: https://www.skillsoft.com/about/careers
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:04:27.828913+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:07:50.958975'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: SRAM
+  tier: 3
+  priority: medium
+  adapter: generic
+  domain: www.sram.com
+  industry:
+  - hardware
+  - sports tech
+  - manufacturing
+  notes: Highlighted by Built In Colorado for stability and growth.
+  sub_industry: Sports Technology
+  careers_url: https://www.sram.com/en/company/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:09:34.246490'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:09:34.238490+00:00'
+- name: Uplight
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: uplight.com
+  industry:
+  - climate tech
+  - software
+  - energy
+  notes: Colorado climate-tech employer with meaningful product and platform scope.
+  sub_industry: Climate Tech
+  careers_url: https://uplight.com/company/careers/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:09:41.581181'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:09:41.573178+00:00'
+- name: FullContact
+  tier: 3
+  priority: medium
+  adapter: generic
+  domain: www.fullcontact.com
+  industry:
+  - identity data
+  - apis
+  - software
+  notes: Colorado-founded data company with durable local reputation.
+  sub_industry: Data APIs
+  careers_url: https://www.fullcontact.com/company/careers/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:09:41.036596'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:09:41.028595+00:00'
+- name: Invoca
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.invoca.com
+  industry:
+  - martech
+  - analytics
+  - software
+  notes: Strong software employer with meaningful Denver presence and product depth.
+  sub_industry: Marketing Analytics
+  careers_url: https://www.invoca.com/company/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:09:41.608686'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:09:41.603685+00:00'
+- name: DigitalOcean
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.digitalocean.com
+  industry:
+  - cloud
+  - developer tools
+  - software
+  notes: Strong technical employer with Colorado hiring visibility and credible engineering
+    brand.
+  sub_industry: Cloud
+  careers_url: https://www.digitalocean.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:09:39.983062'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:09:39.976062+00:00'

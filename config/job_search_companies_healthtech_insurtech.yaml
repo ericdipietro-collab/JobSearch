@@ -1,0 +1,844 @@
+companies:
+- name: UnitedHealth Group
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: careers.unitedhealthgroup.com
+  industry:
+  - healthcare|insurance|platforms
+  notes: Large-scale health and insurance platform with deep product and data roles.
+  sub_industry: Healthcare / Insurance Platform
+  careers_url: https://careers.unitedhealthgroup.com/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:26:58.901551'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:26:58.894041+00:00'
+- name: Elevance Health
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: careers.elevancehealth.com
+  industry:
+  - health insurance|care platforms|analytics
+  notes: Large-scale payer with strong platform, data, and product organizations.
+  sub_industry: Health Insurance
+  careers_url: https://careers.elevancehealth.com/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:26:58.961493'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:26:58.955980+00:00'
+- name: CVS Health
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: jobs.cvshealth.com
+  industry:
+  - healthcare|pharmacy|insurance|digital health
+  notes: Massive healthcare platform spanning payer, pharmacy, and digital experiences.
+  sub_industry: Healthcare Platform
+  careers_url: https://jobs.cvshealth.com/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:25:16.223096'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Oscar Health
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.hioscar.com
+  industry:
+  - insurtech|health insurance|digital health
+  notes: Tech-forward health insurer with modern product and platform teams.
+  sub_industry: InsurTech / Health Insurance
+  careers_url: https://www.hioscar.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:26:59.362811'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:26:59.355299+00:00'
+- name: Clover Health
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.cloverhealth.com
+  industry:
+  - medicare|insurtech|AI
+  notes: Tech-enabled Medicare Advantage insurer.
+  sub_industry: InsurTech / Medicare
+  careers_url: https://www.cloverhealth.com/en/about-us/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:26:59.866134'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:26:59.859135+00:00'
+- name: Devoted Health
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.devoted.com
+  industry:
+  - medicare|insurtech|care navigation
+  notes: Fast-growing Medicare-focused health company.
+  sub_industry: Health Insurance / Medicare
+  careers_url: https://www.devoted.com/careers/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:25:15.518292'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Alignment Health
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.alignmenthealth.com
+  industry:
+  - medicare|care platform|analytics
+  notes: Medicare and care-platform business with analytics focus.
+  sub_industry: Health Insurance / Medicare
+  careers_url: https://www.alignmenthealth.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:26:58.520647'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:26:58.514134+00:00'
+- name: Included Health
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: includedhealth.com
+  industry:
+  - virtual care|navigation|health tech
+  notes: Comprehensive virtual care/navigation platform.
+  sub_industry: Virtual Care
+  careers_url: https://includedhealth.com/careers/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:25:15.550115'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Omada Health
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.omadahealth.com
+  industry:
+  - digital therapeutics|chronic care|health tech
+  notes: Strong digital care/product employer with data-rich workflows.
+  sub_industry: Digital Therapeutics
+  careers_url: https://www.omadahealth.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:26:58.018675'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:26:58.011167+00:00'
+- name: Hinge Health
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.hingehealth.com
+  industry:
+  - musculoskeletal care|digital health|AI
+  notes: High-profile digital health company with strong product and data culture.
+  sub_industry: Digital Health
+  careers_url: https://www.hingehealth.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:26:58.326671'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:26:58.319666+00:00'
+- name: Spring Health
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.springhealth.com
+  industry:
+  - mental health|care platform|benefits
+  notes: Modern mental-health platform with strong enterprise/workflow product roles.
+  sub_industry: Mental Health Tech
+  careers_url: https://www.springhealth.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:26:58.527647'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:26:58.520647+00:00'
+- name: Lyra Health
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.lyrahealth.com
+  industry:
+  - mental health|benefits|care platform
+  notes: Enterprise mental health platform.
+  sub_industry: Mental Health Tech
+  careers_url: https://www.lyrahealth.com/careers/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:25:19.381258'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Talkspace
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.talkspace.com
+  industry:
+  - virtual mental health|telehealth
+  notes: Digital mental health and therapy platform.
+  sub_industry: Mental Health Tech
+  careers_url: https://www.talkspace.com/careers/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:26:59.872642'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:26:59.866134+00:00'
+- name: Teladoc Health
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: careers.teladochealth.com
+  industry:
+  - telehealth|virtual care|platform
+  notes: Large telehealth leader with scalable platform and product operations.
+  sub_industry: Telehealth
+  careers_url: https://careers.teladochealth.com/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:27:01.618042'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:27:01.611042+00:00'
+- name: Doximity
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: careers.doximity.com
+  industry:
+  - healthcare network|workflow|telehealth
+  notes: Healthcare professional network and workflow platform.
+  sub_industry: Healthcare Workflow Platform
+  careers_url: https://careers.doximity.com/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:28:40.539923'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:28:40.533664+00:00'
+- name: Veeva Systems
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: careers.veeva.com
+  industry:
+  - life sciences cloud|healthcare software
+  notes: Critical life sciences software/platform company.
+  sub_industry: Life Sciences Software
+  careers_url: https://careers.veeva.com/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:28:40.674352'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:28:40.667843+00:00'
+- name: Flatiron Health
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: flatiron.com
+  industry:
+  - oncology software|real-world data|analytics
+  notes: Healthcare data/product environment with strong analytical depth.
+  sub_industry: Healthcare Data / Oncology
+  careers_url: https://flatiron.com/careers/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:26:59.436693'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Tempus
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.tempus.com
+  industry:
+  - precision medicine|AI|data platform
+  notes: AI and data-rich precision medicine company.
+  sub_industry: Precision Medicine / AI
+  careers_url: https://www.tempus.com/careers/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:28:43.037849'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:28:43.029737+00:00'
+- name: Commure
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.commure.com
+  industry:
+  - healthcare software|clinical workflow|AI
+  notes: Healthcare workflow and infrastructure platform.
+  sub_industry: Clinical Workflow Software
+  careers_url: https://www.commure.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:28:41.261743'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:28:41.254745+00:00'
+- name: Aledade
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.aledade.com
+  industry:
+  - value-based care|analytics|care platform
+  notes: Care/analytics business with population health and workflow complexity.
+  sub_industry: Value-Based Care Platform
+  careers_url: https://www.aledade.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:28:41.916712'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:28:41.910206+00:00'
+- name: Cityblock Health
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.cityblock.com
+  industry:
+  - care delivery|medicaid|platform
+  notes: Tech-enabled care delivery platform for underserved populations.
+  sub_industry: Care Delivery Platform
+  careers_url: https://www.cityblock.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:28:42.677736'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:28:42.671216+00:00'
+- name: Maven Clinic
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.mavenclinic.com
+  industry:
+  - women's health|care platform|benefits
+  notes: High-profile digital clinic with modern product organization.
+  sub_industry: Digital Clinic
+  careers_url: https://www.mavenclinic.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:28:42.710276'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:28:42.703762+00:00'
+- name: Ro
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: ro.co
+  industry:
+  - digital health|consumer health|platform
+  notes: Consumer health platform with operational and product complexity.
+  sub_industry: Consumer Health Platform
+  careers_url: https://ro.co/careers/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:27:00.463229'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Hims & Hers
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.hims.com
+  industry:
+  - consumer health|telehealth|commerce
+  notes: Scaled consumer health and telehealth platform.
+  sub_industry: Consumer Health
+  careers_url: https://www.hims.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:28:43.097667'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:28:43.091606+00:00'
+- name: Noom
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.noom.com
+  industry:
+  - digital health|behavior change|consumer health
+  notes: Behavior-change and health coaching platform.
+  sub_industry: Consumer Digital Health
+  careers_url: https://www.noom.com/careers/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:27:00.900267'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Cedar
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: www.cedar.com
+  industry:
+  - health fintech|billing|patient payments
+  notes: Healthcare payments/billing platform; strong fit for workflow/fintech crossover.
+  sub_industry: Health FinTech
+  careers_url: https://www.cedar.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:28:43.393499'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:28:43.385995+00:00'
+- name: Health Catalyst
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.healthcatalyst.com
+  industry:
+  - health analytics|data platform|outcomes
+  notes: Analytics-rich healthcare data platform.
+  sub_industry: Healthcare Analytics
+  careers_url: https://www.healthcatalyst.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:28:44.274633'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:28:44.268127+00:00'
+- name: PointClickCare
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: careers.pointclickcare.com
+  industry:
+  - healthcare software|care coordination|EMR
+  notes: Large healthcare software platform with integration-heavy ecosystem.
+  sub_industry: Healthcare Software
+  careers_url: https://careers.pointclickcare.com/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:30:22.991534'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:30:22.985023+00:00'
+- name: Privia Health
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.priviahealth.com
+  industry:
+  - provider enablement|care platform|analytics
+  notes: Provider-platform business with enterprise workflow/data elements.
+  sub_industry: Provider Platform
+  careers_url: https://www.priviahealth.com/careers/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:30:24.327193'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:30:24.320193+00:00'
+- name: Innovaccer
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: innovaccer.com
+  industry:
+  - healthcare data platform|analytics|AI
+  notes: Healthcare data platform strongly aligned to interoperability and analytics.
+  sub_industry: Healthcare Data Platform
+  careers_url: https://innovaccer.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:30:24.014791'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:30:24.008691+00:00'
+- name: WellSky
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.wellsky.com
+  industry:
+  - post-acute care|health software|analytics
+  notes: Large care software platform.
+  sub_industry: Healthcare Software
+  careers_url: https://www.wellsky.com/careers/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:30:27.090861'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:30:27.073596+00:00'
+- name: Abridge
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.abridge.com
+  industry:
+  - clinical AI|documentation|health tech
+  notes: Fast-growing AI scribe/documentation company in healthcare.
+  sub_industry: Clinical AI
+  careers_url: https://www.abridge.com/careers
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T17:57:32.117483+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:28:42.682736'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Suki
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.suki.ai
+  industry:
+  - clinical AI|voice|workflow
+  notes: Healthcare AI assistant with strong workflow relevance.
+  sub_industry: Clinical AI
+  careers_url: https://www.suki.ai/careers/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:28:43.634570'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Guidewire
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: careers.guidewire.com
+  industry:
+  - insurtech|P&C software|platform
+  notes: Core insurance software leader with deep enterprise platform work.
+  sub_industry: Insurance Software
+  careers_url: https://careers.guidewire.com/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:30:25.632906'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:30:25.625399+00:00'
+- name: Duck Creek Technologies
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.duckcreek.com
+  industry:
+  - insurtech|policy admin|claims software
+  notes: Core platform provider for insurers.
+  sub_industry: Insurance Software
+  careers_url: https://www.duckcreek.com/about/careers/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:30:27.422722'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:30:27.415128+00:00'
+- name: AgentSync
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: agentsync.io
+  industry:
+  - insurtech|compliance|distribution
+  notes: Insurance compliance/integration company with strong API/workflow fit.
+  sub_industry: Insurance Compliance Tech
+  careers_url: https://agentsync.io/careers/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:30:27.389873'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:30:27.383873+00:00'
+- name: Root Insurance
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: root.com
+  industry:
+  - insurtech|auto insurance|data science
+  notes: Tech-forward insurer using telematics and pricing models.
+  sub_industry: InsurTech
+  careers_url: https://root.com/careers/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:30:27.638870'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:30:27.632872+00:00'
+- name: Lemonade
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.lemonade.com
+  industry:
+  - insurtech|consumer insurance|AI
+  notes: Well-known digital insurer with modern product culture.
+  sub_industry: InsurTech
+  careers_url: https://www.lemonade.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:30:27.069437'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:30:27.062439+00:00'
+- name: Next Insurance
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.nextinsurance.com
+  industry:
+  - small business insurance|insurtech|platform
+  notes: Digital commercial insurance platform.
+  sub_industry: InsurTech / SMB Insurance
+  careers_url: https://www.nextinsurance.com/careers/
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-20T17:38:18.533979+00:00
+    (low_signal)
+  last_healed: '2026-04-09T12:28:44.278634'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Kin Insurance
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.kin.com
+  industry:
+  - insurtech|home insurance|data
+  notes: Modern insurtech platform with data-heavy underwriting.
+  sub_industry: InsurTech
+  careers_url: https://www.kin.com/careers
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-20T17:35:04.524383+00:00
+    (low_signal)
+  last_healed: '2026-04-09T12:28:44.349605'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Coalition
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.coalitioninc.com
+  industry:
+  - cyber insurance|insurtech|risk data
+  notes: Cyber insurance and security crossover platform.
+  sub_industry: Cyber InsurTech
+  careers_url: https://www.coalitioninc.com/jobs
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:28:45.118888'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Pie Insurance
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.pieinsurance.com
+  industry:
+  - workers comp|insurtech|SMB insurance
+  notes: Digital workers-comp insurer with operational/data complexity.
+  sub_industry: InsurTech
+  careers_url: https://www.pieinsurance.com/careers/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:30:28.634574'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:30:28.626063+00:00'
+- name: Clearcover
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: clearcover.com
+  industry:
+  - auto insurance|insurtech|digital platform
+  notes: Digital-first auto insurance company.
+  sub_industry: InsurTech
+  careers_url: https://clearcover.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:32:05.565339'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:32:05.557340+00:00'
+- name: Bestow
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: bestow.com
+  industry:
+  - life insurance|insurtech|APIs
+  notes: Modern life-insurance infrastructure/business.
+  sub_industry: Life InsurTech
+  careers_url: https://bestow.com/careers/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:32:08.336592'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:32:08.329085+00:00'
+- name: Ethos
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.ethos.com
+  industry:
+  - life insurance|digital underwriting
+  notes: Modern life-insurance company with strong product orientation.
+  sub_industry: Life InsurTech
+  careers_url: https://www.ethos.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:32:06.530285'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:32:06.521762+00:00'
+- name: Hippo
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.hippo.com
+  industry:
+  - home insurance|insurtech|smart home
+  notes: Home-insurance tech company with platform and data roles.
+  sub_industry: InsurTech
+  careers_url: https://www.hippo.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:32:08.363425'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:32:08.357422+00:00'
+- name: Boost
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: boostinsurance.com
+  industry:
+  - embedded insurance|API platform|insurtech
+  notes: API-centric embedded insurance infrastructure company.
+  sub_industry: Embedded Insurance
+  careers_url: https://boostinsurance.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:32:09.978685'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:32:09.971439+00:00'
+- name: Oscar
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.hioscar.com
+  industry:
+  - health insurance|digital health
+  notes: Duplicate normalized Oscar entry kept out in de-dup.
+  sub_industry: Health Insurance
+  careers_url: https://www.hioscar.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:32:09.932488'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:32:09.925484+00:00'

@@ -272,29 +272,29 @@ class Scorer:
         if isinstance(is_remote, bool):
             return is_remote
         location_l = self.clean(location).lower()
-        if location_l:
-            return "remote" in location_l
+        if "remote" in location_l:
+            return True
         blob = self._location_blob(location, description)
-        return "remote" in blob
+        return "remote" in blob or "work from home" in blob or "work-from-home" in blob or "telecommute" in blob
 
     def _is_hybrid_role(self, location: str, description: str) -> bool:
         location_l = self.clean(location).lower()
-        if location_l:
-            return any(marker in location_l for marker in self._hybrid_markers)
+        if any(marker in location_l for marker in self._hybrid_markers):
+            return True
         blob = self._location_blob(location, description)
         return any(marker in blob for marker in self._hybrid_markers)
 
     def _is_onsite_role(self, location: str, description: str) -> bool:
         location_l = self.clean(location).lower()
-        if location_l:
-            return any(marker in location_l for marker in self._onsite_markers)
+        if any(marker in location_l for marker in self._onsite_markers):
+            return True
         blob = self._location_blob(location, description)
         return any(marker in blob for marker in self._onsite_markers)
 
     def _matches_local_area(self, location: str, description: str) -> bool:
         location_l = self.clean(location).lower()
-        if location_l:
-            return any(marker in location_l for marker in self.local_hybrid_markers)
+        if any(marker in location_l for marker in self.local_hybrid_markers):
+            return True
         blob = self._location_blob(location, description)
         if not blob:
             return False
@@ -423,11 +423,18 @@ class Scorer:
         text = self.clean(text)
         if not text:
             return None, None
-        annual_context = bool(
+        
+        # More liberal annual context check. If we see large numbers with $ and k, 
+        # we can be reasonably sure it's annual unless "hour" or "day" is nearby.
+        is_annual = bool(
             re.search(r"\b(salary|compensation|pay range|base pay|base salary|annual|annually|per year|yearly|ote|on.target)\b", text, flags=re.IGNORECASE)
         )
-        if not annual_context:
+        is_hourly = bool(re.search(r"\b(hour|hourly|hr|per hour)\b", text, flags=re.IGNORECASE))
+        
+        # If it looks like annual (large numbers) and doesn't look like hourly, proceed.
+        if not is_annual and is_hourly:
             return None, None
+            
         raw_matches = re.findall(r"\$?\s*([0-9]{1,3}(?:,\d{3})*(?:\.\d{1,2})?|[0-9]{2,3}(?:\.\d{1,2})?)\s*([kK]?)", text)
         values: list[float] = []
         for amount_raw, k_suffix in raw_matches:
@@ -437,12 +444,21 @@ class Scorer:
                 continue
             if k_suffix:
                 amount *= 1000.0
-            if amount >= 1000:
+            
+            # If it's between 30,000 and 1,000,000, it's likely annual.
+            if amount >= 30000:
                 values.append(amount)
+            # Small numbers with 'k' are also annual (e.g. 150k)
+            elif amount >= 30 and amount < 1000 and k_suffix:
+                # Already multiplied by 1000 above if k_suffix was found
+                values.append(amount)
+        
         if not values:
             return None, None
         if len(values) >= 2:
-            return values[0], values[1]
+            # Sort to ensure [min, max]
+            sorted_vals = sorted(values)
+            return sorted_vals[0], sorted_vals[-1]
         return values[0], None
 
     def _normalize_compensation(self, job_data: Dict[str, Any], work_type: str, unit: str) -> Dict[str, Any]:
@@ -457,9 +473,9 @@ class Scorer:
         hourly_rate = self._derive_hourly_rate(job_data, unit)
 
         hours_per_week = self._to_float(job_data.get("hours_per_week")) or self.default_hours_per_week
-        if work_type == "1099_contract":
+        if work_type in {"1099_contract", "c2c_contract"}:
             weeks_per_year = self._to_float(job_data.get("weeks_per_year")) or self.default_1099_weeks_per_year
-        elif work_type in {"w2_contract", "c2c_contract"}:
+        elif work_type == "w2_contract":
             weeks_per_year = self._to_float(job_data.get("weeks_per_year")) or self.default_w2_hourly_weeks_per_year
         else:
             weeks_per_year = self._to_float(job_data.get("weeks_per_year")) or 52.0
@@ -468,9 +484,9 @@ class Scorer:
         normalized: Optional[float]
         if unit == "hourly" and hourly_rate is not None:
             gross_annual = hourly_rate * hours_per_week * weeks_per_year
-            if work_type == "1099_contract":
+            if work_type in {"1099_contract", "c2c_contract"}:
                 normalized = gross_annual * (1.0 - self.overhead_1099_pct) - self.benefits_replacement_usd
-            elif work_type in {"w2_contract", "c2c_contract"}:
+            elif work_type == "w2_contract":
                 normalized = gross_annual - self.w2_benefits_gap_usd
             else:
                 normalized = gross_annual
@@ -816,8 +832,14 @@ class Scorer:
             enrichment_adjustment += 8
             enrichment_reasons.append("+8 visa_sponsor_match")
         elif visa_pref and visa_sponsor is False:
-            enrichment_adjustment -= 15
-            enrichment_reasons.append("-15 no_visa_sponsorship")
+            # Hard-drop: if sponsorship is required but NOT provided
+            score_result = dict(score_result)
+            score_result["score"] = 0.0
+            score_result["fit_band"] = "Filtered Out"
+            score_result["decision_reason"] = (
+                f"{score_result.get('decision_reason', '')} [Hard-Drop: No visa sponsorship provided]"
+            )
+            return score_result
 
         # Check tech stack match
         tech_stack = enriched_data.get("tech_stack", [])

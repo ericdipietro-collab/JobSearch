@@ -1,0 +1,1887 @@
+companies:
+- name: Cisco
+  tier: 1
+  priority: high
+  adapter: workday
+  adapter_key: jobs.cisco.com
+  domain: jobs.cisco.com
+  industry:
+  - information technology
+  notes: Ranked in Fortune/GPTW large tech or equivalent; careers URL/ATS mapping
+    is best-effort.
+  sub_industry: Enterprise Networking & Security
+  careers_url: https://jobs.cisco.com/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:46:05.544896'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: NVIDIA
+  tier: 1
+  priority: high
+  adapter: workday
+  adapter_key: nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite
+  domain: nvidia.wd5.myworkdayjobs.com
+  industry:
+  - semiconductors
+  - ai infrastructure
+  notes: Ranked in Fortune/GPTW large tech or equivalent; careers URL/ATS mapping
+    is best-effort.
+  sub_industry: AI / Semiconductors
+  careers_url: https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:45:59.855542'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: World Wide Technology
+  tier: 1
+  priority: high
+  adapter: workday
+  adapter_key: wwt.wd1.myworkdayjobs.com/External
+  domain: wwt.wd1.myworkdayjobs.com
+  industry:
+  - enterprise technology
+  notes: Ranked in Fortune/GPTW large tech or equivalent; careers URL/ATS mapping
+    is best-effort.
+  sub_industry: IT Services / Solutions
+  careers_url: https://wwt.wd1.myworkdayjobs.com/External
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:47:43.283718'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:47:43.276715+00:00'
+- name: Cadence
+  tier: 1
+  priority: high
+  adapter: workday
+  adapter_key: cadence.wd1.myworkdayjobs.com/CadenceCareers
+  domain: cadence.wd1.myworkdayjobs.com
+  industry:
+  - semiconductors
+  - design software
+  notes: Ranked in Fortune/GPTW large tech or equivalent; careers URL/ATS mapping
+    is best-effort.
+  sub_industry: EDA / Semiconductors
+  careers_url: https://cadence.wd1.myworkdayjobs.com/CadenceCareers
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:46:00.565789'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: ServiceNow
+  tier: 1
+  priority: high
+  adapter: workday
+  adapter_key: careers.servicenow.com
+  domain: careers.servicenow.com
+  industry:
+  - enterprise software
+  - workflow automation
+  notes: Ranked in Fortune/GPTW large tech or equivalent; careers URL/ATS mapping
+    is best-effort.
+  sub_industry: Enterprise Software
+  careers_url: https://careers.servicenow.com
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:47:43.358256'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:47:43.352254+00:00'
+- name: Salesforce
+  tier: 1
+  priority: high
+  adapter: generic
+  adapter_key: ''
+  domain: careers.salesforce.com
+  industry:
+  - crm
+  - cloud platform
+  notes: Ranked in Fortune/GPTW large tech or equivalent; careers URL/ATS mapping
+    is best-effort.
+  sub_industry: Cloud Software
+  careers_url: https://careers.salesforce.com/en/jobs/
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:07:57.563491+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:45:59.410641'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Adobe
+  tier: 1
+  priority: high
+  adapter: workday
+  adapter_key: careers.adobe.com/us
+  domain: careers.adobe.com
+  industry:
+  - creative software
+  - enterprise software
+  notes: Ranked in Fortune/GPTW large tech or equivalent; careers URL/ATS mapping
+    is best-effort.
+  sub_industry: Software
+  careers_url: https://careers.adobe.com/us/en/search-results
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:47:47.111312'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:47:47.104311+00:00'
+- name: Box
+  tier: 1
+  priority: high
+  adapter: generic
+  adapter_key: ''
+  domain: careers.box.com
+  industry:
+  - cloud content management
+  notes: Ranked in Fortune/GPTW large tech or equivalent; careers URL/ATS mapping
+    is best-effort.
+  sub_industry: Cloud Collaboration
+  careers_url: https://careers.box.com
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T17:57:32.474588+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:45:59.749025'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: CrowdStrike
+  tier: 1
+  priority: high
+  adapter: workday
+  adapter_key: crowdstrike.wd5.myworkdayjobs.com/crowdstrikecareers
+  domain: crowdstrike.wd5.myworkdayjobs.com
+  industry:
+  - cybersecurity
+  notes: Ranked in Fortune/GPTW large tech or equivalent; careers URL/ATS mapping
+    is best-effort.
+  sub_industry: Cybersecurity
+  careers_url: https://crowdstrike.wd5.myworkdayjobs.com/crowdstrikecareers
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:46:00.316721'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Experian
+  tier: 1
+  priority: high
+  adapter: workday
+  adapter_key: experian.wd5.myworkdayjobs.com/GlobalCareers
+  domain: experian.wd5.myworkdayjobs.com
+  industry:
+  - data
+  - analytics
+  - fintech
+  notes: Ranked in Fortune/GPTW large tech or equivalent; careers URL/ATS mapping
+    is best-effort.
+  sub_industry: Data / FinTech
+  careers_url: https://experian.wd5.myworkdayjobs.com/GlobalCareers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:47:44.598647'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:47:44.592647+00:00'
+- name: Intuit
+  tier: 1
+  priority: high
+  adapter: workday
+  adapter_key: jobs.intuit.com
+  domain: jobs.intuit.com
+  industry:
+  - fintech
+  - consumer software
+  notes: Ranked in Fortune/GPTW large tech or equivalent; careers URL/ATS mapping
+    is best-effort.
+  sub_industry: FinTech Software
+  careers_url: https://jobs.intuit.com
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:47:46.138160'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:47:46.123651+00:00'
+- name: Workiva
+  tier: 1
+  priority: high
+  adapter: generic
+  adapter_key: ''
+  domain: www.workiva.com
+  industry:
+  - cloud platform
+  - analytics
+  - compliance
+  notes: Ranked in Fortune/GPTW large tech or equivalent; careers URL/ATS mapping
+    is best-effort.
+  sub_industry: Cloud Platform
+  careers_url: https://www.workiva.com/careers
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:01:01.272601+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:45:59.753025'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Hewlett Packard Enterprise
+  tier: 1
+  priority: high
+  adapter: workday
+  adapter_key: careers.hpe.com/us
+  domain: careers.hpe.com
+  industry:
+  - enterprise infrastructure
+  notes: Ranked in Fortune/GPTW large tech or equivalent; careers URL/ATS mapping
+    is best-effort.
+  sub_industry: Infrastructure
+  careers_url: https://careers.hpe.com/us/en
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:46:02.886617'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: HP
+  tier: 1
+  priority: high
+  adapter: workday
+  adapter_key: hp.wd5.myworkdayjobs.com/ExternalCareerSite
+  domain: hp.wd5.myworkdayjobs.com
+  industry:
+  - hardware
+  - software
+  notes: Ranked in Fortune/GPTW large tech or equivalent; careers URL/ATS mapping
+    is best-effort.
+  sub_industry: Hardware / IT
+  careers_url: https://hp.wd5.myworkdayjobs.com/ExternalCareerSite
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:47:43.933253'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:47:43.925801+00:00'
+- name: Atlassian
+  tier: 1
+  priority: high
+  adapter: generic
+  adapter_key: ''
+  domain: www.atlassian.com
+  industry:
+  - developer tools
+  - collaboration
+  notes: Ranked in Fortune/GPTW large tech or equivalent; careers URL/ATS mapping
+    is best-effort.
+  sub_industry: Developer Tools
+  careers_url: https://www.atlassian.com/company/careers
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T17:57:33.218244+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:46:00.320724'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: SailPoint
+  tier: 1
+  priority: high
+  adapter: workday
+  adapter_key: sailpoint.wd1.myworkdayjobs.com/en-US
+  domain: sailpoint.wd1.myworkdayjobs.com
+  industry:
+  - identity security
+  notes: Ranked in Fortune/GPTW large tech or equivalent; careers URL/ATS mapping
+    is best-effort.
+  sub_industry: Identity Security
+  careers_url: https://sailpoint.wd1.myworkdayjobs.com/en-US/external
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:47:46.118650'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:47:46.112648+00:00'
+- name: Five9
+  tier: 1
+  priority: high
+  adapter: workday
+  adapter_key: careers.five9.com
+  domain: careers.five9.com
+  industry:
+  - cloud contact center
+  notes: Ranked in Fortune/GPTW large tech or equivalent; careers URL/ATS mapping
+    is best-effort.
+  sub_industry: Enterprise Communications
+  careers_url: https://careers.five9.com
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:47:44.694828'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:47:44.688827+00:00'
+- name: Databricks
+  tier: 1
+  priority: high
+  adapter: generic
+  adapter_key: ''
+  domain: www.databricks.com
+  industry:
+  - data platform
+  - ai
+  notes: Ranked in Fortune/GPTW large tech or equivalent; careers URL/ATS mapping
+    is best-effort.
+  sub_industry: Data Platform
+  careers_url: https://www.databricks.com/company/careers/open-positions
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T17:59:15.083623+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:46:02.889618'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: AppFolio
+  tier: 1
+  priority: high
+  adapter: workday
+  adapter_key: appfolio.wd1.myworkdayjobs.com/Appfolio
+  domain: appfolio.wd1.myworkdayjobs.com
+  industry:
+  - software
+  - proptech
+  notes: Ranked in Fortune/GPTW large tech or equivalent; careers URL/ATS mapping
+    is best-effort.
+  sub_industry: Vertical SaaS
+  careers_url: https://appfolio.wd1.myworkdayjobs.com/Appfolio
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:46:04.727027'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: SentinelOne
+  tier: 1
+  priority: high
+  adapter: generic
+  adapter_key: ''
+  domain: www.sentinelone.com
+  industry:
+  - cybersecurity
+  notes: Ranked in Fortune/GPTW large tech or equivalent; careers URL/ATS mapping
+    is best-effort.
+  sub_industry: Cybersecurity
+  careers_url: https://www.sentinelone.com/jobs/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:47:48.323960'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:47:48.317959+00:00'
+- name: Calix
+  tier: 1
+  priority: high
+  adapter: workday
+  adapter_key: calix.wd5.myworkdayjobs.com/Careers
+  domain: calix.wd5.myworkdayjobs.com
+  industry:
+  - telecom software
+  notes: Ranked in Fortune/GPTW large tech or equivalent; careers URL/ATS mapping
+    is best-effort.
+  sub_industry: Cloud / Telecom
+  careers_url: https://calix.wd5.myworkdayjobs.com/Careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:47:44.039760'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:47:44.034762+00:00'
+- name: Precisely
+  tier: 1
+  priority: high
+  adapter: workday
+  adapter_key: precisely.wd5.myworkdayjobs.com/PreciselyCareers
+  domain: precisely.wd5.myworkdayjobs.com
+  industry:
+  - data integrity
+  - analytics
+  notes: Ranked in Fortune/GPTW large tech or equivalent; careers URL/ATS mapping
+    is best-effort.
+  sub_industry: Data Software
+  careers_url: https://precisely.wd5.myworkdayjobs.com/PreciselyCareers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:49:22.908996'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:49:22.903996+00:00'
+- name: Braze
+  tier: 1
+  priority: high
+  adapter: greenhouse
+  adapter_key: braze
+  domain: boards.greenhouse.io
+  industry:
+  - marketing technology
+  notes: Ranked in Fortune/GPTW large tech or equivalent; careers URL/ATS mapping
+    is best-effort.
+  sub_industry: MarTech
+  careers_url: https://boards.greenhouse.io/braze
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:49:14.136371'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:49:14.132364+00:00'
+- name: Varonis
+  tier: 1
+  priority: high
+  adapter: workday
+  adapter_key: varonis.wd5.myworkdayjobs.com/VaronisCareers
+  domain: varonis.wd5.myworkdayjobs.com
+  industry:
+  - data security
+  notes: Ranked in Fortune/GPTW large tech or equivalent; careers URL/ATS mapping
+    is best-effort.
+  sub_industry: Cybersecurity
+  careers_url: https://varonis.wd5.myworkdayjobs.com/VaronisCareers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:49:01.937541'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:49:01.931547+00:00'
+- name: Pure Storage
+  tier: 1
+  priority: high
+  adapter: workday
+  adapter_key: purestorage.wd5.myworkdayjobs.com/External
+  domain: purestorage.wd5.myworkdayjobs.com
+  industry:
+  - data storage
+  notes: Ranked in Fortune/GPTW large tech or equivalent; careers URL/ATS mapping
+    is best-effort.
+  sub_industry: Infrastructure
+  careers_url: https://purestorage.wd5.myworkdayjobs.com/External
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:49:28.870740'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:49:28.864738+00:00'
+- name: Synopsys
+  tier: 2
+  priority: high
+  adapter: workday
+  adapter_key: careers.synopsys.com
+  domain: careers.synopsys.com
+  industry:
+  - chip design software
+  notes: Ranked in Fortune/GPTW tech lists; careers URL/ATS mapping is best-effort.
+  sub_industry: EDA / Semiconductors
+  careers_url: https://careers.synopsys.com
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:49:28.811736'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:49:28.803736+00:00'
+- name: GitLab
+  tier: 2
+  priority: high
+  adapter: greenhouse
+  adapter_key: gitlab
+  domain: boards.greenhouse.io
+  industry:
+  - developer platform
+  notes: Ranked in Fortune/GPTW tech lists; careers URL/ATS mapping is best-effort.
+  sub_industry: Developer Tools
+  careers_url: https://boards.greenhouse.io/gitlab
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:47:44.946514'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Trace3
+  tier: 2
+  priority: high
+  adapter: generic
+  adapter_key: ''
+  domain: www.trace3.com
+  industry:
+  - it consulting
+  - cloud
+  notes: Ranked in Fortune/GPTW tech lists; careers URL/ATS mapping is best-effort.
+  sub_industry: IT Services
+  careers_url: https://www.trace3.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:49:28.445544'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:49:28.438547+00:00'
+- name: Cognosante
+  tier: 2
+  priority: high
+  adapter: generic
+  adapter_key: ''
+  domain: careers.cognosante.com
+  industry:
+  - healthtech
+  - federal technology
+  notes: Ranked in Fortune/GPTW tech lists; careers URL/ATS mapping is best-effort.
+  sub_industry: Gov / Health IT
+  careers_url: https://careers.cognosante.com
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:49:29.301936'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:49:29.278424+00:00'
+- name: Availity
+  tier: 2
+  priority: high
+  adapter: generic
+  adapter_key: ''
+  domain: www.availity.com
+  industry:
+  - healthcare technology
+  notes: Ranked in Fortune/GPTW tech lists; careers URL/ATS mapping is best-effort.
+  sub_industry: Health IT
+  careers_url: https://www.availity.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:49:29.226416'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:49:29.219416+00:00'
+- name: Arctic Wolf
+  tier: 2
+  priority: high
+  adapter: generic
+  adapter_key: ''
+  domain: arcticwolf.com
+  industry:
+  - cybersecurity
+  notes: Ranked in Fortune/GPTW tech lists; careers URL/ATS mapping is best-effort.
+  sub_industry: Cybersecurity
+  careers_url: https://arcticwolf.com/company/careers/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:49:28.896256'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:49:28.890255+00:00'
+- name: Tenable
+  tier: 2
+  priority: high
+  adapter: workday
+  adapter_key: tenable.wd1.myworkdayjobs.com/TenableNetworkSecurity
+  domain: tenable.wd1.myworkdayjobs.com
+  industry:
+  - cybersecurity
+  notes: Ranked in Fortune/GPTW tech lists; careers URL/ATS mapping is best-effort.
+  sub_industry: Cybersecurity
+  careers_url: https://tenable.wd1.myworkdayjobs.com/TenableNetworkSecurity
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:49:33.368966'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:49:33.361960+00:00'
+- name: Zscaler
+  tier: 2
+  priority: high
+  adapter: workday
+  adapter_key: zscaler.wd1.myworkdayjobs.com/Careers
+  domain: zscaler.wd1.myworkdayjobs.com
+  industry:
+  - cybersecurity
+  - cloud security
+  notes: Ranked in Fortune/GPTW tech lists; careers URL/ATS mapping is best-effort.
+  sub_industry: Cybersecurity
+  careers_url: https://zscaler.wd1.myworkdayjobs.com/Careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:50:45.045993'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:50:45.039990+00:00'
+- name: Rubrik
+  tier: 2
+  priority: high
+  adapter: greenhouse
+  adapter_key: rubrik
+  domain: boards.greenhouse.io
+  industry:
+  - cloud security
+  - data protection
+  notes: Ranked in Fortune/GPTW tech lists; careers URL/ATS mapping is best-effort.
+  sub_industry: Cybersecurity
+  careers_url: https://boards.greenhouse.io/rubrik
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:49:16.968002'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Tanium
+  tier: 2
+  priority: high
+  adapter: generic
+  adapter_key: ''
+  domain: www.tanium.com
+  industry:
+  - endpoint security
+  notes: Ranked in Fortune/GPTW tech lists; careers URL/ATS mapping is best-effort.
+  sub_industry: Cybersecurity
+  careers_url: https://www.tanium.com/careers/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:51:01.854678'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:51:01.848674+00:00'
+- name: CarGurus
+  tier: 2
+  priority: high
+  adapter: greenhouse
+  adapter_key: cargurus
+  domain: boards.greenhouse.io
+  industry:
+  - consumer internet
+  - marketplace
+  notes: Ranked in Fortune/GPTW tech lists; careers URL/ATS mapping is best-effort.
+  sub_industry: Marketplace
+  careers_url: https://boards.greenhouse.io/cargurus
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:49:28.162442'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: PingWind
+  tier: 2
+  priority: high
+  adapter: generic
+  adapter_key: ''
+  domain: www.pingwind.com
+  industry:
+  - it services
+  notes: Ranked in Fortune/GPTW tech lists; careers URL/ATS mapping is best-effort.
+  sub_industry: IT Services
+  careers_url: https://www.pingwind.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:51:11.028511'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:51:11.022510+00:00'
+- name: Chainguard
+  tier: 2
+  priority: high
+  adapter: ashby
+  adapter_key: chainguard
+  domain: jobs.ashbyhq.com
+  industry:
+  - software supply chain security
+  notes: Ranked in Fortune/GPTW tech lists; careers URL/ATS mapping is best-effort.
+  sub_industry: Cybersecurity
+  careers_url: https://jobs.ashbyhq.com/chainguard
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:51:12.308301'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:51:12.305303+00:00'
+- name: Lumin Digital
+  tier: 2
+  priority: high
+  adapter: generic
+  adapter_key: ''
+  domain: www.lumindigital.com
+  industry:
+  - digital banking software
+  notes: Ranked in Fortune/GPTW tech lists; careers URL/ATS mapping is best-effort.
+  sub_industry: FinTech / Banking Tech
+  careers_url: https://www.lumindigital.com/company/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:51:13.042023'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:51:13.035023+00:00'
+- name: Mercury
+  tier: 2
+  priority: high
+  adapter: greenhouse
+  adapter_key: mercury
+  domain: boards.greenhouse.io
+  industry:
+  - fintech
+  - banking software
+  notes: Ranked in Fortune/GPTW tech lists; careers URL/ATS mapping is best-effort.
+  sub_industry: FinTech
+  careers_url: https://boards.greenhouse.io/mercury
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:49:29.678215'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Chainlink Labs
+  tier: 2
+  priority: high
+  adapter: greenhouse
+  adapter_key: chainlinklabs
+  domain: boards.greenhouse.io
+  industry:
+  - web3 infrastructure
+  notes: Ranked in Fortune/GPTW tech lists; careers URL/ATS mapping is best-effort.
+  sub_industry: Blockchain Infrastructure
+  careers_url: https://boards.greenhouse.io/chainlinklabs
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:51:09.225333'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:51:09.222330+00:00'
+- name: The Informatics Applications Group (TIAG)
+  tier: 2
+  priority: high
+  adapter: generic
+  adapter_key: ''
+  domain: careers.tiag.net
+  industry:
+  - information technology services
+  notes: Ranked in Fortune/GPTW tech lists; careers URL/ATS mapping is best-effort.
+  sub_industry: IT Services
+  careers_url: https://careers.tiag.net
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:51:12.359378'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:51:12.352378+00:00'
+- name: DroneDeploy
+  tier: 2
+  priority: high
+  adapter: greenhouse
+  adapter_key: dronedeploy
+  domain: boards.greenhouse.io
+  industry:
+  - computer vision
+  - drones
+  notes: Ranked in Fortune/GPTW tech lists; careers URL/ATS mapping is best-effort.
+  sub_industry: Industrial Tech
+  careers_url: https://boards.greenhouse.io/dronedeploy
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:51:13.410124'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:51:13.406124+00:00'
+- name: Invoca
+  tier: 2
+  priority: high
+  adapter: greenhouse
+  adapter_key: invoca
+  domain: boards.greenhouse.io
+  industry:
+  - marketing technology
+  - ai
+  notes: Ranked in Fortune/GPTW tech lists; careers URL/ATS mapping is best-effort.
+  sub_industry: MarTech
+  careers_url: https://boards.greenhouse.io/invoca
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:49:41.981301'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Sigma Computing
+  tier: 2
+  priority: high
+  adapter: greenhouse
+  adapter_key: sigmacomputing
+  domain: boards.greenhouse.io
+  industry:
+  - cloud analytics
+  notes: Ranked in Fortune/GPTW tech lists; careers URL/ATS mapping is best-effort.
+  sub_industry: Analytics
+  careers_url: https://boards.greenhouse.io/sigmacomputing
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:49:33.929130'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Cambridge Mobile Telematics
+  tier: 2
+  priority: high
+  adapter: greenhouse
+  adapter_key: cambridgemobiletelematics
+  domain: boards.greenhouse.io
+  industry:
+  - mobility data
+  - ai
+  notes: Ranked in Fortune/GPTW tech lists; careers URL/ATS mapping is best-effort.
+  sub_industry: Data / Mobility
+  careers_url: https://boards.greenhouse.io/cambridgemobiletelematics
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:49:34.925753'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Webflow
+  tier: 2
+  priority: high
+  adapter: greenhouse
+  adapter_key: webflow
+  domain: boards.greenhouse.io
+  industry:
+  - web platform
+  notes: Ranked in Fortune/GPTW tech lists; careers URL/ATS mapping is best-effort.
+  sub_industry: Web Platform
+  careers_url: https://boards.greenhouse.io/webflow
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:49:35.458594'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: EPAM Systems
+  tier: 2
+  priority: high
+  adapter: generic
+  adapter_key: ''
+  domain: www.epam.com
+  industry:
+  - software engineering services
+  notes: Ranked in Fortune/GPTW tech lists; careers URL/ATS mapping is best-effort.
+  sub_industry: Software Services
+  careers_url: https://www.epam.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:51:17.878923'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:51:17.870921+00:00'
+- name: Google
+  tier: 2
+  priority: high
+  adapter: generic
+  adapter_key: ''
+  domain: www.google.com
+  industry:
+  - internet
+  - cloud
+  - ai
+  notes: Ranked in Fortune/GPTW tech lists; careers URL/ATS mapping is best-effort.
+  sub_industry: Big Tech
+  careers_url: https://careers.google.com/jobs/results/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:51:26.500304'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:51:26.493306+00:00'
+- name: Microsoft
+  tier: 2
+  priority: high
+  adapter: generic
+  adapter_key: ''
+  domain: jobs.careers.microsoft.com
+  industry:
+  - cloud
+  - productivity
+  - ai
+  notes: Ranked in Fortune/GPTW tech lists; careers URL/ATS mapping is best-effort.
+  sub_industry: Big Tech
+  careers_url: https://jobs.careers.microsoft.com/global/en/search
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:52:13.464903'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:52:13.457903+00:00'
+- name: SAP
+  tier: 3
+  priority: medium
+  adapter: generic
+  adapter_key: ''
+  domain: jobs.sap.com
+  industry:
+  - enterprise software
+  notes: Strong employer reputation in tech; careers URL/ATS mapping is best-effort.
+  sub_industry: Enterprise Software
+  careers_url: https://jobs.sap.com
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:52:46.939966'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:52:46.932965+00:00'
+- name: Zoom
+  tier: 3
+  priority: medium
+  adapter: workday
+  adapter_key: zoom.wd5.myworkdayjobs.com/Zoom
+  domain: zoom.wd5.myworkdayjobs.com
+  industry:
+  - communications software
+  notes: Strong employer reputation in tech; careers URL/ATS mapping is best-effort.
+  sub_industry: Collaboration Software
+  careers_url: https://zoom.wd5.myworkdayjobs.com/Zoom
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:51:09.690389'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: HubSpot
+  tier: 3
+  priority: medium
+  adapter: generic
+  adapter_key: ''
+  domain: www.hubspot.com
+  industry:
+  - crm
+  - marketing software
+  notes: Strong employer reputation in tech; careers URL/ATS mapping is best-effort.
+  sub_industry: Cloud Software
+  careers_url: https://www.hubspot.com/careers/jobs
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:42:31.991699+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:51:09.694389'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Cloudflare
+  tier: 3
+  priority: medium
+  adapter: generic
+  adapter_key: ''
+  domain: www.cloudflare.com
+  industry:
+  - internet infrastructure
+  - security
+  notes: Strong employer reputation in tech; careers URL/ATS mapping is best-effort.
+  sub_industry: Internet Infrastructure
+  careers_url: https://www.cloudflare.com/careers/jobs/
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:01:00.680167+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:51:09.697388'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Okta
+  tier: 3
+  priority: medium
+  adapter: greenhouse
+  adapter_key: okta
+  domain: boards.greenhouse.io
+  industry:
+  - identity platform
+  notes: Strong employer reputation in tech; careers URL/ATS mapping is best-effort.
+  sub_industry: Identity Security
+  careers_url: https://boards.greenhouse.io/okta
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:51:14.035254'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Asana
+  tier: 3
+  priority: medium
+  adapter: greenhouse
+  adapter_key: asana
+  domain: boards.greenhouse.io
+  industry:
+  - work management software
+  notes: Strong employer reputation in tech; careers URL/ATS mapping is best-effort.
+  sub_industry: Collaboration Software
+  careers_url: https://boards.greenhouse.io/asana
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:52:37.539886'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:52:37.535887+00:00'
+- name: DocuSign
+  tier: 3
+  priority: medium
+  adapter: workday
+  adapter_key: docusign.wd1.myworkdayjobs.com/Careers
+  domain: docusign.wd1.myworkdayjobs.com
+  industry:
+  - e-signature
+  - workflow
+  notes: Strong employer reputation in tech; careers URL/ATS mapping is best-effort.
+  sub_industry: Enterprise Software
+  careers_url: https://docusign.wd1.myworkdayjobs.com/Careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:52:48.274592'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:52:48.267592+00:00'
+- name: Figma
+  tier: 3
+  priority: medium
+  adapter: greenhouse
+  adapter_key: figma
+  domain: boards.greenhouse.io
+  industry:
+  - design software
+  notes: Strong employer reputation in tech; careers URL/ATS mapping is best-effort.
+  sub_industry: Design Software
+  careers_url: https://boards.greenhouse.io/figma
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:51:13.914223'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Snowflake
+  tier: 3
+  priority: medium
+  adapter: greenhouse
+  adapter_key: snowflake
+  domain: boards.greenhouse.io
+  industry:
+  - data cloud
+  notes: Strong employer reputation in tech; careers URL/ATS mapping is best-effort.
+  sub_industry: Data Platform
+  careers_url: https://boards.greenhouse.io/snowflake
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:52:46.621922'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:52:46.618922+00:00'
+- name: MongoDB
+  tier: 3
+  priority: medium
+  adapter: greenhouse
+  adapter_key: mongodb
+  domain: boards.greenhouse.io
+  industry:
+  - database platform
+  notes: Strong employer reputation in tech; careers URL/ATS mapping is best-effort.
+  sub_industry: Data Platform
+  careers_url: https://boards.greenhouse.io/mongodb
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:51:15.689763'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Stripe
+  tier: 3
+  priority: medium
+  adapter: lever
+  adapter_key: stripe
+  domain: jobs.lever.co
+  industry:
+  - payments infrastructure
+  notes: Strong employer reputation in tech; careers URL/ATS mapping is best-effort.
+  sub_industry: FinTech / Payments
+  careers_url: https://jobs.lever.co/stripe
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:52:57.516734'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:52:57.513226+00:00'
+- name: Shopify
+  tier: 3
+  priority: medium
+  adapter: generic
+  adapter_key: ''
+  domain: www.shopify.com
+  industry:
+  - commerce platform
+  notes: Strong employer reputation in tech; careers URL/ATS mapping is best-effort.
+  sub_industry: Commerce Platform
+  careers_url: https://www.shopify.com/careers/search
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:51:14.762885'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Block
+  tier: 3
+  priority: medium
+  adapter: generic
+  adapter_key: ''
+  domain: careers.block.xyz
+  industry:
+  - payments
+  - commerce
+  notes: Strong employer reputation in tech; careers URL/ATS mapping is best-effort.
+  sub_industry: FinTech
+  careers_url: https://careers.block.xyz
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:01:00.263643+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:51:14.766887'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: PayPal
+  tier: 3
+  priority: medium
+  adapter: workday
+  adapter_key: paypal.wd1.myworkdayjobs.com/jobs
+  domain: paypal.wd1.myworkdayjobs.com
+  industry:
+  - payments
+  notes: Strong employer reputation in tech; careers URL/ATS mapping is best-effort.
+  sub_industry: FinTech / Payments
+  careers_url: https://paypal.wd1.myworkdayjobs.com/jobs
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:52:59.060760'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:52:59.054761+00:00'
+- name: LinkedIn
+  tier: 3
+  priority: medium
+  adapter: workday
+  adapter_key: careers.linkedin.com
+  domain: careers.linkedin.com
+  industry:
+  - professional network
+  - saas
+  notes: Strong employer reputation in tech; careers URL/ATS mapping is best-effort.
+  sub_industry: Internet / SaaS
+  careers_url: https://careers.linkedin.com
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:52:59.116047'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:52:59.109766+00:00'
+- name: Dropbox
+  tier: 3
+  priority: medium
+  adapter: generic
+  adapter_key: ''
+  domain: jobs.dropbox.com
+  industry:
+  - cloud collaboration
+  notes: Strong employer reputation in tech; careers URL/ATS mapping is best-effort.
+  sub_industry: Cloud Collaboration
+  careers_url: https://jobs.dropbox.com
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T17:57:33.965230+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:51:17.884923'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Twilio
+  tier: 3
+  priority: medium
+  adapter: greenhouse
+  adapter_key: twilio
+  domain: boards.greenhouse.io
+  industry:
+  - communications api
+  notes: Strong employer reputation in tech; careers URL/ATS mapping is best-effort.
+  sub_industry: Developer Platform
+  careers_url: https://boards.greenhouse.io/twilio
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:51:18.559545'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Smartsheet
+  tier: 3
+  priority: medium
+  adapter: greenhouse
+  adapter_key: smartsheet
+  domain: boards.greenhouse.io
+  industry:
+  - work management software
+  notes: Strong employer reputation in tech; careers URL/ATS mapping is best-effort.
+  sub_industry: Collaboration Software
+  careers_url: https://boards.greenhouse.io/smartsheet
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:51:19.277516'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Elastic
+  tier: 3
+  priority: medium
+  adapter: greenhouse
+  adapter_key: elastic
+  domain: boards.greenhouse.io
+  industry:
+  - search
+  - observability
+  notes: Strong employer reputation in tech; careers URL/ATS mapping is best-effort.
+  sub_industry: Data / Infrastructure
+  careers_url: https://boards.greenhouse.io/elastic
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:53:03.553685'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:53:03.550685+00:00'
+- name: Fastly
+  tier: 3
+  priority: medium
+  adapter: greenhouse
+  adapter_key: fastly
+  domain: boards.greenhouse.io
+  industry:
+  - edge cloud
+  - cdn
+  notes: Strong employer reputation in tech; careers URL/ATS mapping is best-effort.
+  sub_industry: Internet Infrastructure
+  careers_url: https://boards.greenhouse.io/fastly
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:51:32.990998'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Miro
+  tier: 3
+  priority: medium
+  adapter: generic
+  adapter_key: ''
+  domain: miro.com
+  industry:
+  - collaboration software
+  notes: Strong employer reputation in tech; careers URL/ATS mapping is best-effort.
+  sub_industry: Collaboration Software
+  careers_url: https://miro.com/careers/open-positions/
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:42:33.676753+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:51:32.995997'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Notion
+  tier: 3
+  priority: medium
+  adapter: greenhouse
+  adapter_key: notion
+  domain: boards.greenhouse.io
+  industry:
+  - productivity software
+  notes: Strong employer reputation in tech; careers URL/ATS mapping is best-effort.
+  sub_industry: Collaboration Software
+  careers_url: https://boards.greenhouse.io/notion
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:53:16.488099'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:53:16.485098+00:00'
+- name: Deel
+  tier: 3
+  priority: medium
+  adapter: ashby
+  adapter_key: deel
+  domain: jobs.ashbyhq.com
+  industry:
+  - global hr
+  - payroll
+  notes: Strong employer reputation in tech; careers URL/ATS mapping is best-effort.
+  sub_industry: HR Tech
+  careers_url: https://jobs.ashbyhq.com/deel
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:52:13.660956'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Automattic
+  tier: 3
+  priority: medium
+  adapter: generic
+  adapter_key: ''
+  domain: automattic.com
+  industry:
+  - web publishing
+  - commerce
+  notes: Strong employer reputation in tech; careers URL/ATS mapping is best-effort.
+  sub_industry: Internet / SaaS
+  careers_url: https://automattic.com/work-with-us/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:52:14.564729'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Zapier
+  tier: 3
+  priority: medium
+  adapter: greenhouse
+  adapter_key: zapier
+  domain: boards.greenhouse.io
+  industry:
+  - automation software
+  notes: Strong employer reputation in tech; careers URL/ATS mapping is best-effort.
+  sub_industry: Automation
+  careers_url: https://boards.greenhouse.io/zapier
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:53:57.832545'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:53:57.829545+00:00'
+- name: GitHub
+  tier: 4
+  priority: medium
+  adapter: generic
+  adapter_key: ''
+  domain: www.github.careers
+  industry:
+  - developer platform
+  notes: Curated high-quality tech employer; careers URL/ATS mapping is best-effort.
+  sub_industry: Developer Tools
+  careers_url: https://www.github.careers/careers-home
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:23:30.184326+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:52:37.542887'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: AMD
+  tier: 4
+  priority: medium
+  adapter: workday
+  adapter_key: careers.amd.com/careers-home
+  domain: careers.amd.com
+  industry:
+  - semiconductors
+  notes: Curated high-quality tech employer; careers URL/ATS mapping is best-effort.
+  sub_industry: Semiconductors
+  careers_url: https://careers.amd.com/careers-home/jobs
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:54:21.222470'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:54:21.215467+00:00'
+- name: Qualcomm
+  tier: 4
+  priority: medium
+  adapter: workday
+  adapter_key: qualcomm.wd5.myworkdayjobs.com/External
+  domain: qualcomm.wd5.myworkdayjobs.com
+  industry:
+  - semiconductors
+  - wireless
+  notes: Curated high-quality tech employer; careers URL/ATS mapping is best-effort.
+  sub_industry: Semiconductors
+  careers_url: https://qualcomm.wd5.myworkdayjobs.com/External
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:54:28.531724'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:54:28.523724+00:00'
+- name: Arm
+  tier: 4
+  priority: medium
+  adapter: greenhouse
+  adapter_key: arm
+  domain: boards.greenhouse.io
+  industry:
+  - semiconductors
+  - cpu design
+  notes: Curated high-quality tech employer; careers URL/ATS mapping is best-effort.
+  sub_industry: Semiconductors
+  careers_url: https://boards.greenhouse.io/arm
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:54:30.644058'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:54:30.639054+00:00'
+- name: Workday
+  tier: 4
+  priority: medium
+  adapter: workday
+  adapter_key: workday.wd5.myworkdayjobs.com/Workday
+  domain: workday.wd5.myworkdayjobs.com
+  industry:
+  - enterprise software
+  - hr tech
+  notes: Curated high-quality tech employer; careers URL/ATS mapping is best-effort.
+  sub_industry: Enterprise Software
+  careers_url: https://workday.wd5.myworkdayjobs.com/Workday
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:52:48.764478'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Grammarly
+  tier: 4
+  priority: medium
+  adapter: generic
+  adapter_key: ''
+  domain: www.grammarly.com
+  industry:
+  - ai writing software
+  notes: Curated high-quality tech employer; careers URL/ATS mapping is best-effort.
+  sub_industry: AI Software
+  careers_url: https://www.grammarly.com/jobs
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T17:54:06.025905+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:52:48.768477'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Coinbase
+  tier: 4
+  priority: medium
+  adapter: greenhouse
+  adapter_key: coinbase
+  domain: boards.greenhouse.io
+  industry:
+  - crypto
+  - financial infrastructure
+  notes: Curated high-quality tech employer; careers URL/ATS mapping is best-effort.
+  sub_industry: FinTech / Crypto
+  careers_url: https://boards.greenhouse.io/coinbase
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:52:49.480576'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Palo Alto Networks
+  tier: 4
+  priority: medium
+  adapter: workday
+  adapter_key: jobs.paloaltonetworks.com/en
+  domain: jobs.paloaltonetworks.com
+  industry:
+  - cybersecurity
+  notes: Curated high-quality tech employer; careers URL/ATS mapping is best-effort.
+  sub_industry: Cybersecurity
+  careers_url: https://jobs.paloaltonetworks.com/en/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:54:33.824869'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:54:33.819865+00:00'
+- name: DataRobot
+  tier: 4
+  priority: medium
+  adapter: workday
+  adapter_key: datarobot.wd1.myworkdayjobs.com/Datarobot
+  domain: datarobot.wd1.myworkdayjobs.com
+  industry:
+  - ai platform
+  notes: Curated high-quality tech employer; careers URL/ATS mapping is best-effort.
+  sub_industry: AI Platform
+  careers_url: https://datarobot.wd1.myworkdayjobs.com/Datarobot
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:52:58.186318'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Robinhood
+  tier: 4
+  priority: medium
+  adapter: greenhouse
+  adapter_key: robinhood
+  domain: boards.greenhouse.io
+  industry:
+  - brokerage
+  - fintech
+  notes: Curated high-quality tech employer; careers URL/ATS mapping is best-effort.
+  sub_industry: FinTech
+  careers_url: https://boards.greenhouse.io/robinhood
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:52:59.515684'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Samsara
+  tier: 4
+  priority: medium
+  adapter: generic
+  adapter_key: ''
+  domain: www.samsara.com
+  industry:
+  - iot
+  - operations cloud
+  notes: Curated high-quality tech employer; careers URL/ATS mapping is best-effort.
+  sub_industry: Industrial Tech
+  careers_url: https://www.samsara.com/company/careers
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:04:29.263856+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:52:59.065761'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Toast
+  tier: 4
+  priority: medium
+  adapter: greenhouse
+  adapter_key: toast
+  domain: boards.greenhouse.io
+  industry:
+  - restaurant software
+  - fintech
+  notes: Curated high-quality tech employer; careers URL/ATS mapping is best-effort.
+  sub_industry: Vertical SaaS
+  careers_url: https://boards.greenhouse.io/toast
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:53:00.228851'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Confluent
+  tier: 4
+  priority: medium
+  adapter: ashby
+  adapter_key: confluent
+  domain: jobs.ashbyhq.com
+  industry:
+  - data streaming
+  notes: Curated high-quality tech employer; careers URL/ATS mapping is best-effort.
+  sub_industry: Data Infrastructure
+  careers_url: https://jobs.ashbyhq.com/confluent
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:52:59.275557'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: dbt Labs
+  tier: 4
+  priority: medium
+  adapter: greenhouse
+  adapter_key: dbtlabsinc
+  domain: boards.greenhouse.io
+  industry:
+  - data transformation
+  notes: Curated high-quality tech employer; careers URL/ATS mapping is best-effort.
+  sub_industry: Data Infrastructure
+  careers_url: https://boards.greenhouse.io/dbtlabsinc
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:52:59.594688'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Canva
+  tier: 4
+  priority: medium
+  adapter: generic
+  adapter_key: ''
+  domain: www.canva.com
+  industry:
+  - design software
+  notes: Curated high-quality tech employer; careers URL/ATS mapping is best-effort.
+  sub_industry: Design Software
+  careers_url: https://www.canva.com/careers/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:54:42.662532'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:54:42.655527+00:00'
+- name: OpenAI
+  tier: 4
+  priority: medium
+  adapter: generic
+  adapter_key: ''
+  domain: openai.com
+  industry:
+  - ai research
+  - ai platform
+  notes: Curated high-quality tech employer; careers URL/ATS mapping is best-effort.
+  sub_industry: AI Platform
+  careers_url: https://openai.com/careers/
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T17:52:22.337058+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:52:59.598691'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Duolingo
+  tier: 4
+  priority: medium
+  adapter: greenhouse
+  adapter_key: duolingo
+  domain: boards.greenhouse.io
+  industry:
+  - consumer software
+  - ai
+  notes: Curated high-quality tech employer; careers URL/ATS mapping is best-effort.
+  sub_industry: Consumer Software
+  careers_url: https://boards.greenhouse.io/duolingo
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:53:01.320790'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Airtable
+  tier: 4
+  priority: medium
+  adapter: greenhouse
+  adapter_key: airtable
+  domain: boards.greenhouse.io
+  industry:
+  - work platform
+  notes: Curated high-quality tech employer; careers URL/ATS mapping is best-effort.
+  sub_industry: Collaboration Software
+  careers_url: https://boards.greenhouse.io/airtable
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:53:00.496011'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Reddit
+  tier: 4
+  priority: medium
+  adapter: generic
+  adapter_key: ''
+  domain: www.redditinc.com
+  industry:
+  - consumer internet
+  notes: Curated high-quality tech employer; careers URL/ATS mapping is best-effort.
+  sub_industry: Consumer Internet
+  careers_url: https://www.redditinc.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:54:43.890202'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:54:43.883202+00:00'
+- name: Alteryx
+  tier: 4
+  priority: medium
+  adapter: workday
+  adapter_key: alteryx.wd108.myworkdayjobs.com
+  domain: alteryx.wd108.myworkdayjobs.com
+  industry:
+  - analytics software
+  notes: Curated high-quality tech employer; careers URL/ATS mapping is best-effort.
+  sub_industry: Analytics
+  careers_url: https://alteryx.wd108.myworkdayjobs.com
+  active: true
+  status: active
+  discovery_method: Skipped due to workday scrape cooldown until 2026-04-10T04:55:12.755536+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:53:01.323790'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Snyk
+  tier: 4
+  priority: medium
+  adapter: greenhouse
+  adapter_key: snyk
+  domain: boards.greenhouse.io
+  industry:
+  - developer security
+  notes: Curated high-quality tech employer; careers URL/ATS mapping is best-effort.
+  sub_industry: Cybersecurity
+  careers_url: https://boards.greenhouse.io/snyk
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:54:44.227288'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:54:44.223288+00:00'
+- name: PagerDuty
+  tier: 4
+  priority: medium
+  adapter: greenhouse
+  adapter_key: pagerduty
+  domain: boards.greenhouse.io
+  industry:
+  - incident response software
+  notes: Curated high-quality tech employer; careers URL/ATS mapping is best-effort.
+  sub_industry: DevOps / IT Ops
+  careers_url: https://boards.greenhouse.io/pagerduty
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:53:04.064306'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Datadog
+  tier: 4
+  priority: medium
+  adapter: generic
+  adapter_key: ''
+  domain: careers.datadoghq.com
+  industry:
+  - observability
+  notes: Curated high-quality tech employer; careers URL/ATS mapping is best-effort.
+  sub_industry: Cloud Infrastructure
+  careers_url: https://careers.datadoghq.com
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:01:00.639557+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:53:04.067306'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: HashiCorp
+  tier: 4
+  priority: medium
+  adapter: generic
+  adapter_key: ''
+  domain: www.hashicorp.com
+  industry:
+  - cloud infrastructure
+  notes: Curated high-quality tech employer; careers URL/ATS mapping is best-effort.
+  sub_industry: Developer Infrastructure
+  careers_url: https://www.hashicorp.com/careers
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:23:24.789583+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:53:04.070306'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Procore
+  tier: 4
+  priority: medium
+  adapter: greenhouse
+  adapter_key: procore
+  domain: boards.greenhouse.io
+  industry:
+  - construction software
+  notes: Curated high-quality tech employer; careers URL/ATS mapping is best-effort.
+  sub_industry: Vertical SaaS
+  careers_url: https://boards.greenhouse.io/procore
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:54:46.725423'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:54:46.722425+00:00'

@@ -34,6 +34,8 @@ class TheMuseAdapter(BaseAdapter):
 
     def _fetch_page(self, company_config: Dict[str, Any], page: int) -> Dict[str, Any]:
         params = {"page": page}
+        if settings.themuse_api_key:
+            params["api_key"] = settings.themuse_api_key
         location_filter = str(company_config.get("location_filter") or "").strip()
         if location_filter:
             params["location"] = location_filter

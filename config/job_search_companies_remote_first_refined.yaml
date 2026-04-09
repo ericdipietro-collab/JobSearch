@@ -1,0 +1,852 @@
+companies:
+- name: GitLab
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: about.gitlab.com
+  industry:
+  - devtools|remote-first|platform engineering
+  notes: All-remote company with strong product/platform and enterprise tooling culture.
+  sub_industry: Remote-First DevTools
+  careers_url: https://about.gitlab.com/jobs/
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:23:29.610093+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:40:49.372716'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Automattic
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: automattic.com
+  industry:
+  - publishing|commerce|remote-first
+  notes: Longstanding distributed company with strong remote operating model.
+  sub_industry: Remote-First Software
+  careers_url: https://automattic.com/work-with-us/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:40:49.257911'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Zapier
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: zapier.com
+  industry:
+  - automation|integration|remote-first
+  notes: Remote-first automation platform with strong product and integrations focus.
+  sub_industry: Remote-First Automation
+  careers_url: https://zapier.com/jobs
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:35:39.860650+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:40:49.257911'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Wikimedia Foundation
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: wikimediafoundation.org
+  industry:
+  - knowledge platform|nonprofit tech|remote-first
+  notes: Highly distributed organization with strong work-from-anywhere signals.
+  sub_industry: Remote-First Knowledge Platform
+  careers_url: https://wikimediafoundation.org/about/jobs/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:40:50.389477'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Canonical
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: canonical.com
+  industry:
+  - open source|cloud|remote-first
+  notes: Large globally distributed open-source employer.
+  sub_industry: Remote-First Infrastructure
+  careers_url: https://canonical.com/careers
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:35:37.455941+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:40:49.255909'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Veeva Systems
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: careers.veeva.com
+  industry:
+  - enterprise software|remote-friendly
+  notes: Consistently remote-friendly enterprise software employer.
+  sub_industry: Remote-Friendly Enterprise Software
+  careers_url: https://careers.veeva.com/
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:28:40.670840+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:40:49.295203'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Deel
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: jobs.ashbyhq.com
+  industry:
+  - global HR|payroll|remote-first
+  notes: Remote-first growth company with global distributed hiring.
+  sub_industry: Remote-First HR / Payroll
+  careers_url: https://jobs.ashbyhq.com/deel
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:40:50.137947'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Doist
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: doist.com
+  industry:
+  - productivity|remote-first
+  notes: Classic remote-first productivity company.
+  sub_industry: Remote-First Productivity
+  careers_url: https://doist.com/careers
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:35:39.953511+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:40:49.343206'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: DuckDuckGo
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: duckduckgo.com
+  industry:
+  - search|privacy|remote-first
+  notes: Distributed privacy/search company.
+  sub_industry: Remote-First Consumer Tech
+  careers_url: https://duckduckgo.com/hiring
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:37:21.870931+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:40:49.280201'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Buffer
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: buffer.com
+  industry:
+  - social software|remote-first
+  notes: Longstanding remote-first employer.
+  sub_industry: Remote-First SaaS
+  careers_url: https://buffer.com/journey
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:40:49.256909'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Remote
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: remote.com
+  industry:
+  - global employment|HR tech|remote-first
+  notes: Core remote-work infrastructure company.
+  sub_industry: Remote-First HR Tech
+  careers_url: https://remote.com/careers
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:35:39.502354+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:40:49.279202'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Oyster
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.oysterhr.com
+  industry:
+  - global employment|remote-first
+  notes: Global hiring platform built around distributed work.
+  sub_industry: Remote-First HR Tech
+  careers_url: https://www.oysterhr.com/careers
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:35:39.456207+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:40:49.332201'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: SafetyWing
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: safetywing.com
+  industry:
+  - insurtech|remote-first|global employment
+  notes: Built around remote worker and global team infrastructure.
+  sub_industry: Remote-First InsurTech
+  careers_url: https://safetywing.com/careers
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:35:39.363456+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:40:49.282201'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Supabase
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: supabase.com
+  industry:
+  - database|developer platform|remote-first
+  notes: Born-remote developer platform company.
+  sub_industry: Remote-First Developer Platform
+  careers_url: https://supabase.com/careers
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:35:39.393996+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:40:49.282201'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Cloudflare
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.cloudflare.com
+  industry:
+  - cloud|developer platform|remote-friendly
+  notes: Large remote-friendly platform company.
+  sub_industry: Remote-Friendly Cloud Platform
+  careers_url: https://www.cloudflare.com/careers/jobs/
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:01:00.680167+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:40:49.283201'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Dropbox
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: jobs.dropbox.com
+  industry:
+  - collaboration|virtual-first
+  notes: Virtual-first company with strong product roles.
+  sub_industry: Virtual-First Collaboration
+  careers_url: https://jobs.dropbox.com/
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T17:57:33.965230+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:40:49.285206'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Atlassian
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: www.atlassian.com
+  industry:
+  - collaboration|team software|distributed
+  notes: Flexible Team Anywhere model with strong PM/platform roles.
+  sub_industry: Distributed Collaboration Software
+  careers_url: https://www.atlassian.com/company/careers
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T17:57:33.218244+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:40:49.311205'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: HubSpot
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.hubspot.com
+  industry:
+  - CRM|marketing tech|flexible work
+  notes: Strong flexible/remote employer with mature product culture.
+  sub_industry: Remote-Friendly SaaS
+  careers_url: https://www.hubspot.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:42:31.995747'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:42:31.989702+00:00'
+- name: Twilio
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: careers.twilio.com
+  industry:
+  - communications platform|remote-friendly
+  notes: Developer/API platform with distributed teams.
+  sub_industry: Remote-Friendly Communications Platform
+  careers_url: https://careers.twilio.com/
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:02:44.452266+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:40:49.293203'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Samsara
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.samsara.com
+  industry:
+  - IoT|platform|remote-friendly
+  notes: Strong employer reputation and distributed hiring in product/platform functions.
+  sub_industry: Remote-Friendly Platform
+  careers_url: https://www.samsara.com/company/careers
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:04:29.263856+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:40:49.295203'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: ServiceNow
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: careers.servicenow.com
+  industry:
+  - enterprise software|AI platform|flexible
+  notes: Top workplace with strong hybrid/remote opportunities.
+  sub_industry: Enterprise Platform
+  careers_url: https://careers.servicenow.com/
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:01:00.254133+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:40:49.311205'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Datadog
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: careers.datadoghq.com
+  industry:
+  - observability|cloud|flexible
+  notes: High-quality employer with remote-capable technical roles.
+  sub_industry: Observability
+  careers_url: https://careers.datadoghq.com/
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:01:00.639557+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:40:49.298202'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Snowflake
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: careers.snowflake.com
+  industry:
+  - data platform|flexible work
+  notes: Strong technical employer with distributed teams.
+  sub_industry: Data Platform
+  careers_url: https://careers.snowflake.com/
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T17:59:13.236442+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:40:49.299202'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Miro
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: miro.com
+  industry:
+  - collaboration|distributed work
+  notes: Work-collaboration platform with strong distributed DNA.
+  sub_industry: Distributed Collaboration
+  careers_url: https://miro.com/careers/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:42:33.678752'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:42:33.673666+00:00'
+- name: Hotjar
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: careers.hotjar.com
+  industry:
+  - product experience|fully remote
+  notes: Fully remote product-experience company.
+  sub_industry: Fully Remote SaaS
+  careers_url: https://careers.hotjar.com/
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:37:14.182721+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:40:49.309203'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Toggl
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: toggl.com
+  industry:
+  - productivity|fully remote
+  notes: Classic fully remote productivity employer.
+  sub_industry: Fully Remote Productivity
+  careers_url: https://toggl.com/jobs/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:40:49.313206'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Time Doctor
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.timedoctor.com
+  industry:
+  - remote work software|WFA
+  notes: Frequently cited work-from-anywhere employer.
+  sub_industry: Work-From-Anywhere SaaS
+  careers_url: https://www.timedoctor.com/careers/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:40:50.453475'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Invisible Technologies
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: careers.invisible.co
+  industry:
+  - AI operations|remote-first
+  notes: Frequent WFA/remote hiring signal.
+  sub_industry: Remote-First AI Operations
+  careers_url: https://careers.invisible.co/
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:39:05.931236+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:40:49.333203'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: BELAY
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: belaysolutions.com
+  industry:
+  - virtual staffing|remote
+  notes: Strong remote employer in FlexJobs tracking.
+  sub_industry: Remote Employer
+  careers_url: https://belaysolutions.com/careers/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:42:33.599716'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:42:33.593674+00:00'
+- name: Transcom
+  tier: 3
+  priority: low
+  adapter: generic
+  domain: www.transcom.com
+  industry:
+  - customer operations|remote
+  notes: Large remote employer on recent FlexJobs list.
+  sub_industry: Remote Operations
+  careers_url: https://www.transcom.com/careers/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:40:51.613909'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Cognizant
+  tier: 3
+  priority: low
+  adapter: generic
+  domain: careers.cognizant.com
+  industry:
+  - IT services|remote-friendly
+  notes: Large employer with substantial remote hiring signal.
+  sub_industry: Remote-Friendly IT Services
+  careers_url: https://careers.cognizant.com/
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:11:26.707700+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:40:49.344206'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Visa
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: jobs.visa.com
+  industry:
+  - payments|enterprise tech|flexible
+  notes: High-quality employer with flexible work and fintech relevance.
+  sub_industry: Payments Platform
+  careers_url: https://jobs.visa.com/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:42:20.911286'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:42:20.905282+00:00'
+- name: PayPal
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: careers.pypl.com
+  industry:
+  - payments|commerce|remote-friendly
+  notes: Strong fintech/remote-friendly employer.
+  sub_industry: Payments / Commerce
+  careers_url: https://careers.pypl.com/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:42:33.097841'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:42:33.090327+00:00'
+- name: BlackRock
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: careers.blackrock.com
+  industry:
+  - asset management|tech|flexible
+  notes: Remote-capable roles plus elite fintech relevance.
+  sub_industry: Asset Management Tech
+  careers_url: https://careers.blackrock.com/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:42:33.105872'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:42:33.097841+00:00'
+- name: Fidelity Investments
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: jobs.fidelity.com
+  industry:
+  - brokerage|wealthtech|remote-friendly
+  notes: Large financial-services employer with distributed roles.
+  sub_industry: Brokerage / WealthTech
+  careers_url: https://jobs.fidelity.com/
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-09T23:50:17.675342+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:40:50.140946'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Black & Veatch
+  tier: 3
+  priority: low
+  adapter: generic
+  domain: careers.bv.com
+  industry:
+  - engineering|digital|remote
+  notes: Frequent remote employer signal.
+  sub_industry: Remote-Friendly Engineering
+  careers_url: https://careers.bv.com/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:42:33.089327'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:42:33.082309+00:00'
+- name: Aquent
+  tier: 3
+  priority: low
+  adapter: generic
+  domain: aquent.com
+  industry:
+  - talent platform|remote work
+  notes: Longtime flexible-work employer.
+  sub_industry: Remote Work Services
+  careers_url: https://aquent.com/find-work/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:40:51.399878'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: SupportYourApp
+  tier: 3
+  priority: low
+  adapter: generic
+  domain: careers.supportyourapp.com
+  industry:
+  - support operations|remote
+  notes: Frequent remote-work employer signal.
+  sub_industry: Remote Support Operations
+  careers_url: https://careers.supportyourapp.com/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:42:33.686275'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:42:33.679753+00:00'
+- name: Veeva
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: careers.veeva.com
+  industry:
+  - life sciences cloud|work from anywhere
+  notes: Work anywhere policy remains a notable differentiator.
+  sub_industry: Work-Anywhere Enterprise Software
+  careers_url: https://careers.veeva.com/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:42:33.672665'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:42:33.664666+00:00'
+- name: Wikimedia
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: wikimediafoundation.org
+  industry:
+  - knowledge platform|remote distributed
+  notes: Duplicate normalized entry kept out in de-dup.
+  sub_industry: Remote Platform
+  careers_url: https://wikimediafoundation.org/about/jobs/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:40:51.719950'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: GitHub
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: github.careers
+  industry:
+  - developer platform|remote-friendly
+  notes: Developer platform with distributed opportunities.
+  sub_industry: Developer Platform
+  careers_url: https://github.careers/
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:23:30.184326+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:40:51.732949'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: dbt Labs
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: www.getdbt.com
+  industry:
+  - data tooling|remote-friendly
+  notes: Modern data company with remote-friendly culture.
+  sub_industry: Data Tooling
+  careers_url: https://www.getdbt.com/company/careers
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:20:03.500045+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:40:51.735949'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Fivetran
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: www.fivetran.com
+  industry:
+  - ELT|remote-friendly
+  notes: Data infrastructure company with distributed hiring.
+  sub_industry: Data Integration
+  careers_url: https://www.fivetran.com/careers
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:20:03.925547+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:40:51.739948'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Grafana Labs
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: grafana.com
+  industry:
+  - observability|remote-friendly
+  notes: Strong remote/open-source culture.
+  sub_industry: Observability
+  careers_url: https://grafana.com/about/careers/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:40:52.646874'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Sentry
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: sentry.io
+  industry:
+  - developer tools|remote-friendly
+  notes: Developer tools company with remote-compatible roles.
+  sub_industry: Developer Tools
+  careers_url: https://sentry.io/careers/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:40:53.066586'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Postman
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: www.postman.com
+  industry:
+  - API platform|distributed teams
+  notes: Strong API/platform fit with flexible work model.
+  sub_industry: API Platform
+  careers_url: https://www.postman.com/company/careers/
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:23:23.419524+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:40:53.078612'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Mural
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.mural.co
+  industry:
+  - collaboration|distributed work
+  notes: Collaboration company built around distributed teams.
+  sub_industry: Distributed Collaboration
+  careers_url: https://www.mural.co/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:42:35.534859'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:42:35.526829+00:00'
+- name: Webflow
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: webflow.com
+  industry:
+  - web platform|distributed
+  notes: Modern product company with distributed teams and strong PM roles.
+  sub_industry: Distributed Product Platform
+  careers_url: https://webflow.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:44:03.084843'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:44:03.076332+00:00'
+- name: HashiCorp
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: www.hashicorp.com
+  industry:
+  - infra tooling|distributed
+  notes: Strong distributed technical employer.
+  sub_industry: Infrastructure Tooling
+  careers_url: https://www.hashicorp.com/careers
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:23:24.789583+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:42:32.002748'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Twilio Segment
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: careers.twilio.com
+  industry:
+  - customer data|distributed
+  notes: Customer data/API platform inside remote-friendly Twilio.
+  sub_industry: Customer Data Platform
+  careers_url: https://careers.twilio.com/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:44:14.276685'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:44:14.269627+00:00'

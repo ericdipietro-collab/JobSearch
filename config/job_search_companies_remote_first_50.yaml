@@ -1,0 +1,835 @@
+companies:
+- name: Automattic
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: automattic.com
+  industry: web publishing | commerce | distributed software
+  notes: Long-running fully distributed company behind WordPress.com, WooCommerce,
+    Tumblr, and more.
+  sub_industry: Remote-First SaaS
+  careers_url: https://automattic.com/work-with-us/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:33:55.787411'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: GitLab
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: about.gitlab.com
+  industry: devsecops | developer platform | enterprise software
+  notes: One of the best-known all-remote companies; strong handbook-first operating
+    model.
+  sub_industry: DevSecOps Platform
+  careers_url: https://about.gitlab.com/jobs/
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:23:29.610093+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:33:55.158485'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Zapier
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: zapier.com
+  industry: automation | integrations | ai workflow
+  notes: Remote-first since 2011 with strong async culture and broad product/engineering
+    hiring.
+  sub_industry: Automation Platform
+  careers_url: https://zapier.com/jobs
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:35:39.864650'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:35:39.857640+00:00'
+- name: Supabase
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: supabase.com
+  industry: developer tools | database platform | open source
+  notes: Born-remote developer platform with a globally distributed team.
+  sub_industry: Developer Platform
+  careers_url: https://supabase.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:35:39.397499'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:35:39.390993+00:00'
+- name: Doist
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: doist.com
+  industry: productivity software | collaboration | remote work
+  notes: Fully remote maker of Todoist and Twist with deeply async operating norms.
+  sub_industry: Productivity Software
+  careers_url: https://doist.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:35:39.957526'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:35:39.951509+00:00'
+- name: Buffer
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: buffer.com
+  industry: social media software | marketing tech | remote work
+  notes: Well-known remote-first software company with transparent culture and pay
+    practices.
+  sub_industry: MarTech / Social SaaS
+  careers_url: https://buffer.com/journey
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:33:56.510442'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Canonical
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: canonical.com
+  industry: linux | cloud infrastructure | open source
+  notes: Global distributed company behind Ubuntu with frequent remote technical hiring.
+  sub_industry: Open Source Infrastructure
+  careers_url: https://canonical.com/careers/all
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:35:37.459452'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:35:37.453942+00:00'
+- name: Elastic
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: elastic.co
+  industry: search | observability | security
+  notes: Large distributed software company with many remote and distributed roles.
+  sub_industry: Search / Observability
+  careers_url: https://www.elastic.co/careers
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:20:04.659660+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:33:55.155484'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Deel
+  tier: 1
+  priority: high
+  adapter: ashby
+  adapter_key: deel
+  domain: jobs.ashbyhq.com
+  industry: global hr | payroll | employer of record
+  notes: Highly visible distributed company building global hiring and payroll infrastructure.
+  sub_industry: Global HR / Payroll
+  careers_url: https://jobs.ashbyhq.com/deel
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:33:55.819874'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Remote
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: remote.com
+  industry: global hr | payroll | employer of record
+  notes: Remote-native company focused on international hiring, payroll, and compliance.
+  sub_industry: Global HR / Payroll
+  careers_url: https://remote.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:35:39.505355'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:35:39.499356+00:00'
+- name: Oyster
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: oysterhr.com
+  industry: global employment | hr tech | distributed work
+  notes: Distributed company centered on hiring globally without local entities.
+  sub_industry: Global Employment
+  careers_url: https://www.oysterhr.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:35:39.460724'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:35:39.453695+00:00'
+- name: Toptal
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: toptal.com
+  industry: talent marketplace | consulting | remote work
+  notes: Longstanding remote-native company with broad operations, sales, and talent
+    roles.
+  sub_industry: Talent Marketplace
+  careers_url: https://www.toptal.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:35:39.802073'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:35:39.795562+00:00'
+- name: SafetyWing
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: safetywing.com
+  industry: insurance | fintech | remote work
+  notes: Remote-first company serving digital nomads and distributed teams.
+  sub_industry: InsurTech / Remote Work
+  careers_url: https://safetywing.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:35:39.368960'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:35:39.360454+00:00'
+- name: Close
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: close.com
+  industry: crm | sales software | remote work
+  notes: Fully remote CRM company with a strong engineering and product culture.
+  sub_industry: Sales SaaS
+  careers_url: https://close.com/jobs
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:35:40.484792'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:35:40.478793+00:00'
+- name: 1Password
+  tier: 1
+  priority: high
+  adapter: generic
+  domain: 1password.com
+  industry: cybersecurity | password management | saas
+  notes: Remote-forward security company with strong brand and product reputation.
+  sub_industry: Cybersecurity
+  careers_url: https://1password.com/jobs
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:35:40.609829'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:35:40.603318+00:00'
+- name: Sourcegraph
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: sourcegraph.com
+  industry: developer tools | code intelligence | ai
+  notes: Distributed developer tools company with strong technical and product roles.
+  sub_industry: Developer Tools
+  careers_url: https://sourcegraph.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:37:19.904403'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:37:19.897894+00:00'
+- name: Docker
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: docker.com
+  industry: developer tools | containers | cloud
+  notes: Remote-friendly infrastructure brand with a large distributed footprint.
+  sub_industry: Developer Infrastructure
+  careers_url: https://www.docker.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:37:22.516594'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:37:22.497018+00:00'
+- name: CircleCI
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: circleci.com
+  industry: ci/cd | developer tools | cloud
+  notes: Remote-friendly software company with strong engineering and product operations
+    roles.
+  sub_industry: CI/CD
+  careers_url: https://circleci.com/careers
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:23:32.115410+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:35:39.402504'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Vercel
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: vercel.com
+  industry: developer platform | frontend cloud | ai
+  notes: Distributed frontend platform company with strong PM, platform, and GTM hiring.
+  sub_industry: Frontend Platform
+  careers_url: https://vercel.com/careers
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:23:31.244025+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:35:39.405506'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: DuckDuckGo
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: duckduckgo.com
+  industry: search | privacy | consumer internet
+  notes: Privacy-first distributed company with a long remote operating model.
+  sub_industry: Privacy Tech
+  careers_url: https://duckduckgo.com/hiring
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:37:21.875453'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:37:21.868932+00:00'
+- name: Toggl
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: toggl.com
+  industry: productivity software | time tracking | remote work
+  notes: Fully remote productivity software company with multiple product lines.
+  sub_industry: Productivity SaaS
+  careers_url: https://toggl.com/jobs/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:35:40.026434'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Prismatic
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: prismatic.io
+  industry: embedded integrations | ipaas | b2b saas
+  notes: 100% remote-first embedded integration platform with strong technical alignment.
+  sub_industry: Embedded iPaaS
+  careers_url: https://prismatic.io/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:37:22.522594'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:37:22.516594+00:00'
+- name: TestGorilla
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: testgorilla.com
+  industry: hr tech | talent assessment | saas
+  notes: Remote-first assessment platform with distributed hiring across functions.
+  sub_industry: HR Tech
+  careers_url: https://www.testgorilla.com/careers/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:35:43.691952'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Hotjar
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: hotjar.com
+  industry: product analytics | ux research | saas
+  notes: Remote-first product experience company with strong async culture.
+  sub_industry: Product Analytics
+  careers_url: https://www.hotjar.com/careers/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:37:14.187728'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:37:14.180219+00:00'
+- name: Aha!
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: aha.io
+  industry: product management software | roadmap | saas
+  notes: Well-known fully remote software company and frequent remote employer.
+  sub_industry: Product Management SaaS
+  careers_url: https://www.aha.io/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:37:22.991434'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:37:22.985435+00:00'
+- name: Contra
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: contra.com
+  industry: creator economy | freelancer marketplace | payments
+  notes: Remote-first freelancer platform with distributed team operations.
+  sub_industry: Talent Marketplace
+  careers_url: https://contra.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:37:22.929623'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:37:22.923469+00:00'
+- name: 10up
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: 10up.com
+  industry: digital agency | wordpress | consulting
+  notes: Longtime distributed consultancy with product, engineering, and client roles.
+  sub_industry: Digital Consultancy
+  careers_url: https://10up.com/careers/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:35:40.890911'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: X-Team
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: x-team.com
+  industry: software consulting | talent network | remote work
+  notes: Remote-native engineering organization known for distributed delivery teams.
+  sub_industry: Software Consulting
+  careers_url: https://x-team.com/join
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:37:24.426586'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:37:24.420336+00:00'
+- name: Zyte
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: zyte.com
+  industry: data extraction | web data | infrastructure
+  notes: Distributed data platform company formerly known as Scrapinghub.
+  sub_industry: Data Infrastructure
+  careers_url: https://www.zyte.com/jobs/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:37:24.434124'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:37:24.427590+00:00'
+- name: Apollo.io
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: apollo.io
+  industry: sales intelligence | go-to-market tech | saas
+  notes: Remote-forward revenue software company with product and platform roles.
+  sub_industry: Sales Intelligence
+  careers_url: https://www.apollo.io/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:37:26.088673'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:37:26.081160+00:00'
+- name: PostHog
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: posthog.com
+  industry: product analytics | developer tools | open source
+  notes: Remote-native product OS company with strong technical hiring and open-source
+    ethos.
+  sub_industry: Product Analytics / Developer Tools
+  careers_url: https://posthog.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:38:57.233070'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:38:57.224557+00:00'
+- name: Clerk
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: clerk.com
+  industry: developer tools | identity | authentication
+  notes: Remote-forward developer infrastructure company with high technical bar.
+  sub_industry: Identity / Developer Tools
+  careers_url: https://clerk.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:39:02.997627'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:39:02.993118+00:00'
+- name: Fly.io
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: fly.io
+  industry: developer platform | edge computing | cloud
+  notes: Distributed infrastructure company with strong engineering culture.
+  sub_industry: Cloud Infrastructure
+  careers_url: https://fly.io/jobs
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:37:22.687744'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Netlify
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: netlify.com
+  industry: developer platform | web infrastructure | cloud
+  notes: Remote-forward web platform company with broad distributed hiring.
+  sub_industry: Web Infrastructure
+  careers_url: https://www.netlify.com/careers/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:37:23.178068'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: PlanetScale
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: planetscale.com
+  industry: database platform | cloud infrastructure | developer tools
+  notes: Distributed database company with strong platform and product opportunities.
+  sub_industry: Database Platform
+  careers_url: https://planetscale.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:39:05.224128'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:39:05.217107+00:00'
+- name: dbt Labs
+  tier: 2
+  priority: medium
+  adapter: greenhouse
+  adapter_key: dbtlabsinc
+  domain: job-boards.greenhouse.io
+  industry: data transformation | analytics engineering | data platform
+  notes: Remote-heavy data platform company with strong product, PMM, and technical
+    GTM roles.
+  sub_industry: Data Platform
+  careers_url: https://job-boards.greenhouse.io/dbtlabsinc
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:37:23.393289'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Airbyte
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: airbyte.com
+  industry: data integration | open source | data infrastructure
+  notes: Distributed open-source data integration company with strong technical/product
+    overlap.
+  sub_industry: Data Infrastructure
+  careers_url: https://airbyte.com/company/careers
+  active: true
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-10T18:20:03.894033+00:00
+    (blocked)
+  last_healed: '2026-04-09T12:37:22.933680'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Grafana Labs
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: grafana.com
+  industry: observability | monitoring | developer tools
+  notes: Well-known distributed software company with global remote technical hiring.
+  sub_industry: Observability
+  careers_url: https://grafana.com/about/careers/open-positions/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:37:23.939852'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Mozilla
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: mozilla.org
+  industry: internet software | privacy | open source
+  notes: Mission-driven organization with many remote or distributed opportunities.
+  sub_industry: Internet / Open Source
+  careers_url: https://www.mozilla.org/en-US/careers/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:37:23.623324'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Invisible Technologies
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: invisible.co
+  industry: ai operations | services | automation
+  notes: Distributed company operating at the intersection of AI services and workflow
+    ops.
+  sub_industry: AI Operations
+  careers_url: https://www.invisible.co/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:39:05.935297'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:39:05.928174+00:00'
+- name: Andela
+  tier: 2
+  priority: medium
+  adapter: generic
+  domain: andela.com
+  industry: talent marketplace | software engineering | global remote
+  notes: Global remote talent company with a distributed operating model.
+  sub_industry: Global Talent
+  careers_url: https://www.andela.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:39:06.044535'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:39:06.036784+00:00'
+- name: Hubstaff
+  tier: 3
+  priority: medium
+  adapter: generic
+  domain: hubstaff.com
+  industry: time tracking | workforce management | remote work
+  notes: Remote-native company building tools for distributed workforce management.
+  sub_industry: Workforce SaaS
+  careers_url: https://hubstaff.com/jobs
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:39:07.332849'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:39:07.325342+00:00'
+- name: Kit
+  tier: 3
+  priority: medium
+  adapter: generic
+  domain: kit.com
+  industry: creator tools | email marketing | saas
+  notes: Creator-focused software company formerly ConvertKit with a remote-first
+    reputation.
+  sub_industry: Creator SaaS
+  careers_url: https://kit.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:39:07.319278'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:39:07.312278+00:00'
+- name: Modus Create
+  tier: 3
+  priority: medium
+  adapter: generic
+  domain: moduscreate.com
+  industry: digital consulting | product engineering | cloud
+  notes: Distributed consultancy with product, engineering, and client delivery roles.
+  sub_industry: Digital Consulting
+  careers_url: https://moduscreate.com/careers/
+  active: true
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-09T12:37:26.474447'
+  heal_failure_streak: 0
+  manual_only_suggested: false
+- name: Help Scout
+  tier: 3
+  priority: medium
+  adapter: generic
+  domain: helpscout.com
+  industry: customer support software | saas | remote work
+  notes: Remote company known for strong culture and async operating norms.
+  sub_industry: Customer Support SaaS
+  careers_url: https://www.helpscout.com/company/careers/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:39:08.174139'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:39:08.166634+00:00'
+- name: Baremetrics
+  tier: 3
+  priority: medium
+  adapter: generic
+  domain: baremetrics.com
+  industry: saas analytics | subscription metrics | fintech adjacent
+  notes: Distributed SaaS company focused on subscription and revenue analytics.
+  sub_industry: SaaS Analytics
+  careers_url: https://baremetrics.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:39:08.822474'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:39:08.814440+00:00'
+- name: bunny.net
+  tier: 3
+  priority: medium
+  adapter: generic
+  domain: bunny.net
+  industry: cdn | edge infrastructure | developer tools
+  notes: Remote-first edge and CDN platform with globally distributed hiring.
+  sub_industry: Edge Infrastructure
+  careers_url: https://bunny.net/careers/
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:39:05.856395'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:39:05.850391+00:00'
+- name: Replit
+  tier: 3
+  priority: medium
+  adapter: generic
+  domain: replit.com
+  industry: developer tools | coding platform | ai
+  notes: Developer platform with distributed hiring and strong AI adjacency.
+  sub_industry: Developer Platform
+  careers_url: https://replit.com/careers
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:40:39.626660'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:40:39.618144+00:00'
+- name: MailerLite
+  tier: 3
+  priority: medium
+  adapter: generic
+  domain: mailerlite.com
+  industry: email marketing | saas | remote work
+  notes: Remote-first marketing software company with globally distributed roles.
+  sub_industry: Email Marketing SaaS
+  careers_url: https://www.mailerlite.com/jobs
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:40:38.497168'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:40:38.489737+00:00'
+- name: Storyblok
+  tier: 3
+  priority: medium
+  adapter: generic
+  domain: storyblok.com
+  industry: headless cms | content platform | saas
+  notes: Distributed headless CMS company with strong remote hiring posture.
+  sub_industry: Content Platform
+  careers_url: https://www.storyblok.com/jobs
+  active: true
+  status: broken
+  discovery_method: Discovery budget exhausted
+  last_healed: '2026-04-09T12:40:49.163871'
+  heal_failure_streak: 1
+  manual_only_suggested: false
+  heal_last_failure_detail: Discovery budget exhausted
+  cooldown_until: '2026-04-10T18:40:49.156873+00:00'

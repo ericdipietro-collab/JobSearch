@@ -162,11 +162,8 @@ class WorkdayAdapter(BaseAdapter):
                     from datetime import datetime, timezone, timedelta
                     last_updated = self.known_urls[job_url]
                     if datetime.now(timezone.utc) - last_updated < timedelta(days=3):
-                        # Return a minimal job entry. ScraperEngine._process_and_save_jobs 
-                        # will see the same hash (if description empty) or we can 
-                        # just mark it as skipped.
-                        # Actually, to update 'last seen', we need to return it.
-                        # We'll use a special flag or just the title.
+                        print(f"Incremental Scrape: Skipping detail fetch for {job_url}")
+                        # Return a minimal job entry.
                         jobs.append(
                             Job(
                                 id=hashlib.md5(f"{company_config.get('name', 'Unknown')}{title}{job_url}".encode()).hexdigest(),

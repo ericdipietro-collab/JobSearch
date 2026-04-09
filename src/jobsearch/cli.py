@@ -1,3 +1,4 @@
+import logging
 import subprocess
 import sys
 import time
@@ -148,9 +149,28 @@ def _apply_heal_failure_policy(company, result_status: str, detail: str, now_utc
     return promoted, extra_detail
 
 
+def setup_logging(log_file: Path | None = None, level: int = logging.INFO):
+    """Global logging configuration for the CLI."""
+    handlers = [logging.StreamHandler(sys.stdout)]
+    if log_file:
+        handlers.append(logging.FileHandler(log_file, encoding="utf-8"))
+    
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+        datefmt="%H:%M:%S",
+        handlers=handlers,
+    )
+    # Reduce noise from third-party libraries
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+    logging.getLogger("selenium").setLevel(logging.WARNING)
+    logging.getLogger("playwright").setLevel(logging.WARNING)
+
+
 @click.group()
 def main():
     """JobSearch CLI: manage the job search pipeline."""
+    setup_logging()
 
 
 @main.command()
@@ -161,7 +181,8 @@ def main():
 @click.option("--deep-timeout", default=20.0, type=float, help="Maximum seconds to spend in deep heal per company.")
 @click.option("--chronic-only", is_flag=True, help="Target only chronic failures (streak >= 3), bypassing cooldown. Enables --deep automatically.")
 @click.option("--min-streak", default=0, type=int, help="Only process companies with heal_failure_streak >= N (implies force).")
-def heal(heal_all, force, deep, workers, deep_timeout, chronic_only, min_streak):
+@click.option("--registry", "registry_path", type=click.Path(exists=True), help="Path to a specific company registry YAML to heal.")
+def heal(heal_all, force, deep, workers, deep_timeout, chronic_only, min_streak, registry_path):
     """Heal and verify ATS URLs in the company registry."""
     # --chronic-only implies force + deep since these are the hardest cases
     if chronic_only:
@@ -172,47 +193,17 @@ def heal(heal_all, force, deep, workers, deep_timeout, chronic_only, min_streak)
         if deep_timeout == 20.0:  # user didn't override — use generous timeout for hard cases
             deep_timeout = 45.0
 
-    click.echo(f"Starting ATS Registry Healer with {workers} workers...")
-
-    comp_path = settings.companies_yaml
-    if not comp_path.exists():
-        click.echo(f"Companies file not found at {comp_path}", err=True)
-        return
-
-    with comp_path.open("r", encoding="utf-8") as handle:
-        data = yaml.safe_load(handle) or {}
-
-    companies = [
-        company
-        for company in (data.get("companies", []) or [])
-        if str(company.get("source_lane") or "").lower() != "aggregator"
-    ]
-    now_utc = datetime.now(timezone.utc)
-    to_heal = []
-    skipped = []
-    for company in companies:
-        streak = int(company.get("heal_failure_streak") or 0)
-
-        # Streak filter: skip companies that don't meet the minimum streak threshold
-        if min_streak > 0 and streak < min_streak:
-            continue
-
-        if not (heal_all or force or company.get("status") != "active"):
-            continue
-        if not force:
-            skip_reason = _healer_cooldown_reason(company, now_utc)
-            if skip_reason:
-                skipped.append((company.get("name", "Unknown"), skip_reason))
-                continue
-        to_heal.append(company)
-    if not to_heal:
-        click.echo("Done. No companies need healing.")
-        return
-
-    if min_streak > 0:
-        click.echo(f"Targeting {len(to_heal)} companies with streak >= {min_streak} (deep={deep})")
+    # Discover registries to process
+    if registry_path:
+        registries = [Path(registry_path)]
     else:
-        click.echo(f"Total companies to process: {len(to_heal)}")
+        registries = settings.get_company_registries()
+
+    if not registries:
+        click.echo("No company registries found to heal.")
+        return
+
+    click.echo(f"Starting ATS Registry Healer with {workers} workers across {len(registries)} registries...")
 
     import threading
     from concurrent.futures import ThreadPoolExecutor
@@ -224,16 +215,9 @@ def heal(heal_all, force, deep, workers, deep_timeout, chronic_only, min_streak)
     except Exception:
         pass
 
-    changed_count = 0
-    lock = threading.Lock()
+    now_utc = datetime.now(timezone.utc)
+    total_changed = 0
     run_started_at = time.perf_counter()
-    metrics = {
-        "processed": 0,
-        "status_counts": {},
-        "company_times": [],
-        "slowest": [],
-        "skipped": len(skipped),
-    }
 
     # Single healer instance shared across all threads — caches URL validations
     # so the same ATS endpoint is never fetched twice within one heal run.
@@ -256,142 +240,163 @@ def heal(heal_all, force, deep, workers, deep_timeout, chronic_only, min_streak)
 
     log_msg(
         f"Heal run start | all={heal_all} force={force} deep={deep} "
-        f"workers={workers} deep_timeout_s={deep_timeout}"
+        f"workers={workers} deep_timeout_s={deep_timeout} registries={len(registries)}"
     )
-    for name, reason in skipped:
-        log_msg(f"  SKIP {name}: {reason}")
 
-    def heal_one(company):
-        nonlocal changed_count
-        name = company.get("name", "Unknown")
-        with lock:
-            log_msg(f"Checking {name}...")
+    lock = threading.Lock()
 
-        started_at = time.perf_counter()
-        result = healer.discover(company, force=force, deep=deep)
-        elapsed_ms = round((time.perf_counter() - started_at) * 1000, 1)
+    for reg_path in registries:
+        log_msg(f"\nProcessing registry: {reg_path.name}")
+        with reg_path.open("r", encoding="utf-8") as handle:
+            data = yaml.safe_load(handle) or {}
 
-        with lock:
-            before = {f: company.get(f) for f in _SUBSTANTIVE_HEAL_FIELDS}
-            transitioned_manual = False
+        companies = [
+            company
+            for company in (data.get("companies", []) or [])
+            if str(company.get("source_lane") or "").lower() != "aggregator"
+        ]
 
-            if result.status == "FOUND":
-                company["adapter"] = result.adapter or company.get("adapter")
-                if result.adapter_key:
-                    company["adapter_key"] = result.adapter_key
-                else:
-                    company.pop("adapter_key", None)
-                company["careers_url"] = result.careers_url or company.get("careers_url")
-                company["status"] = "active"
-                company["active"] = True
-                company["manual_only"] = False
-                _reset_heal_failure_state(company)
-            elif result.status == "FALLBACK":
-                # FALLBACK = 403 blocked page; record the URL but keep manual_only
-                # so the scraper does not attempt it automatically.
-                company["adapter"] = result.adapter or company.get("adapter")
-                company.pop("adapter_key", None)
-                company["careers_url"] = result.careers_url or company.get("careers_url")
-                company["status"] = "manual_only"
-                company["active"] = True
-                company["manual_only"] = True
-            elif result.status == "BLOCKED":
-                # BLOCKED = unsupported ATS vendor or confirmed bot-wall.
-                # Set manual_only=True permanently; do NOT increment the failure streak
-                # since this is a known state, not a transient error.
-                company["status"] = "manual_only"
-                company["active"] = True
-                company["manual_only"] = True
-                if result.careers_url:
-                    company["careers_url"] = result.careers_url
-            elif result.status == "VALID":
-                company["status"] = "active"
-                company["active"] = True
-                if not company.get("manual_only"):
+        to_heal = []
+        skipped = []
+        for company in companies:
+            streak = int(company.get("heal_failure_streak") or 0)
+            if min_streak > 0 and streak < min_streak:
+                continue
+
+            if not (heal_all or force or company.get("status") != "active"):
+                continue
+            if not force:
+                skip_reason = _healer_cooldown_reason(company, now_utc)
+                if skip_reason:
+                    skipped.append((company.get("name", "Unknown"), skip_reason))
+                    continue
+            to_heal.append(company)
+
+        if not to_heal:
+            log_msg(f"  No companies need healing in {reg_path.name}.")
+            for name, reason in skipped:
+                log_msg(f"  SKIP {name}: {reason}")
+            continue
+
+        log_msg(f"  Targeting {len(to_heal)} companies (deep={deep})")
+        for name, reason in skipped:
+            log_msg(f"  SKIP {name}: {reason}")
+
+        changed_in_registry = 0
+        metrics = {
+            "processed": 0,
+            "status_counts": {},
+            "company_times": [],
+            "slowest": [],
+            "total": len(to_heal),
+            "skipped": len(skipped),
+        }
+
+        def heal_one(company):
+            nonlocal changed_in_registry
+            name = company.get("name", "Unknown")
+
+            started_at = time.perf_counter()
+            result = healer.discover(company, force=force, deep=deep)
+            elapsed_ms = round((time.perf_counter() - started_at) * 1000, 1)
+
+            with lock:
+                before = {f: company.get(f) for f in _SUBSTANTIVE_HEAL_FIELDS}
+                transitioned_manual = False
+
+                if result.status == "FOUND":
+                    company["adapter"] = result.adapter or company.get("adapter")
+                    if result.adapter_key:
+                        company["adapter_key"] = result.adapter_key
+                    else:
+                        company.pop("adapter_key", None)
+                    company["careers_url"] = result.careers_url or company.get("careers_url")
+                    company["status"] = "active"
+                    company["active"] = True
+                    company["manual_only"] = False
                     _reset_heal_failure_state(company)
-            else:
-                transitioned_manual, detail_override = _apply_heal_failure_policy(
-                    company,
-                    result.status,
-                    result.detail,
-                    datetime.now(timezone.utc),
-                )
-                result = type(result)(
-                    adapter=result.adapter,
-                    adapter_key=result.adapter_key,
-                    careers_url=result.careers_url,
-                    status=result.status,
-                    detail=detail_override,
-                )
+                elif result.status == "FALLBACK":
+                    company["adapter"] = result.adapter or company.get("adapter")
+                    company.pop("adapter_key", None)
+                    company["careers_url"] = result.careers_url or company.get("careers_url")
+                    company["status"] = "manual_only"
+                    company["active"] = True
+                    company["manual_only"] = True
+                elif result.status == "BLOCKED":
+                    company["status"] = "manual_only"
+                    company["active"] = True
+                    company["manual_only"] = True
+                    if result.careers_url:
+                        company["careers_url"] = result.careers_url
+                elif result.status == "VALID":
+                    company["status"] = "active"
+                    company["active"] = True
+                    if not company.get("manual_only"):
+                        _reset_heal_failure_state(company)
+                else:
+                    transitioned_manual, detail_override = _apply_heal_failure_policy(
+                        company,
+                        result.status,
+                        result.detail,
+                        datetime.now(timezone.utc),
+                    )
+                    result = type(result)(
+                        adapter=result.adapter,
+                        adapter_key=result.adapter_key,
+                        careers_url=result.careers_url,
+                        status=result.status,
+                        detail=detail_override,
+                    )
 
-            company["discovery_method"] = result.detail
-            company["last_healed"] = datetime.now().isoformat()
+                company["discovery_method"] = result.detail
+                company["last_healed"] = datetime.now().isoformat()
 
-            # Count as changed only when a substantive field differs.
-            after = {f: company.get(f) for f in _SUBSTANTIVE_HEAL_FIELDS}
-            if after != before:
-                changed_count += 1
+                after = {f: company.get(f) for f in _SUBSTANTIVE_HEAL_FIELDS}
+                if after != before:
+                    changed_in_registry += 1
 
-            metrics["processed"] += 1
-            metrics["status_counts"][result.status] = metrics["status_counts"].get(result.status, 0) + 1
-            metrics["company_times"].append(elapsed_ms)
-            metrics["slowest"].append((elapsed_ms, name, result.status, result.adapter or "-"))
-            metrics["slowest"] = sorted(metrics["slowest"], reverse=True)[:10]
+                metrics["processed"] += 1
+                metrics["status_counts"][result.status] = metrics["status_counts"].get(result.status, 0) + 1
+                metrics["company_times"].append(elapsed_ms)
+                metrics["slowest"].append((elapsed_ms, name, result.status, result.adapter or "-"))
+                metrics["slowest"] = sorted(metrics["slowest"], reverse=True)[:10]
 
-            if result.status == "FOUND":
-                log_msg(f"  OK {name}: {result.adapter} ({result.detail}) | elapsed_ms={elapsed_ms}")
-            elif result.status == "FALLBACK":
-                log_msg(f"  MANUAL {name}: blocked page recorded as manual_only ({result.detail}) | elapsed_ms={elapsed_ms}")
-            elif result.status == "BLOCKED":
-                log_msg(f"  BLOCKED {name}: unsupported ATS — manual_only ({result.detail}) | elapsed_ms={elapsed_ms}")
-            elif result.status == "VALID":
-                log_msg(f"  OK {name}: existing URL confirmed | elapsed_ms={elapsed_ms}")
-            else:
-                outcome = "PROMOTE" if transitioned_manual else "FAIL"
-                log_msg(f"  {outcome} {name}: {result.detail} | elapsed_ms={elapsed_ms}")
+                status_icon = "✅" if result.status in ("FOUND", "VALID") else "❌"
+                log_msg(f"  [{metrics['processed']}/{metrics['total']}] {status_icon} {name}: {result.status} ({result.detail}) | {elapsed_ms}ms")
 
-    try:
-        with ThreadPoolExecutor(max_workers=workers) as executor:
-            list(executor.map(heal_one, to_heal))
-    except Exception as exc:
-        click.echo(f"Heal failed: {exc}", err=True)
-        raise
+        try:
+            with ThreadPoolExecutor(max_workers=workers) as executor:
+                list(executor.map(heal_one, to_heal))
+        except Exception as exc:
+            log_msg(f"Heal failed for registry {reg_path.name}: {exc}")
+            continue
 
-    if changed_count > 0:
-        with comp_path.open("w", encoding="utf-8") as handle:
-            yaml.safe_dump(data, handle, sort_keys=False, allow_unicode=True)
-        log_msg(f"Updated {changed_count} companies.")
-    else:
-        log_msg("Done. No changes made.")
+        if changed_in_registry > 0:
+            with reg_path.open("w", encoding="utf-8") as handle:
+                yaml.safe_dump(data, handle, sort_keys=False, allow_unicode=True)
+            log_msg(f"  Saved {changed_in_registry} updates to {reg_path.name}")
+            total_changed += changed_in_registry
+        else:
+            log_msg(f"  No updates to save for {reg_path.name}")
 
-    total_elapsed_ms = round((time.perf_counter() - run_started_at) * 1000, 1)
-    avg_elapsed_ms = round(sum(metrics["company_times"]) / len(metrics["company_times"]), 1) if metrics["company_times"] else 0.0
-    status_summary = ", ".join(
-        f"{status}={count}" for status, count in sorted(metrics["status_counts"].items())
-    ) or "none"
-    log_msg(
-        f"Heal summary | processed={metrics['processed']} changed={changed_count} "
-        f"elapsed_ms={total_elapsed_ms} avg_company_ms={avg_elapsed_ms} skipped={metrics['skipped']} statuses=[{status_summary}]"
-    )
-    for elapsed_ms, name, status, adapter in metrics["slowest"]:
-        log_msg(f"Heal slowest | company={name} status={status} adapter={adapter} elapsed_ms={elapsed_ms}")
-
-    # Surface chronic failures so the operator knows which companies to remove.
-    chronic = sorted(
-        [(c.get("name", "?"), int(c.get("heal_failure_streak") or 0))
-         for c in companies if int(c.get("heal_failure_streak") or 0) >= 3],
-        key=lambda x: -x[1],
-    )
-    if chronic:
-        log_msg(f"Chronic failures (streak >= 3): {len(chronic)} companies — consider marking manual_only or removing")
-        for cname, streak in chronic[:20]:
-            log_msg(f"  Chronic | {cname}: streak={streak}")
+        reg_elapsed_ms = round((time.perf_counter() - run_started_at) * 1000, 1) # This is cumulative but okay
+        avg_elapsed_ms = round(sum(metrics["company_times"]) / len(metrics["company_times"]), 1) if metrics["company_times"] else 0.0
+        status_summary = ", ".join(
+            f"{status}={count}" for status, count in sorted(metrics["status_counts"].items())
+        ) or "none"
+        log_msg(
+            f"  Registry summary | processed={metrics['processed']} changed={changed_in_registry} "
+            f"avg_company_ms={avg_elapsed_ms} skipped={metrics['skipped']} statuses=[{status_summary}]"
+        )
 
     if log_handle:
         try:
             log_handle.close()
         except Exception:
             pass
+
+    duration = time.perf_counter() - run_started_at
+    click.echo(f"\nHeal complete in {duration:.1f}s. Total companies updated across all registries: {total_changed}")
 
 
 @main.command()
@@ -401,16 +406,18 @@ def heal(heal_all, force, deep, workers, deep_timeout, chronic_only, min_streak)
 @click.option("--contract-sources", is_flag=True, help="Use the contractor-source company list.")
 @click.option("--aggregator-sources", is_flag=True, help="Include aggregator job board sources.")
 @click.option("--jobspy-sources", is_flag=True, help="Include JobSpy experimental sources.")
+@click.option("--all-companies", is_flag=True, help="Search across ALL discovered company registries.")
 @click.option("--workers", default=8, help="Number of parallel workers for the scraper.")
 @click.option("--prefs", "--preferences", type=click.Path(exists=True), help="Path to preferences YAML.")
 @click.option("--companies", type=click.Path(exists=True), help="Path to companies YAML.")
 @click.option("--legacy", is_flag=True, help="Use the legacy scraper script if it exists.")
 @click.argument("extra_args", nargs=-1)
-def run(deep_search, full_refresh, test_companies, contract_sources, aggregator_sources, jobspy_sources, workers, prefs, companies, legacy, extra_args):
+def run(deep_search, full_refresh, test_companies, contract_sources, aggregator_sources, jobspy_sources, all_companies, workers, prefs, companies, legacy, extra_args):
     """Run the job search pipeline."""
     click.echo("Starting Job Search Pipeline...")
 
     if legacy:
+        # (existing legacy handling stays same, just add all_companies to signature above)
         legacy_script = BASE_DIR / "run_job_search_v6.py"
         if not legacy_script.exists():
             click.echo("Legacy mode is unavailable: run_job_search_v6.py is not present in this checkout.", err=True)
@@ -437,23 +444,38 @@ def run(deep_search, full_refresh, test_companies, contract_sources, aggregator_
             sys.exit(exc.returncode)
 
     prefs_path = Path(prefs) if prefs else settings.preferences_yaml
-    comp_path = Path(companies) if companies else settings.companies_yaml
-    if test_companies and not companies:
-        comp_path = BASE_DIR / "config" / "job_search_companies_test.yaml"
+    
+    comp_data = []
+    if all_companies:
+        registries = settings.get_company_registries()
+        click.echo(f"Merging {len(registries)} company registries...")
+        for reg_path in registries:
+            if reg_path.exists():
+                with reg_path.open("r", encoding="utf-8") as handle:
+                    data = yaml.safe_load(handle) or {}
+                    comp_data = _merge_company_lists(comp_data, data.get("companies", []))
+    else:
+        comp_path = Path(companies) if companies else settings.companies_yaml
+        if test_companies and not companies:
+            comp_path = BASE_DIR / "config" / "job_search_companies_test.yaml"
+        
+        if not comp_path.exists():
+            click.echo(f"Companies file not found at {comp_path}", err=True)
+            return
+        
+        click.echo(f"Loading companies from {comp_path.name}...")
+        with comp_path.open("r", encoding="utf-8") as handle:
+            comp_data = (yaml.safe_load(handle) or {}).get("companies", [])
 
     if not prefs_path.exists():
         click.echo(f"Preferences file not found at {prefs_path}", err=True)
         return
-    if not comp_path.exists():
-        click.echo(f"Companies file not found at {comp_path}", err=True)
-        return
 
-    click.echo(f"Loading config from {prefs_path.name} and {comp_path.name}...")
+    click.echo(f"Loading preferences from {prefs_path.name}...")
     with prefs_path.open("r", encoding="utf-8") as handle:
         prefs_data = yaml.safe_load(handle) or {}
-    with comp_path.open("r", encoding="utf-8") as handle:
-        comp_data = (yaml.safe_load(handle) or {}).get("companies", [])
-    if contract_sources:
+
+    if contract_sources and not all_companies: # All companies already includes contract if it's in config
         contract_path = settings.contract_companies_yaml
         if contract_path.exists() and contract_path != comp_path:
             with contract_path.open("r", encoding="utf-8") as handle:
