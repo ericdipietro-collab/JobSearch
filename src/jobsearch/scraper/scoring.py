@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import html
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -26,6 +27,7 @@ class Scorer:
         self.title_positive_keywords = [str(item).strip().lower() for item in title_cfg.get("positive_keywords", []) if str(item).strip()]
         self.negative_disqualifiers = title_cfg.get("negative_disqualifiers", [])
         self.must_have_modifiers = title_cfg.get("must_have_modifiers", [])
+        self.title_constraints = title_cfg.get("constraints", {}) or {}
         self.fast_track_base_score = float(title_cfg.get("fast_track_base_score", 0))
         self.fast_track_min_weight = int(title_cfg.get("fast_track_min_weight", 8))
         self.title_max_points = int(title_cfg.get("title_max_points", 25))
@@ -165,8 +167,16 @@ class Scorer:
     @staticmethod
     def _kw_pattern(keyword: str) -> str:
         """Return the regex pattern string for a keyword."""
-        escaped = re.escape(keyword).replace(r"\ ", r"\s+")
-        if re.match(r"^\w", keyword) and re.search(r"\w$", keyword):
+        normalized = re.sub(r"[-_/]+", " ", keyword)
+        normalized = re.sub(r"\s+", " ", normalized).strip()
+        # Treat common separators in the job text (spaces, hyphens, underscores, slashes)
+        # as equivalent word boundaries for multi-word terms.
+        escaped = re.escape(normalized).replace(r"\ ", r"[\s\-_\/]+")
+        # Improve hit-rate for common plural forms on multi-word phrases
+        # (e.g., "data platform" should match "data platforms").
+        if " " in normalized and re.search(r"[a-zA-Z]$", normalized) and not normalized.endswith("s"):
+            escaped = escaped + "s?"
+        if re.match(r"^\w", normalized) and re.search(r"\w$", normalized):
             return rf"\b{escaped}\b"
         return rf"(?<!\w){escaped}(?!\w)"
 
@@ -192,7 +202,67 @@ class Scorer:
     def clean(value: Optional[str]) -> str:
         if not value:
             return ""
-        return re.sub(r"\s+", " ", str(value)).strip()
+
+        s = str(value)
+
+        # Job descriptions often contain HTML and entities (e.g., "&nbsp;"). We normalize
+        # lightly here to improve keyword match coverage without requiring full parsing.
+        s = html.unescape(s)
+        s = re.sub(r"<[^>]+>", " ", s)
+
+        return re.sub(r"\s+", " ", s).strip()
+
+    def _title_constraint_penalties(self, title_l: str) -> Tuple[int, List[str]]:
+        """Apply preference-specified title constraints as a penalty (not a hard drop).
+
+        This keeps borderline roles visible while preventing broad, generic titles
+        (e.g., "Product Manager") from scoring too highly unless domain keywords support them.
+        """
+        if not title_l:
+            return 0, []
+
+        constraints = self.title_constraints or {}
+        flags: List[str] = []
+        penalty = 0
+
+        def _has_any_modifier(mods: List[str]) -> bool:
+            return any(str(m).strip().lower() in title_l for m in mods if str(m).strip())
+
+        # Penalty sizes are intentionally modest; these are de-prioritizations, not disqualifiers.
+        missing_modifier_penalty = 12
+        program_manager_penalty = 8
+
+        if constraints.get("product_manager_requires_modifier") and "product manager" in title_l:
+            allowed = constraints.get("product_manager_allowed_modifiers", [])
+            if not _has_any_modifier(allowed):
+                penalty += missing_modifier_penalty
+                flags.append("title_constraint:product_manager_missing_modifier")
+
+        if constraints.get("business_analyst_requires_modifier") and "business analyst" in title_l:
+            allowed = constraints.get("business_analyst_allowed_modifiers", [])
+            if not _has_any_modifier(allowed):
+                penalty += missing_modifier_penalty
+                flags.append("title_constraint:business_analyst_missing_modifier")
+
+        if constraints.get("architect_requires_modifier") and "architect" in title_l:
+            allowed = constraints.get("architect_allowed_modifiers", [])
+            if not _has_any_modifier(allowed):
+                penalty += missing_modifier_penalty
+                flags.append("title_constraint:architect_missing_modifier")
+
+        if constraints.get("consultant_requires_modifier") and "consultant" in title_l:
+            allowed = constraints.get("consultant_allowed_modifiers", [])
+            if not _has_any_modifier(allowed):
+                penalty += missing_modifier_penalty
+                flags.append("title_constraint:consultant_missing_modifier")
+
+        if constraints.get("deprioritize_program_manager") and "program manager" in title_l:
+            allowed = constraints.get("program_manager_allowed_modifiers", [])
+            if not _has_any_modifier(allowed):
+                penalty += program_manager_penalty
+                flags.append("title_constraint:program_manager_missing_modifier")
+
+        return penalty, flags
 
     @staticmethod
     def _to_float(value: Any) -> Optional[float]:
@@ -212,7 +282,12 @@ class Scorer:
             return False
 
         escaped = re.escape(keyword).replace(r"\ ", r"\s+")
-        if re.match(r"^\w", keyword) and re.search(r"\w$", keyword):
+        normalized = re.sub(r"[-_/]+", " ", keyword)
+        normalized = re.sub(r"\s+", " ", normalized).strip()
+        escaped = re.escape(normalized).replace(r"\ ", r"[\s\-_\/]+")
+        if " " in normalized and re.search(r"[a-zA-Z]$", normalized) and not normalized.endswith("s"):
+            escaped = escaped + "s?"
+        if re.match(r"^\w", normalized) and re.search(r"\w$", normalized):
             pattern = rf"\b{escaped}\b"
         else:
             pattern = rf"(?<!\w){escaped}(?!\w)"
@@ -535,8 +610,8 @@ class Scorer:
         company_tier = int(job_data.get("tier", 4) or 4)
         location = str(job_data.get("location", "") or "")
 
-        title_l = title.lower()
-        jd_blob = description.lower()
+        title_l = self.clean(title).lower()
+        jd_blob = self.clean(description).lower()
 
         if self.is_disqualified(title):
             source_key = self._source_trust_key(job_data)
@@ -628,6 +703,10 @@ class Scorer:
         # Use either the fast-track base or the calculated title points, but not both stacked.
         # This prevents title matches from immediately hitting 75+ points.
         score = max(base_score, title_points)
+
+        title_constraint_penalty, title_constraint_flags = self._title_constraint_penalties(title_l)
+        if title_constraint_penalty:
+            score -= title_constraint_penalty
 
         jd_pos_hits = self._match_compiled(jd_blob, self._compiled_body_positive)
         jd_neg_hits = self._match_compiled(jd_blob, self._compiled_body_negative)
@@ -809,6 +888,8 @@ class Scorer:
 
         # Action Bucket Logic (internal flags for the dashboard)
         apply_now_eligible = source_trust.get("apply_now_eligible", True)
+        if title_constraint_penalty:
+            apply_now_eligible = False
         if self.apply_now_cfg.get("require_strong_title", True):
             # Check for strong title markers if enabled
             direct_markers = self.apply_now_cfg.get("direct_title_markers", [])
@@ -830,7 +911,8 @@ class Scorer:
         
         if body_positive_points > 0: reasons.append(f"JD Keywords +{body_positive_points} ({', '.join(sorted(set(t for t,p in jd_pos_hits)))})")
         if body_negative_points > 0: reasons.append(f"Negative JD -{body_negative_points} ({', '.join(sorted(set(term for term, _ in jd_neg_hits)))})")
-        
+        if title_constraint_penalty > 0: reasons.append(f"Title Constraint -{title_constraint_penalty}")
+         
         if location_bonus > 0: reasons.append(f"Location Bonus +{location_bonus}")
         if tier_bonus > 0: reasons.append(f"Tier {company_tier} Bonus +{tier_bonus}")
         if contract_adjustment != 0: reasons.append(f"Contract Adj {contract_adjustment:+}")
@@ -844,7 +926,7 @@ class Scorer:
             "score": score,
             "fit_band": fit_band,
             "matched_keywords": ", ".join(sorted(set(term for term, _ in title_hits + partial_hits + jd_pos_hits))),
-            "penalized_keywords": ", ".join(sorted(set(term for term, _ in jd_neg_hits))),
+            "penalized_keywords": ", ".join(sorted(set([term for term, _ in jd_neg_hits] + title_constraint_flags))),
             "decision_reason": decision_reason,
             "apply_now_eligible": apply_now_eligible,
             "score_components": {
@@ -856,6 +938,7 @@ class Scorer:
                 "tier_bonus": tier_bonus,
                 "partial_title_bonus": partial_title_points,
                 "positive_keyword_gate_bonus": positive_keyword_gate_bonus,
+                "title_constraint_penalty": title_constraint_penalty,
                 "location_penalty": location_penalty,
                 "location_bonus": location_bonus,
                 "compensation_adjustment": compensation_adjustment,
