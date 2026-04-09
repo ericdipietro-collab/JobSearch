@@ -16,6 +16,7 @@ google-genai
 APScheduler>=3.10
 fastapi
 uvicorn
+feedparser
 
 # Optional: for OpenAI GPT fallback when Google Gemini is unavailable
 openai
