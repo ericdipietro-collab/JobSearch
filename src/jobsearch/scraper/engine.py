@@ -21,6 +21,7 @@ from jobsearch.scraper.adapters.adzuna import AdzunaAdapter
 from jobsearch.scraper.adapters.base import BaseAdapter, BlockedSiteError
 from jobsearch.scraper.adapters.crawl4ai_adapter import Crawl4AIAdapter
 from jobsearch.scraper.adapters.careeronestop import CareerOneStopAdapter
+from jobsearch.scraper.adapters.remotive import RemotiveAdapter
 from jobsearch.scraper.adapters.dice import DiceAdapter
 from jobsearch.scraper.adapters.generic import GenericAdapter
 from jobsearch.scraper.adapters.google_careers import GoogleCareersAdapter
@@ -96,6 +97,7 @@ class ScraperEngine:
         "themuse": TheMuseAdapter,
         "indeed_connector": IndeedConnectorAdapter,
         "careeronestop": CareerOneStopAdapter,
+        "remotive": RemotiveAdapter,
         "jobspy": JobSpyExperimentalAdapter,
         "google_careers": GoogleCareersAdapter,
         "dice": DiceAdapter,
@@ -154,6 +156,7 @@ class ScraperEngine:
             "indeed_connector": settings.scrape_indeed_connector_concurrency,
             "jobspy": int(get_runtime_setting("jobspy_concurrency", str(settings.scrape_jobspy_concurrency)) or settings.scrape_jobspy_concurrency),
             "careeronestop": settings.scrape_careeronestop_concurrency,
+            "remotive": 1, # Remotive is very fast and doesn't need high concurrency
             "google_careers": 2, # Small limit for Google
             "dice": settings.scrape_dice_concurrency,
             "motionrecruitment": settings.scrape_motionrecruitment_concurrency,

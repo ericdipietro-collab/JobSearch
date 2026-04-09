@@ -2081,12 +2081,28 @@ def main():
 
     elif page == "Target Companies":
         st.title("Target Companies")
-        registry_options = {
-            "Main Company List": settings.companies_yaml,
-            "Contractor Company List": settings.contract_companies_yaml,
-            "Aggregator Company List": settings.aggregator_companies_yaml,
-            "JobSpy Experimental List": settings.jobspy_companies_yaml,
+        
+        # Discover all registries dynamically
+        discovered_regs = settings.get_company_registries()
+        
+        friendly_labels = {
+            "job_search_companies.yaml": "Main Company List",
+            "job_search_companies_contract.yaml": "Contractor Company List",
+            "job_search_companies_aggregators.yaml": "Aggregator Company List",
+            "job_search_companies_jobspy.yaml": "JobSpy Experimental List"
         }
+        
+        def get_reg_label(path: Path) -> str:
+            if path.name in friendly_labels:
+                return friendly_labels[path.name]
+            # Convert job_search_companies_fintech.yaml -> Fintech Company List
+            name = path.name.replace("job_search_companies_", "").replace(".yaml", "").replace("_", " ").title()
+            if name == "job_search_companies": name = "General"
+            return f"{name} Company List"
+
+        # Create map for radio button
+        registry_options = {get_reg_label(p): p for p in discovered_regs}
+        
         registry_label = st.radio("Company List", list(registry_options.keys()), horizontal=True)
         registry_path = registry_options[registry_label]
         data = load_yaml(registry_path)

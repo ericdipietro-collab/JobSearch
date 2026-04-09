@@ -343,6 +343,7 @@ class ATSHealer:
         name = company.get("name", "Unknown")
         existing_url = company.get("careers_url", "")
         deadline = time.perf_counter() + (float(self.discovery_budget_ms) / 1000.0)
+        res = None
         
         # 0. Manual Override check
         if company.get("heal_skip") and not force:

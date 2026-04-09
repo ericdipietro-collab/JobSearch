@@ -42,6 +42,10 @@ class Settings:
         self.rejected_csv = self.results_dir / "job_search_v6_rejected.csv"
         self.log_file = self.results_dir / "job_search_v6.log"
         self.manual_review_file = self.results_dir / "job_search_manual_review.txt"
+        
+        # Registry Discovery
+        self.registry_patterns = ["job_search_companies*.yaml"]
+        
         self.gmail_address = os.getenv("JOBSEARCH_GMAIL_ADDRESS", "").strip()
         self.gmail_app_password = os.getenv("JOBSEARCH_GMAIL_APP_PASSWORD", "").strip()
         self.gmail_imap_host = os.getenv("JOBSEARCH_GMAIL_IMAP_HOST", "imap.gmail.com").strip() or "imap.gmail.com"
@@ -110,12 +114,10 @@ class Settings:
     def _seed_runtime_config(self) -> None:
         if self.runtime_dir == self.base_dir:
             return
+        
+        # 1. Sync static defaults
         defaults = {
             "job_search_preferences.yaml": "job_search_preferences.example.yaml",
-            "job_search_companies.yaml": "job_search_companies.yaml",
-            "job_search_companies_contract.yaml": "job_search_companies_contract.yaml",
-            "job_search_companies_aggregators.yaml": "job_search_companies_aggregators.yaml",
-            "job_search_companies_jobspy.yaml": "job_search_companies_jobspy.yaml",
         }
         packaged_config_dir = self.base_dir / "config"
         for runtime_name, packaged_name in defaults.items():
@@ -128,6 +130,29 @@ class Settings:
                     shutil.copyfile(packaged_path, runtime_path)
                 except Exception:
                     pass
+        
+        # 2. Sync ALL company registries from project root to runtime config
+        # This allows adding new industry-specific yamls to the git repo and 
+        # having them automatically appear in the AppData runtime.
+        if packaged_config_dir.exists():
+            for pattern in self.registry_patterns:
+                for packaged_file in packaged_config_dir.glob(pattern):
+                    runtime_file = self.config_dir / packaged_file.name
+                    # Only copy if it doesn't exist, OR if we want to sync new ones
+                    if not runtime_file.exists():
+                        try:
+                            shutil.copyfile(packaged_file, runtime_file)
+                        except Exception:
+                            pass
+
+    def get_company_registries(self) -> List[Path]:
+        """Discover all company registry YAML files in the config directory."""
+        registries = []
+        for pattern in self.registry_patterns:
+            registries.extend(list(self.config_dir.glob(pattern)))
+        # Filter out backups and ensure uniqueness
+        unique_registries = {r.resolve() for r in registries if ".bak" not in r.name}
+        return sorted(list(unique_registries))
 
     @property
     def preferences_yaml(self) -> Path:
