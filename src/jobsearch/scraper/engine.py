@@ -124,7 +124,6 @@ class ScraperEngine:
         ]
         self.scorer = Scorer(preferences)
         self.session = get_shared_session()
-        self._adapter_semaphores = self._init_semaphores()
         self.bulk_cooldowns: Dict[str, datetime] = {}
         self.known_urls: Dict[str, datetime] = {}
 

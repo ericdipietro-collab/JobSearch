@@ -1854,17 +1854,17 @@ def main():
                                 "source_lane": app["source_lane"],
                             }
                             res = scorer.score_job(job_data)
-                            
+
                             conn.execute(
                                 """
-                                UPDATE applications 
-                                SET score=?, fit_band=?, matched_keywords=?, penalized_keywords=?, decision_reason=?, 
+                                UPDATE applications
+                                SET score=?, fit_band=?, matched_keywords=?, penalized_keywords=?, decision_reason=?,
                                     normalized_compensation_usd=?, updated_at=?
                                 WHERE id=?
                                 """,
                                 (
-                                    res["score"], res["fit_band"], res["matched_keywords"], res["penalized_keywords"], 
-                                    res["decision_reason"], res["normalized_compensation_usd"], 
+                                    res["score"], res["fit_band"], res["matched_keywords"], res["penalized_keywords"],
+                                    res["decision_reason"], res["normalized_compensation_usd"],
                                     datetime.now(timezone.utc).isoformat(), app["id"]
                                 )
                             )

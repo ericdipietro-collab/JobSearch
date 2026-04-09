@@ -234,8 +234,17 @@ Return ONLY valid JSON:
 _api_thread: Optional[threading.Thread] = None
 
 def start_api_server(port: int = 8505):
-    """Start the FastAPI server in a background thread."""
+    """Start the FastAPI server in a background thread if not already running."""
     global _api_thread
+    
+    # Check if something is already listening on this port (likely a previous dashboard run)
+    import socket
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        in_use = s.connect_ex(('127.0.0.1', port)) == 0
+        if in_use:
+            logger.info(f"API server already running on port {port} (or port busy). Skipping startup.")
+            return
+
     if _api_thread and _api_thread.is_alive():
         return
 

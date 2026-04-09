@@ -402,21 +402,37 @@ class ATSHealer:
             domain = slug + ".com"
         domain_hint = self._domain_suggested_adapter(domain)
 
-        # 2. "Company First" - Waterfall Discovery (Find official page)
-        # Skip straight to search if the existing URL has no ATS signal — crawling a
-        # marketing homepage wastes the entire waterfall budget for nothing.
-        existing_url_has_signal = existing_url and self._url_has_ats_signal(existing_url)
-        if not existing_url_has_signal and not existing_url:
-            # No URL at all — waterfall may find something, run it.
-            res = self._waterfall_discovery(domain, name, deadline)
-        elif not existing_url_has_signal:
-            # URL exists but it's a marketing page — skip to search.
-            logger.debug("%s: existing URL has no ATS signal, skipping waterfall → search", name)
-            res = None
-        else:
-            res = self._waterfall_discovery(domain, name, deadline)
+        # 2. "Company First" - Waterfall Discovery + Parallel Search
+        # We now run the targeted search phase concurrently with the domain waterfall
+        # to ensure the 'cheat code' doesn't wait for slow marketing sites.
+        with ThreadPoolExecutor(max_workers=2) as outer_executor:
+            # Task A: Waterfall (Domain probing)
+            existing_url_has_signal = existing_url and self._url_has_ats_signal(existing_url)
+            waterfall_future = None
+            if not existing_url_has_signal and not existing_url:
+                waterfall_future = outer_executor.submit(self._waterfall_discovery, domain, name, deadline)
+            elif existing_url_has_signal:
+                waterfall_future = outer_executor.submit(self._waterfall_discovery, domain, name, deadline)
+            
+            # Task B: Targeted Search (The Cheat Code)
+            search_future = outer_executor.submit(self._search_discovery, name, domain, deadline)
+            
+            # Use whichever finds a valid board first
+            try:
+                # Prioritize search results as they are usually more accurate deep-paths
+                res = search_future.result(timeout=12)
+                if res and res.status == "FOUND":
+                    outer_executor.shutdown(wait=False, cancel_futures=True)
+                    return res
+                
+                if waterfall_future:
+                    res = waterfall_future.result(timeout=10)
+                    if res and res.status == "FOUND":
+                        return res
+            except Exception:
+                pass
 
-        # 3. Web Search
+        # 3. Final Fallback Search (if not already found)
         if not res or res.status == "FALLBACK":
             search_res = self._search_discovery(name, domain, deadline)
             if search_res and search_res.status == "FOUND":
@@ -461,6 +477,7 @@ class ATSHealer:
         if wd_res: return wd_res
 
         # 7. Crawl4AI ATS Discovery (LLM-powered detection for complex pages)
+        # Even if Workday probe missed, crawl4ai might find the embedded iframe
         if not self._timed_out(deadline) and (existing_url or domain):
             target_url = existing_url or f"https://{domain}"
             crawl4ai_res = self._discover_with_crawl4ai(target_url, name, deadline)
@@ -912,7 +929,12 @@ class ATSHealer:
                         href = unquote(m.group(1))
                 if not href.startswith("http") or "duckduckgo.com" in href:
                     continue
-                if domain in href or any(marker in href for _, marker in self.EMBED_MARKERS):
+                
+                # Allow if matches company domain OR any known ATS marker
+                matches_domain = domain and domain in href
+                matches_ats = any(marker in href for _, marker in self.EMBED_MARKERS)
+                
+                if matches_domain or matches_ats:
                     links.append(href)
             return list(dict.fromkeys(links))[:10]
         except Exception:
@@ -943,7 +965,12 @@ class ATSHealer:
                         href = unquote(m.group(1))
                 if not href.startswith("http") or "yahoo.com" in href:
                     continue
-                if domain in href or any(marker in href for _, marker in self.EMBED_MARKERS):
+                
+                # Allow if matches company domain OR any known ATS marker
+                matches_domain = domain and domain in href
+                matches_ats = any(marker in href for _, marker in self.EMBED_MARKERS)
+                
+                if matches_domain or matches_ats:
                     links.append(href)
             return list(dict.fromkeys(links))[:10]
         except Exception:

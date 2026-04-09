@@ -198,6 +198,11 @@ class JobSpyExperimentalAdapter(BaseAdapter):
                 break
             metrics.mark_requested(site)
             started_at = time.perf_counter()
+            
+            # Circuit breaker: if we hit a 400 on LinkedIn, it's likely a bot block.
+            # We skip it for the rest of the run to save time and avoid further detection.
+            site_skipped = False
+            
             try:
                 metrics.mark_attempted(site)
                 raw_payload = []
@@ -206,6 +211,7 @@ class JobSpyExperimentalAdapter(BaseAdapter):
                     site_location = location or None
                     if site == "glassdoor":
                         site_location = self._glassdoor_location(location) or None
+                    
                     # Build kwargs for enhanced scraper
                     scrape_kwargs = {
                         "site_name": [site],
@@ -217,8 +223,11 @@ class JobSpyExperimentalAdapter(BaseAdapter):
                         "is_remote": bool(config.get("is_remote", False)),
                         "job_type": str(config.get("job_type") or "") or None,
                         "proxies": config.get("proxies") or None,
-                        "rate_limit_mode": "aggressive",  # Enhanced scraper feature for better LinkedIn/Indeed handling
+                        "rate_limit_mode": "respectful" if site == "linkedin" else "aggressive",
                     }
+                    if site == "linkedin":
+                        # Add a tiny jitter for LinkedIn
+                        time.sleep(1.5)
                     # Use google_search_term for Google searches (jobspy-enhanced supports this)
                     if site == "google":
                         scrape_kwargs["google_search_term"] = self._query_for_site(query, site, config)
