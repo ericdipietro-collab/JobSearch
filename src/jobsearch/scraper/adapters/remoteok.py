@@ -18,10 +18,10 @@ class RemoteOKAdapter(BaseAdapter):
     def scrape(self, company_config: Dict[str, Any]) -> List[Job]:
         """
         Scrapes jobs from RemoteOK.
-        Queries by tag (e.g. 'product-manager', 'data-analyst').
+        We fetch the full list and filter locally for better reliability.
         """
-        tag = company_config.get("tag", "product-manager").lower().replace(" ", "-")
-        url = f"{self.BASE_URL}?tag={tag}"
+        target_tag = company_config.get("tag", "product").lower().replace(" ", "-")
+        url = self.BASE_URL # Get all recent remote jobs
         
         # RemoteOK likes a real-looking User-Agent
         headers = get_headers()
@@ -30,10 +30,8 @@ class RemoteOKAdapter(BaseAdapter):
             import requests
             response = requests.get(url, headers=headers, timeout=20)
             
-            # If RemoteOK returns a 1-item list with just legal info, it means no results
             data = response.json()
             if not isinstance(data, list) or len(data) <= 1:
-                logger.info(f"RemoteOK: No jobs found for tag '{tag}'")
                 return []
 
             jobs = []
@@ -41,6 +39,14 @@ class RemoteOKAdapter(BaseAdapter):
             for rj in data[1:]:
                 if not isinstance(rj, dict): continue
                 
+                # Local filter by tag
+                tags = [t.lower() for t in rj.get("tags", [])]
+                if target_tag not in tags and target_tag != "all":
+                    # Also check title for the tag
+                    title = rj.get("position", "").lower()
+                    if target_tag not in title:
+                        continue
+
                 # RemoteOK provides explicit salary info
                 salary = ""
                 if rj.get("salary_min") and rj.get("salary_max"):
@@ -48,10 +54,15 @@ class RemoteOKAdapter(BaseAdapter):
                 elif rj.get("salary"):
                     salary = str(rj["salary"])
 
+                company = rj.get("company", "Unknown")
+                role = rj.get("position", "Unknown Position")
+                url = rj.get("url", "")
+
                 job = Job(
-                    company=rj.get("company", "Unknown"),
-                    role=rj.get("position", "Unknown Position"),
-                    url=rj.get("url", ""),
+                    id=Job.make_id(company, role, url),
+                    company=company,
+                    role_title_raw=role,
+                    url=url,
                     location="Remote",
                     description_excerpt=rj.get("description", ""),
                     salary_text=salary,

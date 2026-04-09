@@ -36,11 +36,13 @@ class WWRAdapter(BaseAdapter):
                 title_parts = entry.title.split(": ", 1)
                 company = title_parts[0] if len(title_parts) > 1 else "Unknown"
                 role = title_parts[1] if len(title_parts) > 1 else entry.title
+                url = entry.link
 
                 job = Job(
+                    id=Job.make_id(company, role, url),
                     company=company,
-                    role=role,
-                    url=entry.link,
+                    role_title_raw=role,
+                    url=url,
                     location="Remote",
                     description_excerpt=entry.description,
                     salary_text="", # RSS doesn't usually have structured salary

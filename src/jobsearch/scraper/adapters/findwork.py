@@ -3,7 +3,7 @@ import re
 from typing import List, Dict, Any, Optional
 from .base import BaseAdapter
 from jobsearch.scraper.models import Job
-from jobsearch.config.settings import get_headers
+from jobsearch.config.settings import settings, get_headers
 
 logger = logging.getLogger(__name__)
 
@@ -18,15 +18,17 @@ class FindworkAdapter(BaseAdapter):
     def scrape(self, company_config: Dict[str, Any]) -> List[Job]:
         """
         Scrapes jobs from Findwork.dev.
-        Example queries: 'product manager', 'software engineer'.
         """
+        api_key = settings.findwork_api_key
+        if not api_key:
+            logger.error("Findwork API key missing. Get one at findwork.dev.")
+            return []
+
         query = company_config.get("query", "product manager")
-        
-        # Build request URL
         url = f"{self.BASE_URL}/?search={query}&sort_by=relevance"
         
         headers = get_headers()
-        # Findwork.dev requires a specific Accept header for their API
+        headers["Authorization"] = f"Token {api_key}"
         headers["Accept"] = "application/json"
 
         try:
@@ -43,10 +45,15 @@ class FindworkAdapter(BaseAdapter):
             jobs = []
             for rj in raw_jobs:
                 # Findwork specific mapping
+                company = rj.get("company_name", "Unknown")
+                role = rj.get("role", "Unknown Position")
+                url = rj.get("url", "")
+
                 job = Job(
-                    company=rj.get("company_name", "Unknown"),
-                    role=rj.get("role", "Unknown Position"),
-                    url=rj.get("url", ""),
+                    id=Job.make_id(company, role, url),
+                    company=company,
+                    role_title_raw=role,
+                    url=url,
                     location=rj.get("location", "Remote"),
                     description_excerpt=rj.get("text", ""),
                     salary_text="", # Not always available in structured form

@@ -76,16 +76,18 @@ class CareerOneStopAdapter(BaseAdapter):
             jobs = []
             for rj in raw_jobs:
                 # CareerOneStop specific mapping
-                job_id = rj.get("JvId")
-                if not job_id: continue
+                job_id_raw = rj.get("JvId")
+                if not job_id_raw: continue
                 
-                # Check if this is a direct employer post or third party
-                is_direct = rj.get("Company", "").lower() not in ["adzuna", "indeed", "ziprecruiter"]
-                
+                company = rj.get("Company", "Unknown")
+                role = rj.get("JobTitle", "Unknown Position")
+                url = rj.get("URL", "")
+
                 job = Job(
-                    company=rj.get("Company", "Unknown"),
-                    role=rj.get("JobTitle", "Unknown Position"),
-                    url=rj.get("URL", ""),
+                    id=Job.make_id(company, role, url),
+                    company=company,
+                    role_title_raw=role,
+                    url=url,
                     location=rj.get("Location", ""),
                     # We store the JvId in description_excerpt initially so enrichment 
                     # can fetch the full JD later if needed, or we use the snippet.

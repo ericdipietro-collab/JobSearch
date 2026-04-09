@@ -4,7 +4,7 @@ import os
 import shutil
 import sqlite3
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 # ── Absolute Path Discovery ──────────────────────────────────────────────────
 # This file is in src/jobsearch/config/settings.py
@@ -82,6 +82,7 @@ class Settings:
         self.adzuna_country = os.getenv("JOBSEARCH_ADZUNA_COUNTRY", "us").strip().lower() or "us"
         self.adzuna_max_requests_per_run = int(os.getenv("JOBSEARCH_ADZUNA_MAX_REQUESTS_PER_RUN", "4"))
         self.jooble_api_key = os.getenv("JOBSEARCH_JOOBLE_API_KEY", "").strip()
+        self.findwork_api_key = os.getenv("JOBSEARCH_FINDWORK_API_KEY", "").strip()
         self.jooble_max_requests_per_run = int(os.getenv("JOBSEARCH_JOOBLE_MAX_REQUESTS_PER_RUN", "3"))
         self.themuse_max_requests_per_run = int(os.getenv("JOBSEARCH_THEMUSE_MAX_REQUESTS_PER_RUN", "3"))
         self.jobspy_site_names = os.getenv("JOBSEARCH_JOBSPY_SITE_NAMES", "google").strip()

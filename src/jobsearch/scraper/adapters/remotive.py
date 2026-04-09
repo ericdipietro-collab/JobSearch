@@ -20,13 +20,10 @@ class RemotiveAdapter(BaseAdapter):
     def scrape(self, company_config: Dict[str, Any]) -> List[Job]:
         """
         Scrapes jobs from Remotive API.
-        Example categories: 'product', 'software-dev', 'data', 'design', 'qa'.
+        We fetch the full list and filter locally for better reliability.
         """
-        # Default to product if not specified
-        category = company_config.get("category", "product")
-        
-        # Build request URL
-        url = f"{self.BASE_URL}?category={category}"
+        target_category = company_config.get("category", "product").lower()
+        url = self.BASE_URL # Get all recent jobs
         
         headers = get_headers()
         headers["Accept"] = "application/json"
@@ -39,16 +36,24 @@ class RemotiveAdapter(BaseAdapter):
             
             raw_jobs = data.get("jobs", [])
             if not raw_jobs:
-                logger.info(f"Remotive: No jobs found for category '{category}'")
                 return []
 
             jobs = []
             for rj in raw_jobs:
-                # Remotive specific mapping
+                # Local filter by category
+                job_category = str(rj.get("category", "")).lower()
+                if target_category not in job_category and target_category != "all":
+                    continue
+
+                company = rj.get("company_name", "Unknown")
+                role = rj.get("title", "Unknown Position")
+                url = rj.get("url", "")
+
                 job = Job(
-                    company=rj.get("company_name", "Unknown"),
-                    role=rj.get("title", "Unknown Position"),
-                    url=rj.get("url", ""),
+                    id=Job.make_id(company, role, url),
+                    company=company,
+                    role_title_raw=role,
+                    url=url,
                     location="Remote",
                     description_excerpt=rj.get("description", ""),
                     salary_text=rj.get("salary", ""), 
