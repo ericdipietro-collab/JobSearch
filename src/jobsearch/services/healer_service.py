@@ -646,99 +646,65 @@ class ATSHealer:
         return None
 
     def _probe_workday(self, slug: str, name: str, deadline: Optional[float] = None, adapter_key: str = "") -> Optional[DiscoveryResult]:
-        """Sweep wd1..wd25 (plus outlier numbers) for Workday tenants in priority batches."""
+        """Sweep wd1..wd25 for Workday tenants by following root redirects (Fast & Accurate)."""
         from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FuturesTimeout
 
-        # Generate robust site candidates based on company name and slug
-        base_sites = ["External", "Careers", "Jobs", "External_Careers", "External_Job_Board"]
-        
-        # Add variants based on company name
-        name_clean = re.sub(r"[^a-zA-Z0-9]", "", name)
-        name_words = name.split()
-        
-        custom_sites = [
-            slug.capitalize(), 
-            f"{slug.capitalize()}Careers", 
-            f"{slug.capitalize()}_Careers", 
-            f"{slug.capitalize()}Investments", 
-            f"{slug.capitalize()}_External_Careers",
-            name_clean,
-            f"{name_clean}Careers",
-            f"{name_clean}Investments"
-        ]
-        # If company name has multiple words, try the first word
-        if name_words:
-            first_word = re.sub(r"[^a-zA-Z0-9]", "", name_words[0])
-            custom_sites.append(f"{first_word}Careers")
-            custom_sites.append(f"{first_word}_Careers")
-            custom_sites.append(f"{first_word}External")
-
-        all_site_candidates = list(dict.fromkeys(base_sites + custom_sites))
-
-        # Extract any hint number from the existing adapter_key
-        # (e.g. "slug.wd501.myworkdayjobs.com/External")
+        # Extract any hint number from existing data
         hint_nums: List[int] = []
         hint_match = re.search(r"\.wd(\d+)\.", str(adapter_key or ""), re.I)
         if hint_match:
-            hint_n = int(hint_match.group(1))
-            if hint_n not in range(1, 6):  # already in priority batch
-                hint_nums = [hint_n]
+            hint_nums = [int(hint_match.group(1))]
 
-        # Known outlier numbers beyond wd25 seen in the wild
-        outlier_nums = [50, 100, 108, 200, 201, 500, 501, 503]
+        # Common Workday servers + outliers
+        wd_servers = sorted(list(set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 18, 20, 22, 25] + hint_nums + [50, 103, 108, 201, 501])))
 
-        # Priority batch: hint numbers first, then wd1-5 × common sites.
-        priority_sites = ["External", "Careers"]
-        hint_candidates = [(n, s) for n in hint_nums for s in all_site_candidates]
-        priority_candidates = hint_candidates + [(n, s) for n in range(1, 6) for s in priority_sites]
-        # Full sweep: wd6-25 × all site candidates + outlier numbers × common sites, submitted only if batch misses.
-        remaining_candidates = (
-            [(n, s) for n in ([10, 12, 25] + [n for n in range(6, 26) if n not in (10, 12, 25)]) for s in all_site_candidates]
-            + [(n, s) for n in outlier_nums if n not in hint_nums for s in priority_sites]
-        )
-
-        def check_one(n, site):
-            if self._timed_out(deadline):
-                return None
-            url = f"https://{slug}.wd{n}.myworkdayjobs.com/{site}"
+        def check_server(n):
+            if self._timed_out(deadline): return None
+            # Hit the root domain and follow redirects to find the real path
+            url = f"https://{slug}.wd{n}.myworkdayjobs.com"
             try:
                 resp = self.session.get(
                     url,
                     headers=self._get_headers(),
-                    timeout=self._request_timeout("workday", deadline),
+                    timeout=self._request_timeout("workday", deadline, default=6),
                     allow_redirects=True,
                 )
                 if resp.status_code == 200 and "myworkdayjobs.com" in resp.url:
-                    parsed = urlparse(resp.url)
-                    clean_path = re.sub(r"/[a-z]{2}-[a-z]{2}/?", "/", parsed.path, flags=re.I).rstrip("/")
-                    key = f"{parsed.netloc}{clean_path}"
-                    res = DiscoveryResult("workday", key, resp.url, "FOUND", f"Workday wd{n} probe ({site})")
-                    if self._validate_discovery(res, name):
-                        return res
+                    final_url = resp.url.split('?')[0].rstrip('/')
+                    parsed = urlparse(final_url)
+                    
+                    # If it redirected to a path (not just /login), we found it!
+                    if len(parsed.path.strip('/')) > 5:
+                        clean_path = re.sub(r"/[a-z]{2}-[a-z]{2}/?", "/", parsed.path, flags=re.I).rstrip("/")
+                        key = f"{parsed.netloc}{clean_path}"
+                        return DiscoveryResult("workday", key, final_url, "FOUND", f"Workday wd{n} (Redirect)")
+                    
+                    # Fallback: Try /Careers if root didn't redirect to a board
+                    for alt in ["/Careers", "/External", f"/{slug.capitalize()}"]:
+                        alt_url = url + alt
+                        alt_resp = self.session.get(alt_url, headers=self._get_headers(), timeout=3, allow_redirects=True)
+                        if alt_resp.status_code == 200 and "myworkdayjobs.com" in alt_resp.url and len(urlparse(alt_resp.url).path) > 2:
+                            p2 = urlparse(alt_resp.url)
+                            cp2 = re.sub(r"/[a-z]{2}-[a-z]{2}/?", "/", p2.path, flags=re.I).rstrip("/")
+                            return DiscoveryResult("workday", f"{p2.netloc}{cp2}", alt_resp.url, "FOUND", f"Workday wd{n} ({alt})")
             except Exception:
-                logger.debug("Workday probe failed for %s wd%d/%s", slug, n, site)
+                pass
             return None
 
-        def _run_batch(candidates):
-            remaining = max(1.0, self._remaining_budget_s(deadline))
-            with ThreadPoolExecutor(max_workers=3) as executor:
-                futures = [executor.submit(check_one, n, site) for n, site in candidates]
-                try:
-                    for future in as_completed(futures, timeout=remaining):
-                        res = future.result()
-                        if res:
-                            executor.shutdown(wait=False, cancel_futures=True)
-                            return res
-                except FuturesTimeout:
-                    executor.shutdown(wait=False, cancel_futures=True)
-            return None
-
-        result = _run_batch(priority_candidates)
-        if result:
-            return result
-        if not self._timed_out(deadline):
-            result = _run_batch(remaining_candidates)
-        return result
+        # Run probes in parallel batches
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            futures = [executor.submit(check_server, n) for n in wd_servers]
+            try:
+                remaining = max(1.0, self._remaining_budget_s(deadline))
+                for future in as_completed(futures, timeout=remaining):
+                    res = future.result()
+                    if res:
+                        executor.shutdown(wait=False, cancel_futures=True)
+                        return res
+            except FuturesTimeout:
+                executor.shutdown(wait=False, cancel_futures=True)
+        
+        return None
 
     def _validate_url(self, url: str, name: str) -> bool:
         if self._is_blacklisted(url): return False
@@ -985,19 +951,36 @@ class ATSHealer:
             return []
 
     def _search_discovery(self, name: str, domain: str, deadline: Optional[float] = None) -> Optional[DiscoveryResult]:
-        """Search for the careers page using DDG (primary) then Yahoo (fallback).
-
-        Verifies all candidate links concurrently with a deadline-aware timeout
-        on as_completed() so a hung verification never blocks the heal thread.
-        """
+        """Search for the careers page using targeted queries for known ATS platforms."""
         from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FuturesTimeout
 
         if self._timed_out(deadline):
             return None
 
+        # 1. Broad search
         links = self._search_links_duckduckgo(name, domain, deadline)
+        
+        # 2. Targeted ATS searches (The "Cheat Code" for all adapters)
+        # We try site-specific searches for Workday, Greenhouse, Lever, etc.
+        ats_search_queries = []
+        for adapter, marker in self.EMBED_MARKERS:
+            if marker and "." in marker and marker not in {"onetrust.com", "happydance.com"}:
+                ats_search_queries.append(f"{name} careers site:{marker}")
+        
+        # Run targeted searches in parallel
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            search_futures = [executor.submit(self._search_links_duckduckgo, q, "", deadline) for q in ats_search_queries[:5]]
+            try:
+                for f in as_completed(search_futures, timeout=10):
+                    links.extend(f.result() or [])
+            except Exception:
+                pass
+
         if not links and not self._timed_out(deadline):
             links = self._search_links_yahoo(name, domain, deadline)
+        
+        # Unique preserve
+        links = list(dict.fromkeys(links))
         if not links:
             return None
 
@@ -1005,6 +988,19 @@ class ATSHealer:
             if self._timed_out(deadline):
                 return None
             try:
+                url_l = url.lower()
+                # If it's a known ATS domain, try to extract and return immediately
+                for adapter, marker in self.EMBED_MARKERS:
+                    if marker in url_l:
+                        key = self._extract_key(url, adapter)
+                        if key:
+                            # Verify it has a real path (not just a login or root page)
+                            p = urlparse(url)
+                            path = p.path.strip('/')
+                            if len(path) > 3 and not re.fullmatch(r"[a-z]{2}(?:-[A-Z]{2})?", path):
+                                cp = re.sub(r"/[a-z]{2}-[a-z]{2}/?", "/", p.path, flags=re.I).rstrip("/")
+                                return DiscoveryResult(adapter, f"{p.netloc}{cp}" if adapter == "workday" else key, url, "FOUND", f"{adapter} (Search)")
+
                 v_resp = self.session.get(
                     url,
                     headers=self._get_headers(),
@@ -1014,7 +1010,7 @@ class ATSHealer:
                 if v_resp.status_code == 200:
                     return self._scan_content(v_resp.text, v_resp.url, name)
             except Exception:
-                logger.debug("Search verification failed for %s: %s", name, url)
+                pass
             return None
 
         remaining = max(1.0, self._remaining_budget_s(deadline))
