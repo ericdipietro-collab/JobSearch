@@ -1,8 +1,8 @@
-# User Guide — v2.0
+# User Guide — v2.1
 
 This guide covers daily use of the Job Search dashboard — from first-time setup through running searches, tracking applications, prepping for interviews, and analyzing your results.
 
-**What's new in v2.0:** Score breakdowns on every job card, ghosted application alerts on the home dashboard, a Scraper Health panel showing which companies have gone dark, keyword search across all Job Matches tabs, Search Settings controls for title-vs-JD weighting, a re-score button for saved jobs, and YAML-driven bucket thresholds so your Search Settings preferences control the Apply Now / Review Today / Watch cutoffs directly.
+**What's new in v2.1:** Two-layer V2 scoring engine (V1 hard gates + V2 canonical-title/seniority/keyword model) replaces the old linear funnel. AI Analysis cards now appear on Apply Now, Review Today, and Watch tabs — not just top-tier roles. A browser bookmarklet ("Send to Dashboard") in Search Settings → Extensions & Tools lets you inject any job you find while browsing directly into the dashboard with full V2 scoring. Injected jobs are automatically tagged WATCH so they surface immediately regardless of score. A Refresh Data button in the sidebar flushes the cache on demand after external injections.
 
 ---
 
@@ -96,10 +96,9 @@ Open **Search Settings** in the left sidebar. Use the **Settings Section** dropd
 
 **Scoring Settings**
 - `minimum_score_to_keep` — jobs scoring below this go to the rejected CSV. Start at 35 and adjust after your first run.
-- `Maximum Score From Title Match` — caps total title contribution, which lets you dial title-vs-JD weighting without editing YAML.
-- `Maximum Score From JD Keywords` — caps how much the job description can add to the score.
-- `Maximum Penalty From JD Negative Keywords` — caps how much JD negatives can subtract.
-- Adjustment parameters for missing salary, salary bonuses, and contract role penalties.
+- `Fast-Track Starting Score` and `Fast-Track Minimum Keyword Weight` — controls when a strong title match gets a head-start base score.
+- `Anchor Keyword Cap`, `Baseline Keyword Cap`, `Negative Penalty Cap` — dial how much title keywords, JD-positive keywords, and JD-negative keywords can each move the score.
+- `Apply Now / Review Today / Watch Thresholds` — the score cutoffs that place jobs into each tab.
 - `Re-score Saved Jobs` — re-evaluates currently saved job matches using your latest settings without rerunning the scraper.
 
 **Advanced Editor**
@@ -135,17 +134,23 @@ Go to **Run Job Search** in the sidebar and click **Run**. The scraper checks ev
 
 ### How Scoring Works
 
-Every job goes through a funnel:
+Scoring is a two-layer pipeline:
 
-1. **Soft-drop** — titles matching `negative_disqualifiers` are discarded immediately.
-2. **Title scoring** — your `title_positive_weights` keywords are matched against the job title. A weight ≥ 8 triggers a Fast-Track base score of 50 points.
-3. **JD scoring** — `Keywords That Boost Score` and `Keywords That Reduce Score` keywords are matched against the full description.
-4. **Tier bonus** — Tier 1 companies add 15 pts, Tier 2 adds 8 pts, Tier 3 adds 4 pts.
-5. **Location filter** — non-local onsite/hybrid roles are hard-filtered out. International remote roles are filtered based on your location settings.
-6. **Compensation adjustment** — salary at or above target adds pts; salary below floor deducts pts; missing salary is configurable.
-7. **Contract adjustment** — contract roles are scored, filtered, and normalized based on your contractor preferences.
+**Layer 1 — V1 Hard Gates** (runs first, applied to every job)
+- Titles matching `negative_disqualifiers` are dropped immediately (Filtered Out).
+- Non-local onsite/hybrid roles are hard-filtered based on your location settings.
+- Work-type mismatches (e.g., contract when contract is disabled) are filtered out.
+- Any job that fails a hard gate is marked **Disqualified** or **Filtered Out** and goes no further.
 
-Scores map to fit bands: **Strong Match** (85+), **Good Match** (70+), **Fair Match** (50+), **Weak Match** (35+), **Poor Match** (below 35). Jobs below `minimum_score_to_keep` are written to `results/job_search_v6_rejected.csv` and not shown in the dashboard.
+**Layer 2 — V2 Primary Scoring** (runs on everything that passes Layer 1)
+1. **Title resolution** — the job title is matched against known title families (e.g., "Solutions Architect", "Staff Engineer"). A matched family and seniority band are assigned.
+2. **Fast-Track check** — if a title keyword weight meets the Fast-Track minimum, the job starts from the Fast-Track base score instead of zero.
+3. **Anchor score** — high-weight title keywords contribute to an anchor score (capped by Anchor Keyword Cap).
+4. **Baseline keyword score** — `Keywords That Boost Score` keywords matched in the JD add to the baseline (capped by Baseline Keyword Cap).
+5. **Negative penalty** — `Keywords That Reduce Score` keywords in the JD subtract points (capped by Negative Penalty Cap).
+6. **Final score** — anchor + baseline − penalty. Tier bonuses (Tier 1: +15 pts, Tier 2: +8 pts, Tier 3: +4 pts) and compensation adjustments are applied on top.
+
+Scores map to fit bands based on your configured bucket thresholds (default: **Apply Now** ≥ 80, **Review Today** ≥ 65, **Watch** ≥ 50, **Weak Match** below 50). Jobs below `minimum_score_to_keep` are written to `results/job_search_v6_rejected.csv` and not shown in the dashboard.
 
 ### Running Options
 
@@ -175,7 +180,7 @@ The dashboard now includes **Full-Text Search (FTS5)** and **AI-powered analysis
 - **Semantic Search**: Use the search bar at the top of the Job Matches page to find specific roles or technologies. The results are ranked using BM25, ensuring the most relevant roles appear first.
 ![Job Matches Search — fast full-text search across all jobs](docs/Screenshots/jobmatchessearch.png)
 
-- **AI Fit Analysis**: For high-scoring roles, click "AI Analysis" to see a breakdown of how well the role matches your profile, including detected tech stack, visa sponsorship, and IC vs. Manager alignment.
+- **AI Fit Analysis**: Click "AI Analysis" on any role across the Apply Now, Review Today, or Watch tabs to see a breakdown of how well the role matches your profile, including detected tech stack, visa sponsorship, and IC vs. Manager alignment.
 ![AI Analysis — detailed fit breakdown generated by LLM](docs/Screenshots/jobmatchaianalysis.png)
 
 - **Skills Gap**: The AI also identifies specific technical skills mentioned in the JD that are missing from your resume.
@@ -502,16 +507,15 @@ For location-sensitive searches, non-local onsite/hybrid roles are treated as a 
 
 | Setting | Description |
 |---|---|
-| `minimum_score_to_keep` | Jobs below this are rejected to CSV |
-| `title_max_points` | Maximum score contribution from title matching |
-| `positive_keyword_cap` | Maximum score contribution from JD-positive keywords |
-| `negative_keyword_cap` | Maximum penalty from JD-negative keywords |
-| `missing_salary_penalty` | Points deducted when no salary is posted |
-| `salary_at_or_above_target_bonus` | Bonus points when comp meets or exceeds target |
-| `salary_meets_floor_bonus` | Smaller bonus when comp meets the floor but not target |
-| `salary_below_target_penalty` | Deduction when comp is below the floor |
-| `contract_role_penalty` | Additional penalty for contract roles (0 = no penalty) |
-| `contractor_target_bonus` | Bonus for contract roles where normalized comp meets target |
+| `minimum_score_to_keep` | Jobs below this are rejected to CSV and not shown in the dashboard |
+| `Fast-Track Starting Score` | Base score assigned to a job when a title keyword meets the Fast-Track weight threshold |
+| `Fast-Track Minimum Keyword Weight` | Minimum title keyword weight required to trigger Fast-Track |
+| `Anchor Keyword Cap` | Maximum points that high-weight title keywords can contribute |
+| `Baseline Keyword Cap` | Maximum points that JD-positive keywords can add |
+| `Negative Penalty Cap` | Maximum points that JD-negative keywords can subtract |
+| `Apply Now Threshold` | Minimum score to appear in the Apply Now tab |
+| `Review Today Threshold` | Minimum score to appear in the Review Today tab |
+| `Watch Threshold` | Minimum score to appear in the Watch tab |
 
 ---
 

@@ -250,6 +250,20 @@ def _bucket_thresholds_from_preferences() -> dict[str, float]:
             review_today = min(min_score, review_today) if review_today is not None else min_score
         elif label == "WATCH" and when.get("eligible", False):
             watch = min(min_score, watch) if watch is not None else min_score
+    # search.bucket_thresholds is written by the Scoring Settings UI — prefer it when present
+    bt = (prefs.get("search") or {}).get("bucket_thresholds") or {}
+    for _key, _var in [("apply_now", apply_now), ("review_today", review_today), ("watch", watch)]:
+        if bt.get(_key) is not None:
+            try:
+                v = float(bt[_key])
+                if _key == "apply_now":
+                    apply_now = v
+                elif _key == "review_today":
+                    review_today = v
+                else:
+                    watch = v
+            except (TypeError, ValueError):
+                pass
     comp_cfg = (prefs.get("search") or {}).get("compensation") or {}
     min_salary = float(comp_cfg.get("min_salary_usd") or comp_cfg.get("target_salary_usd") or 165000)
     return {
@@ -1553,6 +1567,51 @@ def main():
             else:
                 if not filtered_bucket_df.empty:
                     st.caption(f"Currently saved jobs below your watch threshold: {len(filtered_bucket_df)}")
+                    with st.expander("Bulk Archive Stale Low-Score Jobs"):
+                        _arch_conn = ats_db.get_connection()
+                        try:
+                            _stale_count = _arch_conn.execute("""
+                                SELECT COUNT(*) FROM applications a
+                                WHERE a.status = 'considering'
+                                  AND a.fit_band IN ('Filtered Out', 'Disqualified', 'Poor Match')
+                                  AND a.date_added < datetime('now', '-30 days')
+                                  AND NOT EXISTS (
+                                      SELECT 1 FROM job_annotations ja
+                                      WHERE ja.scraper_key = a.scraper_key
+                                        AND ja.tag IS NOT NULL
+                                  )
+                            """).fetchone()[0]
+                        finally:
+                            _arch_conn.close()
+                        st.write(
+                            f"**{_stale_count}** stale jobs are eligible for archive — "
+                            f"status 'considering', Filtered Out / Disqualified / Poor Match fit band, "
+                            f"added 30+ days ago, no manual tag."
+                        )
+                        if _stale_count > 0 and st.button(
+                            f"Archive {_stale_count} stale jobs (set to 'withdrawn')",
+                            type="secondary",
+                            key="btn_bulk_archive",
+                        ):
+                            _arch_conn2 = ats_db.get_connection()
+                            try:
+                                _arch_conn2.execute("""
+                                    UPDATE applications SET status='withdrawn', updated_at=?
+                                    WHERE status = 'considering'
+                                      AND fit_band IN ('Filtered Out', 'Disqualified', 'Poor Match')
+                                      AND date_added < datetime('now', '-30 days')
+                                      AND NOT EXISTS (
+                                          SELECT 1 FROM job_annotations ja
+                                          WHERE ja.scraper_key = applications.scraper_key
+                                            AND ja.tag IS NOT NULL
+                                      )
+                                """, (datetime.now(timezone.utc).isoformat(),))
+                                _arch_conn2.commit()
+                                _invalidate_data_cache()
+                            finally:
+                                _arch_conn2.close()
+                            st.success(f"Archived {_stale_count} stale jobs.")
+                            st.rerun()
                     promote_opts = ["Apply Now", "Review Today", "Watch", "Applied", "Rejected", "Filtered Out"]
                     for c in DISPLAY_COLS + ["user_status", "_key", "note"]:
                         if c not in filtered_bucket_df.columns:

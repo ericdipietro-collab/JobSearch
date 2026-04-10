@@ -80,7 +80,8 @@ After changing the setting, rerun the installer or launcher.
 - **ATS Healer** — Auto-discovers stale/missing company careers URLs and detects ATS platforms, even for complex SPA careers pages via Crawl4AI
 
 ### Intelligent Scoring & Filtering
-- **Configurable scoring engine** — Title, JD keywords, salary, location, and tier weighting via interactive sliders
+- **Two-layer scoring engine** — V1 applies hard gates (negative title disqualifiers, location, work-type filters); V2 is the primary engine that resolves canonical title families, detects seniority, and computes an anchor + baseline keyword score against your preferences
+- **Configurable V2 controls** — Fast-Track thresholds, anchor/baseline/negative caps, and bucket cutoffs (Apply Now / Review Today / Watch) all exposed as interactive sliders in Scoring Settings
 - **Experience tolerance gap** — Soft-drop jobs requiring significantly more experience; soft-penalty for near-fit roles
 - **Re-scoring without re-scraping** — Update scoring weights and re-score all saved jobs instantly
 - **Full-text search (FTS5)** — Sub-15ms semantic search across 10K+ jobs with BM25 ranking
