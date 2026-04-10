@@ -213,33 +213,47 @@ Return ONLY the JSON array, nothing else."""
         if not self.llm_client.get_active_provider() or self.llm_client.get_active_provider() == "none":
             return {}
 
-        text_limit = 1500 if self.llm_client.is_local() else 5000
+        jd_limit = 1500 if self.llm_client.is_local() else 4000
+        resume_limit = 1500 if self.llm_client.is_local() else 5000
 
         # Data first, calibration + schema last — optimal for both cloud and local models
-        prompt = f"""Analyze how well this job matches the candidate. Be specific and critical — do not be generous.
+        prompt = f"""You are an expert resume strategist evaluating candidate fit for a specific job. Be specific and honest — do not be generous.
 
-Job Title: {job_title}
+=== CANDIDATE CONTEXT ===
+Positioning: Technical Product Manager / Product Architect with 18+ years in financial systems, data integration, and API platforms.
+Domain depth: Wealthtech, capital markets, brokerage, investment operations, portfolio accounting, ETL/Data Vault, enterprise integrations.
+Key proof points:
+- Sole architect of NFS/Truist brokerage integration: $200B+ AUM, 20,000+ daily syncs, zero-to-certified production in 18 months
+- Performance wins: 7min→12sec tax-lot processing; 3hr→60min IDW batch; SLA recovery 70%→95%
+- Stakeholder reach: 8 teams / 40+ stakeholders, routine CIO-facing delivery at InvestCloud
+- 13-year arc at Allstate Investments across Senior BSA, Product Lead, and Data Architect roles
+Title note: Candidate's formal titles (Senior BSA, Product Lead) routinely understated scope — they designed architecture, owned requirements end-to-end, and drove delivery without formal architecture titles.
+Best-fit role archetypes: Technical Product Manager, Product Architect, Solution Architect, Senior BSA/Systems Analyst, API/Integrations Lead, Data Platform PM, Client Implementation Lead.
 
-Job Description:
-{job_description[:text_limit]}
+=== JOB POSTING ===
+Title: {job_title}
+{job_description[:jd_limit]}
 
-Candidate Resume:
-{resume_text[:text_limit]}
+=== CANDIDATE RESUME ===
+{resume_text[:resume_limit]}
 
-Score calibration:
-- 90-100: candidate exceeds most requirements, near-perfect domain and seniority match
-- 70-89: strong match, meets most requirements with only minor gaps
-- 50-69: partial match, relevant background but notable skill or seniority gaps
-- 30-49: weak match, some transferable skills but significant gaps
-- 0-29: poor match, different domain or level
+=== SCORING CALIBRATION ===
+90-100: Near-perfect domain + seniority match, candidate exceeds most requirements
+70-89: Strong fit, meets most requirements, only minor gaps
+50-69: Partial fit, relevant background but notable skill or domain gaps
+30-49: Weak fit, some transferable skills but significant misalignment
+0-29: Wrong domain or seniority level
 
-Return ONLY a JSON object:
+Return ONLY this JSON object:
 {{
-    "match_score": <int 0-100 per calibration above>,
+    "match_score": <int 0-100 per calibration>,
+    "positioning_angle": "<which role archetype from the list above fits this JD best>",
     "summary": "<2 sentences: overall fit verdict and the single most important determining factor>",
-    "pros": ["<specific strength from resume matching JD>", "<specific strength>", "<specific strength>"],
-    "cons": ["<specific gap or mismatch>", "<specific gap>", "<specific gap>"],
-    "missing_skills": ["<required skill explicitly in JD but absent from resume>"]
+    "pros": ["<specific candidate strength directly matching a JD requirement>", "<specific strength>", "<specific strength>"],
+    "cons": ["<specific gap or mismatch>", "<specific gap>"],
+    "missing_skills": ["<skill explicitly required by JD that is absent or weak in the resume>"],
+    "interview_lead": "<which specific career story or proof point to open with for this role>",
+    "key_objection": "<the single most likely objection from a hiring manager and how to frame it>"
 }}"""
 
         try:

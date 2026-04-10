@@ -104,7 +104,11 @@ class EnrichmentService:
         user_skills_section = ""
         if self.user_skills:
             user_skills_str = ", ".join(self.user_skills)
-            user_skills_section = f"\n\nUser's Current Skills: {user_skills_str}"
+            user_skills_section = (
+                f"\n\nCandidate profile: Senior Technical Product Manager / Product Architect targeting "
+                f"wealthtech, financial systems, capital markets, and API/data integration roles.\n"
+                f"Current skills: {user_skills_str}"
+            )
 
         jd_limit = 1500 if self.llm_client.is_local() else 3000
 

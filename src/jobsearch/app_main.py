@@ -870,20 +870,24 @@ def _render_apply_now_cards(df):
             try:
                 analysis = json.loads(ai_analysis_raw)
                 score_color = "#10b981" if ai_score and ai_score >= 80 else "#f59e0b" if ai_score and ai_score >= 60 else "#ef4444"
+                positioning = analysis.get("positioning_angle", "")
+                interview_lead = analysis.get("interview_lead", "")
+                key_objection = analysis.get("key_objection", "")
                 with st.container(border=True):
                     st.markdown(
                         f"""
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <strong style="color: {score_color}">AI Match Score: {ai_score:.0f}%</strong>
+                            {"<span style='font-size:0.8rem;color:#6b7280'>" + positioning + "</span>" if positioning else ""}
                         </div>
                         <p style="margin: 5px 0; font-size: 0.9rem;">{analysis.get('summary', '')}</p>
                         <div style="display: flex; gap: 20px; font-size: 0.8rem;">
                             <div><strong style="color: #10b981">Pros:</strong> {', '.join(analysis.get('pros', []))}</div>
                             <div><strong style="color: #ef4444">Cons:</strong> {', '.join(analysis.get('cons', []))}</div>
                         </div>
-                        <div style="font-size: 0.8rem; margin-top: 5px;">
-                            <strong style="color: #6366f1">Missing:</strong> {', '.join(analysis.get('missing_skills', []))}
-                        </div>
+                        {"<div style='font-size:0.8rem;margin-top:5px;'><strong style='color:#6366f1'>Missing:</strong> " + ', '.join(analysis.get('missing_skills', [])) + "</div>" if analysis.get('missing_skills') else ""}
+                        {"<div style='font-size:0.8rem;margin-top:5px;background:#1e293b;padding:5px 8px;border-radius:4px;'><strong style='color:#fbbf24'>Lead with:</strong> " + interview_lead + "</div>" if interview_lead else ""}
+                        {"<div style='font-size:0.8rem;margin-top:3px;background:#1e293b;padding:5px 8px;border-radius:4px;'><strong style='color:#f87171'>Prepare for:</strong> " + key_objection + "</div>" if key_objection else ""}
                         """,
                         unsafe_allow_html=True
                     )
