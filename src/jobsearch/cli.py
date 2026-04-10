@@ -424,6 +424,7 @@ def heal(heal_all, force, ignore_cooldown, no_waterfall, deep, workers, deep_tim
 @click.argument("extra_args", nargs=-1)
 def run(deep_search, full_refresh, test_companies, contract_sources, aggregator_sources, jobspy_sources, all_companies, workers, prefs, companies, legacy, extra_args):
     """Run the job search pipeline."""
+    setup_logging(settings.log_file)
     click.echo("Starting Job Search Pipeline...")
 
     if legacy:
@@ -456,6 +457,7 @@ def run(deep_search, full_refresh, test_companies, contract_sources, aggregator_
     prefs_path = Path(prefs) if prefs else settings.preferences_yaml
     
     comp_data = []
+    comp_path = None
     if all_companies:
         registries = settings.get_company_registries()
         click.echo(f"Merging {len(registries)} company registries...")
@@ -487,19 +489,19 @@ def run(deep_search, full_refresh, test_companies, contract_sources, aggregator_
 
     if contract_sources and not all_companies: # All companies already includes contract if it's in config
         contract_path = settings.contract_companies_yaml
-        if contract_path.exists() and contract_path != comp_path:
+        if contract_path.exists() and (comp_path is None or contract_path != comp_path):
             with contract_path.open("r", encoding="utf-8") as handle:
                 contract_data = (yaml.safe_load(handle) or {}).get("companies", [])
             comp_data = _merge_company_lists(comp_data, contract_data)
     if aggregator_sources:
         aggregator_path = settings.aggregator_companies_yaml
-        if aggregator_path.exists() and aggregator_path != comp_path:
+        if aggregator_path.exists() and (comp_path is None or aggregator_path != comp_path):
             with aggregator_path.open("r", encoding="utf-8") as handle:
                 aggregator_data = (yaml.safe_load(handle) or {}).get("companies", [])
             comp_data = _merge_company_lists(comp_data, aggregator_data)
     if jobspy_sources:
         jobspy_path = settings.jobspy_companies_yaml
-        if jobspy_path.exists() and jobspy_path != comp_path:
+        if jobspy_path.exists() and (comp_path is None or jobspy_path != comp_path):
             with jobspy_path.open("r", encoding="utf-8") as handle:
                 jobspy_data = (yaml.safe_load(handle) or {}).get("companies", [])
             comp_data = _merge_company_lists(comp_data, jobspy_data)

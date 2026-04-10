@@ -100,7 +100,7 @@ companies:
   heal_failure_streak: 0
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:42:33.664666+00:00'
+  cooldown_until: null
 - name: Deel
   tier: 2
   priority: medium
@@ -303,7 +303,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:42:31.989702+00:00'
+  cooldown_until: null
 - name: Twilio
   tier: 2
   priority: medium
@@ -322,7 +322,7 @@ companies:
   heal_failure_streak: 0
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:44:14.269627+00:00'
+  cooldown_until: null
 - name: Samsara
   tier: 2
   priority: medium
@@ -408,7 +408,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:42:33.673666+00:00'
+  cooldown_until: null
 - name: Hotjar
   tier: 2
   priority: medium
@@ -492,7 +492,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:42:33.593674+00:00'
+  cooldown_until: null
 - name: Transcom
   tier: 3
   priority: low
@@ -543,7 +543,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:42:20.905282+00:00'
+  cooldown_until: null
 - name: PayPal
   tier: 1
   priority: high
@@ -561,7 +561,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:42:33.090327+00:00'
+  cooldown_until: null
 - name: BlackRock
   tier: 1
   priority: high
@@ -579,7 +579,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:42:33.097841+00:00'
+  cooldown_until: null
 - name: Fidelity Investments
   tier: 1
   priority: high
@@ -614,7 +614,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:42:33.082309+00:00'
+  cooldown_until: null
 - name: Aquent
   tier: 3
   priority: low
@@ -648,7 +648,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:42:33.679753+00:00'
+  cooldown_until: null
 - name: GitHub
   tier: 1
   priority: high
@@ -766,7 +766,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:42:35.526829+00:00'
+  cooldown_until: null
 - name: Webflow
   tier: 2
   priority: medium
@@ -784,7 +784,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:44:03.076332+00:00'
+  cooldown_until: null
 - name: HashiCorp
   tier: 2
   priority: medium

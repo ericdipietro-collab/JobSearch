@@ -673,6 +673,14 @@ def init_db(conn: sqlite3.Connection) -> None:
             "jd_last_changed_at": "TEXT",
             "jd_change_summary": "TEXT",
             "jd_needs_review": "INTEGER DEFAULT 0",
+            # V2 scoring columns for A/B comparison
+            "score_v2": "REAL",
+            "fit_band_v2": "TEXT",
+            "v2_canonical_title": "TEXT",
+            "v2_seniority_band": "TEXT",
+            "v2_anchor_score": "REAL",
+            "v2_baseline_score": "REAL",
+            "v2_flags": "TEXT",
         },
     )
 

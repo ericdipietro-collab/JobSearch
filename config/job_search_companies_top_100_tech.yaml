@@ -55,7 +55,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:47:43.276715+00:00'
+  cooldown_until: null
 - name: Cadence
   tier: 1
   priority: high
@@ -95,7 +95,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:47:43.352254+00:00'
+  cooldown_until: null
 - name: Salesforce
   tier: 1
   priority: high
@@ -136,7 +136,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:47:47.104311+00:00'
+  cooldown_until: null
 - name: Box
   tier: 1
   priority: high
@@ -195,7 +195,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:47:44.592647+00:00'
+  cooldown_until: null
 - name: Intuit
   tier: 1
   priority: high
@@ -216,7 +216,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:47:46.123651+00:00'
+  cooldown_until: null
 - name: Workiva
   tier: 1
   priority: high
@@ -276,7 +276,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:47:43.925801+00:00'
+  cooldown_until: null
 - name: Atlassian
   tier: 1
   priority: high
@@ -316,7 +316,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:47:46.112648+00:00'
+  cooldown_until: null
 - name: Five9
   tier: 1
   priority: high
@@ -336,7 +336,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:47:44.688827+00:00'
+  cooldown_until: null
 - name: Databricks
   tier: 1
   priority: high
@@ -395,7 +395,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:47:48.317959+00:00'
+  cooldown_until: null
 - name: Calix
   tier: 1
   priority: high
@@ -415,7 +415,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:47:44.034762+00:00'
+  cooldown_until: null
 - name: Precisely
   tier: 1
   priority: high
@@ -436,7 +436,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:49:22.903996+00:00'
+  cooldown_until: null
 - name: Braze
   tier: 1
   priority: high
@@ -456,7 +456,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:49:14.132364+00:00'
+  cooldown_until: null
 - name: Varonis
   tier: 1
   priority: high
@@ -476,7 +476,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:49:01.931547+00:00'
+  cooldown_until: null
 - name: Pure Storage
   tier: 1
   priority: high
@@ -496,7 +496,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:49:28.864738+00:00'
+  cooldown_until: null
 - name: Synopsys
   tier: 2
   priority: high
@@ -515,7 +515,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:49:28.803736+00:00'
+  cooldown_until: null
 - name: GitLab
   tier: 2
   priority: high
@@ -552,7 +552,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:49:28.438547+00:00'
+  cooldown_until: null
 - name: Cognosante
   tier: 2
   priority: high
@@ -572,7 +572,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:49:29.278424+00:00'
+  cooldown_until: null
 - name: Availity
   tier: 2
   priority: high
@@ -591,7 +591,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:49:29.219416+00:00'
+  cooldown_until: null
 - name: Arctic Wolf
   tier: 2
   priority: high
@@ -610,7 +610,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:49:28.890255+00:00'
+  cooldown_until: null
 - name: Tenable
   tier: 2
   priority: high
@@ -629,7 +629,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:49:33.361960+00:00'
+  cooldown_until: null
 - name: Zscaler
   tier: 2
   priority: high
@@ -649,7 +649,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:50:45.039990+00:00'
+  cooldown_until: null
 - name: Rubrik
   tier: 2
   priority: high
@@ -686,7 +686,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:51:01.848674+00:00'
+  cooldown_until: null
 - name: CarGurus
   tier: 2
   priority: high
@@ -723,7 +723,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:51:11.022510+00:00'
+  cooldown_until: null
 - name: Chainguard
   tier: 2
   priority: high
@@ -742,7 +742,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:51:12.305303+00:00'
+  cooldown_until: null
 - name: Lumin Digital
   tier: 2
   priority: high
@@ -761,7 +761,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:51:13.035023+00:00'
+  cooldown_until: null
 - name: Mercury
   tier: 2
   priority: high
@@ -798,7 +798,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:51:09.222330+00:00'
+  cooldown_until: null
 - name: The Informatics Applications Group (TIAG)
   tier: 2
   priority: high
@@ -817,7 +817,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:51:12.352378+00:00'
+  cooldown_until: null
 - name: DroneDeploy
   tier: 2
   priority: high
@@ -837,7 +837,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:51:13.406124+00:00'
+  cooldown_until: null
 - name: Invoca
   tier: 2
   priority: high
@@ -926,7 +926,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:51:17.870921+00:00'
+  cooldown_until: null
 - name: Google
   tier: 2
   priority: high
@@ -947,7 +947,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:51:26.493306+00:00'
+  cooldown_until: null
 - name: Microsoft
   tier: 2
   priority: high
@@ -968,7 +968,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:52:13.457903+00:00'
+  cooldown_until: null
 - name: SAP
   tier: 3
   priority: medium
@@ -987,7 +987,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:52:46.932965+00:00'
+  cooldown_until: null
 - name: Zoom
   tier: 3
   priority: medium
@@ -1078,7 +1078,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:52:37.535887+00:00'
+  cooldown_until: null
 - name: DocuSign
   tier: 3
   priority: medium
@@ -1098,7 +1098,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:52:48.267592+00:00'
+  cooldown_until: null
 - name: Figma
   tier: 3
   priority: medium
@@ -1134,7 +1134,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:52:46.618922+00:00'
+  cooldown_until: null
 - name: MongoDB
   tier: 3
   priority: medium
@@ -1170,7 +1170,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:52:57.513226+00:00'
+  cooldown_until: null
 - name: Shopify
   tier: 3
   priority: medium
@@ -1225,7 +1225,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:52:59.054761+00:00'
+  cooldown_until: null
 - name: LinkedIn
   tier: 3
   priority: medium
@@ -1245,7 +1245,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:52:59.109766+00:00'
+  cooldown_until: null
 - name: Dropbox
   tier: 3
   priority: medium
@@ -1317,7 +1317,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:53:03.550685+00:00'
+  cooldown_until: null
 - name: Fastly
   tier: 3
   priority: medium
@@ -1372,7 +1372,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:53:16.485098+00:00'
+  cooldown_until: null
 - name: Deel
   tier: 3
   priority: medium
@@ -1427,7 +1427,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:53:57.829545+00:00'
+  cooldown_until: null
 - name: GitHub
   tier: 4
   priority: medium
@@ -1464,7 +1464,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:54:21.215467+00:00'
+  cooldown_until: null
 - name: Qualcomm
   tier: 4
   priority: medium
@@ -1484,7 +1484,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:54:28.523724+00:00'
+  cooldown_until: null
 - name: Arm
   tier: 4
   priority: medium
@@ -1504,7 +1504,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:54:30.639054+00:00'
+  cooldown_until: null
 - name: Workday
   tier: 4
   priority: medium
@@ -1577,7 +1577,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:54:33.819865+00:00'
+  cooldown_until: null
 - name: DataRobot
   tier: 4
   priority: medium
@@ -1702,7 +1702,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:54:42.655527+00:00'
+  cooldown_until: null
 - name: OpenAI
   tier: 4
   priority: medium
@@ -1775,7 +1775,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:54:43.883202+00:00'
+  cooldown_until: null
 - name: Alteryx
   tier: 4
   priority: medium
@@ -1812,7 +1812,7 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:54:44.223288+00:00'
+  cooldown_until: null
 - name: PagerDuty
   tier: 4
   priority: medium
@@ -1884,4 +1884,4 @@ companies:
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: '2026-04-10T18:54:46.722425+00:00'
+  cooldown_until: null

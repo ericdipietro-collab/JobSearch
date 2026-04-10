@@ -135,6 +135,17 @@ class ScraperEngine:
         self.bulk_cooldowns: Dict[str, datetime] = {}
         self.known_urls: Dict[str, datetime] = {}
 
+        # V2 scoring — built once at startup, used per-job in _process_and_save_jobs
+        try:
+            from jobsearch.scraper.scoring_v2 import build_v2_config_from_prefs
+            self._v2_cfg, self._v2_title_index, self._v2_pw, self._v2_ftbase, self._v2_ftmin = (
+                build_v2_config_from_prefs(preferences)
+            )
+            self._v2_available = True
+        except Exception as _v2_init_err:
+            logger.warning("V2 scoring unavailable: %s", _v2_init_err)
+            self._v2_available = False
+
         self._deep_playwright = None
         if self.deep_search:
             try:
@@ -734,8 +745,8 @@ class ScraperEngine:
                 "canonical_job_url": getattr(job, "canonical_job_url", ""),
             }
             score_results = self.scorer.score_job(scoring_data)
-            job.score = score_results["score"]
-            job.fit_band = score_results["fit_band"]
+            # V1 handles hard gates (disqualifiers, experience check) and compensation
+            # parsing.  Pull compensation fields regardless of whether V1 disqualified.
             job.apply_now_eligible = score_results.get("apply_now_eligible", True)
             job.matched_keywords = score_results["matched_keywords"]
             job.penalized_keywords = score_results["penalized_keywords"]
@@ -751,14 +762,83 @@ class ScraperEngine:
             )
             job.source_lane = str(company.get("source_lane") or getattr(job, "source_lane", "employer_ats") or "employer_ats")
             job.canonical_job_url = str(getattr(job, "canonical_job_url", "") or "")
+
+            # If V1 hard-dropped the job, honour that decision.
+            if score_results["fit_band"] in ("Disqualified", "Filtered Out"):
+                job.score = 0.0
+                job.fit_band = score_results["fit_band"]
+            elif self._v2_available:
+                # V2 is primary scorer: use its final_score and fit_band.
+                try:
+                    from jobsearch.scraper.scoring_v2 import score_job_v2, v2_title_pts
+                    _tpts = v2_title_pts(
+                        job.role_title_raw or "",
+                        self._v2_title_index,
+                        self._v2_cfg,
+                        self._v2_pw,
+                        self._v2_ftbase,
+                        self._v2_ftmin,
+                    )
+                    _v2 = score_job_v2(
+                        job.role_title_raw or "",
+                        job.description_excerpt or "",
+                        _tpts,
+                        self._v2_cfg,
+                        self._v2_title_index,
+                    )
+                    job.score = round(_v2.final_score, 2)
+                    job.fit_band = _v2.fit_band
+                    job.decision_reason = (
+                        f"V2: {_v2.fit_band} | title={_v2.canonical_title or 'unresolved'}"
+                        f" | seniority={_v2.seniority.band}"
+                        f" | anchor={round(_v2.keyword.anchor_score,1)}"
+                        f" base={round(_v2.keyword.baseline_score,1)}"
+                        f" neg={round(_v2.keyword.negative_score,1)}"
+                    )
+                    # Store V2 breakdown so the Scoring Lab columns are populated
+                    # at scrape time rather than requiring a separate backfill run.
+                    job._v2_result = _v2
+                except Exception as _v2_err:
+                    logger.debug("V2 scoring failed for %s/%s: %s", job.company, job.role_title_raw, _v2_err)
+                    job.score = score_results["score"]
+                    job.fit_band = score_results["fit_band"]
+                    job._v2_result = None
+            else:
+                job.score = score_results["score"]
+                job.fit_band = score_results["fit_band"]
+                job._v2_result = None
+
             score_values.append(float(job.score or 0.0))
 
             if job.score >= self.scorer.min_score_to_keep:
                 try:
-                    inserted, _ = upsert_job(conn, job)
+                    inserted, app_id = upsert_job(conn, job)
                     persisted_count += 1
                     if inserted:
                         inserted_count += 1
+                    # Write V2 breakdown columns alongside the primary score.
+                    _v2r = getattr(job, "_v2_result", None)
+                    if _v2r is not None and app_id:
+                        import json as _json
+                        conn.execute(
+                            """
+                            UPDATE applications
+                            SET score_v2 = ?, fit_band_v2 = ?, v2_canonical_title = ?,
+                                v2_seniority_band = ?, v2_anchor_score = ?,
+                                v2_baseline_score = ?, v2_flags = ?
+                            WHERE id = ?
+                            """,
+                            (
+                                round(_v2r.final_score, 2),
+                                _v2r.fit_band,
+                                _v2r.canonical_title,
+                                _v2r.seniority.band,
+                                round(_v2r.keyword.anchor_score, 2),
+                                round(_v2r.keyword.baseline_score, 2),
+                                _json.dumps(_v2r.flags),
+                                app_id,
+                            ),
+                        )
                 except Exception as exc:
                     logger.error("Error saving job %s: %s", job.id, exc)
             else:

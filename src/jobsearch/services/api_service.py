@@ -94,11 +94,16 @@ async def inject_job(req: JobInjectionRequest):
             if len(parts) > 1:
                 company = parts[-1].strip()
 
-    # Dedup check: If this exact URL already exists, return the existing ID
+    # Dedup check: If this exact URL already exists, ensure it has a WATCH tag and return.
     conn = ats_db.get_connection()
     try:
-        existing = conn.execute("SELECT id, company, role, score, fit_band FROM applications WHERE job_url = ? OR canonical_job_url = ?", (req.url, req.url)).fetchone()
+        existing = conn.execute(
+            "SELECT id, scraper_key, company, role, score, fit_band FROM applications WHERE job_url = ? OR canonical_job_url = ?",
+            (req.url, req.url)
+        ).fetchone()
         if existing:
+            if existing["scraper_key"]:
+                ats_db.upsert_annotation(conn, existing["scraper_key"], note="Manual injection", tag="WATCH")
             return {
                 "status": "success",
                 "inserted": False,
@@ -131,14 +136,15 @@ async def inject_job(req: JobInjectionRequest):
             ollama_model=ollama_model
         )
 
-        # Force LLM extraction if we still have "Unknown" or very little data
-        if company == "Unknown Company" or title == "Unknown Position" or len(description) < 100:
+        # Force LLM extraction if we still have "Unknown", very little data, or noisy source (LinkedIn)
+        is_linkedin = "linkedin.com" in req.url.lower()
+        if company == "Unknown Company" or title == "Unknown Position" or len(description) < 100 or is_linkedin:
             try:
                 # Targeted prompt for extraction
                 prompt = f"""Extract the hiring Company Name, Job Title, and a clean Job Description from this job posting data.
 URL: {req.url}
 Page Title: {req.title}
-Content: {req.text or ""[:3000]}
+Content: {(req.text or "")[:3000]}
 
 Return ONLY valid JSON:
 {{
@@ -161,7 +167,7 @@ Return ONLY valid JSON:
             except Exception as e:
                 logger.warning(f"LLM extraction failed: {e}")
 
-        # 3. Score the job
+        # 3. Score the job — V1 for hard gates, V2 as primary
         scorer = Scorer(prefs)
         job_data = {
             "title": title,
@@ -172,7 +178,27 @@ Return ONLY valid JSON:
             "tier": 4,
         }
         score_result = scorer.score_job(job_data)
-        
+
+        # Promote V2 score as primary (mirrors _rescore_saved_jobs logic)
+        v1_disqualified = score_result.get("fit_band") in ("Disqualified", "Filtered Out")
+        if not v1_disqualified:
+            try:
+                from jobsearch.scraper.scoring_v2 import build_v2_config_from_prefs, v2_title_pts, score_job_v2
+                _v2_cfg, _v2_idx, _v2_pw, _v2_ftbase, _v2_ftmin = build_v2_config_from_prefs(prefs)
+                _tpts = v2_title_pts(title, _v2_idx, _v2_cfg, _v2_pw, _v2_ftbase, _v2_ftmin)
+                _v2r = score_job_v2(title, description, _tpts, _v2_cfg, _v2_idx)
+                score_result["score"] = round(_v2r.final_score, 2)
+                score_result["fit_band"] = _v2r.fit_band
+                score_result["decision_reason"] = (
+                    f"V2: {_v2r.fit_band} | title={_v2r.canonical_title or 'unresolved'}"
+                    f" | seniority={_v2r.seniority.band}"
+                    f" | anchor={round(_v2r.keyword.anchor_score, 1)}"
+                    f" base={round(_v2r.keyword.baseline_score, 1)}"
+                    f" neg={round(_v2r.keyword.negative_score, 1)}"
+                )
+            except Exception as e:
+                logger.warning(f"V2 scoring failed, using V1: {e}")
+
         # Apply AI enrichment if possible
         try:
             enriched = enrichment.enrich_job(title, description)
@@ -222,6 +248,10 @@ Return ONLY valid JSON:
     try:
         conn = ats_db.get_connection()
         inserted, app_id = upsert_job(conn, job)
+        # Manually injected jobs always get at least a WATCH tag so they surface
+        # in Job Matches regardless of their score (user chose to inject them).
+        if inserted:
+            ats_db.upsert_annotation(conn, job.id, note="Manual injection", tag="WATCH")
         conn.commit()
         conn.close()
         return {

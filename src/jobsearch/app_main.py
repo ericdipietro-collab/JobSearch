@@ -463,8 +463,27 @@ def _apply_work_type_filter(df: pd.DataFrame, selection: str) -> pd.DataFrame:
         return df[work_types == target]
     return df
 
+def _cache_stamp(*paths: Path) -> str:
+    parts: list[str] = []
+    for path in paths:
+        try:
+            stat = path.stat()
+            parts.append(f"{path}:{stat.st_mtime_ns}:{stat.st_size}")
+        except FileNotFoundError:
+            parts.append(f"{path}:missing")
+        # SQLite WAL mode: commits go to the -wal file without changing the main
+        # DB file's mtime until a checkpoint.  Include the WAL in the stamp so
+        # external writes (bookmarklet injections) invalidate the cache.
+        wal = Path(str(path) + "-wal")
+        try:
+            wstat = wal.stat()
+            parts.append(f"{wal}:{wstat.st_mtime_ns}:{wstat.st_size}")
+        except FileNotFoundError:
+            pass  # no WAL file = no pending writes, nothing to add
+    return "|".join(parts)
+
 @st.cache_data(show_spinner=False)
-def _load_jobs_df() -> pd.DataFrame:
+def _load_jobs_df(_stamp: str) -> pd.DataFrame:
     conn = ats_db.get_connection()
     try:
         rows = ats_db.get_applications(conn)
@@ -541,7 +560,7 @@ def _load_jobs_df() -> pd.DataFrame:
     finally: conn.close()
 
 @st.cache_data(show_spinner=False)
-def _load_rejected_jobs_df() -> pd.DataFrame:
+def _load_rejected_jobs_df(_stamp: str) -> pd.DataFrame:
     path = settings.rejected_csv
     if not path.exists():
         return pd.DataFrame()
@@ -880,12 +899,19 @@ def save_yaml(p, d): p.write_text(yaml.safe_dump(d, sort_keys=False, allow_unico
 def _rescore_saved_jobs(conn, prefs_path: Path | None = None) -> int:
     prefs = load_yaml(prefs_path or settings.prefs_yaml)
     scorer = Scorer(prefs)
+    try:
+        from jobsearch.scraper.scoring_v2 import score_job_v2
+        v2_cfg, v2_title_index, _v2_pw, _v2_ftbase, _v2_ftmin = _build_v2_config_from_prefs(prefs)
+        _v2_available = True
+    except Exception:
+        _v2_available = False
+        _v2_pw, _v2_ftbase, _v2_ftmin = {}, 50.0, 8
     rows = conn.execute(
         """
         SELECT id, company, role, description_excerpt, location, tier,
                salary_text, salary_low, salary_high, work_type,
                compensation_unit, hourly_rate, hours_per_week, weeks_per_year,
-               is_remote, status
+               is_remote, status, score
         FROM applications
         WHERE status = 'considering'
         """
@@ -920,44 +946,113 @@ def _rescore_saved_jobs(conn, prefs_path: Path | None = None) -> int:
             bool(row["is_remote"]) or
             scorer._is_remote_role(row["location"] or "", row["description_excerpt"] or "")
         )
-        conn.execute(
-            """
-            UPDATE applications
-            SET score = ?,
-                fit_band = ?,
-                matched_keywords = ?,
-                penalized_keywords = ?,
-                decision_reason = ?,
-                work_type = ?,
-                compensation_unit = ?,
-                hourly_rate = ?,
-                hours_per_week = ?,
-                weeks_per_year = ?,
-                normalized_compensation_usd = ?,
-                is_remote = ?,
-                updated_at = ?
-            WHERE id = ?
-            """,
-            (
-                result.get("score"),
-                result.get("fit_band"),
-                result.get("matched_keywords"),
-                result.get("penalized_keywords"),
-                result.get("decision_reason"),
-                result.get("work_type"),
-                result.get("compensation_unit"),
-                result.get("hourly_rate"),
-                result.get("hours_per_week"),
-                result.get("weeks_per_year"),
-                result.get("normalized_compensation_usd"),
-                is_remote_detected,
-                now,
-                row["id"],
-            ),
-        )
+        new_score = result.get("score") or 0.0
+        new_fit_band = result.get("fit_band")
+        new_decision_reason = result.get("decision_reason")
+        v2_result = None
+
+        # V1 hard gates (Disqualified / Filtered Out) are authoritative — keep score=0.
+        # For everything else, promote V2 as the primary score if available.
+        v1_disqualified = new_fit_band in ("Disqualified", "Filtered Out")
+        if _v2_available and not v1_disqualified:
+            try:
+                _tpts = _v2_title_pts(row["role"] or "", v2_title_index, v2_cfg, _v2_pw, _v2_ftbase, _v2_ftmin)
+                v2_result = score_job_v2(
+                    row["role"] or "",
+                    row["description_excerpt"] or "",
+                    _tpts,
+                    v2_cfg,
+                    v2_title_index,
+                )
+                new_score = round(v2_result.final_score, 2)
+                new_fit_band = v2_result.fit_band
+                import json as _json
+                new_decision_reason = (
+                    f"V2: {v2_result.fit_band} | title={v2_result.canonical_title or 'unresolved'}"
+                    f" | seniority={v2_result.seniority.band}"
+                    f" | anchor={round(v2_result.keyword.anchor_score, 1)}"
+                    f" base={round(v2_result.keyword.baseline_score, 1)}"
+                    f" neg={round(v2_result.keyword.negative_score, 1)}"
+                )
+            except Exception:
+                pass  # fall back to V1 values already set above
+
+        existing_score = row["score"] if "score" in row.keys() else 0.0
+        # Never overwrite a non-zero score with zero — zero means the title gate
+        # filtered the job, not that it's a bad match. Only write if we computed a
+        # real score, or if the job was already zero (nothing to protect).
+        if new_score > 0 or (existing_score or 0) == 0:
+            conn.execute(
+                """
+                UPDATE applications
+                SET score = ?,
+                    fit_band = ?,
+                    matched_keywords = ?,
+                    penalized_keywords = ?,
+                    decision_reason = ?,
+                    work_type = ?,
+                    compensation_unit = ?,
+                    hourly_rate = ?,
+                    hours_per_week = ?,
+                    weeks_per_year = ?,
+                    normalized_compensation_usd = ?,
+                    is_remote = ?,
+                    updated_at = ?
+                WHERE id = ?
+                """,
+                (
+                    new_score,
+                    new_fit_band,
+                    result.get("matched_keywords"),
+                    result.get("penalized_keywords"),
+                    new_decision_reason,
+                    result.get("work_type"),
+                    result.get("compensation_unit"),
+                    result.get("hourly_rate"),
+                    result.get("hours_per_week"),
+                    result.get("weeks_per_year"),
+                    result.get("normalized_compensation_usd"),
+                    is_remote_detected,
+                    now,
+                    row["id"],
+                ),
+            )
+        if v2_result is not None:
+            import json as _json
+            conn.execute(
+                """
+                UPDATE applications
+                SET score_v2 = ?, fit_band_v2 = ?, v2_canonical_title = ?,
+                    v2_seniority_band = ?, v2_anchor_score = ?,
+                    v2_baseline_score = ?, v2_flags = ?
+                WHERE id = ?
+                """,
+                (
+                    round(v2_result.final_score, 2),
+                    v2_result.fit_band,
+                    v2_result.canonical_title,
+                    v2_result.seniority.band,
+                    round(v2_result.keyword.anchor_score, 2),
+                    round(v2_result.keyword.baseline_score, 2),
+                    _json.dumps(v2_result.flags),
+                    row["id"],
+                ),
+            )
         updated += 1
     conn.commit()
     return updated
+
+def _build_v2_config_from_prefs(prefs: dict):
+    """Thin wrapper — delegates to the canonical implementation in scoring_v2."""
+    from jobsearch.scraper.scoring_v2 import build_v2_config_from_prefs
+    return build_v2_config_from_prefs(prefs)
+
+
+def _v2_title_pts(role, title_index, cfg, positive_weights, fast_track_base, fast_track_min):
+    """Thin wrapper — delegates to the canonical implementation in scoring_v2."""
+    from jobsearch.scraper.scoring_v2 import v2_title_pts
+    return v2_title_pts(role, title_index, cfg, positive_weights, fast_track_base, fast_track_min)
+
 
 def _normalize_editor_value(value):
     if isinstance(value, list):
@@ -1100,6 +1195,10 @@ def main():
         nav = ["Home", "Job Matches", "My Applications", "Journal", "Contacts", "Company Profiles", "Training", "Question Bank", "Weekly Report", "Templates", "Pipeline", "Analytics", "Run Job Search", "Search Settings", "Target Companies"]
         page = st.radio("Navigation", nav)
         
+        if st.button("↺ Refresh Data", use_container_width=True):
+            st.cache_data.clear()
+            st.rerun()
+
         st.markdown("---")
 
         # Check for pending high-score alerts in sidebar
@@ -1112,7 +1211,7 @@ def main():
         except Exception:
             pass
 
-        df_all = _load_jobs_df()
+        df_all = _load_jobs_df(_cache_stamp(settings.db_path, settings.prefs_yaml))
         if not df_all.empty:
             sidebar_metrics = _sidebar_metrics_for_df(df_all)
             st.metric("Leads", sidebar_metrics["scraped_leads"])
@@ -1140,7 +1239,7 @@ def main():
         except Exception:
             pass  # Silently ignore scheduler errors
 
-        rejected_df = _load_rejected_jobs_df()
+        rejected_df = _load_rejected_jobs_df(_cache_stamp(settings.rejected_csv))
         manual_review_items = _build_manual_review_items()
         review_conn = ats_db.get_connection()
         try:
@@ -1266,7 +1365,7 @@ def main():
                     ["company", "title", "location", "source", "source_lane_label", "matched_keywords", "decision_reason", "url"],
                 )
                 if b_df.empty: st.info(f"No jobs in {name}"); continue
-                if name == "APPLY NOW": _render_apply_now_cards(b_df)
+                _render_apply_now_cards(b_df)
                 
                 # Table Rendering
                 for c in DISPLAY_COLS + ["user_status", "_key", "note"]:
@@ -1562,11 +1661,28 @@ def main():
             # We use backticks (`) for internal strings to avoid quote hell
             raw_js = """(function(){
             const selection = window.getSelection().toString();
+            let jobUrl = window.location.href;
+            let jobText = selection || document.body.innerText.substring(0, 10000);
+            let jobHtml = document.body.innerHTML.substring(0, 20000);
+            let jobTitle = document.title;
+
+            if (window.location.hostname.includes('linkedin.com')) {
+            var urlParams = new URLSearchParams(window.location.search);
+            var jobId = urlParams.get('currentJobId');
+            if (jobId) { jobUrl = 'https://www.linkedin.com/jobs/view/' + jobId + '/'; }
+            var panel = document.querySelector('#job-details') || document.querySelector('.jobs-description__content') || document.querySelector('.job-view-layout');
+            if (panel && !selection) {
+            jobText = panel.innerText.substring(0, 10000);
+            jobHtml = panel.innerHTML.substring(0, 20000);
+            }
+            jobTitle = document.title.replace(' | LinkedIn', '').trim();
+            }
+
             const jobData = {
-            url: window.location.href,
-            title: document.title,
-            text: selection || document.body.innerText.substring(0, 10000),
-            html: document.body.innerHTML.substring(0, 20000)
+            url: jobUrl,
+            title: jobTitle,
+            text: jobText,
+            html: jobHtml
             };
             const div = document.createElement('div');
             div.style.position = 'fixed';
@@ -1825,47 +1941,66 @@ def main():
             s_cfg = prefs.setdefault("scoring", {})
             title_cfg = prefs.setdefault("titles", {})
             matching = s_cfg.setdefault("keyword_matching", {})
-            rescue = prefs.setdefault("policy", {}).setdefault("title_rescue", {})
-            adjustments = s_cfg.setdefault("adjustments", {})
-            apply_now_cfg = s_cfg.setdefault("apply_now", {})
-            location_prefs = prefs.setdefault("search", {}).setdefault("location_preferences", {})
-            remote_us_cfg = location_prefs.setdefault("remote_us", {})
-            local_hybrid_cfg = location_prefs.setdefault("local_hybrid", {})
             bucket_thresholds = prefs.get("search", {}).get("bucket_thresholds", {})
 
-            st.caption("Customize weights and thresholds used to rank jobs. Tightening these will reduce 'noisy' matches.")
-            
-            st.markdown("#### Weight Tuning")
+            st.caption("Scoring uses V2. Title matching and JD keyword weights drive all scores — adjust here to tune bucket placement.")
+
+            st.markdown("#### Title Fast-Track")
+            st.caption("A strong title match (weight ≥ fast-track min) grants an immediate base score, bypassing the normal keyword accumulation floor.")
             c1, c2 = st.columns(2)
-            f_title_max_points = c1.slider("Maximum Score From Title Match", 5, 100, int(title_cfg.get("title_max_points", 25)))
-            f_fast_track = c2.number_input("Fast-Track Starting Score", 0, 100, int(title_cfg.get("fast_track_base_score", 50)), help="Score granted immediately for a strong title match. Recommended: 30-40")
-            
-            f_positive_keyword_cap = c1.slider("Maximum Score From JD Keywords", 10, 200, int(matching.get("positive_keyword_cap", 60)), help="Total cap on positive points from the job description.")
-            f_negative_keyword_cap = c2.slider("Maximum Penalty From JD Keywords", 10, 250, int(matching.get("negative_keyword_cap", 45)), help="Maximum points to deduct for negative keywords. Set high (e.g. 150) to allow negatives to effectively nuke a match.")
+            f_fast_track = c1.number_input(
+                "Fast-Track Base Score", 0, 100,
+                int(title_cfg.get("fast_track_base_score", 50)),
+                help="Score granted immediately when a title matches a high-weight target role. **Recommended: 50.** Lower to 35–45 if borderline titles are reaching APPLY NOW."
+            )
+            f_fast_track_weight = c2.number_input(
+                "Fast-Track Min Weight", 1, 10,
+                int(title_cfg.get("fast_track_min_weight", 8)),
+                help="Minimum title weight required to trigger fast-track. **Recommended: 8.** Raise to require a tighter title match."
+            )
 
-            st.markdown("#### Location Bonuses")
-            col_loc1, col_loc2 = st.columns(2)
-            f_remote_us_bonus = col_loc1.slider("Bonus: US Remote", 0, 50, int(remote_us_cfg.get("bonus", 14)))
-            f_hybrid_bonus = col_loc2.slider("Bonus: Local/Hybrid", 0, 50, int(local_hybrid_cfg.get("bonus", 4)))
+            st.markdown("#### Keyword Score Caps")
+            st.caption("Anchor keywords (weight ≥ 8) and baseline keywords (weight < 8) are capped separately. Negative penalties are also capped.")
+            k1, k2, k3 = st.columns(3)
+            f_anchor_cap = k1.number_input(
+                "Anchor Keyword Cap", 10, 200,
+                int(matching.get("anchor_keyword_cap", 60)),
+                help="Maximum points from high-weight anchor keywords. **Recommended: 60.**"
+            )
+            f_baseline_cap = k2.number_input(
+                "Baseline Keyword Cap", 5, 100,
+                int(matching.get("baseline_keyword_cap", 30)),
+                help="Maximum points from lower-weight baseline keywords. **Recommended: 30.**"
+            )
+            f_negative_cap = k3.number_input(
+                "Negative Penalty Cap", 0, 200,
+                int(matching.get("negative_keyword_cap", 45)),
+                help="Maximum penalty from negative keywords. **Recommended: 45.**"
+            )
 
-            st.markdown("#### 'Apply Now' Logic")
-            f_require_strong_title = st.checkbox("'Apply Now' Requires a Strong Title Match", value=bool(apply_now_cfg.get("require_strong_title", True)))
-            f_min_role_alignment = st.slider("'Apply Now' Minimum Title Match Score", 0.0, 20.0, float(apply_now_cfg.get("min_role_alignment", 6.0)))
-            
             st.markdown("#### Bucket Thresholds")
-            t_apply = st.number_input("APPLY NOW Threshold", 0, 100, int(bucket_thresholds.get("apply_now", 85)), help="Raise this (e.g. to 90) to make Apply Now more selective.")
-            t_review = st.number_input("REVIEW TODAY Threshold", 0, 100, int(bucket_thresholds.get("review_today", 70)))
-            t_watch = st.number_input("WATCH Threshold", 0, 100, int(bucket_thresholds.get("watch", 50)))
+            t_apply = st.number_input(
+                "APPLY NOW Threshold", 0, 200,
+                int(bucket_thresholds.get("apply_now", 85)),
+                help="Minimum score to reach APPLY NOW. **Recommended: 82–90.**"
+            )
+            t_review = st.number_input(
+                "REVIEW TODAY Threshold", 0, 200,
+                int(bucket_thresholds.get("review_today", 70)),
+                help="Minimum score for REVIEW TODAY. **Recommended: 70–75.**"
+            )
+            t_watch = st.number_input(
+                "WATCH Threshold", 0, 200,
+                int(bucket_thresholds.get("watch", 50)),
+                help="Minimum score to appear in WATCH. Jobs below this are Filtered Out. **Recommended: 45–55.**"
+            )
 
             if st.button("Save Scoring Settings"):
-                title_cfg["title_max_points"] = int(f_title_max_points)
                 title_cfg["fast_track_base_score"] = int(f_fast_track)
-                matching["positive_keyword_cap"] = int(f_positive_keyword_cap)
-                matching["negative_keyword_cap"] = int(f_negative_keyword_cap)
-                remote_us_cfg["bonus"] = int(f_remote_us_bonus)
-                local_hybrid_cfg["bonus"] = int(f_hybrid_bonus)
-                apply_now_cfg["require_strong_title"] = bool(f_require_strong_title)
-                apply_now_cfg["min_role_alignment"] = float(f_min_role_alignment)
+                title_cfg["fast_track_min_weight"] = int(f_fast_track_weight)
+                matching["anchor_keyword_cap"]   = int(f_anchor_cap)
+                matching["baseline_keyword_cap"] = int(f_baseline_cap)
+                matching["negative_keyword_cap"] = int(f_negative_cap)
                 if "search" not in prefs: prefs["search"] = {}
                 prefs["search"]["bucket_thresholds"] = {"apply_now": int(t_apply), "review_today": int(t_review), "watch": int(t_watch)}
                 save_yaml(settings.prefs_yaml, prefs); _invalidate_data_cache(); st.success("✅ Saved!"); st.rerun()
@@ -1876,17 +2011,22 @@ def main():
                     conn = ats_db.get_connection()
                     try:
                         from jobsearch.scraper.scoring import Scorer
+                        from jobsearch.scraper.scoring_v2 import score_job_v2
+                        import json as _json
                         scorer = Scorer(prefs)
+                        v2_cfg, v2_title_index, _v2_pw, _v2_ftbase, _v2_ftmin = _build_v2_config_from_prefs(prefs)
                         apps = ats_db.get_applications(conn)
                         updated = 0
+                        now_ts = datetime.now(timezone.utc).isoformat()
                         for app in apps:
+                            description = " ".join(filter(None, [
+                                app["job_description"],
+                                app["description_excerpt"],
+                                app["jd_summary"]
+                            ]))
                             job_data = {
                                 "title": app["role"],
-                                "description": " ".join(filter(None, [
-                                    app["job_description"],
-                                    app["description_excerpt"],
-                                    app["jd_summary"]
-                                ])),
+                                "description": description,
                                 "location": app["location"],
                                 "tier": app["tier"],
                                 "is_remote": app["is_remote"],
@@ -1896,23 +2036,70 @@ def main():
                                 "source_lane": app["source_lane"],
                             }
                             res = scorer.score_job(job_data)
-
-                            conn.execute(
-                                """
-                                UPDATE applications
-                                SET score=?, fit_band=?, matched_keywords=?, penalized_keywords=?, decision_reason=?,
-                                    normalized_compensation_usd=?, updated_at=?
-                                WHERE id=?
-                                """,
-                                (
-                                    res["score"], res["fit_band"], res["matched_keywords"], res["penalized_keywords"],
-                                    res["decision_reason"], res["normalized_compensation_usd"],
-                                    datetime.now(timezone.utc).isoformat(), app["id"]
+                            _new_score = res.get("score") or 0.0
+                            _new_fit_band = res.get("fit_band")
+                            _new_reason = res.get("decision_reason")
+                            _v1_disqualified = _new_fit_band in ("Disqualified", "Filtered Out")
+                            _v2r = None
+                            if not _v1_disqualified:
+                                try:
+                                    _tpts = _v2_title_pts(app["role"] or "", v2_title_index, v2_cfg, _v2_pw, _v2_ftbase, _v2_ftmin)
+                                    _v2r = score_job_v2(
+                                        app["role"] or "",
+                                        description,
+                                        _tpts,
+                                        v2_cfg,
+                                        v2_title_index,
+                                    )
+                                    _new_score = round(_v2r.final_score, 2)
+                                    _new_fit_band = _v2r.fit_band
+                                    _new_reason = (
+                                        f"V2: {_v2r.fit_band} | title={_v2r.canonical_title or 'unresolved'}"
+                                        f" | seniority={_v2r.seniority.band}"
+                                        f" | anchor={round(_v2r.keyword.anchor_score, 1)}"
+                                        f" base={round(_v2r.keyword.baseline_score, 1)}"
+                                        f" neg={round(_v2r.keyword.negative_score, 1)}"
+                                    )
+                                except Exception:
+                                    pass
+                            _existing_score = (app["score"] or 0.0) if "score" in app.keys() else 0.0
+                            if _new_score > 0 or _existing_score == 0:
+                                conn.execute(
+                                    """
+                                    UPDATE applications
+                                    SET score=?, fit_band=?, matched_keywords=?, penalized_keywords=?, decision_reason=?,
+                                        normalized_compensation_usd=?, updated_at=?
+                                    WHERE id=?
+                                    """,
+                                    (
+                                        _new_score, _new_fit_band, res["matched_keywords"], res["penalized_keywords"],
+                                        _new_reason, res["normalized_compensation_usd"],
+                                        now_ts, app["id"]
+                                    )
                                 )
-                            )
+                            if _v2r is not None:
+                                conn.execute(
+                                    """
+                                    UPDATE applications
+                                    SET score_v2=?, fit_band_v2=?, v2_canonical_title=?,
+                                        v2_seniority_band=?, v2_anchor_score=?,
+                                        v2_baseline_score=?, v2_flags=?
+                                    WHERE id=?
+                                    """,
+                                    (
+                                        round(_v2r.final_score, 2),
+                                        _v2r.fit_band,
+                                        _v2r.canonical_title,
+                                        _v2r.seniority.band,
+                                        round(_v2r.keyword.anchor_score, 2),
+                                        round(_v2r.keyword.baseline_score, 2),
+                                        _json.dumps(_v2r.flags),
+                                        app["id"],
+                                    )
+                                )
                             updated += 1
                         conn.commit()
-                        st.success(f"Successfully re-scored {updated} jobs.")
+                        st.success(f"Successfully re-scored {updated} jobs (V2 primary).")
                     finally:
                         conn.close()
                     _invalidate_data_cache(); st.rerun()
@@ -2713,6 +2900,7 @@ def main():
             if st.button("Save Manual Job Targets"):
                 manual_csv.write_text(edited_csv, encoding="utf-8")
                 st.success(f"Saved {manual_csv.name}.")
+
 
     else:
         view_map = {"Pipeline": render_pipeline, "Analytics": render_analytics, "Training": render_training, "Journal": render_journal, "Contacts": render_contacts, "Company Profiles": render_company_profiles, "Weekly Report": render_activity_report, "Templates": render_templates, "Question Bank": render_question_bank}

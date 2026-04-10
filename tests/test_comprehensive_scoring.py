@@ -298,5 +298,358 @@ class TestComprehensiveScoring(unittest.TestCase):
         self.assertEqual(res_no["score"], 0.0)
         self.assertEqual(res_no["fit_band"], "Filtered Out")
 
+    def test_engineer_family_is_hard_dropped_when_not_targeted(self):
+        prefs = {
+            "titles": {
+                "positive_weights": {
+                    "solution architect": 10,
+                    "technical product manager": 10,
+                },
+                "positive_keywords": [
+                    "solution architect",
+                    "technical product manager",
+                    "data architect",
+                ],
+                "negative_disqualifiers": ["software engineer"],
+                "require_one_positive_keyword": True,
+            },
+            "keywords": {
+                "body_positive": {
+                    "brokerage": 10,
+                    "api integration": 10,
+                    "sql": 10,
+                },
+                "body_negative": {},
+            },
+            "search": {
+                "compensation": {
+                    "target_salary_usd": 180000,
+                    "min_salary_usd": 170000,
+                    "allow_missing_salary": True,
+                    "enforce_min_salary": True,
+                },
+                "geography": {"us_only": True, "allow_international_remote": False},
+                "location_preferences": {
+                    "remote_us": {"enabled": True, "bonus": 10},
+                    "local_hybrid": {"enabled": True, "bonus": 4, "allow_if_salary_at_least_usd": 175000, "markers": ["boulder"]},
+                },
+                "experience": {"years": 18, "gap_tolerance": 2},
+                "contractor": {},
+            },
+            "policy": {
+                "title_rescue": {
+                    "adjacent_title_min_score_to_keep": 26,
+                    "strong_body_domain_markers": ["brokerage", "api"],
+                    "adjacent_title_markers": ["implementation", "solutions"],
+                    "analyst_variant_markers": ["technical analyst"],
+                    "adjacent_title_auto_rescue_patterns": ["implementation specialist"],
+                }
+            },
+        }
+        scorer = Scorer(prefs)
+        job = {
+            "title": "Senior Full-Stack Engineer - Trading API",
+            "description": "Strong brokerage, api integration, and sql requirements",
+            "location": "Remote - United States",
+        }
+        res = scorer.score_job(job)
+        self.assertEqual(res["score"], 0.0)
+        self.assertEqual(res["fit_band"], "Disqualified")
+        self.assertIn("engineer family", res["decision_reason"])
+
+    def test_product_manager_for_developer_experience_is_not_hard_dropped(self):
+        prefs = {
+            "titles": {
+                "positive_weights": {
+                    "staff product manager": 9,
+                },
+                "positive_keywords": [
+                    "staff product manager",
+                    "technical product manager",
+                ],
+                "negative_disqualifiers": [],
+                "require_one_positive_keyword": True,
+            },
+            "keywords": {
+                "body_positive": {"sql": 10, "api integration": 10, "developer tools": 5},
+                "body_negative": {},
+            },
+            "search": {
+                "compensation": {"target_salary_usd": 180000, "min_salary_usd": 170000, "allow_missing_salary": True},
+                "geography": {"us_only": True, "allow_international_remote": False},
+                "location_preferences": {
+                    "remote_us": {"enabled": True, "bonus": 10},
+                    "local_hybrid": {"enabled": False, "bonus": 0, "allow_if_salary_at_least_usd": 0, "markers": []},
+                },
+                "experience": {"years": 18, "gap_tolerance": 2},
+                "contractor": {},
+            },
+            "policy": {"title_rescue": {"adjacent_title_min_score_to_keep": 26}},
+        }
+        scorer = Scorer(prefs)
+        job = {
+            "title": "Staff Product Manager - Developer Experience",
+            "description": "Strong sql and api integration requirements",
+            "location": "Remote - United States",
+        }
+        res = scorer.score_job(job)
+        self.assertGreater(res["score"], 0.0)
+        self.assertNotEqual(res["fit_band"], "Disqualified")
+
+    def test_known_below_floor_salary_is_filtered_when_enforced(self):
+        prefs = {
+            "titles": {
+                "positive_weights": {"solution architect": 10},
+                "positive_keywords": ["solution architect"],
+                "negative_disqualifiers": [],
+                "require_one_positive_keyword": True,
+            },
+            "keywords": {
+                "body_positive": {"brokerage": 10, "api integration": 10, "sql": 10},
+                "body_negative": {},
+            },
+            "search": {
+                "compensation": {
+                    "target_salary_usd": 180000,
+                    "min_salary_usd": 170000,
+                    "allow_missing_salary": True,
+                    "enforce_min_salary": True,
+                },
+                "geography": {"us_only": True, "allow_international_remote": False},
+                "location_preferences": {
+                    "remote_us": {"enabled": True, "bonus": 10},
+                    "local_hybrid": {"enabled": True, "bonus": 4, "allow_if_salary_at_least_usd": 175000, "markers": ["boulder"]},
+                },
+                "experience": {"years": 18, "gap_tolerance": 2},
+                "contractor": {},
+            },
+            "policy": {"title_rescue": {"adjacent_title_min_score_to_keep": 26}},
+        }
+        scorer = Scorer(prefs)
+        job = {
+            "title": "Solution Architect",
+            "description": "brokerage api integration sql",
+            "location": "Remote - United States",
+            "salary_min": 140000,
+            "salary_max": 155000,
+        }
+        res = scorer.score_job(job)
+        self.assertEqual(res["score"], 0.0)
+        self.assertEqual(res["fit_band"], "Filtered Out")
+        self.assertIn("below minimum requirement", res["decision_reason"])
+
+    def test_high_domain_but_unaligned_title_is_filtered_when_required(self):
+        prefs = {
+            "titles": {
+                "positive_weights": {"solution architect": 10},
+                "positive_keywords": ["solution architect", "technical product manager"],
+                "negative_disqualifiers": [],
+                "require_one_positive_keyword": True,
+            },
+            "keywords": {
+                "body_positive": {"brokerage": 10, "api integration": 10, "sql": 10, "data lineage": 8},
+                "body_negative": {},
+            },
+            "search": {
+                "compensation": {
+                    "target_salary_usd": 180000,
+                    "min_salary_usd": 170000,
+                    "allow_missing_salary": True,
+                },
+                "geography": {"us_only": True, "allow_international_remote": False},
+                "location_preferences": {
+                    "remote_us": {"enabled": True, "bonus": 10},
+                    "local_hybrid": {"enabled": True, "bonus": 4, "allow_if_salary_at_least_usd": 175000, "markers": ["boulder"]},
+                },
+                "experience": {"years": 18, "gap_tolerance": 2},
+                "contractor": {},
+            },
+            "policy": {
+                "title_rescue": {
+                    "adjacent_title_min_score_to_keep": 26,
+                    "strong_body_domain_markers": ["brokerage", "api", "data lineage"],
+                    "adjacent_title_markers": ["implementation", "solutions"],
+                    "analyst_variant_markers": ["technical analyst"],
+                    "adjacent_title_auto_rescue_patterns": ["implementation specialist"],
+                }
+            },
+        }
+        scorer = Scorer(prefs)
+        job = {
+            "title": "Platform",
+            "description": "brokerage api integration sql data lineage",
+            "location": "Remote - United States",
+        }
+        res = scorer.score_job(job)
+        self.assertEqual(res["score"], 0.0)
+        self.assertEqual(res["fit_band"], "Filtered Out")
+        self.assertIn("title does not match target roles", res["decision_reason"])
+
+    def test_generic_revenue_strategy_analyst_title_is_filtered(self):
+        prefs = {
+            "titles": {
+                "positive_weights": {
+                    "solution architect": 10,
+                    "technical product manager": 10,
+                    "business systems analyst": 8,
+                },
+                "positive_keywords": [
+                    "solution architect",
+                    "technical product manager",
+                    "business systems analyst",
+                    "senior business systems analyst",
+                ],
+                "negative_disqualifiers": [],
+                "require_one_positive_keyword": True,
+            },
+            "keywords": {
+                "body_positive": {
+                    "sql": 10,
+                    "data lineage": 8,
+                    "cross functional": 3,
+                    "financial systems": 10,
+                },
+                "body_negative": {
+                    "salesforce": 20,
+                    "gong": 20,
+                    "zoominfo": 20,
+                    "revenue technology": 20,
+                },
+            },
+            "search": {
+                "compensation": {
+                    "target_salary_usd": 180000,
+                    "min_salary_usd": 170000,
+                    "allow_missing_salary": True,
+                },
+                "geography": {"us_only": True, "allow_international_remote": False},
+                "location_preferences": {
+                    "remote_us": {"enabled": True, "bonus": 10},
+                    "local_hybrid": {"enabled": True, "bonus": 4, "allow_if_salary_at_least_usd": 175000, "markers": ["boulder"]},
+                },
+                "experience": {"years": 18, "gap_tolerance": 2},
+                "contractor": {},
+            },
+            "policy": {
+                "title_rescue": {
+                    "adjacent_title_min_score_to_keep": 26,
+                    "strong_body_domain_markers": ["financial systems", "data lineage"],
+                    "adjacent_title_markers": ["implementation", "solutions"],
+                    "analyst_variant_markers": ["technical analyst", "implementation analyst"],
+                    "adjacent_title_auto_rescue_patterns": ["implementation specialist"],
+                }
+            },
+        }
+        scorer = Scorer(prefs)
+        job = {
+            "title": "Senior Revenue Strategy Analyst",
+            "description": "sql cross functional analysis for salesforce, gong, and zoominfo revenue technology stack",
+            "location": "Remote - United States",
+        }
+        res = scorer.score_job(job)
+        self.assertEqual(res["score"], 0.0)
+        self.assertEqual(res["fit_band"], "Filtered Out")
+        self.assertIn("title does not match target roles", res["decision_reason"])
+
+    def test_billing_analyst_does_not_inherit_business_analyst_credit(self):
+        prefs = {
+            "titles": {
+                "positive_weights": {
+                    "senior business analyst": 8,
+                    "senior systems analyst": 8,
+                    "business systems analyst": 8,
+                    "solution architect": 10,
+                },
+                "positive_keywords": [
+                    "senior business analyst",
+                    "senior systems analyst",
+                    "business systems analyst",
+                    "solution architect",
+                ],
+                "negative_disqualifiers": [],
+                "require_one_positive_keyword": True,
+            },
+            "keywords": {
+                "body_positive": {"financial systems": 10, "reconciliation": 8, "sox": 8},
+                "body_negative": {},
+            },
+            "search": {
+                "compensation": {"target_salary_usd": 180000, "min_salary_usd": 170000, "allow_missing_salary": True},
+                "geography": {"us_only": True, "allow_international_remote": False},
+                "location_preferences": {
+                    "remote_us": {"enabled": True, "bonus": 10},
+                    "local_hybrid": {"enabled": False, "bonus": 0, "allow_if_salary_at_least_usd": 0, "markers": []},
+                },
+                "experience": {"years": 18, "gap_tolerance": 2},
+                "contractor": {},
+            },
+            "policy": {
+                "title_rescue": {
+                    "adjacent_title_min_score_to_keep": 26,
+                    "strong_body_domain_markers": ["financial systems", "reconciliation", "sox"],
+                    "adjacent_title_markers": ["implementation", "solutions"],
+                    "analyst_variant_markers": ["technical analyst", "implementation analyst"],
+                }
+            },
+        }
+        scorer = Scorer(prefs)
+        job = {
+            "title": "Senior Billing Analyst",
+            "description": "financial systems reconciliation sox",
+            "location": "Remote - United States",
+        }
+        res = scorer.score_job(job)
+        self.assertEqual(res["score"], 0.0)
+        self.assertEqual(res["fit_band"], "Filtered Out")
+
+    def test_product_management_director_does_not_inherit_product_manager_credit(self):
+        prefs = {
+            "titles": {
+                "positive_weights": {
+                    "technical product manager": 10,
+                    "senior technical product manager": 10,
+                    "wealth management product manager": 8,
+                },
+                "positive_keywords": [
+                    "technical product manager",
+                    "senior technical product manager",
+                    "wealth management product manager",
+                ],
+                "negative_disqualifiers": [],
+                "require_one_positive_keyword": True,
+            },
+            "keywords": {
+                "body_positive": {"fintech": 10, "wealth management": 10, "cross functional": 3},
+                "body_negative": {},
+            },
+            "search": {
+                "compensation": {"target_salary_usd": 180000, "min_salary_usd": 170000, "allow_missing_salary": True},
+                "geography": {"us_only": True, "allow_international_remote": False},
+                "location_preferences": {
+                    "remote_us": {"enabled": True, "bonus": 10},
+                    "local_hybrid": {"enabled": False, "bonus": 0, "allow_if_salary_at_least_usd": 0, "markers": []},
+                },
+                "experience": {"years": 18, "gap_tolerance": 2},
+                "contractor": {},
+            },
+            "policy": {
+                "title_rescue": {
+                    "adjacent_title_min_score_to_keep": 26,
+                    "strong_body_domain_markers": ["fintech", "wealth management"],
+                    "adjacent_title_markers": ["implementation", "solutions"],
+                    "analyst_variant_markers": ["technical analyst"],
+                }
+            },
+        }
+        scorer = Scorer(prefs)
+        job = {
+            "title": "Senior Director, Product Management",
+            "description": "fintech wealth management cross functional leadership",
+            "location": "Remote - United States",
+        }
+        res = scorer.score_job(job)
+        self.assertEqual(res["score"], 0.0)
+        self.assertEqual(res["fit_band"], "Filtered Out")
+
 if __name__ == "__main__":
     unittest.main()

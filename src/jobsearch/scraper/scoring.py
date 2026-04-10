@@ -31,6 +31,11 @@ class Scorer:
         self.fast_track_base_score = float(title_cfg.get("fast_track_base_score", 0))
         self.fast_track_min_weight = int(title_cfg.get("fast_track_min_weight", 8))
         self.title_max_points = int(title_cfg.get("title_max_points", 25))
+        self._positive_title_terms = {
+            phrase
+            for phrase in ([term for term, _ in self.title_positive_weights] + self.title_positive_keywords)
+            if str(phrase).strip()
+        }
 
         kw_cfg = self.prefs.get("keywords", {})
         self.body_positive = self._pref_weight_pairs(kw_cfg.get("body_positive"), [])
@@ -57,11 +62,13 @@ class Scorer:
         geo_cfg = search_cfg.get("geography", {})
         contractor_cfg = search_cfg.get("contractor", {})
         location_pref_cfg = search_cfg.get("location_preferences", {})
+        title_rescue_cfg = ((self.prefs.get("policy") or {}).get("title_rescue") or {})
         remote_us_cfg = location_pref_cfg.get("remote_us", {})
         local_hybrid_cfg = location_pref_cfg.get("local_hybrid", {})
 
         self.target_salary_usd = float(comp_cfg.get("target_salary_usd", 165000))
         self.min_salary_usd = float(comp_cfg.get("min_salary_usd", 165000))
+        self.enforce_min_salary = bool(comp_cfg.get("enforce_min_salary", False))
         self.allow_missing_salary = bool(comp_cfg.get("allow_missing_salary", True))
         self.remote_only = comp_cfg.get("remote_only", True)
         self.location_policy = str(search_cfg.get("location_policy", "remote_only")).strip().lower() or "remote_only"
@@ -90,28 +97,43 @@ class Scorer:
         self.benefits_replacement_usd = float(contractor_cfg.get("benefits_replacement_usd", 18000))
         self.w2_benefits_gap_usd = float(contractor_cfg.get("w2_benefits_gap_usd", 6000))
         self.overhead_1099_pct = float(contractor_cfg.get("overhead_1099_pct", 0.18))
+        self.adjacent_title_min_score_to_keep = float(title_rescue_cfg.get("adjacent_title_min_score_to_keep", 26))
+        self.strong_body_domain_markers = [str(item).strip().lower() for item in title_rescue_cfg.get("strong_body_domain_markers", []) if str(item).strip()]
+        self.adjacent_title_markers = [str(item).strip().lower() for item in title_rescue_cfg.get("adjacent_title_markers", []) if str(item).strip()]
+        self.analyst_variant_markers = [str(item).strip().lower() for item in title_rescue_cfg.get("analyst_variant_markers", []) if str(item).strip()]
+        self.adjacent_title_auto_rescue_patterns = [str(item).strip().lower() for item in title_rescue_cfg.get("adjacent_title_auto_rescue_patterns", []) if str(item).strip()]
 
         # Pre-compiled regex patterns — built once, reused for every job scored.
         self._compiled_title_weights = self._compile_weighted_terms(self.title_positive_weights)
         self._compiled_body_positive = self._compile_weighted_terms(self.body_positive)
         self._compiled_body_negative = self._compile_weighted_terms(self.body_negative)
+        self._compiled_negative_titles = [
+            (re.compile(self._kw_pattern(str(term).strip().lower()), re.IGNORECASE), str(term).strip().lower())
+            for term in self.negative_disqualifiers
+            if str(term).strip()
+        ]
+        self._targets_engineer_family = any(re.search(r"\b(engineer|developer)\b", term) for term in self._positive_title_terms)
+        self._targets_developer_family = self._targets_engineer_family
+        self._positive_role_family_exemptions = (
+            "product manager",
+            "architect",
+            "analyst",
+            "consultant",
+            "specialist",
+        )
 
         self.partial_title_markers = {
             "architect": 5,
-            "product": 3,
             "owner": 3,
             "platform": 3,
             "api": 3,
             "integration": 4,
             "integrations": 4,
             "consultant": 4,
-            "analyst": 3,
             "business systems": 5,
             "systems analyst": 5,
             "solution": 3,
             "solutions": 3,
-            "technical": 2,
-            "data": 2,
         }
         self._non_us_remote_markers = {
             "australia", "canada", "united kingdom", "uk", "europe", "germany", "france",
@@ -228,9 +250,12 @@ class Scorer:
         def _has_any_modifier(mods: List[str]) -> bool:
             return any(str(m).strip().lower() in title_l for m in mods if str(m).strip())
 
-        # Penalty sizes are intentionally modest; these are de-prioritizations, not disqualifiers.
-        missing_modifier_penalty = 12
-        program_manager_penalty = 8
+        # Penalty sizes. Larger than the legacy 12pt default so that unmodified PM/BA/Architect
+        # titles can't reach REVIEW TODAY without compensating domain body-signal.
+        # Wrong-domain hard-drops (e.g. healthcare PM, fleet PM) are handled separately
+        # via negative_disqualifiers in the title config — these are soft penalties only.
+        missing_modifier_penalty = 20
+        program_manager_penalty = 12
 
         if constraints.get("product_manager_requires_modifier") and "product manager" in title_l:
             allowed = constraints.get("product_manager_allowed_modifiers", [])
@@ -308,9 +333,77 @@ class Scorer:
             return "Weak Match"
         return "Poor Match"
 
+    def _disqualifier_reason(self, title: str) -> Optional[str]:
+        title_l = self.clean(title).lower()
+        if not title_l:
+            return None
+
+        for pattern, label in self._compiled_negative_titles:
+            if pattern.search(title_l):
+                return label
+
+        has_positive_family_exemption = any(marker in title_l for marker in self._positive_role_family_exemptions)
+        if not self._targets_engineer_family and not has_positive_family_exemption:
+            if re.search(r"\bengineer(?:ing)?\b", title_l):
+                return "engineer family"
+        if not self._targets_developer_family and not has_positive_family_exemption:
+            if re.search(r"\bdeveloper\b", title_l):
+                return "developer family"
+        return None
+
     def is_disqualified(self, title: str) -> bool:
-        title_l = title.lower()
-        return any(dq.lower() in title_l for dq in self.negative_disqualifiers)
+        return self._disqualifier_reason(title) is not None
+
+    @staticmethod
+    def _title_token_count(title: str) -> int:
+        return len(re.findall(r"[a-z0-9]+", title.lower()))
+
+    @staticmethod
+    def _strip_seniority_modifiers(phrase: str) -> str:
+        tokens = [token for token in phrase.lower().split() if token]
+        prefix_modifiers = {
+            "senior",
+            "sr",
+            "principal",
+            "staff",
+            "lead",
+            "head",
+            "director",
+            "vp",
+            "vice",
+            "president",
+        }
+        while tokens and tokens[0] in prefix_modifiers:
+            tokens = tokens[1:]
+        return " ".join(tokens)
+
+    def _has_strong_body_domain_signal(self, jd_blob: str, body_positive_points: float) -> bool:
+        if body_positive_points >= self.adjacent_title_min_score_to_keep:
+            return True
+        return any(self._kw_match(marker, jd_blob) for marker in self.strong_body_domain_markers)
+
+    def _is_title_aligned(
+        self,
+        title_l: str,
+        jd_blob: str,
+        title_hits: List[Tuple[str, int]],
+        partial_hits: List[Tuple[str, int]],
+        body_positive_points: float,
+    ) -> bool:
+        if title_hits:
+            return True
+        if self._title_token_count(title_l) < 2:
+            return False
+        if not self._has_strong_body_domain_signal(jd_blob, body_positive_points):
+            return False
+        if any(marker in title_l for marker in self.adjacent_title_auto_rescue_patterns):
+            return True
+        if any(marker in title_l for marker in self.adjacent_title_markers):
+            return True
+        if any(marker in title_l for marker in self.analyst_variant_markers):
+            return True
+
+        return any(label.startswith("title:") for label, _ in partial_hits)
 
     def _partial_title_hits(self, title: str, exact_hits: List[Tuple[str, int]]) -> List[Tuple[str, int]]:
         if exact_hits:
@@ -319,9 +412,22 @@ class Scorer:
         seen = set()
 
         for phrase in self.title_positive_keywords:
-            tokens = [token for token in phrase.split() if len(token) > 2]
-            matched = [token for token in tokens if token in title]
-            if len(tokens) >= 2 and len(matched) >= min(2, len(tokens)):
+            normalized_phrase = self._strip_seniority_modifiers(phrase)
+            if not normalized_phrase:
+                continue
+
+            # Keep partial-title rescue phrase-aware: matching a target role family
+            # requires the same family to appear in the title.
+            if "product manager" in normalized_phrase and "product manager" not in title:
+                continue
+            if "architect" in normalized_phrase and "architect" not in title:
+                continue
+            if "consultant" in normalized_phrase and "consultant" not in title:
+                continue
+            if "analyst" in normalized_phrase and normalized_phrase not in title:
+                continue
+
+            if normalized_phrase in title:
                 label = f"title:{phrase}"
                 if label not in seen:
                     hits.append((label, 3))
@@ -613,7 +719,8 @@ class Scorer:
         title_l = self.clean(title).lower()
         jd_blob = self.clean(description).lower()
 
-        if self.is_disqualified(title):
+        disqualifier_reason = self._disqualifier_reason(title)
+        if disqualifier_reason:
             source_key = self._source_trust_key(job_data)
             _work_type = self._derive_work_type(job_data)
             _comp_unit = self._compensation_unit(job_data, _work_type)
@@ -622,7 +729,7 @@ class Scorer:
                 "fit_band": "Disqualified",
                 "matched_keywords": "",
                 "penalized_keywords": "Title Disqualified",
-                "decision_reason": "Hard-Drop: Disqualifier in title",
+                "decision_reason": f"Hard-Drop: disqualifier in title ({disqualifier_reason})",
                 "score_components": {
                     "source_trust_key": source_key,
                     "base_score": 0.0,
@@ -711,12 +818,61 @@ class Scorer:
         jd_pos_hits = self._match_compiled(jd_blob, self._compiled_body_positive)
         jd_neg_hits = self._match_compiled(jd_blob, self._compiled_body_negative)
         body_positive_points = min(sum(pts for _, pts in jd_pos_hits), self.positive_keyword_cap)
-        
-        # Increased penalty impact: Negatives should be able to nuke a score.
-        body_negative_points = min(sum(pts for _, pts in jd_neg_hits), self.negative_keyword_cap)
-        
+
+        # Negatives are uncapped by default (negative_keyword_cap=0 means unlimited)
+        raw_negative_points = sum(pts for _, pts in jd_neg_hits)
+        if self.negative_keyword_cap > 0:
+            body_negative_points = min(raw_negative_points, self.negative_keyword_cap)
+        else:
+            body_negative_points = raw_negative_points
+
         score += body_positive_points
         score -= body_negative_points
+
+        # Domain coherence gate: when negative domain signals heavily outweigh positive
+        # signals, the job is in the wrong domain regardless of individual keyword hits.
+        # Cap the score so mismatched-domain jobs can't reach APPLY NOW / REVIEW TODAY.
+        domain_penalty_cfg = self.scoring_cfg.get("domain_penalty_cap", {})
+        if domain_penalty_cfg:
+            neg_lead = domain_penalty_cfg.get("neg_points_exceed_pos_by", 0)
+            cap_to = domain_penalty_cfg.get("cap_score_to", 100)
+            if neg_lead > 0 and body_negative_points > 0:
+                if (body_negative_points - body_positive_points) >= neg_lead:
+                    score = min(score, cap_to)
+
+        title_aligned = self._is_title_aligned(title_l, jd_blob, title_hits, partial_hits, body_positive_points)
+        if self.require_one_positive_keyword and not title_aligned:
+            source_key = self._source_trust_key(job_data)
+            _work_type = self._derive_work_type(job_data)
+            _comp_unit = self._compensation_unit(job_data, _work_type)
+            return {
+                "score": 0.0,
+                "fit_band": "Filtered Out",
+                "matched_keywords": ", ".join(sorted(set(term for term, _ in jd_pos_hits))),
+                "penalized_keywords": "Weak Title Alignment",
+                "decision_reason": "Hard-Drop: title does not match target roles strongly enough",
+                "score_components": {
+                    "source_trust_key": source_key,
+                    "base_score": base_score,
+                    "title_points": title_points,
+                    "body_positive_points": body_positive_points,
+                    "body_negative_points": body_negative_points,
+                    "tier_bonus": 0,
+                    "partial_title_bonus": partial_title_points,
+                    "positive_keyword_gate_bonus": 0,
+                    "location_penalty": 0,
+                    "compensation_adjustment": 0,
+                    "contract_adjustment": 0,
+                    "source_penalty": 0,
+                    "title_aligned": False,
+                },
+                "work_type": _work_type,
+                "compensation_unit": _comp_unit,
+                "hourly_rate": self._derive_hourly_rate(job_data, _comp_unit),
+                "hours_per_week": None,
+                "weeks_per_year": None,
+                "normalized_compensation_usd": None,
+            }
 
         location_penalty = 0
         location_bonus = 0
@@ -725,7 +881,7 @@ class Scorer:
         score += tier_bonus
 
         positive_keyword_gate_bonus = 0
-        if self.require_one_positive_keyword and not title_hits and partial_hits:
+        if self.require_one_positive_keyword and title_aligned and not title_hits and partial_hits:
             score += 6
             positive_keyword_gate_bonus = 6
 
@@ -863,6 +1019,37 @@ class Scorer:
 
         score += contract_adjustment
 
+        if self.enforce_min_salary and normalized_comp is not None and normalized_comp < self.min_salary_usd:
+            return {
+                "score": 0.0,
+                "fit_band": "Filtered Out",
+                "matched_keywords": ", ".join(sorted(set(term for term, _ in title_hits + partial_hits + jd_pos_hits))),
+                "penalized_keywords": "Salary Below Floor",
+                "decision_reason": (
+                    f"Hard-Drop: compensation below minimum requirement "
+                    f"(${normalized_comp:,.0f} < ${self.min_salary_usd:,.0f})"
+                ),
+                "score_components": {
+                    "source_trust_key": source_trust.get("key"),
+                    "base_score": base_score,
+                    "title_points": title_points,
+                    "body_positive_points": body_positive_points,
+                    "body_negative_points": body_negative_points,
+                    "tier_bonus": tier_bonus,
+                    "partial_title_bonus": partial_title_points,
+                    "positive_keyword_gate_bonus": positive_keyword_gate_bonus,
+                    "title_constraint_penalty": title_constraint_penalty,
+                    "location_penalty": location_penalty,
+                    "location_bonus": location_bonus,
+                    "compensation_adjustment": 0,
+                    "contract_adjustment": contract_adjustment,
+                    "source_penalty": 0,
+                    "exp_soft_penalty": exp_soft_penalty,
+                    "title_aligned": title_aligned,
+                },
+                **comp_data,
+            }
+
         if normalized_comp is None:
             if not self.allow_missing_salary:
                 compensation_adjustment -= self.missing_salary_penalty
@@ -946,6 +1133,7 @@ class Scorer:
                 # Store the signed delta for downstream explanations (negative = penalty).
                 "source_penalty": -source_penalty,
                 "exp_soft_penalty": exp_soft_penalty,
+                "title_aligned": title_aligned,
             },
             **comp_data,
         }

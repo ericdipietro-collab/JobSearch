@@ -35,7 +35,7 @@ companies:
   heal_failure_streak: 1
   heal_last_failure_detail: Discovery budget exhausted
   manual_only_suggested: false
-  cooldown_until: '2026-04-10T18:33:55.008179+00:00'
+  cooldown_until: null
   discovery_method: Discovery budget exhausted
   last_healed: '2026-04-09T12:33:55.011681'
 - name: Google Careers Direct
@@ -63,7 +63,7 @@ companies:
   heal_failure_streak: 1
   heal_last_failure_detail: Discovery budget exhausted
   manual_only_suggested: false
-  cooldown_until: '2026-04-10T18:33:54.992668+00:00'
+  cooldown_until: null
   discovery_method: Discovery budget exhausted
   last_healed: '2026-04-09T12:33:54.995668'
 - name: JobSpy Indeed Experimental
@@ -101,7 +101,7 @@ companies:
   heal_failure_streak: 1
   heal_last_failure_detail: Discovery budget exhausted
   manual_only_suggested: false
-  cooldown_until: '2026-04-10T18:33:46.862100+00:00'
+  cooldown_until: null
   discovery_method: Discovery budget exhausted
   last_healed: '2026-04-09T12:33:46.865099'
 - name: JobSpy LinkedIn Experimental
@@ -175,7 +175,7 @@ companies:
   heal_failure_streak: 1
   heal_last_failure_detail: Discovery budget exhausted
   manual_only_suggested: false
-  cooldown_until: '2026-04-10T18:33:54.387334+00:00'
+  cooldown_until: null
   discovery_method: Discovery budget exhausted
   last_healed: '2026-04-09T12:33:54.390342'
 - name: JobSpy ZipRecruiter Experimental
@@ -213,7 +213,7 @@ companies:
   heal_failure_streak: 1
   heal_last_failure_detail: Discovery budget exhausted
   manual_only_suggested: false
-  cooldown_until: '2026-04-10T18:33:54.357362+00:00'
+  cooldown_until: null
   discovery_method: Discovery budget exhausted
   last_healed: '2026-04-09T12:33:54.361361'
 - name: JobSpy JobGet Experimental
@@ -246,7 +246,7 @@ companies:
   heal_failure_streak: 1
   heal_last_failure_detail: Discovery budget exhausted
   manual_only_suggested: false
-  cooldown_until: '2026-04-10T18:33:54.402825+00:00'
+  cooldown_until: null
   discovery_method: Discovery budget exhausted
   last_healed: '2026-04-09T12:33:54.404824'
 - name: JobSpy Upwork Experimental
@@ -279,6 +279,6 @@ companies:
   heal_failure_streak: 1
   heal_last_failure_detail: Discovery budget exhausted
   manual_only_suggested: false
-  cooldown_until: '2026-04-10T18:33:53.596371+00:00'
+  cooldown_until: null
   discovery_method: Discovery budget exhausted
   last_healed: '2026-04-09T12:33:53.599367'

@@ -28,6 +28,6 @@ companies:
   heal_failure_streak: 1
   heal_last_failure_detail: Discovery budget exhausted
   manual_only_suggested: false
-  cooldown_until: '2026-04-10T18:16:37.572415+00:00'
+  cooldown_until: null
   discovery_method: Discovery budget exhausted
   last_healed: '2026-04-09T12:16:37.576416'

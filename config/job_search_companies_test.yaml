@@ -139,7 +139,7 @@ companies:
   heal_failure_streak: 1
   heal_last_failure_detail: Discovery budget exhausted
   manual_only_suggested: false
-  cooldown_until: '2026-04-10T18:45:56.679402+00:00'
+  cooldown_until: null
   discovery_method: Discovery budget exhausted
   last_healed: '2026-04-09T12:45:56.682403'
 - name: Confluent
@@ -162,7 +162,7 @@ companies:
   heal_failure_streak: 1
   heal_last_failure_detail: Discovery budget exhausted
   manual_only_suggested: false
-  cooldown_until: '2026-04-10T18:45:58.273425+00:00'
+  cooldown_until: null
   discovery_method: Discovery budget exhausted
   last_healed: '2026-04-09T12:45:58.276426'
 - name: Envestnet
@@ -226,7 +226,7 @@ companies:
   heal_failure_streak: 1
   heal_last_failure_detail: Discovery budget exhausted
   manual_only_suggested: false
-  cooldown_until: '2026-04-10T18:45:51.142594+00:00'
+  cooldown_until: null
   discovery_method: Discovery budget exhausted
   last_healed: '2026-04-09T12:45:51.145590'
 - name: Gusto
@@ -288,7 +288,7 @@ companies:
   heal_failure_streak: 1
   heal_last_failure_detail: Discovery budget exhausted
   manual_only_suggested: false
-  cooldown_until: '2026-04-10T18:45:59.200455+00:00'
+  cooldown_until: null
   discovery_method: Discovery budget exhausted
   last_healed: '2026-04-09T12:45:59.203458'
 - name: Marqeta
@@ -331,7 +331,7 @@ companies:
   heal_failure_streak: 1
   heal_last_failure_detail: Discovery budget exhausted
   manual_only_suggested: false
-  cooldown_until: '2026-04-10T18:45:58.211323+00:00'
+  cooldown_until: null
   discovery_method: Discovery budget exhausted
   last_healed: '2026-04-09T12:45:58.214323'
 - name: Plaid
