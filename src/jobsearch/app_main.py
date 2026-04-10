@@ -1577,7 +1577,7 @@ def main():
                                   AND a.date_added < datetime('now', '-30 days')
                                   AND NOT EXISTS (
                                       SELECT 1 FROM job_annotations ja
-                                      WHERE ja.scraper_key = a.scraper_key
+                                      WHERE ja.job_key = a.scraper_key
                                         AND ja.tag IS NOT NULL
                                   )
                             """).fetchone()[0]
@@ -1602,7 +1602,7 @@ def main():
                                       AND date_added < datetime('now', '-30 days')
                                       AND NOT EXISTS (
                                           SELECT 1 FROM job_annotations ja
-                                          WHERE ja.scraper_key = applications.scraper_key
+                                          WHERE ja.job_key = applications.scraper_key
                                             AND ja.tag IS NOT NULL
                                       )
                                 """, (datetime.now(timezone.utc).isoformat(),))
