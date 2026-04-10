@@ -232,13 +232,21 @@ Best-fit role archetypes: Technical Product Manager, Product Architect, Solution
 Weaker fits: roles over-indexing on direct Aladdin administration, Web3/crypto, heavy developer tooling, pure consumer growth, or large people-management org.
 
 === ROLE-FAMILY STORY ROUTING ===
+positioning_angle MUST be exactly one of these six labels (not the job title):
+1. Technical Product Manager
+2. Product Architect / Solution Architect
+3. API / Integrations
+4. Data Platform / Architecture
+5. Senior BSA / Client Implementation
+6. AI-enabled workflow
+
 Use this to choose interview_lead based on the positioning_angle you select:
 - Technical Product Manager → lead with NFS/Truist product tradeoffs, roadmap influence, CIO-facing delivery, stakeholder coordination
-- Product Architect / Solution Architect → lead with NFS end-to-end platform design, API contract definition, rollback/data integrity, multi-system orchestration
-- API / Integrations → lead with NFS five-API orchestration, Plaid/DTCC/FIS/Morningstar integrations, delta sync, performance validation
-- Data Platform / Architecture → lead with IDW modernization, Data Vault design, SLA recovery (70%→95%), lineage, reconciliation
-- Senior BSA / Client Implementation → lead with requirements authorship, client demos, ETL mapping, Truist launch dependency on delivery quality
-- AI-enabled workflow → lead with job search platform as workflow-automation proof point (secondary signal, not core identity)
+- Product Architect / Solution Architect (use for: Solution Architect, Customer Solution Architect, Solutions Consultant, Implementation Architect, Technical Architect) → lead with NFS end-to-end platform design, API contract definition, rollback/data integrity, multi-system orchestration
+- API / Integrations (use for: Integrations PM, API PM, Integration Engineer/Architect) → lead with NFS five-API orchestration, Plaid/DTCC/FIS/Morningstar integrations, delta sync, performance validation
+- Data Platform / Architecture (use for: Data PM, Analytics PM, Data Architect) → lead with IDW modernization, Data Vault design, SLA recovery (70%→95%), lineage, reconciliation
+- Senior BSA / Client Implementation (use for: Senior BSA, Business Analyst, Implementation Manager, Client Success) → lead with requirements authorship, client demos, ETL mapping, Truist launch dependency on delivery quality
+- AI-enabled workflow (use for: AI PM, Automation PM, AI Product roles) → lead with job search platform as workflow-automation proof point (secondary signal, not core identity)
 
 === COMMON OBJECTIONS (use to write key_objection) ===
 - "Titles don't match" → Title lagged scope; architecture and product ownership were the actual job at both InvestCloud and Allstate
@@ -269,7 +277,7 @@ Return ONLY this JSON object:
     "cons": ["<specific gap or mismatch>", "<specific gap>"],
     "missing_skills": ["<skill explicitly required by JD that is absent or weak in the resume>"],
     "interview_lead": "<which specific career story or proof point to open with for this role, per the story routing above>",
-    "key_objection": "<the single most likely objection from the list above and one sentence on how to frame it>"
+    "key_objection": "<the single objection from the list above MOST SPECIFIC to this JD — use 'No direct reports' if the JD explicitly requires managing or mentoring PMs; use 'Not a classical architect' if it requires formal architecture credentials or certifications; use 'Is the AI angle real?' if AI/LLM is core to the product (not just a tool); default to 'Titles don't match' only if none of the others apply — then one sentence on how to frame it>"
 }}"""
 
         try:
