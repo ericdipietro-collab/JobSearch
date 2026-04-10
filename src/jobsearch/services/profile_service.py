@@ -227,8 +227,24 @@ Key proof points:
 - Performance wins: 7min→12sec tax-lot processing; 3hr→60min IDW batch; SLA recovery 70%→95%
 - Stakeholder reach: 8 teams / 40+ stakeholders, routine CIO-facing delivery at InvestCloud
 - 13-year arc at Allstate Investments across Senior BSA, Product Lead, and Data Architect roles
-Title note: Candidate's formal titles (Senior BSA, Product Lead) routinely understated scope — they designed architecture, owned requirements end-to-end, and drove delivery without formal architecture titles.
+Title note: Formal titles (Senior BSA, Product Lead) understated scope — candidate designed architecture, owned requirements end-to-end, and drove delivery without formal architecture titles.
 Best-fit role archetypes: Technical Product Manager, Product Architect, Solution Architect, Senior BSA/Systems Analyst, API/Integrations Lead, Data Platform PM, Client Implementation Lead.
+Weaker fits: roles over-indexing on direct Aladdin administration, Web3/crypto, heavy developer tooling, pure consumer growth, or large people-management org.
+
+=== ROLE-FAMILY STORY ROUTING ===
+Use this to choose interview_lead based on the positioning_angle you select:
+- Technical Product Manager → lead with NFS/Truist product tradeoffs, roadmap influence, CIO-facing delivery, stakeholder coordination
+- Product Architect / Solution Architect → lead with NFS end-to-end platform design, API contract definition, rollback/data integrity, multi-system orchestration
+- API / Integrations → lead with NFS five-API orchestration, Plaid/DTCC/FIS/Morningstar integrations, delta sync, performance validation
+- Data Platform / Architecture → lead with IDW modernization, Data Vault design, SLA recovery (70%→95%), lineage, reconciliation
+- Senior BSA / Client Implementation → lead with requirements authorship, client demos, ETL mapping, Truist launch dependency on delivery quality
+- AI-enabled workflow → lead with job search platform as workflow-automation proof point (secondary signal, not core identity)
+
+=== COMMON OBJECTIONS (use to write key_objection) ===
+- "Titles don't match" → Title lagged scope; architecture and product ownership were the actual job at both InvestCloud and Allstate
+- "Not a classical architect" → Framing is TPM/Product Architect, not pure enterprise architect; the work shows platform design fluency
+- "No direct reports" → Led through technical authority, spec review, stakeholder alignment, and mentoring across 8 teams / 40+ people
+- "Is the AI angle real?" → Strongest when framed as workflow acceleration and practical product iteration, not AI engineering
 
 === JOB POSTING ===
 Title: {job_title}
@@ -252,8 +268,8 @@ Return ONLY this JSON object:
     "pros": ["<specific candidate strength directly matching a JD requirement>", "<specific strength>", "<specific strength>"],
     "cons": ["<specific gap or mismatch>", "<specific gap>"],
     "missing_skills": ["<skill explicitly required by JD that is absent or weak in the resume>"],
-    "interview_lead": "<which specific career story or proof point to open with for this role>",
-    "key_objection": "<the single most likely objection from a hiring manager and how to frame it>"
+    "interview_lead": "<which specific career story or proof point to open with for this role, per the story routing above>",
+    "key_objection": "<the single most likely objection from the list above and one sentence on how to frame it>"
 }}"""
 
         try:
