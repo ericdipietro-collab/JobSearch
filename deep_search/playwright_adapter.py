@@ -659,6 +659,18 @@ _ATS_NET_PATTERNS = [
         lambda m: f"https://{m.group(1)}/jobs/search",
         lambda m: None,
     ),
+    (
+        "workable",
+        re.compile(r"apply\.workable\.com/api/v\d+/accounts/([^/?#]+)/jobs", re.I),
+        lambda m: f"https://apply.workable.com/{m.group(1)}",
+        lambda m: m.group(1),
+    ),
+    (
+        "jobvite",
+        re.compile(r"jobs\.jobvite\.com/([^/?#\s]+)/job/", re.I),
+        lambda m: f"https://jobs.jobvite.com/{m.group(1)}/jobs",
+        lambda m: m.group(1),
+    ),
 ]
 
 # ATS URL patterns to match against frame URLs and rendered page source.
@@ -677,6 +689,14 @@ _ATS_URL_PATTERNS = [
      lambda m: f"https://{m.group(1)}", lambda m: m.group(1)),
     ("smartrecruiters", re.compile(r"careers\.smartrecruiters\.com/([^/?#\s\"']+)", re.I),
      lambda m: f"https://careers.smartrecruiters.com/{m.group(1)}", lambda m: m.group(1)),
+    ("workable",       re.compile(r"apply\.workable\.com/([^/?#\s\"']+)", re.I),
+     lambda m: f"https://apply.workable.com/{m.group(1)}", lambda m: m.group(1)),
+    ("breezy",         re.compile(r"([\w-]+)\.breezy\.hr", re.I),
+     lambda m: f"https://{m.group(1)}.breezy.hr", lambda m: m.group(1)),
+    ("bamboohr",       re.compile(r"([\w-]+)\.bamboohr\.com", re.I),
+     lambda m: f"https://{m.group(1)}.bamboohr.com/jobs/", lambda m: m.group(1)),
+    ("jobvite",        re.compile(r"jobs\.jobvite\.com/([^/?#\s\"']+)", re.I),
+     lambda m: f"https://jobs.jobvite.com/{m.group(1)}/jobs", lambda m: m.group(1)),
 ]
 
 _CAREER_NAV_KEYWORDS = frozenset(

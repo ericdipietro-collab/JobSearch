@@ -75,6 +75,18 @@ class ATSHealer:
         "smartrecruiters": [
             re.compile(r"smartrecruiters\.com/([\w.-]+)", re.I),
         ],
+        "bamboohr": [
+            re.compile(r"([\w-]+)\.bamboohr\.com", re.I),
+        ],
+        "workable": [
+            re.compile(r"workable\.com/([^/?#\s\"']+)", re.I),
+        ],
+        "breezy": [
+            re.compile(r"([\w-]+)\.breezy\.hr", re.I),
+        ],
+        "jobvite": [
+            re.compile(r"jobs\.jobvite\.com/([\w.-]+)", re.I),
+        ],
     }
 
     BLACKLISTED_SUBDOMAINS = ["support.", "help.", "docs.", "developers.", "api.", "community.", "hc."]
@@ -95,7 +107,6 @@ class ATSHealer:
     KNOWN_UNSUPPORTED_ATS_MARKERS = [
         "eightfold.ai",
         "icims.com",
-        "bamboohr.com",
         "taleo.net",
         "successfactors.",
         "myworkday.com/wday/authgwy",  # auth-gated Workday
@@ -261,6 +272,7 @@ class ATSHealer:
         ("bamboohr", "bamboohr.com"),
         ("workable", "workable.com"),
         ("breezy", "breezy.hr"),
+        ("jobvite", "jobvite.com"),
         ("generic", "happydance.com"),
         ("generic", "onetrust.com"),
     ]
@@ -363,12 +375,12 @@ class ATSHealer:
         ("generic", "recruitee.com"),
         ("generic", "freshteam.com"),
         ("generic", "applytojob.com"),  # JazzHR
-        ("generic", "jobvite.com"),
+        ("jobvite", "jobvite.com"),
         ("generic", "paylocity.com"),
 
         # Usually unsupported/blocked for automated scraping in this project
         ("generic", "icims.com"),
-        ("generic", "bamboohr.com"),
+        ("bamboohr", "bamboohr.com"),
         ("generic", "taleo.net"),
         ("generic", "successfactors.com"),
         ("generic", "oraclecloud.com"),

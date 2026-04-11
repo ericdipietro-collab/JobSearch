@@ -38,6 +38,7 @@ from jobsearch.scraper.adapters.lever import LeverAdapter
 from jobsearch.scraper.adapters.motionrecruitment import MotionRecruitmentAdapter
 from jobsearch.scraper.adapters.rippling import RipplingAdapter
 from jobsearch.scraper.adapters.jobspy_experimental import JobSpyExperimentalAdapter
+from jobsearch.scraper.adapters.jobvite import JobviteAdapter
 from jobsearch.scraper.adapters.smartrecruiters import SmartRecruitersAdapter
 from jobsearch.scraper.adapters.themuse import TheMuseAdapter
 from jobsearch.scraper.adapters.usajobs import USAJobsAdapter
@@ -96,6 +97,7 @@ class ScraperEngine:
         "bamboohr": BambooHRAdapter,
         "breezy": BreezyAdapter,
         "workable": WorkableAdapter,
+        "jobvite": JobviteAdapter,
         "workday": WorkdayAdapter,
         "workday_manual": WorkdayAdapter,
         "rippling": RipplingAdapter,

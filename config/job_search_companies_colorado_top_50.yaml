@@ -901,7 +901,8 @@ companies:
 - name: Uplight
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: jobvite
+  adapter_key: uplight
   domain: uplight.com
   industry:
   - climate tech
@@ -911,12 +912,12 @@ companies:
   sub_industry: Climate Tech
   careers_url: https://jobs.jobvite.com/uplight/jobs
   active: true
-  status: manual_only
-  discovery_method: Generic career page discovered
+  status: active
+  discovery_method: User-verified (adapter corrected to jobvite)
   last_healed: '2026-04-10T20:26:48.700169'
-  heal_failure_streak: 1
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
+  heal_last_failure_detail: null
   cooldown_until: null
   manual_only: true
 - name: FullContact
