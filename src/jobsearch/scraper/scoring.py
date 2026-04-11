@@ -142,9 +142,29 @@ class Scorer:
         self._onsite_markers = {"onsite", "on-site", "on site", "in office", "office-based", "office based"}
         self._hybrid_markers = {"hybrid", "hybrid remote", "hybrid schedule", "remote/hybrid", "hybrid role"}
 
+    # Aggregator-owned domains that do NOT constitute a canonical employer URL.
+    # A JobSpy job whose URL points to one of these is still "unverified"; one
+    # pointing elsewhere (e.g. bankofamerica.com) has a real canonical URL.
+    _AGGREGATOR_DOMAINS = frozenset({
+        "google.com", "linkedin.com", "indeed.com", "glassdoor.com",
+        "ziprecruiter.com", "jobget.com", "upwork.com", "simplyhired.com",
+        "careerbuilder.com", "monster.com", "dice.com",
+    })
+
     def _source_trust_key(self, job_data: Dict[str, Any]) -> str:
         source_lane = str(job_data.get("source_lane") or "employer_ats").strip().lower() or "employer_ats"
         if source_lane == "jobspy_experimental":
+            # If the job URL points to an employer domain (not a job aggregator),
+            # treat it as having a canonical URL — waive the full jobspy penalty.
+            url = str(job_data.get("url") or job_data.get("canonical_job_url") or "").strip().lower()
+            if url:
+                from urllib.parse import urlparse
+                try:
+                    host = urlparse(url).netloc.lstrip("www.")
+                    if not any(host == d or host.endswith("." + d) for d in self._AGGREGATOR_DOMAINS):
+                        return "aggregator_with_canonical"
+                except Exception:
+                    pass
             return "jobspy_experimental"
         if source_lane == "aggregator":
             canonical = str(job_data.get("canonical_job_url") or "").strip()

@@ -29,7 +29,15 @@ class RipplingAdapter(BaseAdapter):
                     "location": str(location or ""),
                 }
             )
-            return float(pre.get("score") or 0.0) >= float(self.scorer.min_score_to_keep) * 0.15
+            score = float(pre.get("score") or 0.0)
+            threshold = float(self.scorer.min_score_to_keep) * 0.15
+            if score < threshold:
+                logger.info(
+                    "pre-screen drop | adapter=rippling company=%s title=%r score=%.1f threshold=%.1f",
+                    company_config.get("name", "?"), title, score, threshold,
+                )
+                return False
+            return True
         except Exception:
             return False
 

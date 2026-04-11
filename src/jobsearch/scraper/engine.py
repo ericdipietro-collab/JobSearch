@@ -17,6 +17,7 @@ from jobsearch.config.settings import BASE_DIR, get_runtime_setting, get_shared_
 from jobsearch import ats_db as db
 from jobsearch.db.connection import get_connection
 from jobsearch.scraper.adapters.ashby import AshbyAdapter
+from jobsearch.scraper.adapters.bamboohr import BambooHRAdapter
 from jobsearch.scraper.adapters.adzuna import AdzunaAdapter
 from jobsearch.scraper.adapters.base import BaseAdapter, BlockedSiteError
 from jobsearch.scraper.adapters.crawl4ai_adapter import Crawl4AIAdapter
@@ -90,6 +91,7 @@ class ScraperEngine:
         "lever": LeverAdapter,
         "motionrecruitment": MotionRecruitmentAdapter,
         "ashby": AshbyAdapter,
+        "bamboohr": BambooHRAdapter,
         "workday": WorkdayAdapter,
         "workday_manual": WorkdayAdapter,
         "rippling": RipplingAdapter,

@@ -216,8 +216,8 @@ class WorkdayAdapter(BaseAdapter):
                             "tier": tier, "location": str(location),
                         })
                         if pre["score"] < self.scorer.min_score_to_keep * 0.15:
-                            logger.debug(
-                                "pre-screen skip | company=%s title=%r score=%.1f threshold=%.1f",
+                            logger.info(
+                                "pre-screen drop | adapter=workday company=%s title=%r score=%.1f threshold=%.1f",
                                 company_config.get("name", "?"), title,
                                 pre["score"], self.scorer.min_score_to_keep * 0.15,
                             )

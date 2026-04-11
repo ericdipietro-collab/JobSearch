@@ -694,6 +694,152 @@ def run(deep_search, full_refresh, test_companies, contract_sources, aggregator_
     click.echo("Pipeline run complete.")
 
 
+@main.command("generate-jobspy-fallbacks")
+@click.option("--dry-run", is_flag=True, help="Print entries that would be added without writing.")
+@click.option("--include-cooldown", is_flag=True, help="Also generate for companies in cooldown (not just broken/manual_only).")
+def generate_jobspy_fallbacks(dry_run, include_cooldown):
+    """Generate JobSpy/Google Jobs fallback entries for broken or manual_only companies.
+
+    Reads all production registries, finds companies with status 'broken' or
+    manual_only=true that do not already have a JobSpy fallback entry, and
+    appends new entries to config/job_search_companies_jobspy.yaml.
+    """
+    jobspy_path = BASE_DIR / "config" / "job_search_companies_jobspy.yaml"
+
+    # Load existing JobSpy entries to avoid duplicates
+    existing_names: set = set()
+    existing_domains: set = set()
+    if jobspy_path.exists():
+        with jobspy_path.open("r", encoding="utf-8") as fh:
+            existing_data = yaml.safe_load(fh) or {}
+        for entry in existing_data.get("companies", []):
+            name = str(entry.get("name") or "").strip().lower()
+            domain = str(entry.get("domain") or "").strip().lower()
+            if name:
+                existing_names.add(name)
+                # Strip " jobspy" suffix to match against source company name
+                existing_names.add(name.removesuffix(" jobspy").strip())
+            if domain:
+                existing_domains.add(domain)
+
+    # Load all production registries
+    registries = settings.get_production_registries()
+    source_companies: list = []
+    for reg_path in registries:
+        if reg_path.exists():
+            with reg_path.open("r", encoding="utf-8") as fh:
+                data = yaml.safe_load(fh) or {}
+            source_companies.extend(data.get("companies", []))
+
+    # Role queries used for every generated entry
+    _ROLE_QUERIES = [
+        ("senior product manager fintech", 1),
+        ("solution architect financial services", 1),
+        ("technical business analyst", 2),
+        ("senior product manager", 1),
+    ]
+
+    new_entries: list = []
+    skipped = 0
+
+    for company in source_companies:
+        status = str(company.get("status") or "").lower()
+        manual_only = bool(company.get("manual_only") or company.get("active") is False)
+        is_broken = status in {"broken", "manual_only"}
+        in_cooldown = bool(company.get("cooldown_until"))
+
+        if not is_broken and not manual_only:
+            if not (include_cooldown and in_cooldown):
+                continue
+
+        name = str(company.get("name") or "").strip()
+        if not name:
+            continue
+
+        name_lower = name.lower()
+        domain = str(company.get("domain") or "").strip().lower()
+
+        # Skip if already covered
+        if name_lower in existing_names:
+            skipped += 1
+            continue
+        if domain and domain in existing_domains:
+            skipped += 1
+            continue
+
+        tier = int(company.get("tier") or 4)
+        careers_url = str(company.get("careers_url") or "").strip()
+        industry = str(company.get("industry") or "").strip()
+        priority = "medium" if tier <= 2 else "low"
+        results_count = 25 if tier <= 2 else 20
+
+        search_queries = [
+            {"query": f'"{name}" {role}', "tier": q_tier}
+            for role, q_tier in _ROLE_QUERIES
+        ]
+
+        entry = {
+            "name": f"{name} JobSpy",
+            "source_lane": "jobspy_experimental",
+            "adapter": "jobspy",
+            "active": True,
+            "priority": priority,
+            "tier": tier,
+            "careers_url": careers_url or f"https://{domain}" if domain else "",
+            "domain": domain,
+            "industry": industry or "unknown",
+            "status": "active",
+            "notes": (
+                f"Auto-generated JobSpy/Google Jobs fallback for {name}. "
+                f"Original status: {status or 'manual_only'}."
+            ),
+            "search_queries": search_queries,
+            "location_filter": "United States",
+            "site_names": "google",
+            "results_wanted": results_count,
+            "max_total_results": results_count,
+            "hours_old": 72,
+            "country_indeed": "USA",
+            "concurrency": 1,
+            "is_remote": False,
+            "job_type": "",
+            "linkedin_fetch_description": False,
+            "google_search_term_template": "{query}",
+            "continue_on_site_failure": True,
+            "cooldown_days": 1,
+            "heal_failure_streak": 0,
+            "manual_only_suggested": False,
+            "discovery_method": "jobspy_fallback_generated",
+        }
+        new_entries.append(entry)
+        existing_names.add(name_lower)
+        if domain:
+            existing_domains.add(domain)
+
+    if not new_entries:
+        click.echo(f"No new entries to add (skipped {skipped} already-covered companies).")
+        return
+
+    click.echo(f"Found {len(new_entries)} companies to add ({skipped} already covered).")
+
+    if dry_run:
+        click.echo("\n--- DRY RUN: entries that would be appended ---")
+        for e in new_entries:
+            click.echo(f"  {e['name']} (tier {e['tier']}, {e.get('discovery_method')})")
+        return
+
+    # Append to jobspy YAML
+    with jobspy_path.open("r", encoding="utf-8") as fh:
+        raw_text = fh.read()
+    existing_doc = yaml.safe_load(raw_text) or {"version": 1, "companies": []}
+    existing_doc.setdefault("companies", []).extend(new_entries)
+
+    with jobspy_path.open("w", encoding="utf-8") as fh:
+        yaml.dump(existing_doc, fh, default_flow_style=False, allow_unicode=True, sort_keys=False)
+
+    click.echo(f"Added {len(new_entries)} entries to {jobspy_path.name}.")
+
+
 @main.command()
 @click.option("--port", default=8501, help="Port to run the Streamlit dashboard.")
 @click.option("--headless", is_flag=True, default=False, help="Run Streamlit in headless mode.")
