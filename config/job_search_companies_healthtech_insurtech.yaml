@@ -11,12 +11,12 @@ companies:
   careers_url: https://careers.unitedhealthgroup.com/
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:26:58.901551'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:29:30.366794'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:29:30.362282+00:00'
 - name: Elevance Health
   tier: 1
   priority: high
@@ -28,13 +28,11 @@ companies:
   sub_industry: Health Insurance
   careers_url: https://careers.elevancehealth.com/
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:26:58.961493'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:29:07.444207'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: CVS Health
   tier: 1
   priority: high
@@ -60,15 +58,16 @@ companies:
   - insurtech|health insurance|digital health
   notes: Tech-forward health insurer with modern product and platform teams.
   sub_industry: InsurTech / Health Insurance
-  careers_url: https://www.hioscar.com/careers
+  careers_url: https://www.hioscar.com/careers/search
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:26:59.362811'
+  status: manual_only
+  discovery_method: Generic career page discovered
+  last_healed: '2026-04-10T20:29:13.082529'
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: null
+  manual_only: true
 - name: Clover Health
   tier: 2
   priority: medium
@@ -81,12 +80,12 @@ companies:
   careers_url: https://www.cloverhealth.com/en/about-us/careers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:26:59.866134'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:29:43.231399'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:29:43.213868+00:00'
 - name: Devoted Health
   tier: 2
   priority: medium
@@ -115,12 +114,12 @@ companies:
   careers_url: https://www.alignmenthealth.com/careers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:26:58.520647'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:29:23.932681'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:29:22.963771+00:00'
 - name: Included Health
   tier: 2
   priority: medium
@@ -149,12 +148,12 @@ companies:
   careers_url: https://www.omadahealth.com/careers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:26:58.018675'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:29:25.877389'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:29:25.869110+00:00'
 - name: Hinge Health
   tier: 2
   priority: medium
@@ -166,13 +165,11 @@ companies:
   sub_industry: Digital Health
   careers_url: https://www.hingehealth.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:26:58.326671'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:29:22.840636'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Spring Health
   tier: 2
   priority: medium
@@ -185,12 +182,12 @@ companies:
   careers_url: https://www.springhealth.com/careers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:26:58.527647'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:29:29.838553'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:29:29.804084+00:00'
 - name: Lyra Health
   tier: 2
   priority: medium
@@ -219,30 +216,30 @@ companies:
   careers_url: https://www.talkspace.com/careers/
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:26:59.872642'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:29:29.926149'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:29:29.919639+00:00'
 - name: Teladoc Health
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: workday
   domain: careers.teladochealth.com
   industry:
   - telehealth|virtual care|platform
   notes: Large telehealth leader with scalable platform and product operations.
   sub_industry: Telehealth
-  careers_url: https://careers.teladochealth.com/
+  careers_url: https://teladoc.wd503.myworkdayjobs.com/en-US/teladochealth_is_hiring?q=THMG&locationCountry=bc33aa3152ec42d4995f4791a106ed09
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:27:01.618042'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Link or iframe to workday board found
+  last_healed: '2026-04-10T20:29:28.332309'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: teladoc.wd503.myworkdayjobs.com/en-US/teladochealth_is_hiring
+  manual_only: false
 - name: Doximity
   tier: 2
   priority: medium
@@ -255,12 +252,12 @@ companies:
   careers_url: https://careers.doximity.com/
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:28:40.539923'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:29:29.804084'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:29:29.505880+00:00'
 - name: Veeva Systems
   tier: 1
   priority: high
@@ -272,13 +269,11 @@ companies:
   sub_industry: Life Sciences Software
   careers_url: https://careers.veeva.com/
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:28:40.674352'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:29:30.303153'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Flatiron Health
   tier: 2
   priority: medium
@@ -298,39 +293,39 @@ companies:
 - name: Tempus
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: workday
   domain: www.tempus.com
   industry:
   - precision medicine|AI|data platform
   notes: AI and data-rich precision medicine company.
   sub_industry: Precision Medicine / AI
-  careers_url: https://www.tempus.com/careers/
+  careers_url: https://tempus.wd5.myworkdayjobs.com/Tempus_Careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:28:43.037849'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Link or iframe to workday board found
+  last_healed: '2026-04-10T20:29:31.904533'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: tempus.wd5.myworkdayjobs.com/Tempus_Careers
+  manual_only: false
 - name: Commure
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: ashby
   domain: www.commure.com
   industry:
   - healthcare software|clinical workflow|AI
   notes: Healthcare workflow and infrastructure platform.
   sub_industry: Clinical Workflow Software
-  careers_url: https://www.commure.com/careers
+  careers_url: https://jobs.ashbyhq.com/Commure
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:28:41.261743'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Embedded ashby found in scripts
+  last_healed: '2026-04-10T20:29:30.768393'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: Commure
+  manual_only: false
 - name: Aledade
   tier: 2
   priority: medium
@@ -342,13 +337,11 @@ companies:
   sub_industry: Value-Based Care Platform
   careers_url: https://www.aledade.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:28:41.916712'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:29:32.203048'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Cityblock Health
   tier: 2
   priority: medium
@@ -360,13 +353,11 @@ companies:
   sub_industry: Care Delivery Platform
   careers_url: https://www.cityblock.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:28:42.677736'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:29:31.033622'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Maven Clinic
   tier: 2
   priority: medium
@@ -378,13 +369,11 @@ companies:
   sub_industry: Digital Clinic
   careers_url: https://www.mavenclinic.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:28:42.710276'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:29:31.346481'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Ro
   tier: 2
   priority: medium
@@ -410,15 +399,16 @@ companies:
   - consumer health|telehealth|commerce
   notes: Scaled consumer health and telehealth platform.
   sub_industry: Consumer Health
-  careers_url: https://www.hims.com/careers
+  careers_url: https://www.hims.com/jobs
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:28:43.097667'
+  status: manual_only
+  discovery_method: Potential blocked career page
+  last_healed: '2026-04-10T20:29:34.054272'
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: null
+  manual_only: true
 - name: Noom
   tier: 2
   priority: medium
@@ -446,13 +436,11 @@ companies:
   sub_industry: Health FinTech
   careers_url: https://www.cedar.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:28:43.393499'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:29:32.031641'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Health Catalyst
   tier: 2
   priority: medium
@@ -465,34 +453,34 @@ companies:
   careers_url: https://www.healthcatalyst.com/careers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:28:44.274633'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:29:41.822719'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:29:41.693807+00:00'
 - name: PointClickCare
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: lever
   domain: careers.pointclickcare.com
   industry:
   - healthcare software|care coordination|EMR
   notes: Large healthcare software platform with integration-heavy ecosystem.
   sub_industry: Healthcare Software
-  careers_url: https://careers.pointclickcare.com/
+  careers_url: https://jobs.lever.co/pointclickcare/
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:30:22.991534'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Link or iframe to lever board found
+  last_healed: '2026-04-10T20:29:34.652870'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: pointclickcare
+  manual_only: false
 - name: Privia Health
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: smartrecruiters
   domain: www.priviahealth.com
   industry:
   - provider enablement|care platform|analytics
@@ -500,13 +488,13 @@ companies:
   sub_industry: Provider Platform
   careers_url: https://www.priviahealth.com/careers/
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:30:24.327193'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Embedded smartrecruiters found in scripts
+  last_healed: '2026-04-10T20:29:34.211762'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: job-widget
+  manual_only: false
 - name: Innovaccer
   tier: 1
   priority: high
@@ -518,31 +506,29 @@ companies:
   sub_industry: Healthcare Data Platform
   careers_url: https://innovaccer.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:30:24.014791'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:29:35.137190'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: WellSky
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: workday
   domain: www.wellsky.com
   industry:
   - post-acute care|health software|analytics
   notes: Large care software platform.
   sub_industry: Healthcare Software
-  careers_url: https://www.wellsky.com/careers/
+  careers_url: https://wellsky.wd1.myworkdayjobs.com/WellSkyCareers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:30:27.090861'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Link or iframe to workday board found
+  last_healed: '2026-04-10T20:29:37.631396'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: wellsky.wd1.myworkdayjobs.com/WellSkyCareers
+  manual_only: false
 - name: Abridge
   tier: 2
   priority: medium
@@ -588,84 +574,84 @@ companies:
   careers_url: https://careers.guidewire.com/
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:30:25.632906'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:29:45.164638'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:29:45.156627+00:00'
 - name: Duck Creek Technologies
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: workday
   domain: www.duckcreek.com
   industry:
   - insurtech|policy admin|claims software
   notes: Core platform provider for insurers.
   sub_industry: Insurance Software
-  careers_url: https://www.duckcreek.com/about/careers/
+  careers_url: https://duckcreek.wd1.myworkdayjobs.com/en-US/duckcreekcareers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:30:27.422722'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Link or iframe to workday board found
+  last_healed: '2026-04-10T20:29:39.409344'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: duckcreek.wd1.myworkdayjobs.com/en-US/duckcreekcareers
+  manual_only: false
 - name: AgentSync
   tier: 1
   priority: high
-  adapter: generic
+  adapter: rippling
   domain: agentsync.io
   industry:
   - insurtech|compliance|distribution
   notes: Insurance compliance/integration company with strong API/workflow fit.
   sub_industry: Insurance Compliance Tech
-  careers_url: https://agentsync.io/careers/
+  careers_url: https://ats.rippling.com/agentsync-careers/jobs
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:30:27.389873'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Link or iframe to rippling board found
+  last_healed: '2026-04-10T20:29:39.384823'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: agentsync-careers
+  manual_only: false
 - name: Root Insurance
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: rippling
   domain: root.com
   industry:
   - insurtech|auto insurance|data science
   notes: Tech-forward insurer using telematics and pricing models.
   sub_industry: InsurTech
-  careers_url: https://root.com/careers/
+  careers_url: https://ats.rippling.com/joinroot/jobs
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:30:27.638870'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Link or iframe to rippling board found
+  last_healed: '2026-04-10T20:29:44.903664'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: joinroot
+  manual_only: false
 - name: Lemonade
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: ashby
   domain: www.lemonade.com
   industry:
   - insurtech|consumer insurance|AI
   notes: Well-known digital insurer with modern product culture.
   sub_industry: InsurTech
-  careers_url: https://www.lemonade.com/careers
+  careers_url: https://api.ashbyhq.com/posting-api/job-board/lemonade
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:30:27.069437'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Direct ashby probe
+  last_healed: '2026-04-10T20:29:44.962953'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: lemonade
+  manual_only: false
 - name: Next Insurance
   tier: 2
   priority: medium
@@ -728,12 +714,12 @@ companies:
   careers_url: https://www.pieinsurance.com/careers/
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:30:28.634574'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:29:53.625553'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:29:53.618548+00:00'
 - name: Clearcover
   tier: 2
   priority: medium
@@ -745,31 +731,29 @@ companies:
   sub_industry: InsurTech
   careers_url: https://clearcover.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:32:05.565339'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:29:44.416492'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Bestow
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: ashby
   domain: bestow.com
   industry:
   - life insurance|insurtech|APIs
   notes: Modern life-insurance infrastructure/business.
   sub_industry: Life InsurTech
-  careers_url: https://bestow.com/careers/
+  careers_url: https://jobs.ashbyhq.com/bestow
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:32:08.336592'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Link or iframe to ashby board found
+  last_healed: '2026-04-10T20:29:46.040257'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: bestow
+  manual_only: false
 - name: Ethos
   tier: 2
   priority: medium
@@ -781,13 +765,11 @@ companies:
   sub_industry: Life InsurTech
   careers_url: https://www.ethos.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:32:06.530285'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:29:45.899105'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Hippo
   tier: 2
   priority: medium
@@ -799,13 +781,11 @@ companies:
   sub_industry: InsurTech
   careers_url: https://www.hippo.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:32:08.363425'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:29:45.916627'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Boost
   tier: 1
   priority: high
@@ -817,10 +797,8 @@ companies:
   sub_industry: Embedded Insurance
   careers_url: https://boostinsurance.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:32:09.978685'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:29:46.337844'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null

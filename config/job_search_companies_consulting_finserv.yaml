@@ -2,21 +2,21 @@ companies:
 - name: Accenture
   tier: 1
   priority: high
-  adapter: generic
+  adapter: workday
   domain: www.accenture.com
   industry:
   - consulting|financial services|technology
   notes: Global consulting leader with major finserv transformation practice.
   sub_industry: FinServ Consulting
-  careers_url: https://www.accenture.com/us-en/careers
+  careers_url: https://accenture.wd103.myworkdayjobs.com/AccentureCareers/login?redirect=%2FAccentureCareers%2FuserHome
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:11:25.770310'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Link or iframe to workday board found
+  last_healed: '2026-04-10T20:26:58.306411'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: accenture.wd103.myworkdayjobs.com/AccentureCareers/login
+  manual_only: false
 - name: Deloitte
   tier: 1
   priority: high
@@ -44,13 +44,11 @@ companies:
   sub_industry: FinServ Consulting
   careers_url: https://careers.ey.com/
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:11:26.140882'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:26:54.645265'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: PwC
   tier: 1
   priority: high
@@ -70,21 +68,21 @@ companies:
 - name: KPMG
   tier: 1
   priority: high
-  adapter: generic
+  adapter: lever
   domain: kpmg.com
   industry:
   - consulting|financial services|risk
   notes: Large finserv advisory and transformation practice.
   sub_industry: FinServ Consulting
-  careers_url: https://kpmg.com/us/en/careers.html
+  careers_url: https://jobs.lever.co/kpmg
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:11:26.687701'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Direct lever probe
+  last_healed: '2026-04-10T20:26:58.339021'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: kpmg
+  manual_only: false
 - name: Capco
   tier: 1
   priority: high
@@ -144,13 +142,11 @@ companies:
   sub_industry: Digital / FinServ Consulting
   careers_url: https://careers.publicissapient.com/
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:11:24.788634'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:26:52.858700'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Slalom
   tier: 2
   priority: medium
@@ -162,13 +158,11 @@ companies:
   sub_industry: Technology Consulting
   careers_url: https://www.slalom.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:11:24.884149'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:26:54.085799'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: West Monroe
   tier: 2
   priority: medium
@@ -181,12 +175,12 @@ companies:
   careers_url: https://www.westmonroe.com/careers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:11:25.765311'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:27:03.360355'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:27:03.353355+00:00'
 - name: Credera
   tier: 2
   priority: medium
@@ -214,13 +208,11 @@ companies:
   sub_industry: Risk / FinServ Consulting
   careers_url: https://guidehouse.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:11:26.338139'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:26:55.621979'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Cognizant
   tier: 2
   priority: medium
@@ -231,15 +223,16 @@ companies:
   notes: Large consulting/services employer with substantial banking and insurance
     work.
   sub_industry: FinServ Technology Consulting
-  careers_url: https://careers.cognizant.com/
+  careers_url: https://careers.cognizant.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:11:26.710698'
+  status: manual_only
+  discovery_method: Potential blocked career page
+  last_healed: '2026-04-10T20:26:58.485801'
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: null
+  manual_only: true
 - name: Infosys Consulting
   tier: 2
   priority: medium
@@ -249,15 +242,16 @@ companies:
   - consulting|financial services|technology
   notes: Large-scale consulting partner for financial services modernization.
   sub_industry: FinServ Technology Consulting
-  careers_url: https://www.infosys.com/careers.html
+  careers_url: https://www.infosys.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:11:26.666698'
+  status: manual_only
+  discovery_method: Potential blocked career page
+  last_healed: '2026-04-10T20:27:04.147999'
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: null
+  manual_only: true
 - name: TCS
   tier: 2
   priority: medium
@@ -269,13 +263,14 @@ companies:
   sub_industry: FinServ Technology Consulting
   careers_url: https://www.tcs.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:11:26.945725'
+  status: manual_only
+  discovery_method: Potential blocked career page
+  last_healed: '2026-04-10T20:27:02.262552'
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: null
+  manual_only: true
 - name: Wipro
   tier: 2
   priority: medium
@@ -287,13 +282,11 @@ companies:
   sub_industry: FinServ Technology Consulting
   careers_url: https://careers.wipro.com/
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:13:07.242038'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:27:02.914449'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: IBM Consulting
   tier: 2
   priority: medium
@@ -338,30 +331,30 @@ companies:
   careers_url: https://careers.nttdata.com/
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:13:08.329049'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:27:00.289684'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:27:00.198581+00:00'
 - name: Protiviti
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: workday
   domain: www.protiviti.com
   industry:
   - advisory|risk|financial services
   notes: Strong advisory/risk/transformation practice across financial services.
   sub_industry: Risk / Advisory
-  careers_url: https://www.protiviti.com/us-en/careers
+  careers_url: https://roberthalf.wd1.myworkdayjobs.com/ProtivitiNA
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:13:10.562757'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Link or iframe to workday board found
+  last_healed: '2026-04-10T20:27:02.152526'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: roberthalf.wd1.myworkdayjobs.com/ProtivitiNA
+  manual_only: false
 - name: RSM
   tier: 2
   priority: medium
@@ -387,15 +380,16 @@ companies:
   - advisory|financial services|risk
   notes: Major advisory firm with financial services capabilities.
   sub_industry: Advisory / FinServ
-  careers_url: https://www.bdo.com/careers
+  careers_url: https://ebqb.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/BDOExperiencedCareers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:13:09.456993'
+  status: manual_only
+  discovery_method: Generic career page discovered
+  last_healed: '2026-04-10T20:27:13.029216'
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: null
+  manual_only: true
 - name: Grant Thornton
   tier: 2
   priority: medium
@@ -407,31 +401,29 @@ companies:
   sub_industry: Advisory / FinServ
   careers_url: https://www.grantthornton.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:13:09.594398'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:27:03.266023'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Huron
   tier: 3
   priority: low
-  adapter: generic
+  adapter: workday
   domain: www.huronconsultinggroup.com
   industry:
   - consulting|operations|transformation
   notes: Broader consulting firm with regulated-industry transformation work.
   sub_industry: Consulting / Transformation
-  careers_url: https://www.huronconsultinggroup.com/careers
+  careers_url: https://huron.wd1.myworkdayjobs.com/en-US/huroncareers/introduceYourself
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:13:09.734939'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Link or iframe to workday board found
+  last_healed: '2026-04-10T20:27:05.707521'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: huron.wd1.myworkdayjobs.com/en-US/huroncareers/introduceYourself
+  manual_only: false
 - name: BearingPoint
   tier: 3
   priority: low
@@ -460,12 +452,12 @@ companies:
   careers_url: https://www.boozallen.com/careers.html
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:13:10.911331'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:27:25.380420'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:27:25.375423+00:00'
 - name: SEI
   tier: 1
   priority: high
@@ -478,13 +470,11 @@ companies:
   sub_industry: WealthTech / Consulting
   careers_url: https://careers.seic.com/
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:13:10.852329'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:27:05.176524'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: FIS Global Consulting
   tier: 1
   priority: high
@@ -496,13 +486,11 @@ companies:
   sub_industry: Banking Technology Consulting
   careers_url: https://careers.fisglobal.com/
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:13:10.897333'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:27:05.625815'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Fiserv
   tier: 1
   priority: high
@@ -515,12 +503,12 @@ companies:
   careers_url: https://www.careers.fiserv.com/
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:13:10.957845'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:27:12.205618'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:27:11.675987+00:00'
 - name: SS&C Technologies
   tier: 1
   priority: high
@@ -534,12 +522,12 @@ companies:
   careers_url: https://careers.ssctech.com/
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:14:49.503674'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:27:25.358420'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:27:25.351910+00:00'
 - name: Broadridge
   tier: 1
   priority: high
@@ -551,13 +539,11 @@ companies:
   sub_industry: Capital Markets Consulting / Solutions
   careers_url: https://www.broadridge.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:14:50.729640'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:27:07.637835'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: FNZ
   tier: 1
   priority: high
@@ -577,21 +563,21 @@ companies:
 - name: Temenos
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: workday
   domain: www.temenos.com
   industry:
   - banking software|transformation|core modernization
   notes: Banking software leader with consulting and transformation roles.
   sub_industry: Banking Transformation
-  careers_url: https://www.temenos.com/about-us/careers/
+  careers_url: https://temenos.wd103.myworkdayjobs.com/en-US/Temenoscareers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:14:53.063274'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Link or iframe to workday board found
+  last_healed: '2026-04-10T20:27:14.412317'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: temenos.wd103.myworkdayjobs.com/en-US/Temenoscareers
+  manual_only: false
 - name: Mambu
   tier: 2
   priority: medium
@@ -601,12 +587,13 @@ companies:
   - core banking|SaaS|consulting
   notes: Cloud core-banking platform with implementation/solution roles.
   sub_industry: Banking Platform Consulting
-  careers_url: https://mambu.com/en/company/careers
+  careers_url: https://mambu.com/enhttps:/careers-mambu.icims.com
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:14:53.731553'
+  status: manual_only
+  discovery_method: Generic career page discovered
+  last_healed: '2026-04-10T20:27:25.049030'
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: null
+  manual_only: true

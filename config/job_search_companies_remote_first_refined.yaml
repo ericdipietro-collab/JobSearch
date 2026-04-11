@@ -298,12 +298,12 @@ companies:
   careers_url: https://www.hubspot.com/careers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:42:31.995747'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:31:12.789723'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:31:12.706398+00:00'
 - name: Twilio
   tier: 2
   priority: medium
@@ -403,12 +403,12 @@ companies:
   careers_url: https://miro.com/careers/
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:42:33.678752'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:31:10.553193'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:31:10.548136+00:00'
 - name: Hotjar
   tier: 2
   priority: medium
@@ -484,15 +484,16 @@ companies:
   - virtual staffing|remote
   notes: Strong remote employer in FlexJobs tracking.
   sub_industry: Remote Employer
-  careers_url: https://belaysolutions.com/careers/
+  careers_url: https://belaysolutions.com/jobs/
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:42:33.599716'
+  status: manual_only
+  discovery_method: Generic career page discovered
+  last_healed: '2026-04-10T20:31:02.079684'
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: null
+  manual_only: true
 - name: Transcom
   tier: 3
   priority: low
@@ -538,12 +539,12 @@ companies:
   careers_url: https://jobs.visa.com/
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:42:20.911286'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:31:02.072684'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:31:00.003771+00:00'
 - name: PayPal
   tier: 1
   priority: high
@@ -553,15 +554,16 @@ companies:
   - payments|commerce|remote-friendly
   notes: Strong fintech/remote-friendly employer.
   sub_industry: Payments / Commerce
-  careers_url: https://careers.pypl.com/
+  careers_url: https://careers.pypl.com
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:42:33.097841'
+  status: manual_only
+  discovery_method: Potential blocked career page
+  last_healed: '2026-04-10T20:30:59.005400'
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: null
+  manual_only: true
 - name: BlackRock
   tier: 1
   priority: high
@@ -571,15 +573,16 @@ companies:
   - asset management|tech|flexible
   notes: Remote-capable roles plus elite fintech relevance.
   sub_industry: Asset Management Tech
-  careers_url: https://careers.blackrock.com/
+  careers_url: https://careers.blackrock.com/search-jobs
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:42:33.105872'
+  status: manual_only
+  discovery_method: Generic career page discovered
+  last_healed: '2026-04-10T20:31:08.065303'
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: null
+  manual_only: true
 - name: Fidelity Investments
   tier: 1
   priority: high
@@ -608,13 +611,11 @@ companies:
   sub_industry: Remote-Friendly Engineering
   careers_url: https://careers.bv.com/
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:42:33.089327'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:31:04.516032'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Aquent
   tier: 3
   priority: low
@@ -643,12 +644,12 @@ companies:
   careers_url: https://careers.supportyourapp.com/
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:42:33.686275'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:31:06.006865'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:31:05.329315+00:00'
 - name: GitHub
   tier: 1
   priority: high
@@ -752,21 +753,21 @@ companies:
 - name: Mural
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: ashby
   domain: www.mural.co
   industry:
   - collaboration|distributed work
   notes: Collaboration company built around distributed teams.
   sub_industry: Distributed Collaboration
-  careers_url: https://www.mural.co/careers
+  careers_url: https://jobs.ashbyhq.com/mural
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:42:35.534859'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Link or iframe to ashby board found
+  last_healed: '2026-04-10T20:31:07.941651'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: mural
+  manual_only: false
 - name: Webflow
   tier: 2
   priority: medium
@@ -779,12 +780,12 @@ companies:
   careers_url: https://webflow.com/careers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:44:03.084843'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:31:15.360835'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:31:15.354835+00:00'
 - name: HashiCorp
   tier: 2
   priority: medium

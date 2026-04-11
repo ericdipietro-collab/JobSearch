@@ -136,16 +136,16 @@ companies:
   sub_industry: Investment Accounting
   careers_url: https://www.cwan.com/careers
   status: broken
-  heal_failure_streak: 1
-  heal_last_failure_detail: Discovery budget exhausted
+  heal_failure_streak: 2
+  heal_last_failure_detail: No board detected
   manual_only_suggested: false
-  cooldown_until: null
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:45:56.682403'
+  cooldown_until: '2026-04-14T02:31:28.637546+00:00'
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:31:28.644205'
 - name: Confluent
   tier: 2
   priority: medium
-  adapter: greenhouse
+  adapter: ashby
   adapter_key: confluent
   domain: boards.greenhouse.io
   industry:
@@ -157,14 +157,14 @@ companies:
   notes: JMS/messaging pivot at InvestCloud IS Kafka territory — apply sooner than
     other T2
   sub_industry: Data Streaming
-  careers_url: https://job-boards.greenhouse.io/confluent
-  status: broken
-  heal_failure_streak: 1
-  heal_last_failure_detail: Discovery budget exhausted
+  careers_url: https://jobs.ashbyhq.com/confluent
+  status: active
+  heal_failure_streak: 0
   manual_only_suggested: false
-  cooldown_until: null
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:45:58.276426'
+  discovery_method: Direct ashby probe
+  last_healed: '2026-04-10T20:31:22.892192'
+  active: true
+  manual_only: false
 - name: Envestnet
   tier: 1
   priority: high
@@ -210,8 +210,7 @@ companies:
 - name: Fidelity Investments
   tier: 2
   priority: medium
-  adapter: custom_manual
-  adapter_key: ''
+  adapter: generic
   domain: jobs.fidelity.com
   industry:
   - brokerage
@@ -221,14 +220,16 @@ companies:
   - nfs
   notes: NFS platform is primary proof point — custodian PM roles exist
   sub_industry: Brokerage / Clearing
-  careers_url: https://jobs.fidelity.com
-  status: broken
+  careers_url: https://www.jobs.fidelity.com/careers
+  status: manual_only
   heal_failure_streak: 1
   heal_last_failure_detail: Discovery budget exhausted
   manual_only_suggested: false
   cooldown_until: null
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:45:51.145590'
+  discovery_method: Potential blocked career page
+  last_healed: '2026-04-10T20:31:21.222071'
+  active: true
+  manual_only: true
 - name: Gusto
   tier: 1
   priority: high
@@ -273,8 +274,8 @@ companies:
 - name: Koyfin
   tier: 2
   priority: medium
-  adapter: custom_manual
-  adapter_key: ''
+  adapter: ashby
+  adapter_key: koyfin
   domain: www.koyfin.com
   industry:
   - advisor technology
@@ -283,14 +284,14 @@ companies:
   - financial data
   notes: Strong domain fit. Eyes open on options/quant depth gap.
   sub_industry: WealthTech
-  careers_url: https://www.koyfin.com/about/careers/
-  status: broken
-  heal_failure_streak: 1
-  heal_last_failure_detail: Discovery budget exhausted
+  careers_url: https://jobs.ashbyhq.com/koyfin
+  status: active
+  heal_failure_streak: 0
   manual_only_suggested: false
-  cooldown_until: null
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:45:59.203458'
+  discovery_method: Direct ashby probe
+  last_healed: '2026-04-10T20:31:23.280108'
+  active: true
+  manual_only: false
 - name: Marqeta
   tier: 1
   priority: high
@@ -327,13 +328,12 @@ companies:
   notes: Data + analytics + advisor tools — strong domain match
   sub_industry: Financial Data
   careers_url: https://careers.morningstar.com
-  status: broken
-  heal_failure_streak: 1
-  heal_last_failure_detail: Discovery budget exhausted
+  status: active
+  heal_failure_streak: 0
   manual_only_suggested: false
-  cooldown_until: null
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:45:58.214323'
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:31:17.174265'
+  active: true
 - name: Plaid
   tier: 1
   priority: high

@@ -32,12 +32,12 @@ companies:
   google_search_term_template: '{query}'
   continue_on_site_failure: true
   cooldown_days: 1
-  heal_failure_streak: 1
-  heal_last_failure_detail: Discovery budget exhausted
+  heal_failure_streak: 2
+  heal_last_failure_detail: No board detected
   manual_only_suggested: false
-  cooldown_until: null
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:33:55.011681'
+  cooldown_until: '2026-04-14T02:29:58.449067+00:00'
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:29:58.479596'
 - name: Google Careers Direct
   source_lane: employer_ats
   adapter: google_careers
@@ -60,22 +60,22 @@ companies:
   location_filter: United States
   max_total_results: 50
   concurrency: 1
-  heal_failure_streak: 1
-  heal_last_failure_detail: Discovery budget exhausted
+  heal_failure_streak: 2
+  heal_last_failure_detail: No board detected
   manual_only_suggested: false
-  cooldown_until: null
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:33:54.995668'
+  cooldown_until: '2026-04-14T02:30:04.194242+00:00'
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:30:04.201760'
 - name: JobSpy Indeed Experimental
   source_lane: jobspy_experimental
-  adapter: jobspy
+  adapter: generic
   active: true
   priority: low
   tier: 4
-  careers_url: https://www.indeed.com/jobs
+  careers_url: https://www.indeed.com/careers
   domain: indeed.com
   industry: experimental | aggregator
-  status: broken
+  status: manual_only
   notes: Experimental JobSpy source for Indeed. Leave disabled until Google-only testing
     looks useful.
   search_queries:
@@ -102,8 +102,9 @@ companies:
   heal_last_failure_detail: Discovery budget exhausted
   manual_only_suggested: false
   cooldown_until: null
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:33:46.865099'
+  discovery_method: Potential blocked career page
+  last_healed: '2026-04-10T20:30:01.299499'
+  manual_only: true
 - name: JobSpy LinkedIn Experimental
   source_lane: jobspy_experimental
   adapter: jobspy
@@ -172,22 +173,22 @@ companies:
   google_search_term_template: '{query}'
   continue_on_site_failure: true
   cooldown_days: 1
-  heal_failure_streak: 1
-  heal_last_failure_detail: Discovery budget exhausted
+  heal_failure_streak: 2
+  heal_last_failure_detail: No board detected
   manual_only_suggested: false
-  cooldown_until: null
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:33:54.390342'
+  cooldown_until: '2026-04-14T02:29:58.495104+00:00'
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:29:58.518867'
 - name: JobSpy ZipRecruiter Experimental
   source_lane: jobspy_experimental
-  adapter: jobspy
-  active: false
+  adapter: generic
+  active: true
   priority: low
   tier: 4
-  careers_url: https://www.ziprecruiter.com/jobs-search
+  careers_url: https://www.ziprecruiter.com/jobs/
   domain: ziprecruiter.com
   industry: experimental | aggregator
-  status: broken
+  status: manual_only
   notes: Experimental JobSpy source for ZipRecruiter. Keep disabled until the Google
     lane proves useful.
   search_queries:
@@ -214,8 +215,9 @@ companies:
   heal_last_failure_detail: Discovery budget exhausted
   manual_only_suggested: false
   cooldown_until: null
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:33:54.361361'
+  discovery_method: Potential blocked career page
+  last_healed: '2026-04-10T20:29:58.870370'
+  manual_only: true
 - name: JobSpy JobGet Experimental
   source_lane: jobspy_experimental
   adapter: jobspy
@@ -243,12 +245,12 @@ companies:
   google_search_term_template: '{query}'
   continue_on_site_failure: true
   cooldown_days: 1
-  heal_failure_streak: 1
-  heal_last_failure_detail: Discovery budget exhausted
+  heal_failure_streak: 2
+  heal_last_failure_detail: No board detected
   manual_only_suggested: false
-  cooldown_until: null
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:33:54.404824'
+  cooldown_until: '2026-04-14T02:30:01.654615+00:00'
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:30:01.661625'
 - name: JobSpy Upwork Experimental
   source_lane: jobspy_experimental
   adapter: jobspy
@@ -276,9 +278,9 @@ companies:
   google_search_term_template: '{query}'
   continue_on_site_failure: true
   cooldown_days: 1
-  heal_failure_streak: 1
-  heal_last_failure_detail: Discovery budget exhausted
+  heal_failure_streak: 2
+  heal_last_failure_detail: No board detected
   manual_only_suggested: false
-  cooldown_until: null
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:33:53.599367'
+  cooldown_until: '2026-04-14T02:30:05.543877+00:00'
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:30:05.567894'

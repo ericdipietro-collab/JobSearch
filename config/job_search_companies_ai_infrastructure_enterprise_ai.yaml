@@ -2,57 +2,57 @@ companies:
 - name: OpenAI
   tier: 1
   priority: high
-  adapter: generic
+  adapter: ashby
   domain: openai.com
   industry:
   - AI platform|foundation models|developer platform
   notes: Frontier AI company with major product/platform opportunities.
   sub_industry: Foundation Models / AI Platform
-  careers_url: https://openai.com/careers/
+  careers_url: https://jobs.ashbyhq.com/openai
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:52:22.340055'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Direct ashby probe
+  last_healed: '2026-04-10T20:24:26.229752'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: openai
+  manual_only: false
 - name: Anthropic
   tier: 1
   priority: high
-  adapter: generic
+  adapter: greenhouse
   domain: www.anthropic.com
   industry:
   - AI safety|foundation models|developer platform
   notes: Frontier model company with strong enterprise and platform focus.
   sub_industry: Foundation Models
-  careers_url: https://www.anthropic.com/careers
+  careers_url: https://job-boards.greenhouse.io/anthropic/jobs/4980436008
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:52:21.523659'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Link or iframe to greenhouse board found
+  last_healed: '2026-04-10T20:24:29.400953'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: anthropic
+  manual_only: false
 - name: Cohere
   tier: 1
   priority: high
-  adapter: generic
+  adapter: ashby
   domain: cohere.com
   industry:
   - enterprise AI|LLMs|developer platform
   notes: Enterprise model/platform company with strong B2B orientation.
   sub_industry: Enterprise AI Platform
-  careers_url: https://cohere.com/careers
+  careers_url: https://jobs.ashbyhq.com/cohere
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:52:21.918197'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Link or iframe to ashby board found
+  last_healed: '2026-04-10T20:24:24.506482'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: cohere
+  manual_only: false
 - name: Hugging Face
   tier: 1
   priority: high
@@ -62,15 +62,16 @@ companies:
   - open source AI|model hub|ML tooling
   notes: Key open AI ecosystem platform and tooling employer.
   sub_industry: Open AI Platform
-  careers_url: https://huggingface.co/jobs
+  careers_url: https://apply.workable.com/huggingface
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:52:22.332043'
+  status: manual_only
+  discovery_method: Generic career page discovered
+  last_healed: '2026-04-10T20:24:26.387629'
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: null
+  manual_only: true
 - name: Scale AI
   tier: 1
   priority: high
@@ -82,13 +83,11 @@ companies:
   sub_industry: AI Data Infrastructure
   careers_url: https://scale.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:52:22.475557'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:24:23.425254'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Weights & Biases
   tier: 1
   priority: high
@@ -101,12 +100,12 @@ companies:
   careers_url: https://wandb.careers/
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:52:22.544743'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:24:26.537842'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:24:26.523844+00:00'
 - name: Pinecone
   tier: 1
   priority: high
@@ -126,39 +125,39 @@ companies:
 - name: LangChain
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: ashby
   domain: www.langchain.com
   industry:
   - AI app framework|developer tools|agents
   notes: Important AI app/orchestration ecosystem company.
   sub_industry: AI Application Framework
-  careers_url: https://www.langchain.com/careers
+  careers_url: https://jobs.ashbyhq.com/langchain
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:52:22.555254'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Embedded ashby found in scripts
+  last_healed: '2026-04-10T20:24:25.343295'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: langchain
+  manual_only: false
 - name: Modal
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: ashby
   domain: modal.com
   industry:
   - AI compute|serverless|developer platform
   notes: Modern AI inference/training platform.
   sub_industry: AI Compute Platform
-  careers_url: https://modal.com/careers
+  careers_url: https://jobs.ashbyhq.com/modal
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:52:21.544683'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Direct ashby probe
+  last_healed: '2026-04-10T20:24:28.823434'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: modal
+  manual_only: false
 - name: Replicate
   tier: 2
   priority: medium
@@ -171,66 +170,66 @@ companies:
   careers_url: https://replicate.com/careers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:52:22.244884'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:24:34.841104'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:24:34.724569+00:00'
 - name: Runway
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: ashby
   domain: runwayml.com
   industry:
   - generative AI|video AI|creative tooling
   notes: Generative AI platform for creative/media workflows.
   sub_industry: Generative AI Platform
-  careers_url: https://runwayml.com/careers
+  careers_url: https://api.ashbyhq.com/posting-api/job-board/runway
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:52:23.510921'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Direct ashby probe
+  last_healed: '2026-04-10T20:24:37.115602'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: runway
+  manual_only: false
 - name: Perplexity
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: ashby
   domain: www.perplexity.ai
   industry:
   - AI search|LLMs|consumer AI
   notes: High-profile AI search company with strong product intensity.
   sub_industry: AI Search
-  careers_url: https://www.perplexity.ai/careers
+  careers_url: https://jobs.ashbyhq.com/perplexity
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:54:04.438780'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Direct ashby probe
+  last_healed: '2026-04-10T20:24:29.306434'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: perplexity
+  manual_only: false
 - name: Together AI
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: greenhouse
   domain: www.together.ai
   industry:
   - AI cloud|inference|open models
   notes: Open-model and inference infrastructure company.
   sub_industry: AI Cloud Platform
-  careers_url: https://www.together.ai/careers
+  careers_url: https://job-boards.greenhouse.io/togetherai
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:54:04.433414'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Direct greenhouse probe
+  last_healed: '2026-04-10T20:24:36.947571'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: togetherai
+  manual_only: false
 - name: Groq
   tier: 2
   priority: medium
@@ -240,15 +239,16 @@ companies:
   - AI hardware|inference|accelerators
   notes: AI inference infrastructure company.
   sub_industry: AI Inference Infrastructure
-  careers_url: https://groq.com/careers/
+  careers_url: https://jobs.gem.com/groq
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:54:06.245288'
+  status: manual_only
+  discovery_method: Generic career page discovered
+  last_healed: '2026-04-10T20:24:42.031553'
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: null
+  manual_only: true
 - name: Cerebras
   tier: 2
   priority: medium
@@ -260,67 +260,65 @@ companies:
   sub_industry: AI Compute
   careers_url: https://www.cerebras.ai/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:54:05.600649'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:24:31.963693'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: SambaNova
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: greenhouse
   domain: sambanova.ai
   industry:
   - AI hardware|enterprise AI infrastructure
   notes: Enterprise AI infrastructure and model-serving company.
   sub_industry: AI Infrastructure
-  careers_url: https://sambanova.ai/careers/
+  careers_url: https://boards.greenhouse.io/sambanovasystems
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:54:06.607801'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Embedded greenhouse found in scripts
+  last_healed: '2026-04-10T20:24:38.222282'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: sambanovasystems
+  manual_only: false
 - name: Lambda
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: ashby
   domain: lambda.ai
   industry:
   - GPU cloud|AI infrastructure|developer platform
   notes: GPU cloud/infrastructure company relevant to AI platform roles.
   sub_industry: AI Cloud Infrastructure
-  careers_url: https://lambda.ai/careers
+  careers_url: https://jobs.ashbyhq.com/lambda/5a123686-0008-4ead-8083-ea84ee55a4e3
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:54:05.619890'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Link or iframe to ashby board found
+  last_healed: '2026-04-10T20:24:36.410493'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: lambda
+  manual_only: false
 - name: Writer
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: ashby
   domain: writer.com
   industry:
   - enterprise genAI|AI platform|applications
   notes: Enterprise AI company with strong B2B platform/product orientation.
   sub_industry: Enterprise GenAI
-  careers_url: https://writer.com/careers/
+  careers_url: https://jobs.ashbyhq.com/writer
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:54:06.746592'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Link or iframe to ashby board found
+  last_healed: '2026-04-10T20:24:40.016049'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: writer
+  manual_only: false
 - name: Glean
   tier: 2
   priority: medium
@@ -333,12 +331,12 @@ companies:
   careers_url: https://www.glean.com/careers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:54:06.052736'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:24:45.474799'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:24:44.696266+00:00'
 - name: Grammarly
   tier: 2
   priority: medium
@@ -351,12 +349,12 @@ companies:
   careers_url: https://www.grammarly.com/careers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:54:06.029413'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:24:47.678968'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:24:47.671969+00:00'
 - name: DataRobot
   tier: 2
   priority: medium
@@ -369,48 +367,48 @@ companies:
   careers_url: https://www.datarobot.com/careers/
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:54:06.790421'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:24:46.182499'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:24:46.158996+00:00'
 - name: Snorkel AI
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: greenhouse
   domain: snorkel.ai
   industry:
   - AI data development|ML tooling
   notes: AI data tooling company relevant to model/data operations.
   sub_industry: AI Data Tooling
-  careers_url: https://snorkel.ai/careers/
+  careers_url: https://job-boards.greenhouse.io/snorkelai/jobs/5775004004
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:55:48.284574'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Link or iframe to greenhouse board found
+  last_healed: '2026-04-10T20:24:43.278094'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: snorkelai
+  manual_only: false
 - name: Labelbox
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: greenhouse
   domain: labelbox.com
   industry:
   - data labeling|AI infrastructure
   notes: AI training data infrastructure company.
   sub_industry: AI Data Infrastructure
-  careers_url: https://labelbox.com/company/careers/
+  careers_url: https://job-boards.greenhouse.io/labelbox
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:55:48.080930'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Direct greenhouse probe
+  last_healed: '2026-04-10T20:24:50.764970'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: labelbox
+  manual_only: false
 - name: Arize AI
   tier: 2
   priority: medium
@@ -430,21 +428,21 @@ companies:
 - name: Fiddler AI
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: ashby
   domain: www.fiddler.ai
   industry:
   - model monitoring|AI observability|governance
   notes: AI observability and governance platform.
   sub_industry: AI Observability / Governance
-  careers_url: https://www.fiddler.ai/careers
+  careers_url: https://jobs.ashbyhq.com/fiddler-ai
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:55:48.501069'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Link or iframe to ashby board found
+  last_healed: '2026-04-10T20:24:45.483800'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: fiddler-ai
+  manual_only: false
 - name: Humanloop
   tier: 2
   priority: medium
@@ -457,84 +455,84 @@ companies:
   careers_url: https://humanloop.com/careers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:55:49.113179'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:24:50.763968'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:24:50.735963+00:00'
 - name: Vellum
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: ashby
   domain: www.vellum.ai
   industry:
   - LLM orchestration|prompt ops|platform
   notes: Platform for prompt/workflow orchestration.
   sub_industry: LLMOps / Workflow
-  careers_url: https://www.vellum.ai/careers
+  careers_url: https://jobs.ashbyhq.com/vellum
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:55:49.158310'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Direct ashby probe
+  last_healed: '2026-04-10T20:24:53.649896'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: vellum
+  manual_only: false
 - name: ElevenLabs
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: ashby
   domain: elevenlabs.io
   industry:
   - voice AI|foundation models
   notes: Fast-growing voice AI platform.
   sub_industry: Voice AI
-  careers_url: https://elevenlabs.io/careers
+  careers_url: https://jobs.ashbyhq.com/elevenlabs
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:55:49.582098'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Direct ashby probe
+  last_healed: '2026-04-10T20:24:53.231755'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: elevenlabs
+  manual_only: false
 - name: AssemblyAI
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: greenhouse
   domain: www.assemblyai.com
   industry:
   - speech AI|developer APIs
   notes: Speech AI API platform with strong developer-product fit.
   sub_industry: Speech AI
-  careers_url: https://www.assemblyai.com/careers
+  careers_url: https://boards.greenhouse.io/assemblyai
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:55:49.608826'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Embedded greenhouse found in scripts
+  last_healed: '2026-04-10T20:24:49.214969'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: assemblyai
+  manual_only: false
 - name: Deepgram
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: ashby
   domain: deepgram.com
   industry:
   - speech AI|APIs|inference
   notes: Speech AI infrastructure/API company.
   sub_industry: Speech AI Infrastructure
-  careers_url: https://deepgram.com/careers
+  careers_url: https://jobs.ashbyhq.com/Deepgram/form/join-our-talent-community
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:55:49.824149'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Link or iframe to ashby board found
+  last_healed: '2026-04-10T20:24:51.675996'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: Deepgram
+  manual_only: false
 - name: Unstructured
   tier: 2
   priority: medium
@@ -546,13 +544,11 @@ companies:
   sub_industry: AI Data Pipelines
   careers_url: https://unstructured.io/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:55:49.934319'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:24:52.684784'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Baseten
   tier: 2
   priority: medium
@@ -564,13 +560,11 @@ companies:
   sub_industry: AI Inference Platform
   careers_url: https://www.baseten.co/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:55:49.953852'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:24:51.927200'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Fireworks AI
   tier: 2
   priority: medium
@@ -582,67 +576,65 @@ companies:
   sub_industry: AI Inference Platform
   careers_url: https://fireworks.ai/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:57:30.473635'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:24:52.565763'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Anyscale
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: ashby
   domain: www.anyscale.com
   industry:
   - distributed compute|Ray|AI platform
   notes: Distributed compute and AI application platform.
   sub_industry: Distributed AI Platform
-  careers_url: https://www.anyscale.com/careers
+  careers_url: https://jobs.ashbyhq.com/anyscale
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:57:30.973279'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Link or iframe to ashby board found
+  last_healed: '2026-04-10T20:24:52.864744'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: anyscale
+  manual_only: false
 - name: Hebbia
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: greenhouse
   domain: www.hebbia.com
   industry:
   - agentic AI|enterprise knowledge work
   notes: AI workflow company with strong enterprise use cases.
   sub_industry: Enterprise AI Applications
-  careers_url: https://www.hebbia.com/careers
+  careers_url: https://job-boards.greenhouse.io/hebbia/jobs/4674818005
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:57:31.337393'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Link or iframe to greenhouse board found
+  last_healed: '2026-04-10T20:24:53.498383'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: hebbia
+  manual_only: false
 - name: Harvey
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: ashby
   domain: www.harvey.ai
   industry:
   - vertical AI|legal AI|enterprise
   notes: High-profile enterprise vertical AI company.
   sub_industry: Vertical AI
-  careers_url: https://www.harvey.ai/careers
+  careers_url: https://api.ashbyhq.com/posting-api/job-board/harvey
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:57:32.063194'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Direct ashby probe
+  last_healed: '2026-04-10T20:25:00.954520'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: harvey
+  manual_only: false
 - name: Abridge
   tier: 2
   priority: medium
@@ -654,13 +646,11 @@ companies:
   sub_industry: Clinical AI
   careers_url: https://www.abridge.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:57:32.121507'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:24:53.681412'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Suki
   tier: 2
   priority: medium
@@ -680,21 +670,21 @@ companies:
 - name: Notion
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: ashby
   domain: www.notion.so
   industry:
   - AI productivity|knowledge platform
   notes: Broad productivity/knowledge platform with meaningful AI platform work.
   sub_industry: AI Productivity
-  careers_url: https://www.notion.so/careers
+  careers_url: https://jobs.ashbyhq.com/notion/753883ee-23a9-4150-804f-342d32743d56
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:57:32.280226'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Link or iframe to ashby board found
+  last_healed: '2026-04-10T20:24:55.061322'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: notion
+  manual_only: false
 - name: Atlassian
   tier: 2
   priority: medium
@@ -707,30 +697,30 @@ companies:
   careers_url: https://www.atlassian.com/company/careers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:57:33.222749'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:25:15.869290'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:25:15.863290+00:00'
 - name: Dropbox
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: greenhouse
   domain: jobs.dropbox.com
   industry:
   - AI productivity|collaboration
   notes: Strong remote-friendly employer with AI product/platform initiatives.
   sub_industry: AI Productivity / Collaboration
-  careers_url: https://jobs.dropbox.com/
+  careers_url: https://www.dropbox.jobs/
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:57:33.986398'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Direct greenhouse probe
+  last_healed: '2026-04-10T20:24:57.623821'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: dropbox
+  manual_only: false
 - name: Box
   tier: 2
   priority: medium
@@ -740,15 +730,16 @@ companies:
   - enterprise content AI|cloud
   notes: Enterprise content/cloud company with AI data/document workflow relevance.
   sub_industry: Enterprise Content / AI
-  careers_url: https://careers.box.com/
+  careers_url: https://careers.box.com
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:57:32.477585'
+  status: manual_only
+  discovery_method: Potential blocked career page
+  last_healed: '2026-04-10T20:24:55.705531'
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: null
+  manual_only: true
 - name: NVIDIA
   tier: 1
   priority: high
@@ -758,15 +749,16 @@ companies:
   - AI compute|platform|developer ecosystem
   notes: Elite AI compute/platform company.
   sub_industry: AI Compute Platform
-  careers_url: https://www.nvidia.com/en-us/about-nvidia/careers/
+  careers_url: https://jobs.nvidia.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:57:34.622705'
+  status: manual_only
+  discovery_method: Generic career page discovered
+  last_healed: '2026-04-10T20:25:04.235988'
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: null
+  manual_only: true
 - name: Snowflake
   tier: 1
   priority: high
@@ -778,13 +770,11 @@ companies:
   sub_industry: AI Data Platform
   careers_url: https://careers.snowflake.com/
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:59:13.240442'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:25:00.035137'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Databricks
   tier: 1
   priority: high
@@ -797,27 +787,27 @@ companies:
   careers_url: https://www.databricks.com/company/careers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:59:15.086630'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:25:17.957356'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:25:17.951355+00:00'
 - name: C3 AI
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: greenhouse
   domain: c3.ai
   industry:
   - enterprise AI|software platform
   notes: Large enterprise AI software/platform vendor.
   sub_industry: Enterprise AI Software
-  careers_url: https://c3.ai/careers/
+  careers_url: https://boards.greenhouse.io/c3ascend
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T11:59:15.289243'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Link or iframe to greenhouse board found
+  last_healed: '2026-04-10T20:25:01.548783'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: c3ascend
+  manual_only: false

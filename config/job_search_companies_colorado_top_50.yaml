@@ -137,7 +137,7 @@ companies:
 - name: Quantum Metric
   tier: 1
   priority: high
-  adapter: generic
+  adapter: lever
   domain: www.quantummetric.com
   industry:
   - product analytics
@@ -146,15 +146,15 @@ companies:
   notes: Colorado product analytics company with strong reputation and recurring local
     recognition.
   sub_industry: Product Analytics
-  careers_url: https://www.quantummetric.com/company/careers
+  careers_url: https://jobs.lever.co/quantummetric/be46adc1-a80d-4841-a491-162c81c6d91a
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:07:49.305770'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Link or iframe to lever board found
+  last_healed: '2026-04-10T20:26:33.510577'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: quantummetric
+  manual_only: false
 - name: JumpCloud
   tier: 1
   priority: high
@@ -227,13 +227,11 @@ companies:
   sub_industry: Aerospace
   careers_url: https://www.ursamajor.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:07:57.543493'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:26:29.065711'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Boom Supersonic
   tier: 2
   priority: medium
@@ -267,13 +265,11 @@ companies:
   sub_industry: AdTech
   careers_url: https://www.sovrn.com/careers/
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:07:48.377740'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:26:28.540179'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Ping Identity
   tier: 2
   priority: medium
@@ -464,12 +460,12 @@ companies:
   careers_url: https://careers.arrow.com/us/en
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:07:50.080626'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:26:40.935083'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:26:40.929575+00:00'
 - name: Gusto
   tier: 1
   priority: high
@@ -597,15 +593,16 @@ companies:
   - enterprise software
   notes: Strong national employer brand with Colorado hiring and ecosystem presence.
   sub_industry: Enterprise Software
-  careers_url: https://careers.salesforce.com/
+  careers_url: https://careers.salesforce.com/jobs/
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:07:57.566493'
+  status: manual_only
+  discovery_method: Generic career page discovered
+  last_healed: '2026-04-10T20:26:38.800470'
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: null
+  manual_only: true
 - name: NVIDIA
   tier: 2
   priority: medium
@@ -678,12 +675,12 @@ companies:
   careers_url: https://www.schwabjobs.com/
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:07:57.525478'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:26:30.360427'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:26:30.355427+00:00'
 - name: Progressive Insurance
   tier: 2
   priority: medium
@@ -717,13 +714,12 @@ companies:
   sub_industry: Technology Services
   careers_url: https://linxus.com/careers/
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:07:56.732010'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-17T05:45:17.052341+00:00
+    (empty)
+  last_healed: '2026-04-10T20:26:29.067714'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Xentity
   tier: 2
   priority: medium
@@ -736,15 +732,16 @@ companies:
   notes: Colorado Top Workplaces 2025 honoree with a clearly data-oriented consulting
     focus.
   sub_industry: Data Consulting
-  careers_url: https://xentity.com/careers/
+  careers_url: https://www.xentity.com/careers/
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:07:58.594625'
+  status: manual_only
+  discovery_method: Generic career page discovered
+  last_healed: '2026-04-10T20:26:32.993006'
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: null
+  manual_only: true
 - name: CoralTree Hospitality
   tier: 3
   priority: medium
@@ -760,12 +757,12 @@ companies:
   careers_url: https://www.coraltreehospitality.com/careers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:07:59.030699'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:26:39.021886'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:26:39.008879+00:00'
 - name: Homewatch CareGivers
   tier: 3
   priority: medium
@@ -779,13 +776,12 @@ companies:
   sub_industry: Healthcare Services
   careers_url: https://homewatchcareers.com/
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:07:59.057730'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-24T05:43:49.343458+00:00
+    (low_signal)
+  last_healed: '2026-04-10T20:26:33.496061'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Summit Wealth Group
   tier: 3
   priority: medium
@@ -798,13 +794,14 @@ companies:
   sub_industry: Wealth Management
   careers_url: https://www.summitwealthgroup.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:09:31.019391'
+  status: manual_only
+  discovery_method: Potential blocked career page
+  last_healed: '2026-04-10T20:26:36.675297'
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: null
+  manual_only: true
 - name: Bloom Healthcare
   tier: 3
   priority: medium
@@ -816,15 +813,16 @@ companies:
   - operations
   notes: Top Workplaces 2025 honoree with meaningful Colorado presence.
   sub_industry: Healthcare
-  careers_url: https://bloomhealthcare.com/careers/
+  careers_url: https://bloomhealthcare.applytojob.com/apply
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:09:32.415839'
+  status: manual_only
+  discovery_method: Generic career page discovered
+  last_healed: '2026-04-10T20:26:40.523015'
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: null
+  manual_only: true
 - name: Spectrum
   tier: 2
   priority: medium
@@ -894,12 +892,12 @@ companies:
   careers_url: https://www.sram.com/en/company/careers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:09:34.246490'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:26:48.347438'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:26:48.332762+00:00'
 - name: Uplight
   tier: 2
   priority: medium
@@ -911,15 +909,16 @@ companies:
   - energy
   notes: Colorado climate-tech employer with meaningful product and platform scope.
   sub_industry: Climate Tech
-  careers_url: https://uplight.com/company/careers/
+  careers_url: https://jobs.jobvite.com/uplight/jobs
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:09:41.581181'
+  status: manual_only
+  discovery_method: Generic career page discovered
+  last_healed: '2026-04-10T20:26:48.700169'
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: null
+  manual_only: true
 - name: FullContact
   tier: 3
   priority: medium
@@ -934,12 +933,12 @@ companies:
   careers_url: https://www.fullcontact.com/company/careers/
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:09:41.036596'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:26:51.991793'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:26:51.983789+00:00'
 - name: Invoca
   tier: 2
   priority: medium
@@ -954,12 +953,12 @@ companies:
   careers_url: https://www.invoca.com/company/careers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:09:41.608686'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:26:51.006823'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:26:50.998313+00:00'
 - name: DigitalOcean
   tier: 2
   priority: medium
@@ -975,9 +974,9 @@ companies:
   careers_url: https://www.digitalocean.com/careers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:09:39.983062'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:26:50.037573'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:26:49.799539+00:00'

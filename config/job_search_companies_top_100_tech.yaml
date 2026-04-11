@@ -50,12 +50,12 @@ companies:
   careers_url: https://wwt.wd1.myworkdayjobs.com/External
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:47:43.283718'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:31:52.943761'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:31:52.896729+00:00'
 - name: Cadence
   tier: 1
   priority: high
@@ -78,8 +78,7 @@ companies:
 - name: ServiceNow
   tier: 1
   priority: high
-  adapter: workday
-  adapter_key: careers.servicenow.com
+  adapter: generic
   domain: careers.servicenow.com
   industry:
   - enterprise software
@@ -89,13 +88,14 @@ companies:
   sub_industry: Enterprise Software
   careers_url: https://careers.servicenow.com
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:47:43.358256'
+  status: manual_only
+  discovery_method: Potential blocked career page
+  last_healed: '2026-04-10T20:31:31.569892'
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: null
+  manual_only: true
 - name: Salesforce
   tier: 1
   priority: high
@@ -131,12 +131,12 @@ companies:
   careers_url: https://careers.adobe.com/us/en/search-results
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:47:47.111312'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:32:03.454402'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:32:03.446897+00:00'
 - name: Box
   tier: 1
   priority: high
@@ -190,12 +190,12 @@ companies:
   careers_url: https://experian.wd5.myworkdayjobs.com/GlobalCareers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:47:44.598647'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:31:44.417339'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:31:44.400129+00:00'
 - name: Intuit
   tier: 1
   priority: high
@@ -211,12 +211,12 @@ companies:
   careers_url: https://jobs.intuit.com
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:47:46.138160'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:31:44.399132'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:31:44.327553+00:00'
 - name: Workiva
   tier: 1
   priority: high
@@ -271,12 +271,12 @@ companies:
   careers_url: https://hp.wd5.myworkdayjobs.com/ExternalCareerSite
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:47:43.933253'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:31:40.498995'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:31:40.491479+00:00'
 - name: Atlassian
   tier: 1
   priority: high
@@ -311,12 +311,12 @@ companies:
   careers_url: https://sailpoint.wd1.myworkdayjobs.com/en-US/external
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:47:46.118650'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:31:48.643464'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:31:48.633627+00:00'
 - name: Five9
   tier: 1
   priority: high
@@ -331,12 +331,12 @@ companies:
   careers_url: https://careers.five9.com
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:47:44.694828'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:31:47.675232'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:31:47.583583+00:00'
 - name: Databricks
   tier: 1
   priority: high
@@ -390,12 +390,12 @@ companies:
   careers_url: https://www.sentinelone.com/jobs/
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:47:48.323960'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:31:59.197277'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:31:59.192237+00:00'
 - name: Calix
   tier: 1
   priority: high
@@ -410,12 +410,12 @@ companies:
   careers_url: https://calix.wd5.myworkdayjobs.com/Careers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:47:44.039760'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:32:15.263145'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:32:15.256144+00:00'
 - name: Precisely
   tier: 1
   priority: high
@@ -431,12 +431,12 @@ companies:
   careers_url: https://precisely.wd5.myworkdayjobs.com/PreciselyCareers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:49:22.908996'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:32:05.534545'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:32:05.527546+00:00'
 - name: Braze
   tier: 1
   priority: high
@@ -451,12 +451,12 @@ companies:
   careers_url: https://boards.greenhouse.io/braze
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:49:14.136371'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:31:59.315602'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:31:59.309096+00:00'
 - name: Varonis
   tier: 1
   priority: high
@@ -471,51 +471,50 @@ companies:
   careers_url: https://varonis.wd5.myworkdayjobs.com/VaronisCareers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:49:01.937541'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:32:15.412680'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:32:15.407681+00:00'
 - name: Pure Storage
   tier: 1
   priority: high
-  adapter: workday
-  adapter_key: purestorage.wd5.myworkdayjobs.com/External
+  adapter: ashby
+  adapter_key: purestorage
   domain: purestorage.wd5.myworkdayjobs.com
   industry:
   - data storage
   notes: Ranked in Fortune/GPTW large tech or equivalent; careers URL/ATS mapping
     is best-effort.
   sub_industry: Infrastructure
-  careers_url: https://purestorage.wd5.myworkdayjobs.com/External
+  careers_url: https://jobs.ashbyhq.com/purestorage
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:49:28.870740'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Direct ashby probe
+  last_healed: '2026-04-10T20:32:17.054014'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  manual_only: false
 - name: Synopsys
   tier: 2
   priority: high
-  adapter: workday
-  adapter_key: careers.synopsys.com
+  adapter: generic
   domain: careers.synopsys.com
   industry:
   - chip design software
   notes: Ranked in Fortune/GPTW tech lists; careers URL/ATS mapping is best-effort.
   sub_industry: EDA / Semiconductors
-  careers_url: https://careers.synopsys.com
+  careers_url: https://careers.synopsys.com/search-jobs
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:49:28.811736'
+  status: manual_only
+  discovery_method: Generic career page discovered
+  last_healed: '2026-04-10T20:32:14.905087'
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: null
+  manual_only: true
 - name: GitLab
   tier: 2
   priority: high
@@ -546,13 +545,11 @@ companies:
   sub_industry: IT Services
   careers_url: https://www.trace3.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:49:28.445544'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:32:06.087410'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Cognosante
   tier: 2
   priority: high
@@ -567,31 +564,30 @@ companies:
   careers_url: https://careers.cognosante.com
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:49:29.301936'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:32:08.535521'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:32:08.529012+00:00'
 - name: Availity
   tier: 2
   priority: high
-  adapter: generic
-  adapter_key: ''
+  adapter: workday
+  adapter_key: availity.wd1.myworkdayjobs.com/Availity_Careers_US
   domain: www.availity.com
   industry:
   - healthcare technology
   notes: Ranked in Fortune/GPTW tech lists; careers URL/ATS mapping is best-effort.
   sub_industry: Health IT
-  careers_url: https://www.availity.com/careers
+  careers_url: https://availity.wd1.myworkdayjobs.com/Availity_Careers_US
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:49:29.226416'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Link or iframe to workday board found
+  last_healed: '2026-04-10T20:32:10.777692'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  manual_only: false
 - name: Arctic Wolf
   tier: 2
   priority: high
@@ -605,12 +601,12 @@ companies:
   careers_url: https://arcticwolf.com/company/careers/
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:49:28.896256'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:32:22.857376'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:32:22.851306+00:00'
 - name: Tenable
   tier: 2
   priority: high
@@ -624,12 +620,12 @@ companies:
   careers_url: https://tenable.wd1.myworkdayjobs.com/TenableNetworkSecurity
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:49:33.368966'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:32:32.236924'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:32:32.229833+00:00'
 - name: Zscaler
   tier: 2
   priority: high
@@ -644,12 +640,12 @@ companies:
   careers_url: https://zscaler.wd1.myworkdayjobs.com/Careers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:50:45.045993'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:32:29.299941'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:32:29.293860+00:00'
 - name: Rubrik
   tier: 2
   priority: high
@@ -681,12 +677,12 @@ companies:
   careers_url: https://www.tanium.com/careers/
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:51:01.854678'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:32:25.736837'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:32:25.729784+00:00'
 - name: CarGurus
   tier: 2
   priority: high
@@ -717,51 +713,48 @@ companies:
   sub_industry: IT Services
   careers_url: https://www.pingwind.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:51:11.028511'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:32:17.792250'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Chainguard
   tier: 2
   priority: high
-  adapter: ashby
-  adapter_key: chainguard
+  adapter: generic
   domain: jobs.ashbyhq.com
   industry:
   - software supply chain security
   notes: Ranked in Fortune/GPTW tech lists; careers URL/ATS mapping is best-effort.
   sub_industry: Cybersecurity
-  careers_url: https://jobs.ashbyhq.com/chainguard
+  careers_url: https://jobs.ashbyhq.com/jobs/
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:51:12.308301'
+  status: manual_only
+  discovery_method: Generic career page discovered
+  last_healed: '2026-04-10T20:32:24.978634'
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: null
+  manual_only: true
 - name: Lumin Digital
   tier: 2
   priority: high
-  adapter: generic
-  adapter_key: ''
+  adapter: lever
+  adapter_key: LuminDigital
   domain: www.lumindigital.com
   industry:
   - digital banking software
   notes: Ranked in Fortune/GPTW tech lists; careers URL/ATS mapping is best-effort.
   sub_industry: FinTech / Banking Tech
-  careers_url: https://www.lumindigital.com/company/careers
+  careers_url: https://jobs.lever.co/LuminDigital
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:51:13.042023'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Link or iframe to lever board found
+  last_healed: '2026-04-10T20:32:31.141390'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  manual_only: false
 - name: Mercury
   tier: 2
   priority: high
@@ -793,12 +786,12 @@ companies:
   careers_url: https://boards.greenhouse.io/chainlinklabs
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:51:09.225333'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:32:28.712083'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:32:28.705084+00:00'
 - name: The Informatics Applications Group (TIAG)
   tier: 2
   priority: high
@@ -812,16 +805,16 @@ companies:
   careers_url: https://careers.tiag.net
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:51:12.359378'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:32:31.491880'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:32:31.484364+00:00'
 - name: DroneDeploy
   tier: 2
   priority: high
-  adapter: greenhouse
+  adapter: lever
   adapter_key: dronedeploy
   domain: boards.greenhouse.io
   industry:
@@ -829,15 +822,14 @@ companies:
   - drones
   notes: Ranked in Fortune/GPTW tech lists; careers URL/ATS mapping is best-effort.
   sub_industry: Industrial Tech
-  careers_url: https://boards.greenhouse.io/dronedeploy
+  careers_url: https://jobs.lever.co/dronedeploy
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:51:13.410124'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Direct lever probe
+  last_healed: '2026-04-10T20:32:36.994659'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  manual_only: false
 - name: Invoca
   tier: 2
   priority: high
@@ -912,7 +904,6 @@ companies:
   tier: 2
   priority: high
   adapter: generic
-  adapter_key: ''
   domain: www.epam.com
   industry:
   - software engineering services
@@ -920,13 +911,14 @@ companies:
   sub_industry: Software Services
   careers_url: https://www.epam.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:51:17.878923'
+  status: manual_only
+  discovery_method: Potential blocked career page
+  last_healed: '2026-04-10T20:32:36.434137'
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: null
+  manual_only: true
 - name: Google
   tier: 2
   priority: high
@@ -942,12 +934,12 @@ companies:
   careers_url: https://careers.google.com/jobs/results/
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:51:26.500304'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:32:40.317617'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:32:40.312541+00:00'
 - name: Microsoft
   tier: 2
   priority: high
@@ -963,12 +955,12 @@ companies:
   careers_url: https://jobs.careers.microsoft.com/global/en/search
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:52:13.464903'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:32:38.252666'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:32:38.246614+00:00'
 - name: SAP
   tier: 3
   priority: medium
@@ -982,12 +974,12 @@ companies:
   careers_url: https://jobs.sap.com
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:52:46.939966'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:32:56.531168'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:32:56.525658+00:00'
 - name: Zoom
   tier: 3
   priority: medium
@@ -1073,12 +1065,12 @@ companies:
   careers_url: https://boards.greenhouse.io/asana
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:52:37.539886'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:32:40.096532'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:32:40.091531+00:00'
 - name: DocuSign
   tier: 3
   priority: medium
@@ -1093,12 +1085,12 @@ companies:
   careers_url: https://docusign.wd1.myworkdayjobs.com/Careers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:52:48.274592'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:33:07.909345'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:33:07.461100+00:00'
 - name: Figma
   tier: 3
   priority: medium
@@ -1119,22 +1111,21 @@ companies:
 - name: Snowflake
   tier: 3
   priority: medium
-  adapter: greenhouse
+  adapter: ashby
   adapter_key: snowflake
   domain: boards.greenhouse.io
   industry:
   - data cloud
   notes: Strong employer reputation in tech; careers URL/ATS mapping is best-effort.
   sub_industry: Data Platform
-  careers_url: https://boards.greenhouse.io/snowflake
+  careers_url: https://jobs.ashbyhq.com/snowflake
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:52:46.621922'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Direct ashby probe
+  last_healed: '2026-04-10T20:32:47.624148'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  manual_only: false
 - name: MongoDB
   tier: 3
   priority: medium
@@ -1155,22 +1146,22 @@ companies:
 - name: Stripe
   tier: 3
   priority: medium
-  adapter: lever
-  adapter_key: stripe
+  adapter: generic
   domain: jobs.lever.co
   industry:
   - payments infrastructure
   notes: Strong employer reputation in tech; careers URL/ATS mapping is best-effort.
   sub_industry: FinTech / Payments
-  careers_url: https://jobs.lever.co/stripe
+  careers_url: https://www.lever.co/
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:52:57.516734'
+  status: manual_only
+  discovery_method: Generic career page discovered
+  last_healed: '2026-04-10T20:32:52.557197'
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: null
+  manual_only: true
 - name: Shopify
   tier: 3
   priority: medium
@@ -1220,12 +1211,12 @@ companies:
   careers_url: https://paypal.wd1.myworkdayjobs.com/jobs
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:52:59.060760'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:32:46.547961'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:32:46.541924+00:00'
 - name: LinkedIn
   tier: 3
   priority: medium
@@ -1239,13 +1230,11 @@ companies:
   sub_industry: Internet / SaaS
   careers_url: https://careers.linkedin.com
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:52:59.116047'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:32:47.365995'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Dropbox
   tier: 3
   priority: medium
@@ -1312,12 +1301,12 @@ companies:
   careers_url: https://boards.greenhouse.io/elastic
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:53:03.553685'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:32:56.083271'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:32:56.019221+00:00'
 - name: Fastly
   tier: 3
   priority: medium
@@ -1357,22 +1346,21 @@ companies:
 - name: Notion
   tier: 3
   priority: medium
-  adapter: greenhouse
+  adapter: ashby
   adapter_key: notion
   domain: boards.greenhouse.io
   industry:
   - productivity software
   notes: Strong employer reputation in tech; careers URL/ATS mapping is best-effort.
   sub_industry: Collaboration Software
-  careers_url: https://boards.greenhouse.io/notion
+  careers_url: https://api.ashbyhq.com/posting-api/job-board/notion
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:53:16.488099'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Direct ashby probe
+  last_healed: '2026-04-10T20:32:55.699347'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  manual_only: false
 - name: Deel
   tier: 3
   priority: medium
@@ -1412,22 +1400,21 @@ companies:
 - name: Zapier
   tier: 3
   priority: medium
-  adapter: greenhouse
+  adapter: ashby
   adapter_key: zapier
   domain: boards.greenhouse.io
   industry:
   - automation software
   notes: Strong employer reputation in tech; careers URL/ATS mapping is best-effort.
   sub_industry: Automation
-  careers_url: https://boards.greenhouse.io/zapier
+  careers_url: https://api.ashbyhq.com/posting-api/job-board/zapier
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:53:57.832545'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Direct ashby probe
+  last_healed: '2026-04-10T20:32:58.994954'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  manual_only: false
 - name: GitHub
   tier: 4
   priority: medium
@@ -1459,12 +1446,12 @@ companies:
   careers_url: https://careers.amd.com/careers-home/jobs
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:54:21.222470'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:33:08.693275'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:33:07.910346+00:00'
 - name: Qualcomm
   tier: 4
   priority: medium
@@ -1479,12 +1466,12 @@ companies:
   careers_url: https://qualcomm.wd5.myworkdayjobs.com/External
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:54:28.531724'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:33:13.798166'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:33:13.790662+00:00'
 - name: Arm
   tier: 4
   priority: medium
@@ -1499,12 +1486,12 @@ companies:
   careers_url: https://boards.greenhouse.io/arm
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:54:30.644058'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:33:03.075036'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:33:03.070038+00:00'
 - name: Workday
   tier: 4
   priority: medium
@@ -1562,22 +1549,22 @@ companies:
 - name: Palo Alto Networks
   tier: 4
   priority: medium
-  adapter: workday
-  adapter_key: jobs.paloaltonetworks.com/en
+  adapter: generic
   domain: jobs.paloaltonetworks.com
   industry:
   - cybersecurity
   notes: Curated high-quality tech employer; careers URL/ATS mapping is best-effort.
   sub_industry: Cybersecurity
-  careers_url: https://jobs.paloaltonetworks.com/en/
+  careers_url: https://jobs.paloaltonetworks.com/en/search-jobs
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:54:33.824869'
+  status: manual_only
+  discovery_method: Generic career page discovered
+  last_healed: '2026-04-10T20:33:12.529175'
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: null
+  manual_only: true
 - name: DataRobot
   tier: 4
   priority: medium
@@ -1688,21 +1675,21 @@ companies:
   tier: 4
   priority: medium
   adapter: generic
-  adapter_key: ''
   domain: www.canva.com
   industry:
   - design software
   notes: Curated high-quality tech employer; careers URL/ATS mapping is best-effort.
   sub_industry: Design Software
-  careers_url: https://www.canva.com/careers/
+  careers_url: https://www.canva.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:54:42.662532'
+  status: manual_only
+  discovery_method: Potential blocked career page
+  last_healed: '2026-04-10T20:33:08.693275'
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: null
+  manual_only: true
 - name: OpenAI
   tier: 4
   priority: medium
@@ -1769,13 +1756,11 @@ companies:
   sub_industry: Consumer Internet
   careers_url: https://www.redditinc.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:54:43.890202'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:33:09.689203'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Alteryx
   tier: 4
   priority: medium
@@ -1797,22 +1782,21 @@ companies:
 - name: Snyk
   tier: 4
   priority: medium
-  adapter: greenhouse
+  adapter: ashby
   adapter_key: snyk
   domain: boards.greenhouse.io
   industry:
   - developer security
   notes: Curated high-quality tech employer; careers URL/ATS mapping is best-effort.
   sub_industry: Cybersecurity
-  careers_url: https://boards.greenhouse.io/snyk
+  careers_url: https://jobs.ashbyhq.com/snyk
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:54:44.227288'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Direct ashby probe
+  last_healed: '2026-04-10T20:33:12.567081'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  manual_only: false
 - name: PagerDuty
   tier: 4
   priority: medium
@@ -1879,9 +1863,9 @@ companies:
   careers_url: https://boards.greenhouse.io/procore
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:54:46.725423'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:33:12.039317'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:33:12.033250+00:00'

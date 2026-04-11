@@ -18,16 +18,17 @@ companies:
   active: true
   priority: low
   tier: 4
-  adapter: dice
+  adapter: generic
   contractor_source: true
-  careers_url: https://www.dice.com/jobs/jtype-Contracts--jobs
+  careers_url: https://www.dice.com/career-advice
   domain: dice.com
   industry: job board | contract
-  status: broken
+  status: manual_only
   notes: Contractor source with dedicated Dice adapter for job-detail extraction.
   heal_failure_streak: 1
   heal_last_failure_detail: Discovery budget exhausted
   manual_only_suggested: false
   cooldown_until: null
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:16:37.576416'
+  discovery_method: Generic career page discovered
+  last_healed: '2026-04-10T20:27:31.156391'
+  manual_only: true

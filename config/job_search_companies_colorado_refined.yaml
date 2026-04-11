@@ -8,19 +8,20 @@ companies:
   - enterprise software|AI platform
   notes: Built In Colorado 2026 best workplace and strong enterprise platform employer.
   sub_industry: Enterprise Platform
-  careers_url: https://careers.servicenow.com/
+  careers_url: https://careers.servicenow.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:01:00.259140'
+  status: manual_only
+  discovery_method: Potential blocked career page
+  last_healed: '2026-04-10T20:25:21.152990'
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: null
+  manual_only: true
 - name: Datadog
   tier: 1
   priority: high
-  adapter: generic
+  adapter: greenhouse
   domain: careers.datadoghq.com
   industry:
   - observability|cloud
@@ -28,13 +29,13 @@ companies:
   sub_industry: Observability
   careers_url: https://careers.datadoghq.com/
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:01:00.643557'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Direct greenhouse probe
+  last_healed: '2026-04-10T20:25:24.169151'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: datadog
+  manual_only: false
 - name: Snowflake
   tier: 1
   priority: high
@@ -55,21 +56,21 @@ companies:
 - name: Klaviyo
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: greenhouse
   domain: www.klaviyo.com
   industry:
   - B2C CRM|analytics|AI
   notes: Built In Colorado 2026 best workplace.
   sub_industry: Marketing / Data Platform
-  careers_url: https://www.klaviyo.com/careers
+  careers_url: https://www.klaviyo.com/careers/search-jobs
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:00:59.616684'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Direct greenhouse probe
+  last_healed: '2026-04-10T20:25:32.895537'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: klaviyo
+  manual_only: false
 - name: monday.com
   tier: 2
   priority: medium
@@ -82,12 +83,12 @@ companies:
   careers_url: https://monday.com/careers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:01:00.595516'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:25:38.000994'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:25:37.995487+00:00'
 - name: Dropbox
   tier: 2
   priority: medium
@@ -117,16 +118,16 @@ companies:
   careers_url: https://careers.transunion.com/
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:01:00.666659'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:25:44.146074'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:25:43.767666+00:00'
 - name: Udemy
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: greenhouse
   domain: about.udemy.com
   industry:
   - edtech|platform
@@ -134,13 +135,13 @@ companies:
   sub_industry: Software Platform
   careers_url: https://about.udemy.com/careers/
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:01:00.980544'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Direct greenhouse probe
+  last_healed: '2026-04-10T20:25:29.647701'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: udemy
+  manual_only: false
 - name: Block
   tier: 1
   priority: high
@@ -152,13 +153,11 @@ companies:
   sub_industry: FinTech / Payments
   careers_url: https://block.xyz/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:01:00.284673'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:25:25.544417'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: BAE Systems, Inc.
   tier: 2
   priority: medium
@@ -178,7 +177,7 @@ companies:
 - name: Cloudflare
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: greenhouse
   domain: www.cloudflare.com
   industry:
   - cloud|security|developer platform
@@ -186,13 +185,13 @@ companies:
   sub_industry: Cloud Platform
   careers_url: https://www.cloudflare.com/careers/jobs/
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:01:00.682672'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Direct greenhouse probe
+  last_healed: '2026-04-10T20:25:34.909134'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: cloudflare
+  manual_only: false
 - name: Sierra Space
   tier: 2
   priority: medium
@@ -228,21 +227,21 @@ companies:
 - name: Gusto
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: greenhouse
   domain: gusto.com
   industry:
   - HR tech|payroll|fintech
   notes: Strong product employer with Colorado presence.
   sub_industry: HR Tech / FinTech
-  careers_url: https://gusto.com/about/careers
+  careers_url: https://job-boards.greenhouse.io/gusto
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:01:01.298132'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Direct greenhouse probe
+  last_healed: '2026-04-10T20:25:33.535432'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: gusto
+  manual_only: false
 - name: Workiva
   tier: 1
   priority: high
@@ -252,15 +251,16 @@ companies:
   - reporting|compliance|data platform
   notes: Strong fit for data/reporting architecture and enterprise workflows.
   sub_industry: Enterprise Reporting Platform
-  careers_url: https://www.workiva.com/careers
+  careers_url: https://www.jobvite.com/support/job-seeker-support/?invalid=1
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:01:01.278110'
+  status: manual_only
+  discovery_method: Generic career page discovered
+  last_healed: '2026-04-10T20:25:38.139206'
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: null
+  manual_only: true
 - name: Vertafore
   tier: 1
   priority: high
@@ -273,30 +273,30 @@ companies:
   careers_url: https://www.vertafore.com/about/careers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:02:44.071676'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:25:39.761271'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:25:39.755271+00:00'
 - name: Ibotta
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: ashby
   domain: careers.ibotta.com
   industry:
   - consumer fintech|data|marketing tech
   notes: Colorado-founded consumer app/data business.
   sub_industry: Consumer FinTech
-  careers_url: https://careers.ibotta.com/
+  careers_url: https://jobs.ashbyhq.com/ibotta
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:02:45.465024'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Direct ashby probe
+  last_healed: '2026-04-10T20:25:37.225745'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: ibotta
+  manual_only: false
 - name: Pax8
   tier: 2
   priority: medium
@@ -316,21 +316,21 @@ companies:
 - name: Twilio
   tier: 1
   priority: high
-  adapter: generic
+  adapter: greenhouse
   domain: careers.twilio.com
   industry:
   - communications platform|APIs
   notes: Major tech employer with Colorado presence and strong API relevance.
   sub_industry: Communications Platform
-  careers_url: https://careers.twilio.com/
+  careers_url: https://job-boards.greenhouse.io/twilio
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:02:44.455266'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Direct greenhouse probe
+  last_healed: '2026-04-10T20:25:39.933951'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: twilio
+  manual_only: false
 - name: JumpCloud
   tier: 1
   priority: high
@@ -342,13 +342,11 @@ companies:
   sub_industry: Identity / Security
   careers_url: https://jumpcloud.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:02:45.004062'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:25:38.474146'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Red Canary
   tier: 1
   priority: high
@@ -358,15 +356,16 @@ companies:
   - cybersecurity|analytics|platform
   notes: Well-regarded Colorado security company.
   sub_industry: Cybersecurity
-  careers_url: https://jobs.lever.co/redcanary
+  careers_url: https://www.lever.co/
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:02:46.014138'
+  status: manual_only
+  discovery_method: Generic career page discovered
+  last_healed: '2026-04-10T20:25:45.087074'
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: null
+  manual_only: true
 - name: DispatchHealth
   tier: 2
   priority: medium
@@ -378,31 +377,29 @@ companies:
   sub_industry: HealthTech
   careers_url: https://careers.dispatchhealth.com/
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:02:44.998985'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:25:39.148439'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Ping Identity
   tier: 1
   priority: high
-  adapter: generic
+  adapter: greenhouse
   domain: www.pingidentity.com
   industry:
   - identity|security|enterprise software
   notes: Colorado-rooted identity platform employer.
   sub_industry: Identity / Security
-  careers_url: https://www.pingidentity.com/en/company/careers.html
+  careers_url: https://job-boards.greenhouse.io/pingidentity
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:02:46.003628'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Direct greenhouse probe
+  last_healed: '2026-04-10T20:25:49.617205'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: pingidentity
+  manual_only: false
 - name: Palantir
   tier: 1
   priority: high
@@ -430,13 +427,12 @@ companies:
   sub_industry: Aerospace / Defense
   careers_url: https://www.lockheedmartinjobs.com/
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:02:44.286784'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-24T05:43:15.293731+00:00
+    (low_signal)
+  last_healed: '2026-04-10T20:25:39.765270'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Maxar
   tier: 2
   priority: medium
@@ -449,12 +445,12 @@ companies:
   careers_url: https://www.maxar.com/careers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:02:43.929303'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:26:16.592416'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:26:16.587417+00:00'
 - name: Boom Supersonic
   tier: 2
   priority: medium
@@ -466,13 +462,11 @@ companies:
   sub_industry: Aerospace
   careers_url: https://boomsupersonic.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:02:45.997116'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:25:40.622599'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Oracle
   tier: 2
   priority: medium
@@ -484,13 +478,11 @@ companies:
   sub_industry: Enterprise Software
   careers_url: https://careers.oracle.com/
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:04:26.355984'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:25:42.077109'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Databricks
   tier: 1
   priority: high
@@ -520,12 +512,12 @@ companies:
   careers_url: https://www.mongodb.com/company/careers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:04:27.807889'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:26:01.642048'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:26:01.636049+00:00'
 - name: Samsara
   tier: 2
   priority: medium
@@ -538,12 +530,12 @@ companies:
   careers_url: https://www.samsara.com/company/careers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:04:29.268857'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:26:00.149757'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:26:00.138760+00:00'
 - name: Zscaler
   tier: 2
   priority: medium
@@ -556,12 +548,12 @@ companies:
   careers_url: https://www.zscaler.com/careers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:04:26.996979'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:26:00.019699'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:25:59.864563+00:00'
 - name: SendGrid
   tier: 2
   priority: medium
@@ -590,12 +582,12 @@ companies:
   careers_url: https://www.skillsoft.com/careers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:04:27.831428'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:26:13.215077'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:26:13.208077+00:00'
 - name: Boeing
   tier: 2
   priority: medium
@@ -621,15 +613,16 @@ companies:
   - hardware|software|sports tech
   notes: Built In Colorado tech-company visibility.
   sub_industry: Hardware / Consumer Tech
-  careers_url: https://jobs.jobvite.com/sram
+  careers_url: https://www.jobvite.com/support/job-seeker-support/?invalid=1
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:04:30.512543'
+  status: manual_only
+  discovery_method: Generic career page discovered
+  last_healed: '2026-04-10T20:26:07.661714'
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: null
+  manual_only: true
 - name: SES Satellites
   tier: 2
   priority: medium
@@ -642,12 +635,12 @@ companies:
   careers_url: https://www.ses.com/careers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:04:28.899285'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:26:11.330305'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:26:11.325303+00:00'
 - name: Apex Fintech Solutions
   tier: 1
   priority: high
@@ -660,12 +653,12 @@ companies:
   careers_url: https://www.apexfintechsolutions.com/careers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:04:28.917334'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:26:16.397613'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:26:16.391626+00:00'
 - name: Moov
   tier: 1
   priority: high
@@ -678,12 +671,12 @@ companies:
   careers_url: https://moov.io/careers/
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:04:29.690122'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:26:19.017892'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:26:18.461610+00:00'
 - name: FirstBank
   tier: 1
   priority: high
@@ -696,12 +689,12 @@ companies:
   careers_url: https://www.efirstbank.com/about-us/careers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:04:30.575182'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:26:25.600618'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:26:25.594618+00:00'
 - name: Elevations Credit Union
   tier: 1
   priority: high
@@ -711,15 +704,16 @@ companies:
   - credit union|financial services
   notes: 'Colorado Top Workplaces 2025 #1 overall.'
   sub_industry: Financial Services
-  careers_url: https://www.elevationscu.com/careers/
+  careers_url: https://www.elevationscu.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:06:09.350870'
+  status: manual_only
+  discovery_method: Potential blocked career page
+  last_healed: '2026-04-10T20:26:15.464458'
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: null
+  manual_only: true
 - name: Pinnacol Assurance
   tier: 1
   priority: high
@@ -731,13 +725,11 @@ companies:
   sub_industry: Insurance
   careers_url: https://www.pinnacol.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:06:09.846955'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:26:15.918947'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Progressive Insurance
   tier: 2
   priority: medium
@@ -747,15 +739,16 @@ companies:
   - insurance|digital products
   notes: Colorado Top Workplaces 2025 high rank.
   sub_industry: Insurance
-  careers_url: https://www.progressive.com/careers/
+  careers_url: https://www.progressive.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:06:12.359184'
+  status: manual_only
+  discovery_method: Potential blocked career page
+  last_healed: '2026-04-10T20:26:24.002336'
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: null
+  manual_only: true
 - name: Agile Six
   tier: 2
   priority: medium
@@ -768,31 +761,29 @@ companies:
   sub_industry: GovTech
   careers_url: https://www.agile6.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:06:10.688617'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:26:18.031639'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Planet
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: ashby
   domain: www.planet.com
   industry:
   - space data|satellite analytics
   notes: Colorado-adjacent space/data employer with strong technical culture.
   sub_industry: Space Data
-  careers_url: https://www.planet.com/company/careers/
+  careers_url: https://jobs.ashbyhq.com/planet
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:06:12.495346'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Direct ashby probe
+  last_healed: '2026-04-10T20:26:24.036362'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: planet
+  manual_only: false
 - name: Conga
   tier: 2
   priority: medium
@@ -805,12 +796,12 @@ companies:
   careers_url: https://careers.conga.com/
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:06:11.338207'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:26:21.532389'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:26:21.526387+00:00'
 - name: Trimble
   tier: 2
   priority: medium
@@ -822,13 +813,12 @@ companies:
   sub_industry: Industrial Software
   careers_url: https://trimblecareers.trimble.com/
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:06:12.481344'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Skipped due to generic scrape cooldown until 2026-04-24T05:43:24.105352+00:00
+    (low_signal)
+  last_healed: '2026-04-10T20:26:19.235683'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Medtronic
   tier: 2
   priority: medium
@@ -838,15 +828,16 @@ companies:
   - medical devices|health tech
   notes: Built In Colorado best-workplace visibility.
   sub_industry: HealthTech
-  careers_url: https://www.medtronic.com/us-en/about/careers.html
+  careers_url: https://www.medtronic.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:06:13.024096'
+  status: manual_only
+  discovery_method: Generic career page discovered
+  last_healed: '2026-04-10T20:26:22.282355'
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: null
+  manual_only: true
 - name: Zayo
   tier: 2
   priority: medium
@@ -859,27 +850,27 @@ companies:
   careers_url: https://careers.zayo.com/
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:06:13.130036'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:26:27.992877'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:26:27.985877+00:00'
 - name: Homebot
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: ashby
   domain: homebot.ai
   industry:
   - proptech|analytics|consumer fintech
   notes: Colorado-rooted software company with product/data focus.
   sub_industry: PropTech / Analytics
-  careers_url: https://homebot.ai/careers/
+  careers_url: https://jobs.ashbyhq.com/homebot
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:06:13.814056'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Embedded ashby found in scripts
+  last_healed: '2026-04-10T20:26:23.562323'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: homebot
+  manual_only: false

@@ -35,21 +35,21 @@ companies:
 - name: Zapier
   tier: 1
   priority: high
-  adapter: generic
+  adapter: ashby
   domain: zapier.com
   industry: automation | integrations | ai workflow
   notes: Remote-first since 2011 with strong async culture and broad product/engineering
     hiring.
   sub_industry: Automation Platform
-  careers_url: https://zapier.com/jobs
+  careers_url: https://jobs.ashbyhq.com/zapier
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:35:39.864650'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Direct ashby probe
+  last_healed: '2026-04-10T20:30:13.525682'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: zapier
+  manual_only: false
 - name: Supabase
   tier: 1
   priority: high
@@ -60,13 +60,11 @@ companies:
   sub_industry: Developer Platform
   careers_url: https://supabase.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:35:39.397499'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:30:07.376422'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Doist
   tier: 1
   priority: high
@@ -77,13 +75,11 @@ companies:
   sub_industry: Productivity Software
   careers_url: https://doist.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:35:39.957526'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:30:07.037661'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Buffer
   tier: 1
   priority: high
@@ -111,12 +107,12 @@ companies:
   careers_url: https://canonical.com/careers/all
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:35:37.459452'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:30:22.457617'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:30:21.155664+00:00'
 - name: Elastic
   tier: 1
   priority: high
@@ -159,13 +155,11 @@ companies:
   sub_industry: Global HR / Payroll
   careers_url: https://remote.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:35:39.505355'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:30:06.533090'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Oyster
   tier: 1
   priority: high
@@ -176,31 +170,29 @@ companies:
   sub_industry: Global Employment
   careers_url: https://www.oysterhr.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:35:39.460724'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:30:07.064770'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Toptal
   tier: 1
   priority: high
-  adapter: generic
+  adapter: lever
   domain: toptal.com
   industry: talent marketplace | consulting | remote work
   notes: Longstanding remote-native company with broad operations, sales, and talent
     roles.
   sub_industry: Talent Marketplace
-  careers_url: https://www.toptal.com/careers
+  careers_url: https://api.lever.co/v0/postings/toptal?mode=json
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:35:39.802073'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Direct lever probe
+  last_healed: '2026-04-10T20:30:12.360577'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: toptal
+  manual_only: false
 - name: SafetyWing
   tier: 1
   priority: high
@@ -209,49 +201,50 @@ companies:
   industry: insurance | fintech | remote work
   notes: Remote-first company serving digital nomads and distributed teams.
   sub_industry: InsurTech / Remote Work
-  careers_url: https://safetywing.com/careers
+  careers_url: https://www.safetywing.com/join-us
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:35:39.368960'
+  status: manual_only
+  discovery_method: Generic career page discovered
+  last_healed: '2026-04-10T20:30:15.322906'
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: null
+  manual_only: true
 - name: Close
   tier: 1
   priority: high
-  adapter: generic
+  adapter: ashby
   domain: close.com
   industry: crm | sales software | remote work
   notes: Fully remote CRM company with a strong engineering and product culture.
   sub_industry: Sales SaaS
-  careers_url: https://close.com/jobs
+  careers_url: https://jobs.ashbyhq.com/Close
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:35:40.484792'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Embedded ashby found in scripts
+  last_healed: '2026-04-10T20:30:11.458217'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: Close
+  manual_only: false
 - name: 1Password
   tier: 1
   priority: high
-  adapter: generic
+  adapter: ashby
   domain: 1password.com
   industry: cybersecurity | password management | saas
   notes: Remote-forward security company with strong brand and product reputation.
   sub_industry: Cybersecurity
-  careers_url: https://1password.com/jobs
+  careers_url: https://jobs.ashbyhq.com/1password
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:35:40.609829'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Link or iframe to ashby board found
+  last_healed: '2026-04-10T20:30:12.982531'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: 1password
+  manual_only: false
 - name: Sourcegraph
   tier: 2
   priority: medium
@@ -262,30 +255,28 @@ companies:
   sub_industry: Developer Tools
   careers_url: https://sourcegraph.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:37:19.904403'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:30:13.056111'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Docker
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: ashby
   domain: docker.com
   industry: developer tools | containers | cloud
   notes: Remote-friendly infrastructure brand with a large distributed footprint.
   sub_industry: Developer Infrastructure
-  careers_url: https://www.docker.com/careers
+  careers_url: https://jobs.ashbyhq.com/docker
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:37:22.516594'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Embedded ashby found in scripts
+  last_healed: '2026-04-10T20:30:16.732760'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: docker
+  manual_only: false
 - name: CircleCI
   tier: 2
   priority: medium
@@ -329,13 +320,11 @@ companies:
   sub_industry: Privacy Tech
   careers_url: https://duckduckgo.com/hiring
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:37:21.875453'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:30:14.242514'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Toggl
   tier: 2
   priority: medium
@@ -362,12 +351,12 @@ companies:
   careers_url: https://prismatic.io/careers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:37:22.522594'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:30:29.163038'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:30:29.156528+00:00'
 - name: TestGorilla
   tier: 2
   priority: medium
@@ -394,12 +383,12 @@ companies:
   careers_url: https://www.hotjar.com/careers/
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:37:14.187728'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:30:33.815277'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:30:30.440117+00:00'
 - name: Aha!
   tier: 2
   priority: medium
@@ -411,29 +400,29 @@ companies:
   careers_url: https://www.aha.io/careers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:37:22.991434'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:30:24.462600'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:30:24.455090+00:00'
 - name: Contra
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: ashby
   domain: contra.com
   industry: creator economy | freelancer marketplace | payments
   notes: Remote-first freelancer platform with distributed team operations.
   sub_industry: Talent Marketplace
-  careers_url: https://contra.com/careers
+  careers_url: https://jobs.ashbyhq.com/contra
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:37:22.929623'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Direct ashby probe
+  last_healed: '2026-04-10T20:30:28.776909'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: contra
+  manual_only: false
 - name: 10up
   tier: 2
   priority: medium
@@ -460,12 +449,12 @@ companies:
   careers_url: https://x-team.com/join
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:37:24.426586'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:30:28.874928'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:30:28.826734+00:00'
 - name: Zyte
   tier: 2
   priority: medium
@@ -477,12 +466,12 @@ companies:
   careers_url: https://www.zyte.com/jobs/
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:37:24.434124'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:30:46.548026'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:30:44.626752+00:00'
 - name: Apollo.io
   tier: 2
   priority: medium
@@ -494,30 +483,30 @@ companies:
   careers_url: https://www.apollo.io/careers
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:37:26.088673'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:30:47.030883'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:30:46.548026+00:00'
 - name: PostHog
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: ashby
   domain: posthog.com
   industry: product analytics | developer tools | open source
   notes: Remote-native product OS company with strong technical hiring and open-source
     ethos.
   sub_industry: Product Analytics / Developer Tools
-  careers_url: https://posthog.com/careers
+  careers_url: https://jobs.ashbyhq.com/posthog
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:38:57.233070'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Direct ashby probe
+  last_healed: '2026-04-10T20:30:41.193908'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: posthog
+  manual_only: false
 - name: Clerk
   tier: 2
   priority: medium
@@ -528,13 +517,11 @@ companies:
   sub_industry: Identity / Developer Tools
   careers_url: https://clerk.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:39:02.997627'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:30:30.257321'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Fly.io
   tier: 2
   priority: medium
@@ -575,13 +562,11 @@ companies:
   sub_industry: Database Platform
   careers_url: https://planetscale.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:39:05.224128'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:30:33.833529'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: dbt Labs
   tier: 2
   priority: medium
@@ -657,13 +642,11 @@ companies:
   sub_industry: AI Operations
   careers_url: https://www.invisible.co/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:39:05.935297'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:30:39.755701'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Andela
   tier: 2
   priority: medium
@@ -674,48 +657,46 @@ companies:
   sub_industry: Global Talent
   careers_url: https://www.andela.com/careers
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:39:06.044535'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:30:38.784467'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Hubstaff
   tier: 3
   priority: medium
-  adapter: generic
+  adapter: ashby
   domain: hubstaff.com
   industry: time tracking | workforce management | remote work
   notes: Remote-native company building tools for distributed workforce management.
   sub_industry: Workforce SaaS
-  careers_url: https://hubstaff.com/jobs
+  careers_url: https://api.ashbyhq.com/posting-api/job-board/hubstaff
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:39:07.332849'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Direct ashby probe
+  last_healed: '2026-04-10T20:30:47.275876'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: hubstaff
+  manual_only: false
 - name: Kit
   tier: 3
   priority: medium
-  adapter: generic
+  adapter: ashby
   domain: kit.com
   industry: creator tools | email marketing | saas
   notes: Creator-focused software company formerly ConvertKit with a remote-first
     reputation.
   sub_industry: Creator SaaS
-  careers_url: https://kit.com/careers
+  careers_url: https://jobs.ashbyhq.com/kit/719f0938-edcc-4b08-a1b7-04bae469eb8f
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:39:07.319278'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Link or iframe to ashby board found
+  last_healed: '2026-04-10T20:30:41.763330'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: kit
+  manual_only: false
 - name: Modus Create
   tier: 3
   priority: medium
@@ -734,20 +715,20 @@ companies:
 - name: Help Scout
   tier: 3
   priority: medium
-  adapter: generic
+  adapter: ashby
   domain: helpscout.com
   industry: customer support software | saas | remote work
   notes: Remote company known for strong culture and async operating norms.
   sub_industry: Customer Support SaaS
-  careers_url: https://www.helpscout.com/company/careers/
+  careers_url: https://jobs.ashbyhq.com/helpscout/form/future-openings
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:39:08.174139'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Link or iframe to ashby board found
+  last_healed: '2026-04-10T20:30:42.232614'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: helpscout
+  manual_only: false
 - name: Baremetrics
   tier: 3
   priority: medium
@@ -756,49 +737,50 @@ companies:
   industry: saas analytics | subscription metrics | fintech adjacent
   notes: Distributed SaaS company focused on subscription and revenue analytics.
   sub_industry: SaaS Analytics
-  careers_url: https://baremetrics.com/careers
+  careers_url: https://baremetrics.com
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:39:08.822474'
+  status: manual_only
+  discovery_method: Generic career page discovered
+  last_healed: '2026-04-10T20:30:47.039884'
   heal_failure_streak: 1
   manual_only_suggested: false
   heal_last_failure_detail: Discovery budget exhausted
   cooldown_until: null
+  manual_only: true
 - name: bunny.net
   tier: 3
   priority: medium
-  adapter: generic
+  adapter: ashby
   domain: bunny.net
   industry: cdn | edge infrastructure | developer tools
   notes: Remote-first edge and CDN platform with globally distributed hiring.
   sub_industry: Edge Infrastructure
-  careers_url: https://bunny.net/careers/
+  careers_url: https://jobs.ashbyhq.com/bunny
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:39:05.856395'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Direct ashby probe
+  last_healed: '2026-04-10T20:30:50.774378'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: bunny
+  manual_only: false
 - name: Replit
   tier: 3
   priority: medium
-  adapter: generic
+  adapter: ashby
   domain: replit.com
   industry: developer tools | coding platform | ai
   notes: Developer platform with distributed hiring and strong AI adjacency.
   sub_industry: Developer Platform
-  careers_url: https://replit.com/careers
+  careers_url: https://jobs.ashbyhq.com/replit
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:40:39.626660'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Link or iframe to ashby board found
+  last_healed: '2026-04-10T20:30:47.762764'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  adapter_key: replit
+  manual_only: false
 - name: MailerLite
   tier: 3
   priority: medium
@@ -809,13 +791,11 @@ companies:
   sub_industry: Email Marketing SaaS
   careers_url: https://www.mailerlite.com/jobs
   active: true
-  status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:40:38.497168'
-  heal_failure_streak: 1
+  status: active
+  discovery_method: Existing URL confirmed
+  last_healed: '2026-04-10T20:30:47.760762'
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
 - name: Storyblok
   tier: 3
   priority: medium
@@ -827,9 +807,9 @@ companies:
   careers_url: https://www.storyblok.com/jobs
   active: true
   status: broken
-  discovery_method: Discovery budget exhausted
-  last_healed: '2026-04-09T12:40:49.163871'
-  heal_failure_streak: 1
+  discovery_method: No board detected
+  last_healed: '2026-04-10T20:30:54.764653'
+  heal_failure_streak: 2
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
-  cooldown_until: null
+  heal_last_failure_detail: No board detected
+  cooldown_until: '2026-04-14T02:30:54.757635+00:00'
