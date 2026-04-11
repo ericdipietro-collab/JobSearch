@@ -14,15 +14,19 @@ class SmartRecruitersAdapter(BaseAdapter):
         if not self.scorer:
             return False
         try:
+            tier = int(company_config.get("tier", 4) or 4)
+            # Tier 1/2 companies always fetch — their tier bonus covers borderline titles.
+            if tier <= 2:
+                return True
             pre = self.scorer.score_job(
                 {
                     "title": title,
                     "description": "",
-                    "tier": int(company_config.get("tier", 4) or 4),
+                    "tier": tier,
                     "location": str(location or ""),
                 }
             )
-            return float(pre.get("score") or 0.0) >= float(self.scorer.min_score_to_keep) * 0.3
+            return float(pre.get("score") or 0.0) >= float(self.scorer.min_score_to_keep) * 0.15
         except Exception:
             return False
 
@@ -62,7 +66,10 @@ class SmartRecruitersAdapter(BaseAdapter):
                 for raw in content:
                     title = raw.get("name", "")
                     location_data = raw.get("location") or {}
+                    is_remote = bool(location_data.get("remote") or location_data.get("telecommuting"))
                     location = f"{location_data.get('city', '')}, {location_data.get('region', '')}".strip(", ")
+                    if is_remote and "remote" not in location.lower():
+                        location = f"{location} / Remote" if location else "Remote"
 
                     job_url = f"https://jobs.smartrecruiters.com/{adapter_key}/{raw.get('id')}"
 

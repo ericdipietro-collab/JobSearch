@@ -1,4 +1,5 @@
 import logging
+import re
 import subprocess
 import sys
 import time
@@ -39,6 +40,9 @@ def _sync_heal_cooldown_to_db(company: dict, cooldown_days: int) -> None:
 
     Without this, the scraper would still attempt companies that the healer
     has marked as broken, wasting time and inflating failure counts.
+    Workday/generic use their dedicated health tables; all other adapters
+    (greenhouse, lever, ashby, smartrecruiters, rippling, etc.) use the
+    universal company_cooldowns table.
     """
     from jobsearch import ats_db as db
     name = company.get("name", "")
@@ -58,6 +62,23 @@ def _sync_heal_cooldown_to_db(company: dict, cooldown_days: int) -> None:
                 status="blocked", elapsed_ms=0.0, evaluated_count=0,
                 cooldown_days=cooldown_days, notes="Healer failure cooldown",
             )
+        else:
+            # greenhouse, lever, ashby, smartrecruiters, rippling, etc.
+            now_utc = datetime.now(timezone.utc)
+            cooldown_until = (now_utc + timedelta(days=cooldown_days)).isoformat()
+            conn.execute(
+                """
+                INSERT INTO company_cooldowns (company, adapter, careers_url, cooldown_until, notes, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(company) DO UPDATE SET
+                    adapter=excluded.adapter,
+                    careers_url=excluded.careers_url,
+                    cooldown_until=excluded.cooldown_until,
+                    notes=excluded.notes,
+                    updated_at=excluded.updated_at
+                """,
+                (name, adapter, careers_url, cooldown_until, "Healer failure cooldown", now_utc.isoformat()),
+            )
         conn.commit()
     except Exception:
         pass
@@ -65,20 +86,108 @@ def _sync_heal_cooldown_to_db(company: dict, cooldown_days: int) -> None:
         conn.close()
 
 
+def _is_low_signal_url(careers_url: str) -> bool:
+    """Return True if the URL is a bare site root with no ATS path — same logic as engine._generic_low_signal_reason."""
+    from urllib.parse import urlparse
+    if not careers_url:
+        return False
+    url_l = careers_url.lower()
+    # Positive signals — real careers pages
+    for marker in ("/careers", "/career", "/jobs", "/job-search", "/join-us", "/openings", "/positions", "/roles"):
+        if marker in url_l:
+            return False
+    # Known ATS hosts are never low-signal
+    for ats_host in ("greenhouse.io", "lever.co", "ashbyhq.com", "myworkdayjobs.com",
+                     "smartrecruiters.com", "rippling.com", "icims.com", "taleo.net"):
+        if ats_host in url_l:
+            return False
+    parsed = urlparse(careers_url)
+    path = re.sub(r"/+", "/", parsed.path or "/").rstrip("/") or "/"
+    return path == "/"
+
+
+def _heal_low_signal_companies(comp_data: list) -> None:
+    """
+    Inline pre-scrape heal for companies whose careers_url is a bare site root.
+    Updates careers_url / adapter in-place so the scraper engine sees real ATS URLs.
+    Only runs for generic-adapter companies; skips aggregators and ATS-specific adapters.
+    """
+    from jobsearch.services.healer_service import ATSHealer
+
+    candidates = [
+        c for c in (comp_data or [])
+        if isinstance(c, dict)
+        and str(c.get("adapter", "") or "").lower() in {"generic", ""}
+        and not c.get("contractor_source")
+        and not c.get("manual_only")
+        and _is_low_signal_url(str(c.get("careers_url", "") or ""))
+    ]
+    if not candidates:
+        return
+
+    click.echo(f"Pre-scrape heal: {len(candidates)} low-signal companies need URL discovery...")
+    healer = ATSHealer()
+    healed = 0
+    for company in candidates:
+        name = company.get("name", "Unknown")
+        try:
+            result = healer.discover(company, force=True)
+            if result.status in ("FOUND", "FALLBACK", "VALID") and result.careers_url:
+                company["careers_url"] = result.careers_url
+                if result.adapter:
+                    company["adapter"] = result.adapter
+                if result.adapter_key:
+                    company["adapter_key"] = result.adapter_key
+                else:
+                    company.pop("adapter_key", None)
+                healed += 1
+                click.echo(f"  ✓ {name}: {result.status} → {result.careers_url}")
+            else:
+                click.echo(f"  ✗ {name}: {result.status} ({result.detail})")
+        except Exception as exc:
+            click.echo(f"  ✗ {name}: heal error: {exc}")
+
+    click.echo(f"Pre-scrape heal complete: {healed}/{len(candidates)} companies updated.")
+
+
+_COMPANY_NAME_SUFFIXES = re.compile(
+    r"\s*,?\s*(inc\.?|llc\.?|ltd\.?|corp\.?|co\.?|group|holdings?|technologies|technology|tech|solutions?|services?|software|systems?|global|international|partners?|ventures?)\s*$",
+    re.IGNORECASE,
+)
+
+
+def _normalize_company_name(name: str) -> str:
+    """Strip corporate suffixes and punctuation for deduplication comparison."""
+    n = str(name).strip().lower()
+    # Iteratively strip trailing suffixes (e.g. "Foo Technologies, Inc." → "foo")
+    for _ in range(3):
+        prev = n
+        n = _COMPANY_NAME_SUFFIXES.sub("", n).strip().rstrip(",").strip()
+        if n == prev:
+            break
+    return n
+
+
 def _merge_company_lists(*lists):
     merged = []
-    seen = set()
+    seen_norm = set()   # dedup by normalized name + adapter (catches cross-registry dupes like CrowdStrike)
+    seen_exact = set()  # dedup by exact name + URL (catches intra-registry dupes)
     for companies in lists:
         for company in companies or []:
             if not isinstance(company, dict):
                 continue
-            key = (
+            exact_key = (
                 str(company.get("name", "")).strip().lower(),
                 str(company.get("careers_url", "")).strip().lower(),
             )
-            if key in seen:
+            norm_key = (
+                _normalize_company_name(company.get("name", "")),
+                str(company.get("adapter", "")).strip().lower(),
+            )
+            if exact_key in seen_exact or norm_key in seen_norm:
                 continue
-            seen.add(key)
+            seen_exact.add(exact_key)
+            seen_norm.add(norm_key)
             merged.append(company)
     return merged
 
@@ -210,7 +319,9 @@ def heal(heal_all, force, ignore_cooldown, no_waterfall, deep, workers, deep_tim
     click.echo(f"Starting ATS Registry Healer with {workers} workers across {len(registries)} registries...")
 
     import threading
-    from concurrent.futures import ThreadPoolExecutor
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    PER_COMPANY_CEILING_S = 300  # 5-minute hard ceiling per company; prevents a single hung thread from blocking the run
 
     log_path = settings.results_dir / "ats_heal.log"
     rotate_log_file(log_path)
@@ -309,6 +420,11 @@ def heal(heal_all, force, ignore_cooldown, no_waterfall, deep, workers, deep_tim
                 disable_waterfall=no_waterfall,
             )
             elapsed_ms = round((time.perf_counter() - started_at) * 1000, 1)
+            if elapsed_ms > 60_000:
+                import logging as _logging
+                _logging.getLogger(__name__).warning(
+                    "Heal slow: %s took %.1fs (>60s threshold)", name, elapsed_ms / 1000
+                )
 
             with lock:
                 before = {f: company.get(f) for f in _SUBSTANTIVE_HEAL_FIELDS}
@@ -374,12 +490,59 @@ def heal(heal_all, force, ignore_cooldown, no_waterfall, deep, workers, deep_tim
                 status_icon = "✅" if result.status in ("FOUND", "VALID") else "❌"
                 log_msg(f"  [{metrics['processed']}/{metrics['total']}] {status_icon} {name}: {result.status} ({result.detail}) | {elapsed_ms}ms")
 
+        executor = ThreadPoolExecutor(max_workers=workers)
         try:
-            with ThreadPoolExecutor(max_workers=workers) as executor:
-                list(executor.map(heal_one, to_heal))
+            future_to_company = {executor.submit(heal_one, c): c for c in to_heal}
+            submit_times = {f: time.perf_counter() for f in future_to_company}
+            pending = set(future_to_company)
+
+            while pending:
+                now = time.perf_counter()
+
+                # Collect newly-finished futures
+                done_now = {f for f in pending if f.done()}
+                for f in done_now:
+                    pending.discard(f)
+                    try:
+                        f.result()
+                    except Exception as exc:
+                        cname = future_to_company[f].get("name", "Unknown")
+                        log_msg(f"  ❌ {cname}: heal thread raised: {exc}")
+
+                # Enforce per-company ceiling — cancel and mark timed-out futures
+                timed_out = [f for f in pending if now - submit_times[f] > PER_COMPANY_CEILING_S]
+                for f in timed_out:
+                    pending.discard(f)
+                    f.cancel()
+                    company = future_to_company[f]
+                    cname = company.get("name", "Unknown")
+                    elapsed_ms = round((now - submit_times[f]) * 1000, 1)
+                    log_msg(
+                        f"  [{metrics['processed'] + 1}/{metrics['total']}] ⚠️  {cname}: "
+                        f"TIMED_OUT ({elapsed_ms:.0f}ms, ceiling={PER_COMPANY_CEILING_S}s)"
+                    )
+                    with lock:
+                        _apply_heal_failure_policy(
+                            company, "TIMED_OUT",
+                            f"timed_out_{PER_COMPANY_CEILING_S}s",
+                            datetime.now(timezone.utc),
+                        )
+                        company["last_healed"] = datetime.now().isoformat()
+                        metrics["processed"] += 1
+                        metrics["status_counts"]["TIMED_OUT"] = (
+                            metrics["status_counts"].get("TIMED_OUT", 0) + 1
+                        )
+                        metrics["company_times"].append(elapsed_ms)
+                        metrics["slowest"].append((elapsed_ms, cname, "TIMED_OUT", "-"))
+                        metrics["slowest"] = sorted(metrics["slowest"], reverse=True)[:10]
+
+                if pending:
+                    time.sleep(0.25)
+
         except Exception as exc:
             log_msg(f"Heal failed for registry {reg_path.name}: {exc}")
-            continue
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
 
         if changed_in_registry > 0:
             with reg_path.open("w", encoding="utf-8") as handle:
@@ -460,24 +623,38 @@ def run(deep_search, full_refresh, test_companies, contract_sources, aggregator_
     comp_path = None
     if all_companies:
         registries = settings.get_company_registries()
-        click.echo(f"Merging {len(registries)} company registries...")
+        click.echo(f"Merging ALL {len(registries)} company registries (including test files)...")
         for reg_path in registries:
             if reg_path.exists():
                 with reg_path.open("r", encoding="utf-8") as handle:
                     data = yaml.safe_load(handle) or {}
                     comp_data = _merge_company_lists(comp_data, data.get("companies", []))
-    else:
-        comp_path = Path(companies) if companies else settings.companies_yaml
-        if test_companies and not companies:
-            comp_path = BASE_DIR / "config" / "job_search_companies_test.yaml"
-        
+    elif companies:
+        comp_path = Path(companies)
         if not comp_path.exists():
             click.echo(f"Companies file not found at {comp_path}", err=True)
             return
-        
         click.echo(f"Loading companies from {comp_path.name}...")
         with comp_path.open("r", encoding="utf-8") as handle:
             comp_data = (yaml.safe_load(handle) or {}).get("companies", [])
+    elif test_companies:
+        comp_path = BASE_DIR / "config" / "job_search_companies_test.yaml"
+        if not comp_path.exists():
+            click.echo(f"Test companies file not found at {comp_path}", err=True)
+            return
+        click.echo(f"Loading companies from {comp_path.name}...")
+        with comp_path.open("r", encoding="utf-8") as handle:
+            comp_data = (yaml.safe_load(handle) or {}).get("companies", [])
+    else:
+        # DEFAULT: load all production registries (main + supplementary curated lists).
+        # Excludes test, contract, aggregator, and jobspy files — those are opt-in via flags.
+        registries = settings.get_production_registries()
+        click.echo(f"Merging {len(registries)} production company registries...")
+        for reg_path in registries:
+            if reg_path.exists():
+                with reg_path.open("r", encoding="utf-8") as handle:
+                    data = yaml.safe_load(handle) or {}
+                    comp_data = _merge_company_lists(comp_data, data.get("companies", []))
 
     if not prefs_path.exists():
         click.echo(f"Preferences file not found at {prefs_path}", err=True)
@@ -505,6 +682,12 @@ def run(deep_search, full_refresh, test_companies, contract_sources, aggregator_
             with jobspy_path.open("r", encoding="utf-8") as handle:
                 jobspy_data = (yaml.safe_load(handle) or {}).get("companies", [])
             comp_data = _merge_company_lists(comp_data, jobspy_data)
+
+    # P2: Pre-scrape heal for low_signal companies.
+    # Companies whose careers_url is a bare site root return 0 results every run without
+    # triggering re-discovery. Identify them here and attempt inline heal so the engine
+    # has real ATS URLs to work with.
+    _heal_low_signal_companies(comp_data)
 
     engine = ScraperEngine(prefs_data, comp_data, deep_search=deep_search, full_refresh=full_refresh)
     engine.run(max_workers=workers)

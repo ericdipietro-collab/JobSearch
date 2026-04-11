@@ -226,8 +226,11 @@ class ScraperEngine:
         self.known_urls: Dict[str, datetime] = {}
         try:
             now = datetime.now(timezone.utc)
-            for table in ["workday_target_health", "generic_target_health"]:
-                rows = main_conn.execute(f"SELECT company, cooldown_until FROM {table} WHERE cooldown_until IS NOT NULL").fetchall()
+            for table in ["workday_target_health", "generic_target_health", "company_cooldowns"]:
+                try:
+                    rows = main_conn.execute(f"SELECT company, cooldown_until FROM {table} WHERE cooldown_until IS NOT NULL").fetchall()
+                except Exception:
+                    rows = []  # table may not exist in older DBs
                 for r in rows:
                     try:
                         until = datetime.fromisoformat(str(r["cooldown_until"]))
@@ -240,7 +243,10 @@ class ScraperEngine:
             
             # Pre-load known job URLs to support incremental scraping
             if not self.full_refresh:
-                job_rows = main_conn.execute("SELECT job_url, updated_at FROM applications WHERE job_url IS NOT NULL").fetchall()
+                job_rows = main_conn.execute(
+                    "SELECT job_url, updated_at FROM applications "
+                    "WHERE job_url IS NOT NULL AND updated_at >= datetime('now', '-30 days')"
+                ).fetchall()
                 for r in job_rows:
                     try:
                         updated_at = datetime.fromisoformat(str(r["updated_at"]))
@@ -533,8 +539,6 @@ class ScraperEngine:
 
         is_workday = "myworkdayjobs.com" in careers_url or adapter_name in {"workday", "workday_manual"}
         is_generic = adapter_name == "generic" and not is_workday
-        if not is_workday and not is_generic:
-            return "", ""
 
         conn = db.get_connection()
         try:
@@ -560,6 +564,20 @@ class ScraperEngine:
                             return "generic", f"Cooldown until {until.isoformat()}"
                     except Exception:
                         pass
+            # Universal cooldown table for greenhouse, lever, ashby, smartrecruiters, rippling, etc.
+            # (bulk_cooldowns prefetch covers most cases; this is the fallback for cache misses)
+            try:
+                row = conn.execute(
+                    "SELECT cooldown_until FROM company_cooldowns WHERE company = ?", (name,)
+                ).fetchone()
+                if row and row["cooldown_until"]:
+                    until = datetime.fromisoformat(str(row["cooldown_until"]))
+                    if until.tzinfo is None:
+                        until = until.replace(tzinfo=timezone.utc)
+                    if until > now:
+                        return adapter_name or "unknown", f"Cooldown until {until.isoformat()} (healer)"
+            except Exception:
+                pass
         finally:
             conn.close()
         return "", ""
@@ -616,6 +634,16 @@ class ScraperEngine:
             and streak + 1 >= settings.workday_empty_cooldown_threshold
         ):
             cooldown_days = settings.workday_empty_cooldown_days
+        elif (
+            scrape_status == "empty"
+            and evaluated_count == 0
+            and streak + 1 >= settings.workday_empty_cooldown_threshold
+        ):
+            # Workday tenant URL is valid but returns no jobs on repeated runs —
+            # apply a short cooldown so we don't burn 15-30s per run per company.
+            # Companies with previous successes get a lighter cooldown (3d vs 7d)
+            # since their openings may just be cyclical.
+            cooldown_days = 3 if success_count > 0 else settings.workday_empty_cooldown_days
         db.update_workday_target_health(
             conn,
             company=company.get("name", ""),
@@ -636,11 +664,16 @@ class ScraperEngine:
         scrape_note: str,
         evaluated_count: int,
     ) -> None:
+        _GENERIC_SUPER_SLOW_MS = 75_000  # 75s+ with 0 results → cooldown regardless of history
         cooldown_days = 0
         existing = db.get_generic_target_health(conn, company.get("name", ""))
         success_count = int(existing["success_count"]) if existing else 0
         streak = int(existing["empty_streak"]) if existing else 0
         low_priority = str(company.get("priority", "") or "").lower() in {"low", "medium", ""}
+        if evaluated_count == 0 and scrape_ms >= _GENERIC_SUPER_SLOW_MS:
+            # Site is hanging on every request (e.g. hitting 84s TCP stall) — apply
+            # a short cooldown unconditionally so it doesn't burn 80s+ each run.
+            cooldown_days = max(cooldown_days, 3)
         if (
             scrape_status == "empty"
             and evaluated_count == 0
@@ -649,21 +682,21 @@ class ScraperEngine:
             and streak + 1 >= settings.generic_empty_cooldown_threshold
             and low_priority
         ):
-            cooldown_days = settings.generic_empty_cooldown_days
+            cooldown_days = max(cooldown_days, settings.generic_empty_cooldown_days)
         elif (
             scrape_status == "low_signal"
             and evaluated_count == 0
             and success_count == 0
             and low_priority
         ):
-            cooldown_days = settings.generic_low_signal_cooldown_days
+            cooldown_days = max(cooldown_days, settings.generic_low_signal_cooldown_days)
         elif (
             scrape_status == "blocked"
             and evaluated_count == 0
             and streak + 1 >= settings.generic_empty_cooldown_threshold
             and low_priority
         ):
-            cooldown_days = settings.generic_empty_cooldown_days
+            cooldown_days = max(cooldown_days, settings.generic_empty_cooldown_days)
         db.update_generic_target_health(
             conn,
             company=company.get("name", ""),
@@ -728,6 +761,23 @@ class ScraperEngine:
         rejected_rows: List[Dict[str, Any]] = []
 
         for job in jobs:
+            # Populate role_title_normalized if not already set.
+            # Strips seniority prefixes and trailing noise so the opportunity_service
+            # secondary dedup can match variants like "Sr. Product Manager" == "Product Manager".
+            if not getattr(job, "role_title_normalized", None):
+                _raw = str(job.role_title_raw or "").strip()
+                _norm = _raw.lower()
+                _norm = re.sub(
+                    r"^(senior|sr\.?|principal|staff|lead|head of|director of|vp of|vice president of)\s+",
+                    "",
+                    _norm,
+                    flags=re.IGNORECASE,
+                )
+                _norm = re.sub(r"\s*[–\-]\s*(remote|hybrid|onsite|on-site|us only|usa).*$", "", _norm, flags=re.IGNORECASE)
+                _norm = re.sub(r"\s*\(?(remote|hybrid|onsite)\)?$", "", _norm, flags=re.IGNORECASE)
+                _norm = re.sub(r"\s+(ii|iii|iv|v)\s*$", "", _norm, flags=re.IGNORECASE)
+                job.role_title_normalized = _norm.strip()
+
             scoring_data = {
                 "title": job.role_title_raw,
                 "description": job.description_excerpt,

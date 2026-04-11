@@ -565,6 +565,14 @@ def init_db(conn: sqlite3.Connection) -> None:
             notes TEXT,
             updated_at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS company_cooldowns (
+            company TEXT PRIMARY KEY,
+            adapter TEXT,
+            careers_url TEXT,
+            cooldown_until TEXT,
+            notes TEXT,
+            updated_at TEXT NOT NULL
+        );
         CREATE TABLE IF NOT EXISTS company_profiles (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
@@ -780,6 +788,7 @@ def init_db(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX IF NOT EXISTS idx_resume_variants_application ON resume_variants(application_id, updated_at DESC)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_workday_target_health_cooldown ON workday_target_health(cooldown_until)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_generic_target_health_cooldown ON generic_target_health(cooldown_until)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_company_cooldowns_until ON company_cooldowns(cooldown_until)")
     conn.execute("CREATE TABLE IF NOT EXISTS schema_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
     conn.execute(
         """

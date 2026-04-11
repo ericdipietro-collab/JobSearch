@@ -116,7 +116,7 @@ class WorkdayAdapter(BaseAdapter):
         offset = 0
         limit = 20
 
-        while offset < 400:
+        while True:
             if self._budget_exhausted(started_at, budget_ms):
                 break
             try:
@@ -162,7 +162,7 @@ class WorkdayAdapter(BaseAdapter):
                     from datetime import datetime, timezone, timedelta
                     last_updated = self.known_urls[job_url]
                     if datetime.now(timezone.utc) - last_updated < timedelta(days=3):
-                        print(f"Incremental Scrape: Skipping detail fetch for {job_url}")
+                        logger.debug("Incremental scrape: skipping detail fetch for %s", job_url)
                         # Return a minimal job entry.
                         jobs.append(
                             Job(
@@ -180,16 +180,23 @@ class WorkdayAdapter(BaseAdapter):
                         continue
 
                 # Pre-screen: score with no description to skip detail fetches for
-                # titles that have no keyword signal and can't reach the keep threshold
-                # from tier bonus alone. Tier 1 companies always pass (15pt bonus).
+                # titles that have no keyword signal and can't reach the keep threshold.
+                # Tier 1/2 companies bypass this gate entirely — their tier bonus ensures
+                # even borderline titles are worth fetching.
                 if self.scorer:
                     tier = int(company_config.get("tier", 4) or 4)
-                    pre = self.scorer.score_job({
-                        "title": title, "description": "",
-                        "tier": tier, "location": str(location),
-                    })
-                    if pre["score"] < self.scorer.min_score_to_keep * 0.3:
-                        continue
+                    if tier > 2:
+                        pre = self.scorer.score_job({
+                            "title": title, "description": "",
+                            "tier": tier, "location": str(location),
+                        })
+                        if pre["score"] < self.scorer.min_score_to_keep * 0.15:
+                            logger.debug(
+                                "pre-screen skip | company=%s title=%r score=%.1f threshold=%.1f",
+                                company_config.get("name", "?"), title,
+                                pre["score"], self.scorer.min_score_to_keep * 0.15,
+                            )
+                            continue
 
                 description = self._fetch_detail_description(
                     host,

@@ -156,6 +156,23 @@ class Settings:
         unique_registries = {r.resolve() for r in registries if ".bak" not in r.name}
         return sorted(list(unique_registries))
 
+    # Suffixes that identify test-only or specialized opt-in registries.
+    # These are excluded from default production scrape runs.
+    _PRODUCTION_REGISTRY_EXCLUDES = frozenset({
+        "_test", "_contract_test", "_contract", "_aggregators", "_jobspy"
+    })
+
+    def get_production_registries(self) -> List[Path]:
+        """All curated registries for a default production run.
+
+        Excludes test files and specialized opt-in sources (contract, aggregator, jobspy).
+        Those are still available via --contract-sources, --aggregator-sources, --jobspy-sources.
+        """
+        return [
+            r for r in self.get_company_registries()
+            if not any(r.stem.endswith(suffix) for suffix in self._PRODUCTION_REGISTRY_EXCLUDES)
+        ]
+
     @property
     def preferences_yaml(self) -> Path:
         return self.prefs_yaml
