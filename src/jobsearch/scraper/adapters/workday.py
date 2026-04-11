@@ -39,8 +39,9 @@ class WorkdayAdapter(BaseAdapter):
         html_reserve_ms = min(settings.workday_html_fallback_budget_ms, max(budget_ms // 3, 0))
         api_budget_ms = max(budget_ms - html_reserve_ms, 0)
         api_started_at = time.perf_counter()
+        company_name = company_config.get("name", "")
 
-        for host, tenant, site in self._candidate_contexts(careers_url, adapter_key):
+        for host, tenant, site in self._candidate_contexts(careers_url, adapter_key, company_name):
             if self._budget_exhausted(api_started_at, api_budget_ms):
                 self.last_status = "budget_exhausted"
                 self.last_note = f"API budget exhausted before listing fetch ({api_budget_ms} ms)"
@@ -59,7 +60,7 @@ class WorkdayAdapter(BaseAdapter):
         html_jobs = self._scrape_html_fallback(
             company_config,
             careers_url or f"https://{adapter_key}",
-            self._candidate_contexts(careers_url, adapter_key),
+            self._candidate_contexts(careers_url, adapter_key, company_name),
             time.perf_counter(),
             html_reserve_ms,
         )
@@ -76,7 +77,7 @@ class WorkdayAdapter(BaseAdapter):
                 self.last_note = "No Workday jobs detected"
         return html_jobs
 
-    def _candidate_contexts(self, careers_url: str, adapter_key: str) -> List[Tuple[str, str, str]]:
+    def _candidate_contexts(self, careers_url: str, adapter_key: str, company_name: str = "") -> List[Tuple[str, str, str]]:
         contexts: List[Tuple[str, str, str]] = []
         seen = set()
 
@@ -84,7 +85,9 @@ class WorkdayAdapter(BaseAdapter):
             if not source or "myworkdayjobs" not in source:
                 continue
             host, tenant, sites = self.workday_context(source)
-            for site in sites:
+            # Prepend name-based candidates before the generic sweep so they're tried first
+            name_sites = self._name_site_candidates(company_name) if company_name else []
+            for site in name_sites + sites:
                 key = (host, tenant, site)
                 if key not in seen:
                     contexts.append(key)
@@ -92,13 +95,35 @@ class WorkdayAdapter(BaseAdapter):
 
         if not contexts and careers_url:
             host, tenant, sites = self.workday_context(careers_url)
-            for site in sites:
+            name_sites = self._name_site_candidates(company_name) if company_name else []
+            for site in name_sites + sites:
                 key = (host, tenant, site)
                 if key not in seen:
                     contexts.append(key)
                     seen.add(key)
 
         return contexts
+
+    @staticmethod
+    def _name_site_candidates(company_name: str) -> List[str]:
+        """Generate Workday site ID candidates from the company display name.
+
+        Many Workday site IDs follow the pattern 'Company_Name' (title-cased words
+        joined by underscores) or 'CompanyName' (CamelCase). Generating these from
+        the YAML company name catches misconfigurations where the adapter_key was
+        set to the hostname tenant rather than the actual site ID.
+        """
+        words = re.sub(r"[^a-zA-Z0-9 ]", "", company_name).split()
+        if not words:
+            return []
+        underscore = "_".join(w.capitalize() for w in words)
+        camel = "".join(w.capitalize() for w in words)
+        candidates = []
+        for base in dict.fromkeys([underscore, camel]):
+            candidates.append(base)
+            candidates.append(f"{base}_External")
+            candidates.append(f"{base}_Careers")
+        return candidates
 
     def _scrape_endpoint(
         self,
