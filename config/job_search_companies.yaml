@@ -1280,9 +1280,9 @@ companies:
   notes: Massive trade processing firm; perfectly maps to his NFS/DTCC data ingestion
     background.
   sub_industry: Clearing / FinTech
-  careers_url: https://broadridge.wd5.myworkdayjobs.com
+  careers_url: https://broadridge.wd5.myworkdayjobs.com/Careers
   active: true
-  adapter_key: broadridge.wd5.myworkdayjobs.com
+  adapter_key: broadridge.wd5.myworkdayjobs.com/Careers
   status: active
   discovery_method: Skipped due to workday scrape cooldown until 2026-04-10T05:00:37.363988+00:00
     (blocked)
@@ -6780,13 +6780,13 @@ companies:
   tier: 4
   priority: medium
   adapter: workday
-  adapter_key: troweprice.wd5.myworkdayjobs.com/Troweprice
+  adapter_key: troweprice.wd5.myworkdayjobs.com/TRowePrice
   domain: troweprice.wd5.myworkdayjobs.com
   industry:
   - asset management
   notes: Strong history of hiring remote/hybrid product leaders for IDW
   sub_industry: Asset Management
-  careers_url: https://troweprice.wd5.myworkdayjobs.com/Troweprice
+  careers_url: https://troweprice.wd5.myworkdayjobs.com/TRowePrice
   active: true
   status: active
   discovery_method: Existing URL confirmed
