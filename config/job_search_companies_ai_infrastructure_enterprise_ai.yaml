@@ -56,7 +56,7 @@ companies:
 - name: Hugging Face
   tier: 1
   priority: high
-  adapter: generic
+  adapter: workable
   domain: huggingface.co
   industry:
   - open source AI|model hub|ML tooling
@@ -64,14 +64,14 @@ companies:
   sub_industry: Open AI Platform
   careers_url: https://apply.workable.com/huggingface
   active: true
-  status: manual_only
-  discovery_method: Generic career page discovered
+  status: active
+  discovery_method: Workable API
   last_healed: '2026-04-10T20:24:26.387629'
-  heal_failure_streak: 1
+  heal_failure_streak: 0
   manual_only_suggested: false
-  heal_last_failure_detail: Discovery budget exhausted
+  heal_last_failure_detail: null
   cooldown_until: null
-  manual_only: true
+  manual_only: false
 - name: Scale AI
   tier: 1
   priority: high

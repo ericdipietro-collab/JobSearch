@@ -259,6 +259,8 @@ class ATSHealer:
         ("smartrecruiters", "smartrecruiters.com"),
         ("icims", "icims.com"),
         ("bamboohr", "bamboohr.com"),
+        ("workable", "workable.com"),
+        ("breezy", "breezy.hr"),
         ("generic", "happydance.com"),
         ("generic", "onetrust.com"),
     ]
@@ -354,9 +356,9 @@ class ATSHealer:
         ("rippling", "rippling.com"),
         ("smartrecruiters", "smartrecruiters.com"),
 
-        # Known ATS / recruiting platforms (scrape support varies; discovery still useful)
-        ("generic", "workable.com"),
-        ("generic", "breezy.hr"),
+        # Known ATS / recruiting platforms with dedicated adapters
+        ("workable", "workable.com"),
+        ("breezy", "breezy.hr"),
         ("generic", "personio.com"),
         ("generic", "recruitee.com"),
         ("generic", "freshteam.com"),

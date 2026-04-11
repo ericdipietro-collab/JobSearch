@@ -18,6 +18,8 @@ from jobsearch import ats_db as db
 from jobsearch.db.connection import get_connection
 from jobsearch.scraper.adapters.ashby import AshbyAdapter
 from jobsearch.scraper.adapters.bamboohr import BambooHRAdapter
+from jobsearch.scraper.adapters.breezy import BreezyAdapter
+from jobsearch.scraper.adapters.workable import WorkableAdapter
 from jobsearch.scraper.adapters.adzuna import AdzunaAdapter
 from jobsearch.scraper.adapters.base import BaseAdapter, BlockedSiteError
 from jobsearch.scraper.adapters.crawl4ai_adapter import Crawl4AIAdapter
@@ -92,6 +94,8 @@ class ScraperEngine:
         "motionrecruitment": MotionRecruitmentAdapter,
         "ashby": AshbyAdapter,
         "bamboohr": BambooHRAdapter,
+        "breezy": BreezyAdapter,
+        "workable": WorkableAdapter,
         "workday": WorkdayAdapter,
         "workday_manual": WorkdayAdapter,
         "rippling": RipplingAdapter,

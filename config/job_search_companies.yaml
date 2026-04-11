@@ -2129,7 +2129,7 @@ companies:
 - name: Corcentric
   tier: 2
   priority: medium
-  adapter: generic
+  adapter: workable
   domain: corcentric.com
   industry: b2b payments | source-to-pay | data mapping
   notes: Source-to-pay software needing heavy data mapping into SAP/Oracle.

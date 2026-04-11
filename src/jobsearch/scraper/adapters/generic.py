@@ -1,5 +1,6 @@
 from typing import List, Dict, Any
 import hashlib
+import logging
 import re
 from urllib.parse import urljoin
 
@@ -8,8 +9,26 @@ from bs4 import BeautifulSoup
 from .base import BaseAdapter
 from jobsearch.scraper.models import Job
 
+logger = logging.getLogger(__name__)
+
 
 class GenericAdapter(BaseAdapter):
+    # ATS platform markers — if found in the fetched HTML for a generic-adapter
+    # company, that company's adapter field is wrong and should be corrected by
+    # the healer. Logged at WARNING so ops can spot silent coverage gaps.
+    _ATS_EMBED_SIGNALS = [
+        ("greenhouse", "greenhouse.io"),
+        ("greenhouse", "grnh.js"),
+        ("lever", "lever.co"),
+        ("ashby", "ashbyhq.com"),
+        ("workday", "myworkdayjobs.com"),
+        ("rippling", "rippling.com"),
+        ("smartrecruiters", "smartrecruiters.com"),
+        ("bamboohr", "bamboohr.com"),
+        ("workable", "workable.com"),
+        ("breezy", "breezy.hr"),
+        ("icims", "icims.com"),
+    ]
     STRONG_PATH_SIGNALS = [
         "/job/",
         "/jobs/",
@@ -96,6 +115,14 @@ class GenericAdapter(BaseAdapter):
                 if not html:
                     continue
 
+                detected_ats = self._detect_embedded_ats(html)
+                if detected_ats:
+                    logger.warning(
+                        "generic-adapter mismatch | company=%s url=%s detected_ats=%s — "
+                        "update adapter field and re-run healer to fix coverage",
+                        company_config.get("name", "?"), url, detected_ats,
+                    )
+
                 soup = BeautifulSoup(html, "html.parser")
                 if not self._page_looks_like_openings_page(url, soup, html, company_config):
                     continue
@@ -133,6 +160,14 @@ class GenericAdapter(BaseAdapter):
                 continue
 
         return jobs
+
+    def _detect_embedded_ats(self, html: str) -> str:
+        """Return the name of an embedded ATS if its marker is found in the HTML, else ''."""
+        html_lower = html.lower()
+        for ats_name, marker in self._ATS_EMBED_SIGNALS:
+            if marker in html_lower:
+                return ats_name
+        return ""
 
     def _page_looks_like_openings_page(self, url: str, soup: BeautifulSoup, html: str, company_config: Dict[str, Any]) -> bool:
         if company_config.get("contractor_source"):
