@@ -70,5 +70,5 @@ class RemotiveAdapter(BaseAdapter):
             return jobs
 
         except Exception as e:
-            logger.error(f"Remotive scrape failed for category '{category}': {e}")
+            logger.error(f"Remotive scrape failed for category '{target_category}': {e}")
             return []

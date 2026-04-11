@@ -29,7 +29,7 @@ class RemoteOKAdapter(BaseAdapter):
         try:
             import requests
             response = requests.get(url, headers=headers, timeout=20)
-            
+            response.raise_for_status()
             data = response.json()
             if not isinstance(data, list) or len(data) <= 1:
                 return []
@@ -79,5 +79,5 @@ class RemoteOKAdapter(BaseAdapter):
             return jobs
 
         except Exception as e:
-            logger.error(f"RemoteOK scrape failed for tag '{tag}': {e}")
+            logger.error(f"RemoteOK scrape failed for tag '{target_tag}': {e}")
             return []
