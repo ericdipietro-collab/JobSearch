@@ -725,7 +725,16 @@ class ScraperEngine:
             if deep_semaphore is None:
                 deep_semaphore = BoundedSemaphore(1)
             with deep_semaphore:
-                raw_jobs = self._deep_playwright.scrape_jobs_generic(careers_url, name)
+                # Route to company-specific Playwright function when one exists
+                name_key = re.sub(r"[^a-z0-9]", "", name.lower())
+                if "blackrock" in name_key and hasattr(self._deep_playwright, "scrape_jobs_blackrock"):
+                    raw_jobs = self._deep_playwright.scrape_jobs_blackrock(careers_url, name)
+                elif ("schwab" in name_key or "charlesschwab" in name_key) and hasattr(self._deep_playwright, "scrape_jobs_schwab"):
+                    raw_jobs = self._deep_playwright.scrape_jobs_schwab(careers_url, name)
+                elif ("spglobal" in name_key or "sandpglobal" in name_key) and hasattr(self._deep_playwright, "scrape_jobs_spglobal"):
+                    raw_jobs = self._deep_playwright.scrape_jobs_spglobal(careers_url, name)
+                else:
+                    raw_jobs = self._deep_playwright.scrape_jobs_generic(careers_url, name)
             jobs: List[Job] = []
             for raw in raw_jobs:
                 title = raw.get("title", "")

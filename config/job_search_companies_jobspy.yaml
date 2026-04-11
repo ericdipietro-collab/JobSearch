@@ -284,3 +284,149 @@ companies:
   cooldown_until: '2026-04-14T02:30:05.543877+00:00'
   discovery_method: No board detected
   last_healed: '2026-04-10T20:30:05.567894'
+- name: Bank of America JobSpy
+  source_lane: jobspy_experimental
+  adapter: jobspy
+  active: true
+  priority: medium
+  tier: 1
+  careers_url: https://careers.bankofamerica.com
+  domain: bankofamerica.com
+  industry: finance | banking
+  status: active
+  notes: JobSpy/Google Jobs fallback for Bank of America. Direct Workday API (ghr.wd1)
+    returns 404 for all site ID probes — auth-blocked. Use Google Jobs search instead.
+  search_queries:
+  - query: '"Bank of America" product manager fintech'
+    tier: 1
+  - query: '"Bank of America" solution architect financial services'
+    tier: 1
+  - query: '"Bank of America" technical business analyst'
+    tier: 2
+  - query: '"Bank of America" senior product manager'
+    tier: 1
+  location_filter: United States
+  site_names: google
+  results_wanted: 25
+  max_total_results: 25
+  hours_old: 72
+  country_indeed: USA
+  concurrency: 1
+  is_remote: false
+  job_type: ''
+  linkedin_fetch_description: false
+  google_search_term_template: '{query}'
+  continue_on_site_failure: true
+  cooldown_days: 1
+  heal_failure_streak: 0
+  manual_only_suggested: false
+  discovery_method: auth_blocked_workday_fallback
+- name: CME Group JobSpy
+  source_lane: jobspy_experimental
+  adapter: jobspy
+  active: true
+  priority: medium
+  tier: 1
+  careers_url: https://jobs.cmegroup.com
+  domain: cmegroup.com
+  industry: finance | exchanges
+  status: active
+  notes: JobSpy/Google Jobs fallback for CME Group. Direct Workday API (cmegroup.wd1)
+    returns 404/422 for all site ID probes — auth-blocked.
+  search_queries:
+  - query: '"CME Group" product manager'
+    tier: 1
+  - query: '"CME Group" solution architect'
+    tier: 1
+  - query: '"CME Group" technical business analyst'
+    tier: 2
+  - query: '"CME Group" senior product manager'
+    tier: 1
+  location_filter: United States
+  site_names: google
+  results_wanted: 25
+  max_total_results: 25
+  hours_old: 72
+  country_indeed: USA
+  concurrency: 1
+  is_remote: false
+  job_type: ''
+  linkedin_fetch_description: false
+  google_search_term_template: '{query}'
+  continue_on_site_failure: true
+  cooldown_days: 1
+  heal_failure_streak: 0
+  manual_only_suggested: false
+  discovery_method: auth_blocked_workday_fallback
+- name: Franklin Templeton JobSpy
+  source_lane: jobspy_experimental
+  adapter: jobspy
+  active: true
+  priority: medium
+  tier: 1
+  careers_url: https://franklintempleton.com/careers
+  domain: franklintempleton.com
+  industry: finance | asset_management
+  status: active
+  notes: JobSpy/Google Jobs fallback for Franklin Templeton. Direct Workday API
+    (franklintempleton.wd5) returns 422 for all site ID probes — auth-gated.
+  search_queries:
+  - query: '"Franklin Templeton" product manager'
+    tier: 1
+  - query: '"Franklin Templeton" solution architect'
+    tier: 1
+  - query: '"Franklin Templeton" technical business analyst'
+    tier: 2
+  - query: '"Franklin Templeton" senior product manager fintech'
+    tier: 1
+  location_filter: United States
+  site_names: google
+  results_wanted: 25
+  max_total_results: 25
+  hours_old: 72
+  country_indeed: USA
+  concurrency: 1
+  is_remote: false
+  job_type: ''
+  linkedin_fetch_description: false
+  google_search_term_template: '{query}'
+  continue_on_site_failure: true
+  cooldown_days: 1
+  heal_failure_streak: 0
+  manual_only_suggested: false
+  discovery_method: auth_blocked_workday_fallback
+- name: State Street JobSpy
+  source_lane: jobspy_experimental
+  adapter: jobspy
+  active: true
+  priority: low
+  tier: 4
+  careers_url: https://careers.statestreet.com
+  domain: statestreet.com
+  industry: finance | banking
+  status: active
+  notes: JobSpy/Google Jobs fallback for State Street. Direct Workday API (statestreet.wd1)
+    returns 404/422 for all site ID probes — auth-blocked. Tier 4 (lower priority).
+  search_queries:
+  - query: '"State Street" product manager'
+    tier: 1
+  - query: '"State Street" solution architect'
+    tier: 1
+  - query: '"State Street" technical business analyst'
+    tier: 2
+  location_filter: United States
+  site_names: google
+  results_wanted: 20
+  max_total_results: 20
+  hours_old: 72
+  country_indeed: USA
+  concurrency: 1
+  is_remote: false
+  job_type: ''
+  linkedin_fetch_description: false
+  google_search_term_template: '{query}'
+  continue_on_site_failure: true
+  cooldown_days: 1
+  heal_failure_streak: 0
+  manual_only_suggested: false
+  discovery_method: auth_blocked_workday_fallback

@@ -1051,8 +1051,8 @@ companies:
   tier: 1
   priority: high
   adapter: workday
-  adapter_key: blackrock.wd1.myworkdayjobs.com/Blackrock
-  domain: blackrock.wd1.myworkdayjobs.com
+  adapter_key: blackrock.wd3.myworkdayjobs.com/Blackrock
+  domain: blackrock.wd3.myworkdayjobs.com
   industry:
   - aladdin
   - asset management
@@ -1061,7 +1061,7 @@ companies:
   - financial data
   notes: Aladdin SME is rare — this is the top credential match
   sub_industry: Asset Management / Aladdin
-  careers_url: https://blackrock.wd1.myworkdayjobs.com/Blackrock
+  careers_url: https://careers.blackrock.com
   active: true
   status: active
   discovery_method: Existing URL confirmed
