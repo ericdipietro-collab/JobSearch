@@ -109,6 +109,41 @@ class Settings:
         self.llm_daily_token_budget = int(os.getenv("JOBSEARCH_LLM_DAILY_TOKEN_BUDGET", "500000"))
         self.scrape_debug_artifacts = str(os.getenv("JOBSEARCH_SCRAPE_DEBUG_ARTIFACTS", "false")).strip().lower() in {"1", "true", "yes", "on"}
 
+        # Scraper Cooldowns (days)
+        self.cooldown_days_blocked = int(os.getenv("JOBSEARCH_COOLDOWN_DAYS_BLOCKED", "7"))
+        self.cooldown_days_broken = int(os.getenv("JOBSEARCH_COOLDOWN_DAYS_BROKEN", "3"))
+        self.cooldown_days_stale = int(os.getenv("JOBSEARCH_COOLDOWN_DAYS_STALE", "5"))
+        self.cooldown_days_auth = int(os.getenv("JOBSEARCH_COOLDOWN_DAYS_AUTH", "14"))
+        self.cooldown_days_geo_gate = int(os.getenv("JOBSEARCH_COOLDOWN_DAYS_GEO_GATE", "2"))
+        self.cooldown_days_no_openings = int(os.getenv("JOBSEARCH_COOLDOWN_DAYS_NO_OPENINGS", "1"))
+        self.cooldown_days_selector_miss = int(os.getenv("JOBSEARCH_COOLDOWN_DAYS_SELECTOR_MISS", "1"))
+
+        # Scheduling Policy (Priority Weights)
+        self.scheduler_weight_tier_1 = float(os.getenv("JOBSEARCH_SCHEDULER_WEIGHT_TIER_1", "80"))
+        self.scheduler_weight_tier_2 = float(os.getenv("JOBSEARCH_SCHEDULER_WEIGHT_TIER_2", "60"))
+        self.scheduler_weight_tier_3 = float(os.getenv("JOBSEARCH_SCHEDULER_WEIGHT_TIER_3", "40"))
+        self.scheduler_weight_tier_4 = float(os.getenv("JOBSEARCH_SCHEDULER_WEIGHT_TIER_4", "20"))
+        self.scheduler_bonus_api = float(os.getenv("JOBSEARCH_SCHEDULER_BONUS_API", "10"))
+        self.scheduler_bonus_new = float(os.getenv("JOBSEARCH_SCHEDULER_BONUS_NEW", "15"))
+        self.scheduler_penalty_fail_streak = float(os.getenv("JOBSEARCH_SCHEDULER_PENALTY_FAIL_STREAK", "5"))
+        self.scheduler_healer_auto_trigger = str(os.getenv("JOBSEARCH_SCHEDULER_HEALER_AUTO_TRIGGER", "true")).strip().lower() in {"1", "true", "yes", "on"}
+
+        # Flapping & Escalation Policy
+        self.health_flapping_window_days = int(os.getenv("JOBSEARCH_HEALTH_FLAPPING_WINDOW_DAYS", "7"))
+        self.health_flapping_threshold_low = int(os.getenv("JOBSEARCH_HEALTH_FLAPPING_THRESHOLD_LOW", "3"))
+        self.health_flapping_threshold_med = int(os.getenv("JOBSEARCH_HEALTH_FLAPPING_THRESHOLD_MED", "5"))
+        self.health_flapping_threshold_high = int(os.getenv("JOBSEARCH_HEALTH_FLAPPING_THRESHOLD_HIGH", "7"))
+        
+        self.health_escalation_window_days = int(os.getenv("JOBSEARCH_HEALTH_ESCALATION_WINDOW_DAYS", "7"))
+        self.health_escalation_multiplier_2x = int(os.getenv("JOBSEARCH_HEALTH_ESCALATION_MULTIPLIER_2X", "2"))
+        self.health_escalation_multiplier_4x = int(os.getenv("JOBSEARCH_HEALTH_ESCALATION_MULTIPLIER_4X", "4"))
+        self.health_escalation_max_days = int(os.getenv("JOBSEARCH_HEALTH_ESCALATION_MAX_DAYS", "30"))
+        self.health_escalation_reset_days = int(os.getenv("JOBSEARCH_HEALTH_ESCALATION_RESET_DAYS", "14"))
+
+        # Tailoring & Export
+        self.tailoring_block_on_critical = str(os.getenv("JOBSEARCH_TAILORING_BLOCK_ON_CRITICAL", "true")).strip().lower() in {"1", "true", "yes", "on"}
+        self.tailoring_export_max_age_hours = int(os.getenv("JOBSEARCH_TAILORING_EXPORT_MAX_AGE_HOURS", "24"))
+
         # Ensure directories exist
         self.results_dir.mkdir(parents=True, exist_ok=True)
         self.config_dir.mkdir(parents=True, exist_ok=True)

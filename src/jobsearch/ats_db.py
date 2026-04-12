@@ -22,6 +22,7 @@ DB_PATH = settings.db_path
 STATUSES = [
     "exploring",
     "considering",
+    "prepared",
     "applied",
     "screening",
     "interviewing",
@@ -34,9 +35,10 @@ STATUSES = [
 STATUS_COLORS = {
     "exploring": "#7c3aed",
     "considering": "#6b7280",
+    "prepared": "#8b5cf6",
     "applied": "#3b82f6",
-    "screening": "#8b5cf6",
-    "interviewing": "#f59e0b",
+    "screening": "#f59e0b",
+    "interviewing": "#fbbf24",
     "offer": "#10b981",
     "accepted": "#059669",
     "rejected": "#ef4444",
@@ -188,6 +190,9 @@ class Opportunity(BaseModel):
     notes: str = ""
     source_lane: str = "employer_ats"
     canonical_job_url: str = ""
+
+    extraction_method: str = ""
+    extraction_confidence: float = 0.0
 
     @staticmethod
     def make_id(company: str, title: str, url: str) -> str:
@@ -573,6 +578,48 @@ def init_db(conn: sqlite3.Connection) -> None:
             notes TEXT,
             updated_at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS board_health (
+            company TEXT PRIMARY KEY,
+            adapter TEXT,
+            careers_url TEXT,
+            board_state TEXT NOT NULL DEFAULT 'healthy',
+            last_success_method TEXT,
+            last_http_status INTEGER,
+            manual_review_required INTEGER DEFAULT 0,
+            suppression_reason TEXT,
+            consecutive_failures INTEGER DEFAULT 0,
+            last_success_at TEXT,
+            last_attempt_at TEXT,
+            last_healed_at TEXT,
+            cooldown_until TEXT,
+            notes TEXT,
+            updated_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS board_health_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            company TEXT NOT NULL,
+            adapter TEXT,
+            from_state TEXT,
+            to_state TEXT NOT NULL,
+            trigger_subsystem TEXT NOT NULL,
+            reason TEXT,
+            extraction_method TEXT,
+            extraction_confidence REAL,
+            metadata TEXT
+        );
+        CREATE TABLE IF NOT EXISTS user_actions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            entity_type TEXT NOT NULL,
+            entity_id TEXT NOT NULL,
+            action_key TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'active',
+            snoozed_until TEXT,
+            metadata TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            UNIQUE(entity_type, entity_id, action_key)
+        );
         CREATE TABLE IF NOT EXISTS company_profiles (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
@@ -602,12 +649,62 @@ def init_db(conn: sqlite3.Connection) -> None:
             service    TEXT    NOT NULL,
             created_at TEXT    NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS tailored_artifacts (
+            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            application_id      INTEGER NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
+            artifact_type       TEXT NOT NULL,
+            content             TEXT,
+            notes               TEXT,
+            version             INTEGER DEFAULT 1,
+            created_at          TEXT NOT NULL,
+            updated_at          TEXT NOT NULL
+        );
         """
     )
 
     # Backfill schema changes for older DBs created before migrations were added.
     migrate_stage_history(conn)
     migrate_content_hash(conn)
+
+    # Ensure new tables from recent updates exist
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS board_health (
+            company TEXT PRIMARY KEY,
+            adapter TEXT,
+            careers_url TEXT,
+            board_state TEXT NOT NULL DEFAULT 'healthy',
+            last_success_method TEXT,
+            last_http_status INTEGER,
+            manual_review_required INTEGER DEFAULT 0,
+            suppression_reason TEXT,
+            consecutive_failures INTEGER DEFAULT 0,
+            last_success_at TEXT,
+            last_attempt_at TEXT,
+            last_healed_at TEXT,
+            cooldown_until TEXT,
+            notes TEXT,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS board_health_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            company TEXT NOT NULL,
+            adapter TEXT,
+            from_state TEXT,
+            to_state TEXT NOT NULL,
+            trigger_subsystem TEXT NOT NULL,
+            reason TEXT,
+            extraction_method TEXT,
+            extraction_confidence REAL,
+            metadata TEXT
+        )
+        """
+    )
 
     _add_columns_if_missing(
         conn,
@@ -689,6 +786,13 @@ def init_db(conn: sqlite3.Connection) -> None:
             "v2_anchor_score": "REAL",
             "v2_baseline_score": "REAL",
             "v2_flags": "TEXT",
+            "extraction_method": "TEXT",
+            "extraction_confidence": "REAL",
+            "last_exported_at": "TEXT",
+            "role_cluster": "TEXT",
+            "canonical_group_id": "TEXT",
+            "is_canonical": "INTEGER DEFAULT 1",
+            "canonical_merge_rationale": "TEXT",
         },
     )
 
@@ -1956,19 +2060,324 @@ def upcoming_interviews(conn: sqlite3.Connection, days: int = 14, limit: Optiona
     return conn.execute(query, params).fetchall()
 
 
-def get_scraper_health_rows(conn: sqlite3.Connection) -> List[sqlite3.Row]:
+def get_board_health(conn: sqlite3.Connection, company: str) -> Optional[sqlite3.Row]:
+    return conn.execute("SELECT * FROM board_health WHERE company = ?", (company,)).fetchone()
+
+
+def get_all_board_health(conn: sqlite3.Connection) -> List[sqlite3.Row]:
+    return conn.execute("SELECT * FROM board_health ORDER BY updated_at DESC").fetchall()
+
+
+def record_board_health_event(
+    conn: sqlite3.Connection,
+    company: str,
+    to_state: str,
+    trigger_subsystem: str,
+    *,
+    from_state: Optional[str] = None,
+    adapter: Optional[str] = None,
+    reason: Optional[str] = None,
+    extraction_method: Optional[str] = None,
+    extraction_confidence: Optional[float] = None,
+    metadata: Optional[Dict[str, Any]] = None,
+) -> None:
+    """Record a board health transition event."""
+    # Deduplication: don't record if state didn't change AND it's the same subsystem within 1 hour
+    # unless it's a 'scrape_run' with new results (to be handled by caller if needed)
+    
+    # Check latest event for this company
+    last_event = conn.execute(
+        "SELECT to_state, trigger_subsystem, timestamp FROM board_health_events WHERE company = ? ORDER BY id DESC LIMIT 1",
+        (company,)
+    ).fetchone()
+    
+    if last_event:
+        last_to_state = last_event["to_state"]
+        last_trigger = last_event["trigger_subsystem"]
+        last_ts = datetime.fromisoformat(last_event["timestamp"].replace("Z", "+00:00"))
+        
+        # If state is same and trigger is same and it was recent (< 4h), skip unless it's a healer recovery
+        if last_to_state == to_state and last_trigger == trigger_subsystem:
+            if (datetime.now(timezone.utc) - last_ts).total_seconds() < 14400: # 4 hours
+                if trigger_subsystem != "healer": # Always record healer attempts for visibility
+                    return
+
+    conn.execute(
+        """
+        INSERT INTO board_health_events (
+            timestamp, company, adapter, from_state, to_state, 
+            trigger_subsystem, reason, extraction_method, 
+            extraction_confidence, metadata
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            _now(),
+            company,
+            adapter,
+            from_state,
+            to_state,
+            trigger_subsystem,
+            reason,
+            extraction_method,
+            extraction_confidence,
+            json.dumps(metadata) if metadata else None
+        )
+    )
+    conn.commit()
+
+
+def update_board_health(
+    conn: sqlite3.Connection,
+    company: str,
+    *,
+    adapter: Optional[str] = None,
+    careers_url: Optional[str] = None,
+    board_state: Optional[str] = None,
+    last_success_method: Optional[str] = None,
+    last_http_status: Optional[int] = None,
+    manual_review_required: Optional[int] = None,
+    suppression_reason: Optional[str] = None,
+    consecutive_failures: Optional[int] = None,
+    last_success_at: Optional[str] = None,
+    last_attempt_at: Optional[str] = None,
+    last_healed_at: Optional[str] = None,
+    cooldown_until: Optional[str] = None,
+    notes: Optional[str] = None,
+    trigger_subsystem: str = "scrape_run", # Default trigger
+) -> None:
+    now = _now()
+    existing = get_board_health(conn, company)
+    payload = {
+        "updated_at": now,
+    }
+    if adapter is not None: payload["adapter"] = adapter
+    if careers_url is not None: payload["careers_url"] = careers_url
+    if board_state is not None: payload["board_state"] = board_state
+    if last_success_method is not None: payload["last_success_method"] = last_success_method
+    if last_http_status is not None: payload["last_http_status"] = last_http_status
+    if manual_review_required is not None: payload["manual_review_required"] = manual_review_required
+    if suppression_reason is not None: payload["suppression_reason"] = suppression_reason
+    if consecutive_failures is not None: payload["consecutive_failures"] = consecutive_failures
+    if last_success_at is not None: payload["last_success_at"] = last_success_at
+    if last_attempt_at is not None: payload["last_attempt_at"] = last_attempt_at
+    if last_healed_at is not None: payload["last_healed_at"] = last_healed_at
+    if cooldown_until is not None: payload["cooldown_until"] = cooldown_until
+    if notes is not None: payload["notes"] = notes
+
+    # Record event if state changed
+    if board_state and (not existing or existing["board_state"] != board_state):
+        record_board_health_event(
+            conn,
+            company,
+            to_state=board_state,
+            trigger_subsystem=trigger_subsystem,
+            from_state=existing["board_state"] if existing else None,
+            adapter=adapter or (existing["adapter"] if existing else None),
+            reason=notes or suppression_reason,
+            extraction_method=last_success_method,
+        )
+
+    if existing:
+        sets = ", ".join(f"{k} = ?" for k in payload)
+        conn.execute(f"UPDATE board_health SET {sets} WHERE company = ?", [*payload.values(), company])
+    else:
+        payload["company"] = company
+        cols = ", ".join(payload.keys())
+        places = ", ".join("?" for _ in payload)
+        conn.execute(f"INSERT INTO board_health ({cols}) VALUES ({places})", list(payload.values()))
+    conn.commit()
+
+
+def get_recent_board_health_events(conn: sqlite3.Connection, limit: int = 50) -> List[sqlite3.Row]:
+    return conn.execute(
+        "SELECT * FROM board_health_events ORDER BY id DESC LIMIT ?", (limit,)
+    ).fetchall()
+
+
+def add_tailored_artifact(
+    conn: sqlite3.Connection,
+    application_id: int,
+    artifact_type: str,
+    content: str,
+    notes: Optional[str] = None,
+    version: int = 1
+) -> int:
+    now = _now()
+    cur = conn.execute(
+        """
+        INSERT INTO tailored_artifacts (application_id, artifact_type, content, notes, version, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        (application_id, artifact_type, content, notes, version, now, now)
+    )
+    conn.commit()
+    return cur.lastrowid
+
+
+def update_tailored_artifact(conn: sqlite3.Connection, artifact_id: int, **kwargs) -> None:
+    if not kwargs:
+        return
+    kwargs["updated_at"] = _now()
+    sets = ", ".join(f"{k} = ?" for k in kwargs)
+    conn.execute(f"UPDATE tailored_artifacts SET {sets} WHERE id = ?", [*kwargs.values(), artifact_id])
+    conn.commit()
+
+
+def get_tailored_artifacts_for_application(conn: sqlite3.Connection, application_id: int) -> List[sqlite3.Row]:
+    return conn.execute(
+        "SELECT * FROM tailored_artifacts WHERE application_id = ? ORDER BY updated_at DESC",
+        (application_id,)
+    ).fetchall()
+
+
+def get_tailored_artifact(conn: sqlite3.Connection, artifact_id: int) -> Optional[sqlite3.Row]:
+    return conn.execute("SELECT * FROM tailored_artifacts WHERE id = ?", (artifact_id,)).fetchone()
+
+
+def delete_tailored_artifact(conn: sqlite3.Connection, artifact_id: int) -> None:
+    conn.execute("DELETE FROM tailored_artifacts WHERE id = ?", (artifact_id,))
+    conn.commit()
+
+
+def get_board_health_history(conn: sqlite3.Connection, company: str) -> List[sqlite3.Row]:
+    return conn.execute(
+        "SELECT * FROM board_health_events WHERE company = ? ORDER BY id DESC", (company,)
+    ).fetchall()
+
+
+def get_flapping_boards(conn: sqlite3.Connection, days: int = 7) -> List[sqlite3.Row]:
+    """Boards that have changed state multiple times in the last N days."""
     return conn.execute(
         """
-        SELECT company, 'workday' AS adapter_family, careers_url, empty_streak, success_count,
-               last_evaluated, cooldown_until, last_status, last_elapsed_ms, notes, updated_at
-        FROM workday_target_health
-        UNION ALL
-        SELECT company, 'generic' AS adapter_family, careers_url, empty_streak, success_count,
-               last_evaluated, cooldown_until, last_status, last_elapsed_ms, notes, updated_at
-        FROM generic_target_health
-        ORDER BY updated_at DESC, company ASC
+        SELECT company, COUNT(*) as changes
+        FROM board_health_events
+        WHERE timestamp >= datetime('now', ?)
+        GROUP BY company
+        HAVING changes > 2
+        ORDER BY changes DESC
+        """,
+        (f"-{days} days",)
+    ).fetchall()
+
+
+def get_healer_recoveries(conn: sqlite3.Connection) -> List[sqlite3.Row]:
+    """Events where to_state is 'healthy' and trigger is 'healer'."""
+    return conn.execute(
+        """
+        SELECT * FROM board_health_events
+        WHERE to_state = 'healthy' AND trigger_subsystem = 'healer'
+        ORDER BY id DESC
         """
     ).fetchall()
+
+
+def get_state_transition_counts(conn: sqlite3.Connection) -> List[sqlite3.Row]:
+    return conn.execute(
+        "SELECT to_state, COUNT(*) as count FROM board_health_events GROUP BY to_state ORDER BY count DESC"
+    ).fetchall()
+
+
+def get_user_actions(conn: sqlite3.Connection, status: str = "active") -> List[sqlite3.Row]:
+    """Get user actions by status, respecting snooze."""
+    now = _now()
+    return conn.execute(
+        """
+        SELECT * FROM user_actions 
+        WHERE status = ? 
+        AND (snoozed_until IS NULL OR snoozed_until <= ?)
+        """,
+        (status, now)
+    ).fetchall()
+
+
+def upsert_user_action(
+    conn: sqlite3.Connection,
+    entity_type: str,
+    entity_id: str,
+    action_key: str,
+    status: str = "active",
+    snoozed_until: Optional[str] = None,
+    metadata: Optional[Dict[str, Any]] = None
+) -> None:
+    now = _now()
+    m_json = json.dumps(metadata) if metadata else None
+    conn.execute(
+        """
+        INSERT INTO user_actions (entity_type, entity_id, action_key, status, snoozed_until, metadata, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(entity_type, entity_id, action_key) DO UPDATE SET
+            status = excluded.status,
+            snoozed_until = excluded.snoozed_until,
+            metadata = excluded.metadata,
+            updated_at = excluded.updated_at
+        """,
+        (entity_type, entity_id, action_key, status, snoozed_until, m_json, now, now)
+    )
+    conn.commit()
+
+
+def delete_user_action(conn: sqlite3.Connection, entity_type: str, entity_id: str, action_key: str) -> None:
+    conn.execute(
+        "DELETE FROM user_actions WHERE entity_type = ? AND entity_id = ? AND action_key = ?",
+        (entity_type, entity_id, action_key)
+    )
+    conn.commit()
+
+
+def count_recent_events(conn: sqlite3.Connection, company: str, to_state: str, days: int = 7) -> int:
+    """Count how many times a company has transitioned to a specific state in the last N days."""
+    row = conn.execute(
+        """
+        SELECT COUNT(*) as n
+        FROM board_health_events
+        WHERE company = ? AND to_state = ? AND timestamp >= datetime('now', ?)
+        """,
+        (company, to_state, f"-{days} days")
+    ).fetchone()
+    return int(row["n"]) if row else 0
+
+
+def get_healer_roi_metrics(conn: sqlite3.Connection, days: int = 30) -> Dict[str, Any]:
+    """Roll up ROI metrics for the healer based on event history."""
+    since = f"-{days} days"
+    
+    total_recoveries = conn.execute(
+        "SELECT COUNT(*) FROM board_health_events WHERE to_state = 'healthy' AND trigger_subsystem = 'healer' AND timestamp >= datetime('now', ?)",
+        (since,)
+    ).fetchone()[0]
+    
+    stale_recoveries = conn.execute(
+        "SELECT COUNT(*) FROM board_health_events WHERE to_state = 'healthy' AND from_state = 'stale_url' AND trigger_subsystem = 'healer' AND timestamp >= datetime('now', ?)",
+        (since,)
+    ).fetchone()[0]
+    
+    blocked_recoveries = conn.execute(
+        "SELECT COUNT(*) FROM board_health_events WHERE to_state = 'healthy' AND from_state LIKE 'blocked%' AND trigger_subsystem = 'healer' AND timestamp >= datetime('now', ?)",
+        (since,)
+    ).fetchone()[0]
+    
+    by_family = conn.execute(
+        """
+        SELECT adapter, COUNT(*) as count 
+        FROM board_health_events 
+        WHERE to_state = 'healthy' AND trigger_subsystem = 'healer' AND timestamp >= datetime('now', ?)
+        GROUP BY adapter ORDER BY count DESC
+        """,
+        (since,)
+    ).fetchall()
+    
+    return {
+        "total_recoveries": total_recoveries,
+        "stale_recoveries": stale_recoveries,
+        "blocked_recoveries": blocked_recoveries,
+        "by_family": [dict(r) for r in by_family],
+        "manual_hours_saved": total_recoveries * 0.5, # Estimate 30m per manual fix
+    }
+
+
+def get_scraper_health_rows(conn: sqlite3.Connection) -> List[sqlite3.Row]:
+    # Unified health view from board_health
+    return get_all_board_health(conn)
 
 
 def upcoming_interviews_this_week(conn: sqlite3.Connection) -> List[sqlite3.Row]:

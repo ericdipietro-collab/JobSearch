@@ -110,9 +110,10 @@ class BaseAdapter(ABC):
         raw_segments = [seg for seg in parsed.path.split("/") if seg]
         segments = []
         for seg in raw_segments:
-            if re.fullmatch(r"[a-z]{2}(?:-[A-Z]{2})?", seg):
+            # Filter out locales like en-US, en-GB, fr-FR, etc.
+            if re.fullmatch(r"[a-z]{2}(?:-[A-Z]{2,3})?", seg, re.I):
                 continue
-            if seg.lower() in {"job", "jobs", "search-results", "apply"}:
+            if seg.lower() in {"job", "jobs", "search-results", "apply", "en-us"}:
                 continue
             segments.append(seg)
         

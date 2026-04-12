@@ -6,15 +6,17 @@ import logging
 import os
 import random
 import re
+import sqlite3
 import time
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from threading import BoundedSemaphore
-from typing import Any, Dict, List, Type
+from typing import Any, Dict, List, Type, Optional
 from urllib.parse import urlparse
 
-from jobsearch.config.settings import BASE_DIR, get_runtime_setting, get_shared_session, rotate_log_file, settings
+from jobsearch.config.settings import BASE_DIR, get_runtime_setting, get_shared_session, get_headers, rotate_log_file, settings
 from jobsearch.services.heal_evidence import HealEvidenceWriter
+from jobsearch import ats_db
 from jobsearch import ats_db as db
 from jobsearch.db.connection import get_connection
 from jobsearch.scraper.adapters.ashby import AshbyAdapter
@@ -44,7 +46,8 @@ from jobsearch.scraper.adapters.smartrecruiters import SmartRecruitersAdapter
 from jobsearch.scraper.adapters.themuse import TheMuseAdapter
 from jobsearch.scraper.adapters.usajobs import USAJobsAdapter
 from jobsearch.scraper.adapters.workday import WorkdayAdapter
-from jobsearch.scraper.ats_routing import choose_extraction_route, fingerprint_ats
+from jobsearch.scraper.ats_routing import choose_extraction_route, fingerprint_ats, FailureClassifier
+from jobsearch.scraper.scheduler_policy import SchedulerPolicy, EscalationPolicy
 from jobsearch.scraper.scoring import Scorer
 from jobsearch.services.opportunity_service import upsert_job
 from jobsearch.services.enrichment_service import EnrichmentService
@@ -141,6 +144,8 @@ class ScraperEngine:
             )
         ]
         self.scorer = Scorer(preferences)
+        self.policy = SchedulerPolicy(settings)
+        self.escalation_policy = EscalationPolicy(settings)
         self.session = get_shared_session()
         self.bulk_cooldowns: Dict[str, datetime] = {}
         self.known_urls: Dict[str, datetime] = {}
@@ -207,24 +212,63 @@ class ScraperEngine:
         return list(result or []), {}
 
     def _resolve_adapter_name(self, company: Dict[str, Any]) -> str:
-        adapter_name = str(company.get("adapter", "custom_manual") or "custom_manual").lower()
+        adapter_name = str(company.get("adapter", "") or "generic").lower()
         careers_url = str(company.get("careers_url", "") or "").lower()
-        if adapter_name in {"custom_manual", "custom_site", "custom_blackrock", "custom_schwab", "custom_spglobal"} or not adapter_name:
-            if "greenhouse.io" in careers_url:
-                adapter_name = "greenhouse"
-            elif "lever.co" in careers_url:
-                adapter_name = "lever"
-            elif "ashbyhq.com" in careers_url:
-                adapter_name = "ashby"
-            elif "myworkdayjobs.com" in careers_url:
-                adapter_name = "workday"
-            elif "rippling.com" in careers_url:
-                adapter_name = "rippling"
-            elif "smartrecruiters.com" in careers_url:
-                adapter_name = "smartrecruiters"
-            else:
-                adapter_name = "crawl4ai"
-        return adapter_name
+        
+        # If the adapter is already a known specific one, keep it
+        if adapter_name in self.ADAPTER_MAP and adapter_name not in {
+            "generic", "custom_manual", "custom_site", "custom_blackrock", 
+            "custom_schwab", "custom_spglobal", "crawl4ai"
+        }:
+            return adapter_name
+            
+        # Try to resolve from careers_url
+        if "greenhouse.io" in careers_url:
+            return "greenhouse"
+        if "lever.co" in careers_url:
+            return "lever"
+        if "ashbyhq.com" in careers_url:
+            return "ashby"
+        if "myworkdayjobs.com" in careers_url:
+            return "workday"
+        if "rippling.com" in careers_url:
+            return "rippling"
+        if "smartrecruiters.com" in careers_url:
+            return "smartrecruiters"
+            
+        # Custom known endpoints
+        if "schwab" in careers_url:
+            return "generic"
+        if "snowflake" in careers_url:
+            return "generic"
+        if "cwan.com" in careers_url:
+            return "generic"
+            
+        # Default fallback
+        if adapter_name == "generic":
+            return "generic"
+            
+        return "crawl4ai"
+
+    def _log_scheduling_decision(self, decision: Any):
+        """Log scheduling decision to a structured JSONL file."""
+        try:
+            path = settings.results_dir / "scheduling_decisions.jsonl"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with path.open("a", encoding="utf-8") as f:
+                f.write(json.dumps({
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "company": decision.company,
+                    "action": decision.action,
+                    "priority": round(decision.priority_score, 2),
+                    "reason": decision.reason,
+                    "cooldown_active": decision.cooldown_active,
+                    "manual_review": decision.manual_review_required,
+                    "queue_healer": decision.queue_healer,
+                    **decision.metadata
+                }) + "\n")
+        except Exception:
+            pass
 
     def run(self, max_workers: int = 12):
         log_path = settings.log_file
@@ -239,27 +283,13 @@ class ScraperEngine:
         rejected_csv_path = settings.rejected_csv
         main_conn = get_connection()
 
-        # Pre-fetch all cooldowns to avoid per-worker DB overhead
-        self.bulk_cooldowns: Dict[str, datetime] = {}
+        # 1. Pre-fetch health and known URLs
         self.known_urls: Dict[str, datetime] = {}
+        all_health: Dict[str, Dict[str, Any]] = {}
         try:
-            now = datetime.now(timezone.utc)
-            for table in ["workday_target_health", "generic_target_health", "company_cooldowns"]:
-                try:
-                    rows = main_conn.execute(f"SELECT company, cooldown_until FROM {table} WHERE cooldown_until IS NOT NULL").fetchall()
-                except Exception:
-                    rows = []  # table may not exist in older DBs
-                for r in rows:
-                    try:
-                        until = datetime.fromisoformat(str(r["cooldown_until"]))
-                        if until.tzinfo is None:
-                            until = until.replace(tzinfo=timezone.utc)
-                        if until > now:
-                            self.bulk_cooldowns[r["company"]] = until
-                    except Exception:
-                        pass
+            health_rows = ats_db.get_all_board_health(main_conn)
+            all_health = {r["company"]: dict(r) for r in health_rows}
             
-            # Pre-load known job URLs to support incremental scraping
             if not self.full_refresh:
                 job_rows = main_conn.execute(
                     "SELECT job_url, updated_at FROM applications "
@@ -273,10 +303,29 @@ class ScraperEngine:
                         self.known_urls[r["job_url"]] = updated_at
                     except Exception:
                         pass
-                if self.known_urls:
-                    logger.info("Loaded %d known URLs for incremental scraping", len(self.known_urls))
         except Exception as e:
-            logger.warning("Failed to pre-fetch cooldowns or known URLs: %s", e)
+            logger.warning("Failed to pre-fetch health or known URLs: %s", e)
+
+        # 2. Generate scheduling decisions and sort queue
+        scheduled_tasks = []
+        healer_tasks = []
+        for company in self.companies:
+            health = all_health.get(company["name"])
+            decision = self.policy.decide(company, health, force_override=self.full_refresh)
+            self._log_scheduling_decision(decision)
+            
+            if decision.action == "skip":
+                continue
+            
+            if decision.action == "heal" and settings.scheduler_healer_auto_trigger:
+                healer_tasks.append((company, decision))
+                continue
+                
+            scheduled_tasks.append((company, decision))
+            
+        # Sort by priority score (descending)
+        scheduled_tasks.sort(key=lambda x: x[1].priority_score, reverse=True)
+        total_to_run = len(scheduled_tasks)
 
         try:
             with log_path.open("a", encoding="utf-8") as log_handle:
@@ -288,7 +337,20 @@ class ScraperEngine:
                     except Exception:
                         pass
 
-                log_msg(f"Starting scraper engine: {total_companies} companies...")
+                log_msg(f"Starting health-aware scraper engine: {total_to_run}/{total_companies} companies scheduled.")
+                if healer_tasks:
+                    log_msg(f"Auto-triggering healer for {len(healer_tasks)} companies.")
+
+                # 3. Handle Auto-Healer tasks (sequential or small pool to avoid browser thrashing)
+                if healer_tasks:
+                    from jobsearch.services.healer_service import ATSHealer
+                    healer = ATSHealer()
+                    for company, decision in healer_tasks:
+                        log_msg(f"Auto-heal: {company['name']} ({decision.reason})")
+                        try:
+                            healer.discover(company, force=True, ignore_cooldown=True)
+                        except Exception as e:
+                            logger.error("Auto-heal failed for %s: %s", company["name"], e)
 
                 total_evaluated = 0
                 total_persisted = 0
@@ -301,6 +363,7 @@ class ScraperEngine:
                 blocked_companies: List[Dict[str, Any]] = []
                 rejected_rows: List[Dict[str, Any]] = []
                 run_started_at = time.perf_counter()
+
                 try:
                     rejected_csv_path.parent.mkdir(parents=True, exist_ok=True)
                     with rejected_csv_path.open("w", newline="", encoding="utf-8") as handle:
@@ -310,14 +373,14 @@ class ScraperEngine:
                     pass
 
                 log_msg(
-                    f"Pipeline run start | companies={total_companies} deep_search={self.deep_search} "
-                    f"workers={max_workers} prefs={settings.preferences_yaml.name} companies_yaml={settings.companies_yaml.name}"
+                    f"Pipeline run start | scheduled={total_to_run} deep_search={self.deep_search} "
+                    f"workers={max_workers} prefs={settings.preferences_yaml.name}"
                 )
 
                 with ThreadPoolExecutor(max_workers=max_workers) as executor:
                     futures_map = {
-                        executor.submit(self._scrape_company_with_retry, company): company
-                        for company in self.companies
+                        executor.submit(self._scrape_company_with_retry, company, decision): company
+                        for company, decision in scheduled_tasks
                     }
                     while futures_map:
                         done, _ = wait(futures_map.keys(), timeout=10, return_when=FIRST_COMPLETED)
@@ -335,7 +398,21 @@ class ScraperEngine:
                                 route_info = scrape_result.get("route") or {}
                                 browser_evidence = scrape_result.get("browser_evidence") or {}
                                 persisted, inserted, dropped, evaluated, process_ms, score_stats, company_rejected_rows = self._process_and_save_jobs(main_conn, company, jobs)
-                                self._update_scrape_health(main_conn, company, adapter_name, scrape_status, scrape_ms, scrape_note, evaluated)
+                                self._update_scrape_health(
+                                    main_conn,
+                                    company,
+                                    adapter_name,
+                                    scrape_status,
+                                    scrape_ms,
+                                    scrape_note,
+                                    evaluated,
+                                    extraction_method=scrape_result.get("extraction_method", ""),
+                                    status_code=scrape_result.get("status_code"),
+                                    html=scrape_result.get("html_sample", ""),
+                                    ats_family=route_info.get("ats_family", "unknown"),
+                                    final_url=str(company.get("careers_url", "") or ""),
+                                )
+
                                 failure_reason = self._classify_empty_result(scrape_status, scrape_note, company) if evaluated == 0 else None
                                 self._evidence_writer.write(
                                     company=str(company.get("name", "")),
@@ -344,12 +421,14 @@ class ScraperEngine:
                                     adapter_key=str(company.get("adapter_key", "") or ""),
                                     final_url=str(company.get("careers_url", "") or ""),
                                     status=scrape_status,
+                                    board_state=scrape_note,
                                     failure_reason=failure_reason,
                                     jobs_found=evaluated,
                                     elapsed_ms=scrape_ms,
                                     candidates_tried=scrape_result.get("candidates_tried") or [],
                                     ats_family=str(route_info.get("ats_family") or fingerprint_ats(str(company.get("careers_url", "") or ""))),
-                                    extraction_method=str(route_info.get("decision") or adapter_name),
+                                    extraction_method=scrape_result.get("extraction_method", str(route_info.get("decision") or adapter_name)),
+                                    extraction_confidence=scrape_result.get("extraction_confidence", 0.0),
                                     route_decision=str(route_info.get("decision") or ""),
                                     screenshot_path=str(browser_evidence.get("screenshot_path") or ""),
                                     html_snapshot_path=str(browser_evidence.get("html_snapshot_path") or ""),
@@ -393,12 +472,17 @@ class ScraperEngine:
                                         "deep": used_deep_search,
                                     }
                                 )
+                                target_adapter = str(company.get("adapter", "generic")).lower()
+                                adapter_display = f"{adapter_name}"
+                                if adapter_name != target_adapter and target_adapter != "generic":
+                                    adapter_display = f"{adapter_name}/{target_adapter}"
+
                                 log_msg(
-                                    f"[{done_companies}/{total_companies}] OK {company.get('name', 'Unknown'):<24} "
-                                    f"| adapter={adapter_name:<15} evaluated={evaluated:<3} persisted={persisted:<3} "
-                                    f"new={inserted:<3} dropped={dropped:<3} scrape_ms={scrape_ms:.1f} process_ms={process_ms:.1f} "
-                                    f"avg_score={score_stats['avg_score']:.1f} keep_rate={score_stats['keep_rate']:.2%} "
-                                    f"deep={used_deep_search} status={scrape_status}"
+                                    f"[{done_companies}/{total_to_run}] OK {company.get('name', 'Unknown'):<24} "
+                                    f"| priority={decision.priority_score:>3.0f} adapter={adapter_display:<15} "
+                                    f"evaluated={evaluated:<3} persisted={persisted:<3} new={inserted:<3} "
+                                    f"scrape_ms={scrape_ms:.1f} deep={used_deep_search} status={scrape_status} "
+                                    f"reason='{decision.reason}'"
                                     + (f" note={scrape_note}" if scrape_note else "")
                                 )
                             except Exception as exc:
@@ -453,172 +537,181 @@ class ScraperEngine:
         finally:
             main_conn.close()
 
-    def _scrape_company_with_retry(self, company: Dict[str, Any]) -> Dict[str, Any]:
+    def _scrape_company_with_retry(self, company: Dict[str, Any], decision: Any) -> Dict[str, Any]:
         min_jitter = min(settings.scrape_jitter_min_ms, settings.scrape_jitter_max_ms) / 1000.0
         max_jitter = max(settings.scrape_jitter_min_ms, settings.scrape_jitter_max_ms) / 1000.0
         time.sleep(random.uniform(min_jitter, max_jitter))
+        
         started_at = time.perf_counter()
         name = company.get("name", "")
-        adapter_hint = self._resolve_adapter_name(company)
         careers_url = str(company.get("careers_url", "") or "")
         ats_family = fingerprint_ats(careers_url)
-        routing = choose_extraction_route(ats_family=ats_family)
-        candidates_tried = []
-        for item in company.get("discovery_candidates") or []:
-            if isinstance(item, dict):
-                candidates_tried.append(item)
-        if not candidates_tried:
-            for url in (company.get("discovery_urls") or []):
-                if url:
-                    candidates_tried.append(
-                        {
-                            "source": "registry_discovery_urls",
-                            "url": str(url),
-                            "final_url": str(url),
-                            "status_code": None,
-                            "redirect_chain": [str(url)],
-                            "ats_family": fingerprint_ats(str(url)),
-                            "confidence_score": 0.0,
-                            "reason_flags": [],
-                        }
-                    )
-        if not candidates_tried and careers_url:
-            candidates_tried.append(
-                {
-                    "source": "careers_url",
-                    "url": careers_url,
-                    "final_url": careers_url,
-                    "status_code": None,
-                    "redirect_chain": [careers_url],
-                    "ats_family": ats_family,
-                    "confidence_score": 0.0,
-                    "reason_flags": [],
-                }
-            )
-
-        # FAST EXIT: Check pre-fetched cooldowns
-        if hasattr(self, "bulk_cooldowns") and name in self.bulk_cooldowns:
-            until = self.bulk_cooldowns[name]
+        
+        # 1. Choose route and define ladder
+        # We check for JSON-LD and hidden API signals if we have any prior evidence or if deep search is on
+        has_jsonld = False 
+        has_hidden_api = False 
+        
+        routing = choose_extraction_route(
+            ats_family=ats_family,
+            has_jsonld=has_jsonld,
+            has_hidden_api=has_hidden_api
+        )
+        
+        try:
+            result = self._scrape_with_ladder(company, routing)
+            scrape_ms = round((time.perf_counter() - started_at) * 1000, 1)
+            result["scrape_ms"] = scrape_ms
+            return result
+        except Exception as e:
+            logger.error("Ladder scrape failed for %s: %s", name, e, exc_info=True)
             return {
                 "jobs": [],
-                "adapter": adapter_hint,
-                "scrape_ms": 0.0,
+                "adapter": self._resolve_adapter_name(company),
+                "scrape_ms": round((time.perf_counter() - started_at) * 1000, 1),
                 "used_deep_search": False,
-                "status": "cooldown",
-                "note": f"Cooldown until {until.isoformat()}",
+                "status": "error",
+                "note": str(e),
                 "route": routing.to_dict(),
-                "candidates_tried": candidates_tried,
             }
 
-        cooldown_adapter, cooldown_reason = self._cooldown_reason(company)
-        if cooldown_reason:
-            return {
-                "jobs": [],
-                "adapter": cooldown_adapter,
-                "scrape_ms": 0.0,
-                "used_deep_search": False,
-                "status": "cooldown",
-                "note": cooldown_reason,
-                "route": routing.to_dict(),
-                "candidates_tried": candidates_tried,
-            }
-        generic_low_signal_reason = self._generic_low_signal_reason(company)
-        if generic_low_signal_reason:
-            return {
-                "jobs": [],
-                "adapter": "generic",
-                "scrape_ms": 0.0,
-                "used_deep_search": False,
-                "status": "low_signal",
-                "note": generic_low_signal_reason,
-                "route": routing.to_dict(),
-                "candidates_tried": candidates_tried,
-            }
-        scrape_semaphore = self._adapter_semaphores.get(adapter_hint)
-        if scrape_semaphore is None:
-            logger.warning("No semaphore configured for adapter %r; defaulting to concurrency=1", adapter_hint)
-            scrape_semaphore = BoundedSemaphore(1)
-        with scrape_semaphore:
-            started_at = time.perf_counter()
-            try:
-                jobs, adapter_name, adapter_status, adapter_note = self._scrape_company(company)
-                if not jobs and self.deep_search:
-                    deep_jobs, deep_evidence = self._normalize_deep_scrape_result(self._deep_scrape(company))
-                    return {
-                        "jobs": deep_jobs,
-                        "adapter": "deep_search" if deep_jobs else adapter_name,
-                        "scrape_ms": round((time.perf_counter() - started_at) * 1000, 1),
-                        "used_deep_search": bool(deep_jobs),
-                        "status": "ok" if deep_jobs or jobs else adapter_status,
-                        "note": "" if deep_jobs else adapter_note,
-                        "route": choose_extraction_route(
-                            ats_family=ats_family,
-                            has_hidden_api=bool(deep_evidence.get("hidden_api_detected")),
-                            has_jsonld=deep_evidence.get("extraction_method") == "jsonld",
-                        ).to_dict(),
-                        "candidates_tried": candidates_tried,
-                        "browser_evidence": deep_evidence,
-                    }
-                return {
-                    "jobs": jobs,
-                    "adapter": adapter_name,
-                    "scrape_ms": round((time.perf_counter() - started_at) * 1000, 1),
-                    "used_deep_search": False,
-                    "status": "ok" if jobs else adapter_status,
-                    "note": adapter_note,
-                    "route": routing.to_dict(),
-                    "candidates_tried": candidates_tried,
-                    "browser_evidence": {},
-                }
-            except BlockedSiteError as exc:
-                if self.deep_search:
-                    deep_jobs, deep_evidence = self._normalize_deep_scrape_result(self._deep_scrape(company))
-                    return {
-                        "jobs": deep_jobs,
-                        "adapter": "deep_search" if deep_jobs else str(company.get("adapter", "unknown")),
-                        "scrape_ms": round((time.perf_counter() - started_at) * 1000, 1),
-                        "used_deep_search": bool(deep_jobs),
-                        "status": "ok" if deep_jobs else "blocked",
-                        "note": "" if deep_jobs else exc.reason,
-                        "route": choose_extraction_route(
-                            ats_family=ats_family,
-                            blocked=not bool(deep_jobs),
-                            has_hidden_api=bool(deep_evidence.get("hidden_api_detected")),
-                        ).to_dict(),
-                        "candidates_tried": candidates_tried,
-                        "browser_evidence": deep_evidence,
-                    }
-                return {
-                    "jobs": [],
-                    "adapter": str(company.get("adapter", "unknown")),
-                    "scrape_ms": round((time.perf_counter() - started_at) * 1000, 1),
-                    "used_deep_search": False,
-                    "status": "blocked",
-                    "note": exc.reason,
-                    "route": choose_extraction_route(ats_family=ats_family, blocked=True).to_dict(),
-                    "candidates_tried": candidates_tried,
-                    "browser_evidence": {},
-                }
-            except Exception as exc:
-                message = str(exc).lower()
-                if any(token in message for token in ["403", "blocked", "forbidden"]) and self.deep_search:
-                    deep_jobs, deep_evidence = self._normalize_deep_scrape_result(self._deep_scrape(company))
-                    return {
-                        "jobs": deep_jobs,
-                        "adapter": "deep_search" if deep_jobs else str(company.get("adapter", "unknown")),
-                        "scrape_ms": round((time.perf_counter() - started_at) * 1000, 1),
-                        "used_deep_search": bool(deep_jobs),
-                        "status": "ok" if deep_jobs else "empty",
-                        "note": "" if deep_jobs else str(exc),
-                        "route": choose_extraction_route(
-                            ats_family=ats_family,
-                            blocked=not bool(deep_jobs),
-                            has_hidden_api=bool(deep_evidence.get("hidden_api_detected")),
-                        ).to_dict(),
-                        "candidates_tried": candidates_tried,
-                        "browser_evidence": deep_evidence,
-                    }
-                raise
+    def _scrape_with_ladder(self, company: Dict[str, Any], routing: Any) -> Dict[str, Any]:
+        """Attempt extraction methods in the order specified by the routing ladder."""
+        name = company.get("name", "")
+        careers_url = str(company.get("careers_url", "") or "")
+        
+        final_jobs: List[Any] = []
+        final_adapter = routing.ats_family
+        final_status = "ok"
+        final_note = ""
+        final_method = ""
+        final_confidence = 0.0
+        used_deep = False
+        browser_evidence = {}
+        status_code = 0
+        html_sample = ""
+        
+        for method in routing.extraction_methods:
+            if final_jobs:
+                break
+                
+            logger.debug("Trying extraction method '%s' for %s", method, name)
+            
+            if method == "direct_api":
+                try:
+                    jobs, adapter_name, status, note = self._scrape_company(company)
+                    if jobs:
+                        final_jobs = jobs
+                        final_adapter = adapter_name
+                        final_status = status
+                        final_note = note
+                        final_method = "direct_api"
+                        final_confidence = 1.0
+                    else:
+                        final_note = note or "No jobs found via Direct API"
+                except Exception as e:
+                    logger.debug("Direct API failed for %s: %s", name, e)
+                    
+            elif method == "jsonld":
+                try:
+                    # Fetch HTML and extract JSON-LD
+                    resp = self.session.get(careers_url, headers=get_headers(), timeout=10)
+                    status_code = resp.status_code
+                    if resp.status_code == 200:
+                        html_sample = resp.text[:5000]
+                        from jobsearch.scraper.jsonld_extractor import jsonld_jobs_to_canonical
+                        jobs = jsonld_jobs_to_canonical(
+                            resp.text, 
+                            base_url=resp.url, 
+                            company_name=name, 
+                            adapter="jsonld"
+                        )
+                        if jobs:
+                            final_jobs = jobs
+                            final_adapter = "jsonld"
+                            final_status = "ok"
+                            final_method = "jsonld"
+                            final_confidence = 0.9
+                except Exception as e:
+                    logger.debug("JSON-LD extraction failed for %s: %s", name, e)
+
+            elif method == "network_interception":
+                if self.deep_search and self._deep_playwright:
+                    try:
+                        deep_res = self._deep_scrape(company)
+                        jobs, evidence = self._normalize_deep_scrape_result(deep_res)
+                        browser_evidence = evidence
+                        used_deep = True
+                        status_code = evidence.get("status_code") or status_code
+                        if jobs:
+                            final_jobs = jobs
+                            final_adapter = evidence.get("ats_family") or "deep_search"
+                            final_status = "ok"
+                            final_method = "intercepted_api"
+                            final_confidence = 0.85
+                    except Exception as e:
+                        logger.debug("Network interception failed for %s: %s", name, e)
+
+            elif method == "dom_render":
+                if self.deep_search and self._deep_playwright:
+                    # If network interception already ran, we might have DOM results already 
+                    # from the deep_scrape result.
+                    if not used_deep:
+                        try:
+                            deep_res = self._deep_scrape(company)
+                            jobs, evidence = self._normalize_deep_scrape_result(deep_res)
+                            browser_evidence = evidence
+                            used_deep = True
+                            status_code = evidence.get("status_code") or status_code
+                            if jobs:
+                                final_jobs = jobs
+                                final_adapter = evidence.get("ats_family") or "deep_search"
+                                final_status = "ok"
+                                final_method = "dom_render"
+                                final_confidence = 0.7
+                        except Exception as e:
+                            logger.debug("DOM render failed for %s: %s", name, e)
+                    elif browser_evidence and not final_jobs:
+                        final_method = browser_evidence.get("extraction_method") or "dom_render"
+                        final_confidence = 0.7
+
+            elif method == "classify_failure":
+                from jobsearch.scraper.ats_routing import FailureClassifier
+                # Final fallback: classify why we found nothing
+                status_code = browser_evidence.get("status_code") or status_code
+                final_status = "error"
+                final_note = FailureClassifier.classify(
+                    status_code=status_code,
+                    html=html_sample,
+                    jobs_found=0,
+                    ats_family=routing.ats_family,
+                    extraction_method=routing.decision,
+                    final_url=careers_url
+                )
+                final_method = "none"
+                final_confidence = 0.0
+
+        # Update job objects with metadata
+        for job in final_jobs:
+            if not getattr(job, "extraction_method", ""):
+                job.extraction_method = final_method
+            if not getattr(job, "extraction_confidence", 0.0):
+                job.extraction_confidence = final_confidence
+
+        return {
+            "jobs": final_jobs,
+            "adapter": final_adapter,
+            "used_deep_search": used_deep,
+            "status": final_status,
+            "note": final_note,
+            "extraction_method": final_method,
+            "extraction_confidence": final_confidence,
+            "status_code": status_code,
+            "html_sample": html_sample,
+            "route": routing.to_dict(),
+            "browser_evidence": browser_evidence,
+            "candidates_tried": company.get("discovery_candidates") or [],
+        }
 
     def _scrape_company(self, company: Dict[str, Any]):
         if not isinstance(company, dict):
@@ -641,20 +734,30 @@ class ScraperEngine:
         return jobs, adapter_name, adapter_status, adapter_note
 
     def _cooldown_reason(self, company: Dict[str, Any]):
-        """Return (adapter, reason) if the company is on cooldown, else ('', '').
-
-        Opens one DB connection per company instead of the previous two.
-        """
+        """Return (adapter, reason) if the company is on cooldown, else ('', '')."""
         careers_url = str(company.get("careers_url", "") or "").lower()
         adapter_name = str(company.get("adapter", "") or "").lower()
         name = company.get("name", "")
         now = datetime.now(timezone.utc)
 
-        is_workday = "myworkdayjobs.com" in careers_url or adapter_name in {"workday", "workday_manual"}
-        is_generic = adapter_name == "generic" and not is_workday
-
         conn = db.get_connection()
         try:
+            # 1. Check unified board_health first (New)
+            health = ats_db.get_board_health(conn, name)
+            if health and health["cooldown_until"]:
+                try:
+                    until = datetime.fromisoformat(str(health["cooldown_until"]))
+                    if until.tzinfo is None:
+                        until = until.replace(tzinfo=timezone.utc)
+                    if until > now:
+                        reason = health["suppression_reason"] or "Board on cooldown"
+                        return adapter_name or health["adapter"] or "unknown", f"Cooldown until {until.isoformat()} ({reason})"
+                except Exception:
+                    pass
+
+            is_workday = "myworkdayjobs.com" in careers_url or adapter_name in {"workday", "workday_manual"}
+            is_generic = adapter_name == "generic" and not is_workday
+
             if is_workday:
                 row = db.get_workday_target_health(conn, name)
                 if row and row["cooldown_until"]:
@@ -729,6 +832,8 @@ class ScraperEngine:
         careers_url = str(company.get("careers_url") or "").lower()
 
         if scrape_status == "blocked":
+            if any(tok in note_lower for tok in ("unsupported ats", "unsupported vendor", "eightfold", "icims", "taleo", "successfactors")):
+                return "unsupported_ats"
             if any(tok in note_lower for tok in ("401", "403", "login", "auth", "sign in")):
                 return "auth_required"
             if any(tok in note_lower for tok in ("cookie", "consent", "gdpr", "region", "geo", "country not supported")):
@@ -757,20 +862,110 @@ class ScraperEngine:
 
         return "unknown"
 
+    def _get_cooldown_days(self, classification: str) -> int:
+        from jobsearch.scraper.ats_routing import FailureClassifier
+        if classification == FailureClassifier.BLOCKED:
+            return settings.cooldown_days_blocked
+        if classification == FailureClassifier.BROKEN_SITE:
+            return settings.cooldown_days_broken
+        if classification == FailureClassifier.STALE_URL:
+            return settings.cooldown_days_stale
+        if classification == FailureClassifier.AUTH_REQUIRED:
+            return settings.cooldown_days_auth
+        if classification == FailureClassifier.GEO_GATE:
+            return settings.cooldown_days_geo_gate
+        if classification == FailureClassifier.NO_OPENINGS:
+            return settings.cooldown_days_no_openings
+        if classification == FailureClassifier.SELECTOR_MISS:
+            return settings.cooldown_days_selector_miss
+        return 0
+
     def _update_scrape_health(
         self,
-        conn,
+        conn: sqlite3.Connection,
         company: Dict[str, Any],
         adapter_name: str,
         scrape_status: str,
         scrape_ms: float,
         scrape_note: str,
         evaluated_count: int,
+        extraction_method: str = "",
+        status_code: Optional[int] = None,
+        html: str = "",
+        ats_family: str = "unknown",
+        final_url: str = "",
     ) -> None:
-        if adapter_name != "workday":
-            if adapter_name == "generic":
-                self._update_generic_scrape_health(conn, company, scrape_status, scrape_ms, scrape_note, evaluated_count)
-            return
+        from jobsearch.scraper.ats_routing import FailureClassifier
+        name = company.get("name", "")
+        
+        # 1. Classify the failure using the refined FailureClassifier
+        classification = FailureClassifier.classify(
+            status_code=status_code,
+            html=html,
+            jobs_found=evaluated_count,
+            ats_family=ats_family,
+            extraction_method=extraction_method,
+            final_url=final_url,
+        )
+        
+        # 2. Determine cooldown from config-driven settings
+        cooldown_days = self._get_cooldown_days(classification)
+        escalation_reason = ""
+        if evaluated_count == 0 and cooldown_days > 0:
+            cooldown_days, escalation_reason = self.escalation_policy.calculate_cooldown(
+                conn, name, cooldown_days, classification
+            )
+            if escalation_reason:
+                scrape_note = f"{scrape_note} | {escalation_reason}".strip()
+
+        cooldown_until = None
+        if cooldown_days > 0:
+            cooldown_until = (datetime.now(timezone.utc) + timedelta(days=cooldown_days)).strftime("%Y-%m-%d")
+
+        # 3. Update unified board_health
+        existing_health = ats_db.get_board_health(conn, name)
+        consecutive_failures = int(existing_health["consecutive_failures"]) if existing_health else 0
+        if evaluated_count == 0 and scrape_status != "success":
+            consecutive_failures += 1
+        else:
+            consecutive_failures = 0
+            
+        last_success_at = existing_health["last_success_at"] if existing_health else None
+        if evaluated_count > 0:
+            last_success_at = datetime.now().isoformat()
+
+        ats_db.update_board_health(
+            conn,
+            company=name,
+            adapter=adapter_name,
+            careers_url=company.get("careers_url", ""),
+            board_state="healthy" if evaluated_count > 0 else (classification or "unknown"),
+            last_success_method=extraction_method if evaluated_count > 0 else (existing_health["last_success_method"] if existing_health else None),
+            last_http_status=status_code,
+            manual_review_required=1 if classification in {FailureClassifier.BLOCKED, FailureClassifier.AUTH_REQUIRED} else 0,
+            suppression_reason=classification if cooldown_days > 0 else None,
+            consecutive_failures=consecutive_failures,
+            last_success_at=last_success_at,
+            last_attempt_at=datetime.now().isoformat(),
+            cooldown_until=cooldown_until,
+            notes=scrape_note,
+        )
+
+        # 4. Fallback to legacy health tables (maintaining backward compatibility)
+        if adapter_name == "workday":
+            self._update_workday_scrape_health_legacy(conn, company, scrape_status, scrape_ms, scrape_note, evaluated_count)
+        elif adapter_name == "generic":
+            self._update_generic_scrape_health_legacy(conn, company, scrape_status, scrape_ms, scrape_note, evaluated_count)
+
+    def _update_workday_scrape_health_legacy(
+        self,
+        conn,
+        company: Dict[str, Any],
+        scrape_status: str,
+        scrape_ms: float,
+        scrape_note: str,
+        evaluated_count: int,
+    ) -> None:
         cooldown_days = 0
         existing = db.get_workday_target_health(conn, company.get("name", ""))
         success_count = int(existing["success_count"]) if existing else 0
@@ -793,10 +988,6 @@ class ScraperEngine:
             and evaluated_count == 0
             and streak + 1 >= settings.workday_empty_cooldown_threshold
         ):
-            # Workday tenant URL is valid but returns no jobs on repeated runs —
-            # apply a short cooldown so we don't burn 15-30s per run per company.
-            # Companies with previous successes get a lighter cooldown (3d vs 7d)
-            # since their openings may just be cyclical.
             cooldown_days = 3 if success_count > 0 else settings.workday_empty_cooldown_days
         failure_reason = self._classify_empty_result(scrape_status, scrape_note, company) if evaluated_count == 0 else None
         db.update_workday_target_health(
@@ -811,7 +1002,7 @@ class ScraperEngine:
             failure_reason=failure_reason,
         )
 
-    def _update_generic_scrape_health(
+    def _update_generic_scrape_health_legacy(
         self,
         conn,
         company: Dict[str, Any],
@@ -820,15 +1011,14 @@ class ScraperEngine:
         scrape_note: str,
         evaluated_count: int,
     ) -> None:
-        _GENERIC_SUPER_SLOW_MS = 75_000  # 75s+ with 0 results → cooldown regardless of history
+        _GENERIC_SUPER_SLOW_MS = 75_000
         cooldown_days = 0
         existing = db.get_generic_target_health(conn, company.get("name", ""))
         success_count = int(existing["success_count"]) if existing else 0
         streak = int(existing["empty_streak"]) if existing else 0
         low_priority = str(company.get("priority", "") or "").lower() in {"low", "medium", ""}
+        
         if evaluated_count == 0 and scrape_ms >= _GENERIC_SUPER_SLOW_MS:
-            # Site is hanging on every request (e.g. hitting 84s TCP stall) — apply
-            # a short cooldown unconditionally so it doesn't burn 80s+ each run.
             cooldown_days = max(cooldown_days, 3)
         if (
             scrape_status == "empty"

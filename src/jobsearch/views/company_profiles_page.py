@@ -10,7 +10,7 @@ import pandas as pd
 import streamlit as st
 
 from jobsearch import ats_db as db
-
+from jobsearch.services.company_intelligence_service import CompanyIntelligenceService
 
 def render_company_profiles(conn) -> None:
     db.init_db(conn)
@@ -93,21 +93,47 @@ def _render_profile_detail(conn, profile) -> None:
         st.markdown("  |  ".join(links))
 
     summary = db.get_network_summary_for_company(conn, profile["name"])
-    mc1, mc2, mc3, mc4, mc5 = st.columns(5)
-    mc1.metric("Leverage", summary["leverage_band"])
-    mc2.metric("Score", summary["leverage_score"])
-    mc3.metric("Contacts", summary["contacts"])
-    mc4.metric("Referrals", summary["referrals"])
-    mc5.metric("Follow-up Due", summary["follow_up_due"])
+    
+    t1, t2, t3 = st.tabs(["Intelligence & Strategy", "Linked Contacts", "Research & Form"])
+    
+    with t1:
+        intel_service = CompanyIntelligenceService(conn)
+        playbook = intel_service.get_company_playbook(profile["name"])
+        
+        c1, c2 = st.columns([2, 1])
+        with c1:
+            st.markdown(f"### Strategy: **{playbook.recommended_strategy.replace('_', ' ').title()}**")
+            st.info(f"💡 {playbook.strategy_rationale}")
+            
+            st.markdown("#### Company Playbook")
+            st.write(f"**Top Role Families:** {', '.join(playbook.top_role_families) if playbook.top_role_families else 'No traction yet'}")
+            if playbook.underperforming_families:
+                st.write(f"**Underperforming:** {', '.join(playbook.underperforming_families)}")
+            st.write(f"**ATS Family:** {playbook.ats_family.title()}")
+            st.write(f"**Submission Friction:** {playbook.submission_friction}")
 
-    if summary["contacts"] > 0 and summary["reached_out"] == 0:
-        st.info("You know people here but have not reached out yet. Warm outreach before applying may materially improve odds.")
-    elif summary["referrals"] > 0:
-        st.success("You have referral-level leverage here. Use it before or early in the application process.")
+        with c2:
+            st.markdown("#### Performance")
+            st.metric("Total Jobs Seen", playbook.total_apps)
+            st.metric("Interview Rate", f"{playbook.conversion_metrics['interview_rate']}%")
+            st.metric("Leverage Score", summary["leverage_score"])
 
-    related_contacts = db.get_network_contacts_for_company(conn, profile["name"])
-    if related_contacts:
-        with st.expander(f"🤝 {len(related_contacts)} linked contact(s)", expanded=False):
+        if playbook.contact_strategy:
+            st.markdown("#### Contact Strategy")
+            for cs in playbook.contact_strategy:
+                with st.expander(f"👤 {cs.contact_name} ({cs.relationship})", expanded=True):
+                    st.write(f"**Next Action:** {cs.next_action}")
+                    st.write(f"**Rationale:** {cs.rationale}")
+                    if cs.last_contact:
+                        st.caption(f"Last contact: {cs.last_contact}")
+        elif summary["contacts"] > 0:
+             st.warning("Contacts exist but no strategy derived. Ensure relationships are set.")
+        else:
+             st.caption("No contacts linked to this company yet.")
+
+    with t2:
+        related_contacts = db.get_network_contacts_for_company(conn, profile["name"])
+        if related_contacts:
             for contact in related_contacts:
                 st.markdown(
                     f"**{contact['name']}**"
@@ -119,13 +145,26 @@ def _render_profile_detail(conn, profile) -> None:
                 if contact["notes"]:
                     st.caption(contact["notes"])
                 st.markdown('<hr style="margin:4px 0;border-color:#374151">', unsafe_allow_html=True)
-    else:
-        st.caption("No networking contacts linked to this company yet.")
+        else:
+            st.caption("No networking contacts linked to this company yet.")
 
-    with st.expander("➕ Add linked networking contact", expanded=False):
-        _render_company_contact_form(conn, profile["name"])
+        with st.expander("➕ Add linked networking contact", expanded=False):
+            _render_company_contact_form(conn, profile["name"])
 
-    _render_profile_form(conn, profile=profile)
+    with t3:
+        mc1, mc2, mc3, mc4, mc5 = st.columns(5)
+        mc1.metric("Leverage", summary["leverage_band"])
+        mc2.metric("Score", summary["leverage_score"])
+        mc3.metric("Contacts", summary["contacts"])
+        mc4.metric("Referrals", summary["referrals"])
+        mc5.metric("Follow-up Due", summary["follow_up_due"])
+
+        if summary["contacts"] > 0 and summary["reached_out"] == 0:
+            st.info("You know people here but have not reached out yet. Warm outreach before applying may materially improve odds.")
+        elif summary["referrals"] > 0:
+            st.success("You have referral-level leverage here. Use it before or early in the application process.")
+
+        _render_profile_form(conn, profile=profile)
 
 
 def _render_profile_form(conn, profile) -> None:

@@ -9,6 +9,7 @@ from typing import List, Optional, Dict, Any
 import pandas as pd
 from jobsearch.scraper.models import Job
 from jobsearch import ats_db
+from jobsearch.services.job_canonicalization_service import JobCanonicalizationService
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -152,6 +153,10 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
     # Compute content hash for change detection
     new_hash = compute_content_hash(job.role_title_raw, job.url, job.description_excerpt)
 
+    # 1. Run Canonicalization logic upstream
+    canon_service = JobCanonicalizationService(conn)
+    canon_gid, is_canonical, merge_rationale = canon_service.canonicalize_incremental(job)
+
     def _row(r):
         return dict(r) if r is not None else None
 
@@ -223,6 +228,13 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
     status, stage_label = _normalize_status_and_stage(job)
     new_jd_fingerprint = _jd_fingerprint(job.description_excerpt, job.salary_text, job.location)
 
+    if is_canonical == 1 and canon_gid:
+        # If we decided this new job should be the new canonical, demote the old one
+        conn.execute(
+            "UPDATE applications SET is_canonical = 0 WHERE canonical_group_id = ? OR id = ?",
+            (canon_gid, canon_gid.replace("group_", ""))
+        )
+
     if existing is None:
         # INSERT
         cur = conn.execute(
@@ -235,6 +247,8 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
                 salary_text, salary_low, salary_high, work_type, compensation_unit,
                 hourly_rate, hours_per_week, weeks_per_year, normalized_compensation_usd,
                 date_discovered, date_applied,
+                extraction_method, extraction_confidence,
+                canonical_group_id, is_canonical, canonical_merge_rationale,
                 user_priority, tier, notes, created_at, updated_at
             ) VALUES (
                 :company, :role, :role_normalized, :url, :source, :source_lane, :canonical_job_url, :id,
@@ -243,6 +257,8 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
                 :salary_text, :salary_min, :salary_max, :work_type, :compensation_unit,
                 :hourly_rate, :hours_per_week, :weeks_per_year, :normalized_compensation_usd,
                 :date_discovered, :date_applied,
+                :extraction_method, :extraction_confidence,
+                :canon_gid, :is_canonical, :merge_rationale,
                 :user_priority, :tier, :notes, :created_at, :updated_at
             )
             """,
@@ -252,8 +268,8 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
                 "role_normalized": job.role_title_normalized,
                 "url": job.url,
                 "source": job.source,
-                "source_lane": getattr(job, "source_lane", "employer_ats") or "employer_ats",
-                "canonical_job_url": getattr(job, "canonical_job_url", "") or "",
+                "source_lane": source_lane,
+                "canonical_job_url": canonical_job_url,
                 "id": job.id,
                 "status": status,
                 "score": job.score,
@@ -278,6 +294,11 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
                 "normalized_compensation_usd": job.normalized_compensation_usd,
                 "date_discovered": job.date_discovered or now,
                 "date_applied": job.date_applied,
+                "extraction_method": getattr(job, "extraction_method", ""),
+                "extraction_confidence": getattr(job, "extraction_confidence", 0.0),
+                "canon_gid": canon_gid,
+                "is_canonical": is_canonical,
+                "merge_rationale": merge_rationale,
                 "user_priority": job.user_priority,
                 "tier": job.tier,
                 "notes": job.notes,
@@ -360,6 +381,11 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
                 hours_per_week = :hours_per_week,
                 weeks_per_year = :weeks_per_year,
                 normalized_compensation_usd = :normalized_compensation_usd,
+                extraction_method = :extraction_method,
+                extraction_confidence = :extraction_confidence,
+                canonical_group_id = :canon_gid,
+                is_canonical = :is_canonical,
+                canonical_merge_rationale = :merge_rationale,
                 updated_at = :updated_at
             WHERE id = :app_id
             """,
@@ -384,6 +410,11 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
                 "hours_per_week": merged_hours_per_week,
                 "weeks_per_year": merged_weeks_per_year,
                 "normalized_compensation_usd": merged_normalized_comp,
+                "extraction_method": getattr(job, "extraction_method", ""),
+                "extraction_confidence": getattr(job, "extraction_confidence", 0.0),
+                "canon_gid": canon_gid,
+                "is_canonical": is_canonical,
+                "merge_rationale": merge_rationale,
                 "updated_at": now,
             }
         )

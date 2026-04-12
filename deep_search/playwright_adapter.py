@@ -21,11 +21,13 @@ import json
 import logging
 import os
 import re
+import sys
 import threading
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 from jobsearch.config.settings import settings
 from jobsearch.scraper.ats_routing import fingerprint_ats
@@ -236,16 +238,23 @@ def _collect_jobs_from_api_payload(data: Any, base_url: str, source_label: str, 
         return jobs
 
     lower_keys = {str(key).lower() for key in data.keys()}
+    
+    # Standard field mapping
     has_title = bool(lower_keys & {"title", "name", "jobtitle", "job_title", "postingtitle"})
     has_url = bool(lower_keys & {"url", "applyurl", "externalpath", "hostedurl", "joburl", "absolute_url"})
     has_location = bool(lower_keys & {"location", "locationname", "locationstext", "joblocation"})
-    if has_title and (has_url or has_location):
+    
+    # Eightfold compact mapping (t=title, l=location, u=url, jd=description)
+    is_eightfold_item = "t" in lower_keys and "u" in lower_keys and len(lower_keys) < 15
+    
+    if (has_title and (has_url or has_location)) or is_eightfold_item:
         title = _clean(
             data.get("title")
             or data.get("name")
             or data.get("jobTitle")
             or data.get("job_title")
             or data.get("postingTitle")
+            or data.get("t") # Eightfold
             or ""
         )
         url = _abs_url(
@@ -257,10 +266,18 @@ def _collect_jobs_from_api_payload(data: Any, base_url: str, source_label: str, 
                 or data.get("jobUrl")
                 or data.get("absolute_url")
                 or data.get("externalPath")
+                or data.get("u") # Eightfold
                 or ""
             ),
         )
-        location = data.get("location") or data.get("locationName") or data.get("locationsText") or data.get("jobLocation") or ""
+        location = (
+            data.get("location") 
+            or data.get("locationName") 
+            or data.get("locationsText") 
+            or data.get("jobLocation") 
+            or data.get("l") # Eightfold
+            or ""
+        )
         if isinstance(location, dict):
             location = (
                 location.get("name")
@@ -269,7 +286,14 @@ def _collect_jobs_from_api_payload(data: Any, base_url: str, source_label: str, 
             )
         if isinstance(location, list):
             location = ", ".join(str(item) for item in location if item)
-        description = data.get("description") or data.get("content") or data.get("descriptionPlain") or ""
+            
+        description = (
+            data.get("description") 
+            or data.get("content") 
+            or data.get("descriptionPlain") 
+            or data.get("jd") # Eightfold
+            or ""
+        )
         if title and len(title) > 3 and (url or location):
             jobs.append(
                 {
@@ -318,6 +342,151 @@ def _parse_jobs_from_api_response(
         seen.add(key)
         unique.append(job)
     return unique
+
+
+def _is_probable_job_title_text(text: str) -> bool:
+    text_c = _clean(text)
+    if not text_c:
+        return False
+    text_l = text_c.lower()
+    blacklist = (
+        "search jobs",
+        "view all jobs",
+        "join our talent",
+        "sign up",
+        "learn more",
+        "read more",
+        "benefits",
+        "culture",
+        "about us",
+        "our team",
+        "login",
+        "sign in",
+        "create profile",
+    )
+    if any(token in text_l for token in blacklist):
+        return False
+    words = re.findall(r"[a-zA-Z][a-zA-Z+&/-]*", text_c)
+    if len(words) < 2 or len(words) > 14:
+        return False
+    strong_words = {
+        "engineer", "developer", "architect", "manager", "scientist", "analyst",
+        "designer", "specialist", "recruiter", "consultant", "administrator",
+        "director", "lead", "principal", "staff", "product", "software",
+        "executive", "representative", "commercial", "account", "sales",
+    }
+    return any(word.lower() in strong_words for word in words)
+
+
+def _looks_like_job_context(text: str) -> bool:
+    text_c = _clean(text)
+    if not text_c:
+        return False
+    text_l = text_c.lower()
+    if "result" in text_l and re.search(r"\b\d+\s+results?\b", text_l):
+        return False
+    if re.search(r"\breq[-\s]?[a-z0-9]+\b", text_l, re.I):
+        return True
+    if re.search(r"\b(remote|united states|canada|germany|france|netherlands|australia)\b", text_l, re.I):
+        return True
+    if "|" in text_c and len(text_c.split("|")) >= 2:
+        return True
+    return False
+
+
+def _extract_anchor_jobs_from_entries(
+    entries: List[Dict[str, str]],
+    *,
+    base_url: str,
+    source_label: str,
+    seen: set,
+) -> List[Dict]:
+    jobs: List[Dict] = []
+    for entry in entries:
+        href = str(entry.get("href") or "")
+        if not href:
+            continue
+        url = _abs_url(base_url, href)
+        url_l = url.lower()
+        if "search-results" in url_l or "search-jobs" in url_l:
+            continue
+        title = _clean(entry.get("text") or "")
+        context = _clean(entry.get("context") or "")
+        if not _is_probable_job_title_text(title):
+            continue
+        same_host = (urlparse(url).netloc or "").lower() == (urlparse(base_url).netloc or "").lower()
+        has_jobish_url = bool(_JOB_URL_PATTERN.search(url_l))
+        if not has_jobish_url and not (same_host and _looks_like_job_context(context)):
+            continue
+        if url in seen:
+            continue
+        seen.add(url)
+        location = ""
+        if re.search(r"\bremote\b", context, re.I):
+            location = "Remote"
+        else:
+            city_state = re.search(r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*,\s*[A-Z]{2})\b", context)
+            if city_state:
+                location = city_state.group(1)
+        jobs.append(
+            {
+                "title": title,
+                "location": location,
+                "url": url,
+                "description": "",
+                "posted_at": "",
+                "source": source_label,
+            }
+        )
+    return jobs
+
+
+def _extract_anchor_jobs(page, base_url: str, source_label: str, seen: set) -> List[Dict]:
+    try:
+        entries = page.eval_on_selector_all(
+            "a[href]",
+            """
+            els => els.map(e => ({
+              href: e.href || "",
+              text: (e.innerText || e.textContent || "").trim(),
+              context: ((e.closest('li, article, tr, div, section') || e.parentElement || e).innerText || "").trim()
+            }))
+            """,
+        )
+    except Exception:
+        return []
+    if not isinstance(entries, list):
+        return []
+    return _extract_anchor_jobs_from_entries(entries, base_url=base_url, source_label=source_label, seen=seen)
+
+
+def _listing_links_from_page(page, base_url: str, limit: int = 5) -> List[str]:
+    try:
+        all_links = page.eval_on_selector_all(
+            "a[href]",
+            "els => els.map(e => e.href).filter(h => h && !h.startsWith('javascript'))",
+        )
+    except Exception:
+        return []
+    base_host = (urljoin(base_url, "/").split("/")[2] if "://" in base_url else "")
+    listing_markers = (
+        "search-results",
+        "search-jobs",
+        "/jobs/search",
+        "/openings",
+        "/positions",
+        "/job-search",
+    )
+    links: List[str] = []
+    for href in all_links:
+        href_s = str(href or "")
+        href_l = href_s.lower()
+        if not any(marker in href_l for marker in listing_markers):
+            continue
+        if base_host and "://" in href_s and href_s.split("/")[2] != base_host:
+            continue
+        links.append(href_s)
+    return list(dict.fromkeys(links))[: max(1, limit)]
 
 
 # CSS selectors tried in order to find job listing cards in the rendered DOM
@@ -467,10 +636,11 @@ def scrape_jobs_generic(
     Generic deep scraper for any JS-heavy careers page.
 
     Tries four strategies in order:
-      1. JSON-LD extracted from the fully rendered HTML
-      2. Next.js __NEXT_DATA__ embedded in the page
-      3. DOM card extraction via common CSS selectors
-      4. Follow job-like links from the rendered page to detail pages
+      1. Intercepted API calls (XHR/fetch)
+      2. JSON-LD extracted from the fully rendered HTML
+      3. Next.js __NEXT_DATA__ embedded in the page
+      4. DOM card extraction via common CSS selectors
+      5. Follow job-like links from the rendered page to detail pages
 
     Returns List[Dict] with keys: title, location, url, description, posted_at, source
     """
@@ -486,9 +656,12 @@ def scrape_jobs_generic(
         "extraction_method": "",
         "screenshot_path": "",
         "html_snapshot_path": "",
+        "status_code": 0,
+        "timing": {},
     }
     artifacts = _artifact_paths(company_name)
     evidence.update(artifacts)
+    start_t = time.perf_counter()
 
     def _capture_response(response) -> None:
         try:
@@ -499,9 +672,13 @@ def scrape_jobs_generic(
             content_type = response.headers.get("content-type", "")
             body_text = ""
             parsed_jobs: List[Dict] = []
+            
+            # Identify likely jobs endpoints based on URL patterns
+            is_job_endpoint = any(token in url.lower() for token in ("/jobs", "/postings", "/positions", "/openings", "/search", "graphql", "query"))
+            
             try:
-                if "json" in content_type.lower():
-                    body_text = response.text()[:4000]
+                if "json" in content_type.lower() or body_text.lstrip().startswith(("{", "[")):
+                    body_text = response.text()[:10000] # Increased for better parsing
                     parsed_jobs = _parse_jobs_from_api_response(
                         url,
                         content_type,
@@ -520,16 +697,18 @@ def scrape_jobs_generic(
                 "content_type": content_type[:120],
                 "body_preview": body_text[:500],
                 "parsed_job_count": len(parsed_jobs),
+                "is_job_endpoint": is_job_endpoint,
             }
             evidence["network_events"].append(record)
             if url not in evidence["network_response_urls"]:
                 evidence["network_response_urls"].append(url)
+            
             if parsed_jobs:
                 evidence["hidden_api_detected"] = True
-                evidence["ats_family"] = fingerprint_ats(
-                    careers_url,
-                    response_urls=[url],
-                )
+                detected_family = fingerprint_ats(careers_url, response_urls=[url])
+                if detected_family != "unknown":
+                    evidence["ats_family"] = detected_family
+                
                 for job in parsed_jobs:
                     key = str(job.get("url") or "") + "|" + str(job.get("title") or "")
                     if key in seen:
@@ -546,15 +725,25 @@ def scrape_jobs_generic(
         try:
             logger.info("deep_search navigating to %s (%s)", careers_url, company_name)
             try:
-                page.goto(careers_url, wait_until="networkidle", timeout=nav_timeout)
+                resp = page.goto(careers_url, wait_until="networkidle", timeout=nav_timeout)
+                if resp:
+                    evidence["status_code"] = resp.status
             except Exception:
                 # networkidle can time out on heavy SPAs — fall back to domcontentloaded
                 try:
-                    page.goto(careers_url, wait_until="domcontentloaded", timeout=nav_timeout)
+                    resp = page.goto(careers_url, wait_until="domcontentloaded", timeout=nav_timeout)
+                    if resp:
+                        evidence["status_code"] = resp.status
                 except Exception as e:
                     logger.warning("deep_search nav failed company=%s err=%s", company_name, e)
+                    evidence["failure_reason"] = str(e)
+                    # If we have a response object even after timeout, use its status
+                    # Note: Playwright sometimes throws but still has a partial response
                     browser.close()
+                    _set_last_run_evidence(evidence)
                     return []
+            
+            evidence["timing"]["nav_ms"] = round((time.perf_counter() - start_t) * 1000, 1)
             page.wait_for_timeout(settle_ms)
 
             # Scroll to trigger lazy-loaded content
@@ -582,7 +771,8 @@ def scrape_jobs_generic(
                 return jobs
 
             # --- Strategy 1: JSON-LD ---
-            for obj in _extract_jsonld(html):
+            jsonld_objs = _extract_jsonld(html)
+            for obj in jsonld_objs:
                 title = _clean(obj.get("title") or obj.get("name") or "")
                 url = _abs_url(careers_url, obj.get("url") or "")
                 if not title or url in seen:
@@ -628,6 +818,81 @@ def scrape_jobs_generic(
                 browser.close()
                 return jobs
 
+            anchor_jobs = _extract_anchor_jobs(page, careers_url, source_label, seen)
+            jobs.extend(anchor_jobs)
+            if jobs:
+                evidence["extraction_method"] = "dom_render"
+                _set_last_run_evidence(evidence)
+                logger.info("deep_search anchor extraction found %d jobs (%s)", len(jobs), company_name)
+                browser.close()
+                return jobs
+
+            # --- Strategy 3b: Follow same-site listing pages (e.g. /search-results) ---
+            listing_links = _listing_links_from_page(page, careers_url, limit=4)
+            for listing_url in listing_links:
+                try:
+                    page.goto(listing_url, wait_until="networkidle", timeout=20_000)
+                except Exception:
+                    try:
+                        page.goto(listing_url, wait_until="domcontentloaded", timeout=20_000)
+                    except Exception:
+                        continue
+                page.wait_for_timeout(1_500)
+                listing_html = page.content()
+
+                for obj in _extract_jsonld(listing_html):
+                    title = _clean(obj.get("title") or obj.get("name") or "")
+                    url = _abs_url(listing_url, obj.get("url") or "")
+                    if not title or url in seen:
+                        continue
+                    seen.add(url)
+                    jobs.append({
+                        "title": title,
+                        "location": _jsonld_location(obj),
+                        "url": url,
+                        "description": _description_text(obj),
+                        "posted_at": obj.get("datePosted") or "",
+                        "source": source_label,
+                    })
+                if jobs:
+                    evidence["extraction_method"] = "jsonld"
+                    _set_last_run_evidence(evidence)
+                    logger.info("deep_search listing page JSON-LD found %d jobs (%s)", len(jobs), company_name)
+                    browser.close()
+                    return jobs
+
+                next_data = _extract_next_data(listing_html)
+                if next_data:
+                    for job in _jobs_from_next_data(next_data, listing_url):
+                        if job["url"] not in seen:
+                            seen.add(job["url"])
+                            job["source"] = source_label
+                            jobs.append(job)
+                if jobs:
+                    evidence["extraction_method"] = "next_data"
+                    _set_last_run_evidence(evidence)
+                    logger.info("deep_search listing page NextData found %d jobs (%s)", len(jobs), company_name)
+                    browser.close()
+                    return jobs
+
+                card_jobs = _extract_cards(page, listing_url, source_label, seen)
+                jobs.extend(card_jobs)
+                if jobs:
+                    evidence["extraction_method"] = "dom_render"
+                    _set_last_run_evidence(evidence)
+                    logger.info("deep_search listing page DOM cards found %d jobs (%s)", len(jobs), company_name)
+                    browser.close()
+                    return jobs
+
+                anchor_jobs = _extract_anchor_jobs(page, listing_url, source_label, seen)
+                jobs.extend(anchor_jobs)
+                if jobs:
+                    evidence["extraction_method"] = "dom_render"
+                    _set_last_run_evidence(evidence)
+                    logger.info("deep_search listing page anchor extraction found %d jobs (%s)", len(jobs), company_name)
+                    browser.close()
+                    return jobs
+
             # --- Strategy 4: Follow job-detail links ---
             try:
                 all_links = page.eval_on_selector_all(
@@ -660,6 +925,7 @@ def scrape_jobs_generic(
 
         except Exception as e:
             logger.error("deep_search scrape failed company=%s err=%s", company_name, e)
+            evidence["failure_reason"] = str(e)
         finally:
             try:
                 browser.close()
@@ -668,8 +934,12 @@ def scrape_jobs_generic(
 
     if jobs:
         evidence["extraction_method"] = evidence["extraction_method"] or "dom_render"
+    
+    evidence["timing"]["total_ms"] = round((time.perf_counter() - start_t) * 1000, 1)
     _set_last_run_evidence(evidence)
-    logger.info("deep_search total %d jobs (%s)", len(jobs), company_name)
+    logger.info("deep_search complete for %s: jobs=%d status=%s failure=%s method=%s", 
+                company_name, len(jobs), evidence.get("status_code"), 
+                evidence.get("failure_reason", "none"), evidence.get("extraction_method", "none"))
     return jobs
 
 
@@ -848,6 +1118,12 @@ _ATS_NET_PATTERNS = [
         lambda m: m.group(1),
     ),
     (
+        "workday",
+        re.compile(r"wday/cxs/([^/]+)/([^/]+)/jobs", re.I),
+        lambda m: f"https://{urlparse(careers_url).netloc}/wday/cxs/{m.group(1)}/{m.group(2)}/jobs",
+        lambda m: f"{m.group(1)}/{m.group(2)}",
+    ),
+    (
         "smartrecruiters",
         re.compile(r"api\.smartrecruiters\.com/v\d+/companies/([^/?#]+)/postings", re.I),
         lambda m: f"https://careers.smartrecruiters.com/{m.group(1)}",
@@ -870,6 +1146,18 @@ _ATS_NET_PATTERNS = [
         re.compile(r"jobs\.jobvite\.com/([^/?#\s]+)/job/", re.I),
         lambda m: f"https://jobs.jobvite.com/{m.group(1)}/jobs",
         lambda m: m.group(1),
+    ),
+    (
+        "eightfold",
+        re.compile(r"([\w-]+\.eightfold\.ai)/api/v1/career_site/search", re.I),
+        lambda m: f"https://{m.group(1)}/careers",
+        lambda m: m.group(1),
+    ),
+    (
+        "phenom",
+        re.compile(r"/api/v\d+/jobs(?:\?|/)", re.I),
+        lambda m: None,
+        lambda m: None,
     ),
 ]
 

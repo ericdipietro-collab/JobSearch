@@ -155,6 +155,39 @@ class HealerDiscoverySearchTests(unittest.TestCase):
         self.assertEqual(res.adapter, "greenhouse")
         self.assertEqual(res.adapter_key, "exampleco")
 
+    def test_discover_prefers_internal_listing_page_over_shallow_custom_landing_page(self):
+        careers_url = "https://careers.example.com/us/en/"
+        listing_url = "https://careers.example.com/us/en/search-results"
+        html = f"""
+        <html><body>
+          <a href="/us/en/search-results">Search Jobs</a>
+        </body></html>
+        """
+        listing_html = "<html><head><title>ExampleCo Jobs</title></head><body>ExampleCo open positions</body></html>"
+
+        def responder(url: str):
+            if url == careers_url:
+                return _Resp(text=html, status_code=200, url=url)
+            if url == listing_url:
+                return _Resp(text=listing_html, status_code=200, url=url)
+            return _Resp(text="", status_code=404, url=url)
+
+        healer = ATSHealer(session=_FakeSession(responder))
+        healer._persistent_health_skip_reason = lambda company: None
+        healer._search_discovery = lambda name, domain, deadline=None: None
+        healer._probe_direct = lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("probe_direct should not be called"))
+        healer._probe_workday = lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("probe_workday should not be called"))
+
+        res = healer.discover(
+            {"name": "ExampleCo", "domain": "careers.example.com", "careers_url": careers_url, "status": "broken"},
+            force=False,
+            deep=False,
+            ignore_cooldown=True,
+            disable_waterfall=True,
+        )
+        self.assertEqual(res.status, "FOUND")
+        self.assertEqual(res.careers_url, listing_url)
+
     def test_blocked_existing_careers_url_does_not_prevent_direct_probes(self):
         # Simulate a company site that returns 403, but whose ATS board is still discoverable.
         careers_url = "https://example.com/careers"
@@ -184,6 +217,17 @@ class HealerDiscoverySearchTests(unittest.TestCase):
         self.assertEqual(res.status, "FOUND")
         self.assertEqual(res.adapter, "ashby")
 
+    def test_validate_existing_assignment_rejects_unrelated_ats_slug(self):
+        healer = ATSHealer(session=_FakeSession(lambda url: _Resp(text="<html><body>Rippling recruiting</body></html>", status_code=200, url=url)))
+        company = {
+            "name": "Clearwater Analytics",
+            "domain": "cwan.com",
+            "adapter": "rippling",
+            "adapter_key": "recruiting",
+            "careers_url": "https://www.rippling.com/recruiting",
+        }
+        self.assertFalse(healer._validate_existing_assignment(company))
+
     def test_ddg_link_extraction_decodes_uddg_and_keeps_ats_host(self):
         ddg_html = """
         <html><body>
@@ -201,6 +245,31 @@ class HealerDiscoverySearchTests(unittest.TestCase):
         deadline = time.perf_counter() + 5.0
         links = healer._search_links_duckduckgo("ExampleCo careers jobs", "example.com", deadline)
         self.assertIn("https://boards.greenhouse.io/exampleco/jobs/123", links)
+
+    def test_search_discovery_does_not_fast_accept_unrelated_ats_slug(self):
+        wrong_board = "https://ats.rippling.com/lighthouseai-careers/jobs"
+
+        def responder(url: str):
+            if url == wrong_board:
+                return _Resp(text="<html><head><title>LighthouseAI Careers</title></head><body>LighthouseAI jobs</body></html>", status_code=200, url=url)
+            return _Resp(text="", status_code=404, url=url)
+
+        healer = ATSHealer(session=_FakeSession(responder))
+        healer._search_links_duckduckgo = lambda query, domain, deadline=None: [wrong_board]
+        healer._search_links_yahoo = lambda query, domain, deadline=None: []
+
+        res = healer._search_discovery("Clearwater Analytics", "cwan.com", time.perf_counter() + 5.0)
+        self.assertIsNone(res)
+
+    def test_scan_content_ignores_unrelated_offdomain_ats_link(self):
+        html = """
+        <html><body>
+          <a href="https://ats.rippling.com/lighthouseai-careers/jobs">Careers</a>
+        </body></html>
+        """
+        healer = ATSHealer(session=_FakeSession(lambda url: _Resp(text="", status_code=404, url=url)))
+        res = healer._scan_content(html, "https://www.cwan.com/company/careers", "Clearwater Analytics", "cwan.com")
+        self.assertIsNone(res)
 
     def test_domain_slug_candidates_strip_www_and_common_noise(self):
         healer = ATSHealer()

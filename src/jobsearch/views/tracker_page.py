@@ -21,6 +21,9 @@ from jobsearch.services.email_signal_service import (
     signal_resolution_for_existing_application,
 )
 from jobsearch.services.gmail_sync_service import sync_gmail_email_signals
+from jobsearch.views.export_components import render_quick_export
+from jobsearch.services.readiness_service import ReadinessService
+from jobsearch.views.readiness_components import render_readiness_badge
 
 FORMAL_TRACKER_EXCLUDED_STATUSES = {"considering"}
 AUTO_FOLLOW_UP_DAYS = {
@@ -977,7 +980,7 @@ def render_tracker(conn) -> None:
     st.divider()
 
     # ── Filters + Add button ──────────────────────────────────────────────────
-    fc1, fc2, fc3, fc4, fc5 = st.columns([2, 2, 2, 1, 1])
+    fc1, fc2, fc3, fc4, fc5, fc6 = st.columns([2, 2, 2, 2, 1, 1])
     with fc1:
         status_opts = ["All statuses"] + db.STATUSES
         sel_status  = st.selectbox("Status", status_opts, key="tracker_status_filter",
@@ -987,15 +990,17 @@ def render_tracker(conn) -> None:
         sel_type   = st.selectbox("Type", type_opts, key="tracker_type_filter",
                                   label_visibility="collapsed")
     with fc3:
+        sel_ready = st.multiselect("Readiness", ["READY", "DRAFT", "BLOCKED"], key="tracker_ready_filter", placeholder="Any readiness")
+    with fc4:
         search = st.text_input("Search", placeholder="company or role…",
                                key="tracker_search", label_visibility="collapsed")
-    with fc4:
+    with fc5:
         if st.button("➕ Add", key="tracker_add_btn", use_container_width=True):
             toggled = not st.session_state.get("tracker_show_add_form", False)
             st.session_state["tracker_show_add_form"] = toggled
             if toggled:
                 st.session_state["tracker_selected_id"] = None
-    with fc5:
+    with fc6:
         bulk_mode = st.toggle("Bulk", key="tracker_bulk_mode",
                                help="Switch to multi-select mode for bulk status changes or deletes")
         if not bulk_mode:
@@ -1018,6 +1023,25 @@ def render_tracker(conn) -> None:
     )
     # Filter out scraper-only 'considering' matches from the formal tracker.
     apps = _formal_tracker_rows(apps)
+    
+    # ── Readiness Evaluation (Batch) ──────────────────────────────────────────
+    readiness_service = ReadinessService(conn)
+    app_ids = [a['id'] for a in apps]
+    readiness_map = readiness_service.evaluate_batch(app_ids)
+
+    # ── Readiness Summary Metrics ─────────────────────────────────────────────
+    r_counts = {"ready": 0, "draft": 0, "blocked": 0}
+    for r_state in readiness_map.values():
+        r_counts[r_state.status] += 1
+    
+    rm1, rm2, rf3 = st.columns([1, 1, 4])
+    rm1.metric("Ready Packages", r_counts["ready"])
+    rm2.metric("Draft/Blocked", r_counts["draft"] + r_counts["blocked"])
+
+    # Filter by readiness if selected
+    if sel_ready:
+        apps = [a for a in apps if readiness_map.get(a['id']).status.upper() in sel_ready]
+
     if search:
         q = search.lower()
         apps = [a for a in apps if q in a["company"].lower() or q in a["role"].lower()]
@@ -1028,7 +1052,13 @@ def render_tracker(conn) -> None:
 
     # ── Build table DataFrame ─────────────────────────────────────────────────
     rows = []
-    for a in apps:
+    # Sort weight: Ready=0, Draft=1, Blocked=2
+    status_weights = {'ready': 0, 'draft': 1, 'blocked': 2}
+    
+    # Sort apps by readiness weight first, then by original order (updated_at)
+    apps_sorted = sorted(apps, key=lambda a: status_weights.get(readiness_map.get(a['id']).status, 3))
+
+    for a in apps_sorted:
         fu_date   = a["follow_up_date"] or ""
         days_left = _days_until(fu_date) if fu_date else None
         if fu_date and days_left is not None and days_left < 0:
@@ -1039,8 +1069,14 @@ def render_tracker(conn) -> None:
         type_label = {"application": "📋 Application",
                       "opportunity": "🤝 Opportunity",
                       "job_fair":    "🎪 Job Fair"}.get(entry, "📋 Application")
+        
+        # Readiness Badge
+        r_state = readiness_map.get(a['id'])
+        ready_badge = render_readiness_badge(r_state)
+
         rows.append({
             "_id":       a["id"],
+            "Ready":     ready_badge,
             "Type":      type_label,
             "Company":   a["company"],
             "Role":      a["role"],
@@ -1053,7 +1089,7 @@ def render_tracker(conn) -> None:
     df_tbl = pd.DataFrame(rows)
 
     # Export CSV (always visible, reflects current filter)
-    csv_bytes = df_tbl.drop(columns=["_id"]).to_csv(index=False).encode("utf-8")
+    csv_bytes = df_tbl.drop(columns=["_id", "Ready"]).to_csv(index=False).encode("utf-8")
     st.download_button(
         label="⬇️ Export CSV",
         data=csv_bytes,
@@ -1063,6 +1099,7 @@ def render_tracker(conn) -> None:
     )
 
     _col_config = {
+        "Ready":     st.column_config.TextColumn("Ready",     width="small", help="Submission Readiness Status"),
         "Type":      st.column_config.TextColumn("Type",      width="small"),
         "Company":   st.column_config.TextColumn("Company",   width="medium"),
         "Role":      st.column_config.TextColumn("Role",      width="large"),
@@ -1428,6 +1465,9 @@ def _render_detail(conn, app_id: int) -> None:
         link_parts.append(f"[Cover Letter ↗]({app['cover_letter_url']})")
     if link_parts:
         st.markdown("  |  ".join(link_parts))
+
+    st.markdown("<div style='margin-bottom: 1rem;'></div>", unsafe_allow_html=True)
+    render_quick_export(conn, app["id"])
 
     if app["job_description"]:
         with st.expander("📄 Full Job Description"):

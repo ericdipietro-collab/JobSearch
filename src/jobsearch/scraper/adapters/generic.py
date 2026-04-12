@@ -1,5 +1,6 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import hashlib
+import json
 import logging
 import re
 from urllib.parse import urljoin
@@ -125,6 +126,20 @@ class GenericAdapter(BaseAdapter):
                     )
 
                 company_name = company_config.get("name", "Unknown")
+                phenom_jobs = self._extract_phenom_jobs(
+                    html,
+                    base_url=url,
+                    company_name=company_name,
+                    tier=company_config.get("tier", 4),
+                )
+                if phenom_jobs:
+                    for job in phenom_jobs:
+                        if job.url in seen_urls:
+                            continue
+                        seen_urls.add(job.url)
+                        jobs.append(job)
+                    continue
+
                 jsonld_jobs = jsonld_jobs_to_canonical(
                     html,
                     base_url=url,
@@ -178,9 +193,104 @@ class GenericAdapter(BaseAdapter):
 
         return jobs
 
+    def _extract_phenom_jobs(
+        self,
+        html: str,
+        *,
+        base_url: str,
+        company_name: str,
+        tier: int,
+    ) -> List[Job]:
+        payload = self._parse_phenom_ddo(html)
+        if not payload:
+            return []
+        eager = payload.get("eagerLoadRefineSearch") or {}
+        data = eager.get("data") if isinstance(eager, dict) else {}
+        raw_jobs = data.get("jobs") if isinstance(data, dict) else None
+        if not isinstance(raw_jobs, list):
+            return []
+
+        jobs: List[Job] = []
+        for item in raw_jobs:
+            if not isinstance(item, dict):
+                continue
+            title = str(item.get("title") or item.get("jobTitle") or item.get("name") or "").strip()
+            apply_url = str(item.get("applyUrl") or item.get("url") or "").strip()
+            if not title or not apply_url:
+                continue
+
+            location = ""
+            multi_location = item.get("multi_location")
+            if isinstance(multi_location, list) and multi_location:
+                location = ", ".join(str(part).strip() for part in multi_location if str(part).strip())
+            elif isinstance(multi_location, str):
+                location = multi_location.strip()
+            if not location:
+                location = str(item.get("location") or item.get("city") or "").strip()
+                region = str(item.get("state") or "").strip()
+                country = str(item.get("country") or "").strip()
+                if region and region.lower() not in {"not applicable"} and region not in location:
+                    location = ", ".join(part for part in [location, region] if part)
+                if country and country not in location:
+                    location = ", ".join(part for part in [location, country] if part)
+
+            description = str(
+                item.get("descriptionTeaser")
+                or item.get("descriptionTeaser_first200")
+                or item.get("description")
+                or title
+            ).strip()
+            req_id = str(item.get("reqId") or item.get("req_id") or "").strip()
+            canonical_url = urljoin(base_url, apply_url)
+            job_id = hashlib.md5(f"{company_name}{title}{canonical_url}".encode()).hexdigest()
+            jobs.append(
+                Job(
+                    id=job_id,
+                    company=company_name,
+                    role_title_raw=title,
+                    location=location,
+                    url=canonical_url,
+                    source="Web Scraper (Phenom Embedded)",
+                    adapter="generic",
+                    tier=str(tier),
+                    description_excerpt=f"{title} {req_id} {description}".strip(),
+                )
+            )
+        return jobs
+
+    def _parse_phenom_ddo(self, html: str) -> Optional[Dict[str, Any]]:
+        # Check both common Phenom markers
+        marker = "phApp.ddo ="
+        idx = html.find(marker)
+        if idx == -1:
+            marker = "phApp ="
+            idx = html.find(marker)
+        
+        if idx == -1:
+            return None
+            
+        start = html.find("{", idx)
+        if start == -1:
+            return None
+        try:
+            # Multi-line JSON extraction from JS
+            decoder = json.JSONDecoder()
+            payload, _ = decoder.raw_decode(html[start:])
+            if isinstance(payload, dict):
+                # If we matched phApp =, the ddo is one level deeper
+                if marker == "phApp =" and "ddo" in payload:
+                    return payload["ddo"]
+                return payload
+        except Exception:
+            logger.debug("generic-adapter failed to parse embedded Phenom DDO payload")
+            return None
+        return None
+
     def _detect_embedded_ats(self, html: str) -> str:
         """Return the name of an embedded ATS if its marker is found in the HTML, else ''."""
         html_lower = html.lower()
+        if "phenompeople.com" in html_lower or "phapp.ddo" in html_lower or "data-ph-id" in html_lower:
+            return "phenom"
         for ats_name, marker in self._ATS_EMBED_SIGNALS:
             if marker in html_lower:
                 return ats_name

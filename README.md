@@ -81,10 +81,12 @@ After changing the setting, rerun the installer or launcher.
 
 ### Intelligent Scoring & Filtering
 - **Two-layer scoring engine** — V1 applies hard gates (negative title disqualifiers, location, work-type filters); V2 is the primary engine that resolves canonical title families, detects seniority, and computes an anchor + baseline keyword score against your preferences
+- **Market Strategy & Canonicalization** — Automatically identifies and consolidates duplicate job postings across lanes (ATS vs aggregators). Clusters jobs into market segments (e.g., Fintech, Platform, Data) to visualize market maps and identify strategic resume-to-market gaps.
 - **Configurable V2 controls** — Fast-Track thresholds, anchor/baseline/negative caps, and bucket cutoffs (Apply Now / Review Today / Watch) all exposed as interactive sliders in Scoring Settings
 - **Experience tolerance gap** — Soft-drop jobs requiring significantly more experience; soft-penalty for near-fit roles
 - **Re-scoring without re-scraping** — Update scoring weights and re-score all saved jobs instantly
 - **Full-text search (FTS5)** — Sub-15ms semantic search across 10K+ jobs with BM25 ranking
+- **Health-Aware Scheduling** — Smart retry prioritization that sorts the scrape queue by high-value, recoverable targets while automatically applying escalating cooldowns to blocked or broken boards.
 
 ### Automation & Alerts
 - **Background auto-refresh** — Scraper runs on configurable schedule (1-24 hours) without manual intervention
@@ -93,10 +95,14 @@ After changing the setting, rerun the installer or launcher.
 - **Content-hash sync** — Re-scrapes preserve your annotations (notes, status, date_applied); only updates job-provided fields
 
 ### Application Tracking & Analysis
+- **Action Center** — A "Daily Operating Cockpit" that prioritizes your best moves: Apply Now, Follow Up, or Prep for upcoming interviews based on urgency and impact scores.
+- **Tailoring Studio** — Professional-grade resume customization with a locked "Andy Warthog" teal template. Features a structured form editor, AI-powered bullet refinement, and keyword gap detection.
+- **Submission Review Cockpit** — A guided human-in-the-loop workflow for manual applications. Includes a pre-flight checklist, export freshness warnings, and structured friction/blocker logging.
+- **Learning Loop** — Outcomes-based calibration that measures conversion funnels and identifies "Score Inversions" where low-scored jobs might be outperforming top matches.
 - **Rich application tracking** — Records applications, contacts, interviews, offers, rejections
 - **Gmail sync** — Auto-detects missed applications, rejections, and interview scheduling emails
 - **Skills gap reports** — Per-job missing-skills analysis for targeted interview prep
-- **Excel export** — Color-coded multi-sheet reports with summary stats and filtered-out jobs
+- **Excel, PDF & DOCX export** — Bundles full application packages (Styled Resume, ATS Resume, Cover Letter) into a single ZIP for submission.
 - **Offer comparison & negotiation planning** — Side-by-side offer analysis and negotiation playbook
 - **Interview debrief & feedback** — Post-interview notes and learnings capture
 

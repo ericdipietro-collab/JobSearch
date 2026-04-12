@@ -259,6 +259,70 @@ CREATE TABLE IF NOT EXISTS company_profiles (
 )
 """
 
+_CREATE_BOARD_HEALTH = """
+CREATE TABLE IF NOT EXISTS board_health (
+    company             TEXT PRIMARY KEY,
+    adapter             TEXT,
+    careers_url         TEXT,
+    board_state         TEXT NOT NULL DEFAULT 'healthy',
+    last_success_method TEXT,
+    last_http_status    INTEGER,
+    manual_review_required INTEGER DEFAULT 0,
+    suppression_reason  TEXT,
+    consecutive_failures INTEGER DEFAULT 0,
+    last_success_at     TEXT,
+    last_attempt_at     TEXT,
+    last_healed_at      TEXT,
+    cooldown_until      TEXT,
+    notes               TEXT,
+    updated_at          TEXT NOT NULL
+)
+"""
+
+_CREATE_BOARD_HEALTH_EVENTS = """
+CREATE TABLE IF NOT EXISTS board_health_events (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp           TEXT NOT NULL,
+    company             TEXT NOT NULL,
+    adapter             TEXT,
+    from_state          TEXT,
+    to_state            TEXT NOT NULL,
+    trigger_subsystem   TEXT NOT NULL, -- 'scrape_run', 'healer', 'dashboard', 'scheduler'
+    reason              TEXT,
+    extraction_method   TEXT,
+    extraction_confidence REAL,
+    metadata            TEXT -- JSON blob for extra context
+)
+"""
+
+_CREATE_USER_ACTIONS = """
+CREATE TABLE IF NOT EXISTS user_actions (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    entity_type         TEXT NOT NULL, -- 'job', 'application', 'contact', 'interview'
+    entity_id           TEXT NOT NULL, -- scraper_key or row ID
+    action_key          TEXT NOT NULL, -- 'apply', 'follow_up', 'outreach', 'prep', 'archive'
+    status              TEXT NOT NULL DEFAULT 'active', -- 'active', 'completed', 'dismissed', 'snoozed'
+    snoozed_until       TEXT,
+    metadata            TEXT, -- JSON context
+    created_at          TEXT NOT NULL,
+    updated_at          TEXT NOT NULL,
+    UNIQUE(entity_type, entity_id, action_key)
+)
+"""
+
+_CREATE_TAILORED_ARTIFACTS = """
+CREATE TABLE IF NOT EXISTS tailored_artifacts (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    application_id      INTEGER NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
+    artifact_type       TEXT NOT NULL, -- 'resume_summary', 'resume_bullets', 'cover_letter', 'outreach_note', 'why_company', 'why_role'
+    content             TEXT,
+    notes               TEXT,
+    version             INTEGER DEFAULT 1,
+    created_at          TEXT NOT NULL,
+    updated_at          TEXT NOT NULL
+)
+"""
+
 _CREATE_SCHEMA_META = """
 CREATE TABLE IF NOT EXISTS schema_meta (
     key   TEXT PRIMARY KEY,
@@ -324,6 +388,10 @@ _DDL_STATEMENTS = [
     _CREATE_JOB_ANNOTATIONS,
     _CREATE_QUESTION_BANK,
     _CREATE_COMPANY_PROFILES,
+    _CREATE_BOARD_HEALTH,
+    _CREATE_BOARD_HEALTH_EVENTS,
+    _CREATE_USER_ACTIONS,
+    _CREATE_TAILORED_ARTIFACTS,
     _CREATE_SCHEMA_META,
     _CREATE_LLM_COST_LOG,
     _CREATE_JOBS_FTS,
@@ -379,6 +447,13 @@ def init_db(conn: sqlite3.Connection) -> None:
     _add_column_if_missing(cur, "applications", "v2_baseline_score", "v2_baseline_score REAL")
     _add_column_if_missing(cur, "applications", "v2_flags", "v2_flags TEXT")
     _add_column_if_missing(cur, "applications", "talking_points", "talking_points TEXT")
+    _add_column_if_missing(cur, "applications", "extraction_method", "extraction_method TEXT")
+    _add_column_if_missing(cur, "applications", "extraction_confidence", "extraction_confidence REAL")
+    _add_column_if_missing(cur, "applications", "last_exported_at", "last_exported_at TEXT")
+    _add_column_if_missing(cur, "applications", "role_cluster", "role_cluster TEXT")
+    _add_column_if_missing(cur, "applications", "canonical_group_id", "canonical_group_id TEXT")
+    _add_column_if_missing(cur, "applications", "is_canonical", "INTEGER DEFAULT 1")
+    _add_column_if_missing(cur, "applications", "canonical_merge_rationale", "TEXT")
     migrate_stage_history(conn)
     migrate_content_hash(conn)
     cur.execute("CREATE TABLE IF NOT EXISTS schema_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")

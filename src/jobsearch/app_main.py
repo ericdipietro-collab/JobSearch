@@ -35,6 +35,11 @@ from jobsearch.views.question_bank_page     import render_question_bank
 from jobsearch.views.company_profiles_page  import render_company_profiles
 from jobsearch.views.pipeline_page          import render_pipeline
 from jobsearch.views.analytics_page         import render_analytics
+from jobsearch.views.action_center_page     import render_action_center
+from jobsearch.views.tailoring_studio_page  import render_tailoring_studio
+from jobsearch.views.learning_loop_page     import render_learning_loop
+from jobsearch.views.submission_review_page  import render_submission_review
+from jobsearch.views.market_strategy_page     import render_market_strategy
 
 # ── Constants ──
 KNOWN_ADAPTERS = [
@@ -503,6 +508,10 @@ def _load_jobs_df(_stamp: str) -> pd.DataFrame:
         rows = ats_db.get_applications(conn)
         df = pd.DataFrame([dict(r) for r in rows])
         if df.empty: return df
+        
+        # Canonical Filter
+        if "is_canonical" in df.columns:
+            df = df[df["is_canonical"] == 1].copy()
         
         df = df.rename(columns={"role": "title", "job_url": "url", "scraper_key": "_key"})
         ann_rows = ats_db.get_all_annotations(conn)
@@ -1259,7 +1268,7 @@ def main():
         st.markdown("[☕ Buy Me a Coffee](https://www.buymeacoffee.com/ericdipietro)")
         st.markdown("<div style='margin-bottom: 1.5rem;'></div>", unsafe_allow_html=True)
         
-        nav = ["Home", "Job Matches", "My Applications", "Journal", "Contacts", "Company Profiles", "Training", "Question Bank", "Weekly Report", "Templates", "Pipeline", "Analytics", "Run Job Search", "Search Settings", "Target Companies"]
+        nav = ["Action Center", "Home", "Tailoring Studio", "Submission Review", "Learning Loop", "Market Strategy", "Job Matches", "My Applications", "Journal", "Contacts", "Company Profiles", "Training", "Question Bank", "Weekly Report", "Templates", "Pipeline", "Analytics", "Run Job Search", "Search Settings", "Target Companies"]
         page = st.radio("Navigation", nav)
         
         if st.button("↺ Refresh Data", use_container_width=True):
@@ -2715,54 +2724,355 @@ def main():
         with t5:
             conn = ats_db.get_connection()
             try:
-                health_rows = pd.DataFrame([dict(row) for row in ats_db.get_scraper_health_rows(conn)])
+                # Use the new unified board_health table
+                health_data = [dict(row) for row in ats_db.get_scraper_health_rows(conn)]
+                health_df = pd.DataFrame(health_data)
+                
+                # Load latest scheduling decisions
+                dec_path = settings.results_dir / "scheduling_decisions.jsonl"
+                dec_df = pd.DataFrame()
+                if dec_path.exists():
+                    try:
+                        with open(dec_path, "r", encoding="utf-8") as f:
+                            all_dec = [json.loads(line) for line in f if line.strip()]
+                        if all_dec:
+                            # Keep only the latest decision per company
+                            latest_dec = {}
+                            for d in all_dec:
+                                latest_dec[d["company"]] = d
+                            dec_df = pd.DataFrame(list(latest_dec.values()))
+                    except Exception:
+                        pass
+                
+                # Fetch flapping data
+                flap_map = {}
+                try:
+                    flapping_rows = ats_db.get_flapping_boards(conn, days=settings.health_flapping_window_days)
+                    flap_map = {r["company"]: r["changes"] for r in flapping_rows}
+                except Exception as e:
+                    logger.debug("Failed to fetch flapping data: %s", e)
+                
+                if not dec_df.empty and not health_df.empty:
+                    health_df = health_df.merge(
+                        dec_df[["company", "action", "priority", "reason", "queue_healer"]], 
+                        on="company", 
+                        how="left"
+                    )
+                    # Rename columns for display
+                    health_df.rename(columns={
+                        "action": "planned_action",
+                        "priority": "priority_score",
+                        "reason": "scheduling_reason"
+                    }, inplace=True)
+                
+                if not health_df.empty:
+                    health_df["flapping_changes"] = health_df["company"].map(flap_map).fillna(0).astype(int)
+                    
+                    def get_severity(changes):
+                        if changes >= settings.health_flapping_threshold_high: return "🔴 High"
+                        if changes >= settings.health_flapping_threshold_med: return "🟠 Med"
+                        if changes >= settings.health_flapping_threshold_low: return "🟡 Low"
+                        return ""
+                    
+                    health_df["instability"] = health_df["flapping_changes"].apply(get_severity)
             finally:
                 conn.close()
-            if health_rows.empty:
-                st.info("No scraper health data recorded yet. Run the pipeline first.")
+
+            if health_df.empty:
+                st.info("No scraper health data recorded yet. Run the pipeline or healer first.")
             else:
-                health_rows["empty_streak"] = pd.to_numeric(health_rows["empty_streak"], errors="coerce").fillna(0).astype(int)
-                health_rows["success_count"] = pd.to_numeric(health_rows["success_count"], errors="coerce").fillna(0).astype(int)
-                health_rows["last_evaluated"] = pd.to_numeric(health_rows["last_evaluated"], errors="coerce").fillna(0).astype(int)
-                health_rows["dark_for_7d"] = health_rows["empty_streak"].ge(3) & health_rows["last_evaluated"].eq(0)
-                c1, c2 = st.columns(2)
-                c1.metric("Tracked Health Rows", len(health_rows))
-                c2.metric("Companies Dark 7d+", int(health_rows["dark_for_7d"].sum()))
-                health_query = st.text_input("Search scraper health", value="", placeholder="Company, adapter, status, notes…", key="scraper_health_search")
-                filtered_health = _search_text_match(
-                    health_rows,
-                    health_query,
-                    ["company", "adapter_family", "last_status", "notes", "careers_url"],
-                )
-                st.dataframe(
-                    filtered_health[
-                        [
-                            "company",
-                            "adapter_family",
-                            "last_status",
-                            "empty_streak",
-                            "success_count",
-                            "last_evaluated",
-                            "cooldown_until",
-                            "last_elapsed_ms",
-                            "dark_for_7d",
-                            "careers_url",
-                        ]
-                    ],
-                    column_config={
-                        "adapter_family":  st.column_config.TextColumn("Job Board Type"),
-                        "last_status":     st.column_config.TextColumn("Last Result"),
-                        "empty_streak":    st.column_config.NumberColumn("Consecutive Empty Runs", help="How many recent scrape runs returned zero jobs for this company."),
-                        "success_count":   st.column_config.NumberColumn("Successful Runs"),
-                        "last_evaluated":  st.column_config.NumberColumn("Runs Since Last Check"),
-                        "cooldown_until":  st.column_config.TextColumn("Paused Until"),
-                        "last_elapsed_ms": st.column_config.NumberColumn("Last Run Time (ms)"),
-                        "dark_for_7d":     st.column_config.CheckboxColumn("Dark 7d+", help="Company has returned no jobs for 3 or more consecutive runs."),
-                        "careers_url":     st.column_config.LinkColumn("Careers Page"),
-                    },
-                    hide_index=True,
-                    use_container_width=True,
-                )
+                # Summary Cards
+                st.subheader("Operational Summary")
+                
+                # Define states
+                blocked_states = {"blocked_bot_protection", "blocked"}
+                broken_states = {"broken_site", "broken"}
+                stale_states = {"stale_url", "wrong_url"}
+                
+                now = datetime.now(timezone.utc)
+                
+                # Pre-calculate some helpful columns
+                health_df["is_cooldown_active"] = False
+                for idx, row in health_df.iterrows():
+                    if row["cooldown_until"]:
+                        try:
+                            until = datetime.fromisoformat(str(row["cooldown_until"]).replace("Z", "+00:00"))
+                            if until.tzinfo is None: until = until.replace(tzinfo=timezone.utc)
+                            if until > now:
+                                health_df.at[idx, "is_cooldown_active"] = True
+                        except Exception: pass
+
+                # Fetch Healer ROI
+                conn = ats_db.get_connection()
+                try:
+                    roi = ats_db.get_healer_roi_metrics(conn, days=30)
+                finally:
+                    conn.close()
+
+                total_count = len(health_df)
+                healthy_count = len(health_df[health_df["board_state"] == "healthy"])
+                blocked_count = len(health_df[health_df["board_state"].isin(blocked_states)])
+                broken_count = len(health_df[health_df["board_state"].isin(broken_states)])
+                stale_count = len(health_df[health_df["board_state"].isin(stale_states)])
+                cooldown_count = health_df["is_cooldown_active"].sum()
+                manual_count = health_df["manual_review_required"].fillna(0).astype(int).sum()
+                unstable_count = (health_df["flapping_changes"] >= settings.health_flapping_threshold_low).sum()
+
+                cols = st.columns(8)
+                cols[0].metric("Healthy", f"{healthy_count}/{total_count}")
+                cols[1].metric("Blocked", blocked_count)
+                cols[2].metric("Broken", broken_count)
+                cols[3].metric("Stale", stale_count)
+                cols[4].metric("Cooldown", int(cooldown_count))
+                cols[5].metric("Manual", int(manual_count))
+                cols[6].metric("Unstable", int(unstable_count))
+                cols[7].metric("Healer ROI", f"{roi['total_recoveries']} rev")
+
+                st.divider()
+                
+                # Filters
+                st.subheader("Filter Boards")
+                f1, f2, f3, f4 = st.columns(4)
+                
+                with f1:
+                    all_families = sorted(list(health_df["adapter"].dropna().unique()))
+                    sel_family = st.multiselect("ATS Family", options=all_families)
+                
+                with f2:
+                    all_states = sorted(list(health_df["board_state"].dropna().unique()))
+                    sel_state = st.multiselect("Board State", options=all_states)
+                
+                with f3:
+                    all_methods = sorted(list(health_df["last_success_method"].dropna().unique()))
+                    sel_method = st.multiselect("Last Method", options=all_methods)
+                    all_actions = sorted(list(health_df["planned_action"].dropna().unique())) if "planned_action" in health_df.columns else []
+                    sel_action = st.multiselect("Planned Action", options=all_actions)
+                
+                with f4:
+                    show_cooldown_only = st.checkbox("Only Active Cooldowns", value=False)
+                    show_unstable_only = st.checkbox("Only Unstable (Flapping)", value=False)
+                    show_manual_only = st.checkbox("Only Manual Review", value=False)
+                    show_healer_only = st.checkbox("Only Healer Tasks", value=False)
+
+                # Apply Filters
+                filtered_df = health_df.copy()
+                if sel_family:
+                    filtered_df = filtered_df[filtered_df["adapter"].isin(sel_family)]
+                if sel_state:
+                    filtered_df = filtered_df[filtered_df["board_state"].isin(sel_state)]
+                if sel_method:
+                    filtered_df = filtered_df[filtered_df["last_success_method"].isin(sel_method)]
+                if "planned_action" in filtered_df.columns and sel_action:
+                    filtered_df = filtered_df[filtered_df["planned_action"].isin(sel_action)]
+                if show_cooldown_only:
+                    filtered_df = filtered_df[filtered_df["is_cooldown_active"]]
+                if show_unstable_only:
+                    filtered_df = filtered_df[filtered_df["flapping_changes"] >= settings.health_flapping_threshold_low]
+                if show_manual_only:
+                    filtered_df = filtered_df[filtered_df["manual_review_required"] == 1]
+                if show_healer_only and "queue_healer" in filtered_df.columns:
+                    filtered_df = filtered_df[filtered_df["queue_healer"] == True]
+
+                health_query = st.text_input("Search boards", value="", placeholder="Company, adapter, status, notes…", key="scraper_health_search_v2")
+                if health_query:
+                    filtered_df = _search_text_match(
+                        filtered_df,
+                        health_query,
+                        ["company", "adapter", "board_state", "notes", "careers_url"],
+                    )
+
+                # History & Trends
+                st.divider()
+                t_col1, t_col2 = st.columns([1, 2])
+                with t_col1:
+                    st.subheader("Operational Trends")
+                    conn = ats_db.get_connection()
+                    try:
+                        counts = ats_db.get_state_transition_counts(conn)
+                        if counts:
+                            counts_df = pd.DataFrame([dict(r) for r in counts])
+                            st.bar_chart(counts_df.set_index("to_state"))
+                        else:
+                            st.info("No transition history recorded yet.")
+                    finally:
+                        conn.close()
+                
+                with t_col2:
+                    st.subheader("Recent Transitions")
+                    conn = ats_db.get_connection()
+                    try:
+                        recent_events = ats_db.get_recent_board_health_events(conn, limit=10)
+                        if recent_events:
+                            ev_df = pd.DataFrame([dict(r) for r in recent_events])
+                            st.dataframe(
+                                ev_df[["timestamp", "company", "from_state", "to_state", "trigger_subsystem", "reason"]],
+                                column_config={
+                                    "timestamp": st.column_config.TextColumn("Time"),
+                                    "company": st.column_config.TextColumn("Company"),
+                                    "from_state": st.column_config.TextColumn("From"),
+                                    "to_state": st.column_config.TextColumn("To"),
+                                    "trigger_subsystem": st.column_config.TextColumn("Trigger"),
+                                    "reason": st.column_config.TextColumn("Reason"),
+                                },
+                                hide_index=True,
+                                use_container_width=True,
+                            )
+                        else:
+                            st.info("No recent transitions.")
+                    finally:
+                        conn.close()
+
+                st.divider()
+                with st.expander("🩺 Healer ROI & Analytics (Last 30 Days)", expanded=False):
+                    r1, r2, r3, r4 = st.columns(4)
+                    r1.metric("Total Recoveries", roi["total_recoveries"])
+                    r2.metric("Stale URLs Fixed", roi["stale_recoveries"])
+                    r3.metric("Blocked/Broken Fixed", roi["blocked_recoveries"])
+                    r4.metric("Manual Hours Saved", f"{roi['manual_hours_saved']:.1f}h", help="Estimated 30m saved per successful recovery.")
+                    
+                    if roi["by_family"]:
+                        st.write("**Recovery Rate by ATS Family**")
+                        roi_df = pd.DataFrame(roi["by_family"])
+                        st.dataframe(
+                            roi_df,
+                            column_config={
+                                "adapter": st.column_config.TextColumn("ATS Family"),
+                                "count": st.column_config.NumberColumn("Successful Recoveries")
+                            },
+                            hide_index=True,
+                            use_container_width=True
+                        )
+
+                st.divider()
+                st.subheader("All Boards")
+                if filtered_df.empty:
+                    st.warning("No boards match your filters.")
+                else:
+                    # Detailed Table
+                    # Add scheduling columns if they exist
+                    cols_to_show = [
+                        "company", "adapter", "board_state", "instability", "planned_action", 
+                        "priority_score", "scheduling_reason", "consecutive_failures", 
+                        "cooldown_until", "last_attempt_at", "last_success_at", 
+                        "careers_url", "notes"
+                    ]
+                    # Filter to only existing columns
+                    cols_to_show = [c for c in cols_to_show if c in filtered_df.columns]
+                    
+                    st.dataframe(
+                        filtered_df[cols_to_show],
+                        column_config={
+                            "company": st.column_config.TextColumn("Company"),
+                            "adapter": st.column_config.TextColumn("ATS Family"),
+                            "board_state": st.column_config.TextColumn("State"),
+                            "planned_action": st.column_config.TextColumn("Planned Action"),
+                            "priority_score": st.column_config.NumberColumn("Priority"),
+                            "scheduling_reason": st.column_config.TextColumn("Reason"),
+                            "consecutive_failures": st.column_config.NumberColumn("Fail Streak"),
+                            "cooldown_until": st.column_config.TextColumn("Paused Until"),
+                            "last_attempt_at": st.column_config.TextColumn("Last Attempt"),
+                            "last_success_at": st.column_config.TextColumn("Last Success"),
+                            "careers_url": st.column_config.LinkColumn("Careers Page"),
+                            "notes": st.column_config.TextColumn("Notes"),
+                        },
+                        hide_index=True,
+                        use_container_width=True,
+                    )
+                    
+                    # Actions for selected company
+                    st.divider()
+                    st.subheader("Actions")
+                    sel_company = st.selectbox("Select Company for Action", options=[""] + sorted(list(filtered_df["company"].unique())))
+                    if sel_company:
+                        a1, a2 = st.columns(2)
+                        with a1:
+                            if st.button(f"Clear Cooldown for {sel_company}", use_container_width=True):
+                                conn = ats_db.get_connection()
+                                try:
+                                    ats_db.update_board_health(conn, sel_company, cooldown_until=None, suppression_reason=None, trigger_subsystem="dashboard")
+                                    st.success(f"Cleared cooldown for {sel_company}. It will be included in the next run.")
+                                    st.rerun()
+                                finally:
+                                    conn.close()
+                            
+                            if st.button(f"Trigger Healer for {sel_company}", use_container_width=True, help="Run ATS discovery/fix immediately for this company."):
+                                cmd = [sys.executable, "-m", "jobsearch.cli", "heal", "--all", "--force", "--ignore-cooldown", "--company", sel_company]
+                                proc = subprocess.Popen(
+                                    cmd,
+                                    stdout=subprocess.PIPE,
+                                    stderr=subprocess.STDOUT,
+                                    encoding="utf-8",
+                                    env={**os.environ, "PYTHONPATH": "src;."},
+                                )
+                                with st.status(f"Healing {sel_company}...", expanded=True) as status:
+                                    log = st.empty()
+                                    lines = []
+                                    for raw in iter(proc.stdout.readline, ""):
+                                        lines.append(raw.rstrip())
+                                        log.code("\n".join(lines[-10:]))
+                                    proc.wait()
+                                    status.update(label=f"Heal complete for {sel_company}", state="complete")
+                                st.rerun()
+
+                        with a2:
+                            if st.button(f"Mark Manual Review: {sel_company}", use_container_width=True):
+                                conn = ats_db.get_connection()
+                                try:
+                                    ats_db.update_board_health(conn, sel_company, manual_review_required=1, board_state="manual_review", trigger_subsystem="dashboard")
+                                    st.success(f"Marked {sel_company} for manual review.")
+                                    st.rerun()
+                                finally:
+                                    conn.close()
+                            
+                            with st.expander(f"View History for {sel_company}"):
+                                conn = ats_db.get_connection()
+                                try:
+                                    history = ats_db.get_board_health_history(conn, sel_company)
+                                    if history:
+                                        h_df = pd.DataFrame([dict(r) for r in history])
+                                        st.dataframe(
+                                            h_df[["timestamp", "from_state", "to_state", "trigger_subsystem", "reason"]],
+                                            column_config={
+                                                "timestamp": st.column_config.TextColumn("Time"),
+                                                "from_state": st.column_config.TextColumn("From"),
+                                                "to_state": st.column_config.TextColumn("To"),
+                                                "trigger_subsystem": st.column_config.TextColumn("Trigger"),
+                                                "reason": st.column_config.TextColumn("Reason"),
+                                            },
+                                            hide_index=True,
+                                            use_container_width=True,
+                                        )
+                                    else:
+                                        st.info("No history recorded for this company.")
+                                finally:
+                                    conn.close()
+                            
+                            if st.button(f"View Evidence for {sel_company}", use_container_width=True):
+                                ev_path = settings.results_dir / "heal_evidence.jsonl"
+                                if ev_path.exists():
+                                    try:
+                                        with open(ev_path, "r", encoding="utf-8") as f:
+                                            all_ev = [json.loads(line) for line in f if line.strip()]
+                                        comp_ev = [e for e in all_ev if str(e.get("company", "")).lower() == sel_company.lower()]
+                                        if comp_ev:
+                                            for ev in reversed(comp_ev[-3:]): # Show last 3 attempts
+                                                with st.expander(f"Evidence from {ev.get('timestamp', 'unknown')}", expanded=True):
+                                                    st.json(ev)
+                                        else:
+                                            st.info(f"No evidence records found for {sel_company} in {ev_path.name}")
+                                    except Exception as e:
+                                        st.error(f"Failed to read evidence: {e}")
+                                else:
+                                    st.info(f"Evidence file {ev_path.name} does not exist yet.")
+                            
+                            if st.button(f"Reset Stats for {sel_company}", use_container_width=True):
+                                conn = ats_db.get_connection()
+                                try:
+                                    ats_db.update_board_health(conn, sel_company, consecutive_failures=0, board_state="healthy", trigger_subsystem="dashboard")
+                                    st.success(f"Reset stats for {sel_company}.")
+                                    st.rerun()
+                                finally:
+                                    conn.close()
 
     elif page == "Run Job Search":
         st.title("Run Search Pipeline")
@@ -3015,7 +3325,22 @@ def main():
 
 
     else:
-        view_map = {"Pipeline": render_pipeline, "Analytics": render_analytics, "Training": render_training, "Journal": render_journal, "Contacts": render_contacts, "Company Profiles": render_company_profiles, "Weekly Report": render_activity_report, "Templates": render_templates, "Question Bank": render_question_bank}
+        view_map = {
+            "Action Center": render_action_center,
+            "Tailoring Studio": render_tailoring_studio,
+            "Submission Review": render_submission_review,
+            "Learning Loop": render_learning_loop,
+            "Market Strategy": render_market_strategy,
+            "Pipeline": render_pipeline, 
+            "Analytics": render_analytics, 
+            "Training": render_training, 
+            "Journal": render_journal, 
+            "Contacts": render_contacts, 
+            "Company Profiles": render_company_profiles, 
+            "Weekly Report": render_activity_report, 
+            "Templates": render_templates, 
+            "Question Bank": render_question_bank
+        }
         conn = ats_db.get_connection(); _safe_render(view_map[page], conn, page_name=page)
 
 if __name__ == "__main__": main()

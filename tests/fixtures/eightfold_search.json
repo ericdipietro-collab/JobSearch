@@ -1,0 +1,19 @@
+{
+  "total_count": 2,
+  "jobs": [
+    {
+      "t": "Software Engineer",
+      "l": "New York, NY",
+      "u": "https://example.eightfold.ai/careers/job?domain=example.com&id=123",
+      "jd": "We are looking for a Software Engineer...",
+      "id": "123"
+    },
+    {
+      "t": "Data Scientist",
+      "l": "Remote",
+      "u": "https://example.eightfold.ai/careers/job?domain=example.com&id=456",
+      "jd": "We are looking for a Data Scientist...",
+      "id": "456"
+    }
+  ]
+}

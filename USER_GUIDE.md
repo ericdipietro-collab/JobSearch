@@ -1,8 +1,13 @@
-# User Guide — v2.1
+# User Guide — v2.2
 
-This guide covers daily use of the Job Search dashboard — from first-time setup through running searches, tracking applications, prepping for interviews, and analyzing your results.
+This guide covers daily use of the Job Search dashboard — from first-time setup through running searches, tailoring applications, managing submissions, and analyzing your results.
 
-**What's new in v2.1:** Two-layer V2 scoring engine (V1 hard gates + V2 canonical-title/seniority/keyword model) replaces the old linear funnel. AI Analysis cards now appear on Apply Now, Review Today, and Watch tabs — not just top-tier roles. A browser bookmarklet ("Send to Dashboard") in Search Settings → Extensions & Tools lets you inject any job you find while browsing directly into the dashboard with full V2 scoring. Injected jobs are automatically tagged WATCH so they surface immediately regardless of score. A Refresh Data button in the sidebar flushes the cache on demand after external injections.
+**What's new in v2.2:** 
+- **Action Center**: A daily वर्क queue that prioritizes your best moves.
+- **Tailoring Studio**: professional resume customization with the "Andy Warthog" template.
+- **Submission Review**: guided cockpit for finalizing and confirming manual applications.
+- **Market Strategy**: role clustering and strategic resume-to-market gap analysis.
+- **Learning Loop**: analytics that correlate scores with real-world interview outcomes.
 
 ---
 
@@ -11,34 +16,40 @@ This guide covers daily use of the Job Search dashboard — from first-time setu
 1. [What This App Does](#1-what-this-app-does)
 2. [Installation and Launch](#2-installation-and-launch)
 3. [First-Time Setup](#3-first-time-setup)
-4. [Finding Jobs — The Scraper](#4-finding-jobs--the-scraper)
-5. [Job Matches](#5-job-matches)
-6. [My Applications — Tracking Your Pipeline](#6-my-applications--tracking-your-pipeline)
-7. [Pipeline View](#7-pipeline-view)
-8. [Home Dashboard](#8-home-dashboard)
-9. [Analytics](#9-analytics)
-10. [Company Profiles](#10-company-profiles)
-11. [Contacts](#11-contacts)
-12. [Interview Question Bank](#12-interview-question-bank)
-13. [Email Templates](#13-email-templates)
-14. [Journal](#14-journal)
-15. [Training Tracker](#15-training-tracker)
-16. [Weekly Report](#16-weekly-report)
-17. [Search Settings Reference](#17-search-settings-reference)
-18. [Target Companies Reference](#18-target-companies-reference)
-19. [CLI Reference](#19-cli-reference)
-20. [Tips and Workflow](#20-tips-and-workflow)
-21. [Troubleshooting](#21-troubleshooting)
+4. [Action Center — Your Daily Cockpit](#4-action-center--your-daily-cockpit)
+5. [Finding Jobs — The Scraper](#5-finding-jobs--the-scraper)
+6. [Job Matches](#6-job-matches)
+7. [Tailoring Studio](#7-tailoring-studio)
+8. [Submission Review — The Final Mile](#8-submission-review--the-final-mile)
+9. [My Applications — Tracking Your Pipeline](#9-my-applications--tracking-your-pipeline)
+10. [Market Strategy](#10-market-strategy)
+11. [Learning Loop — Outcomes and Calibration](#11-learning-loop--outcomes-and-calibration)
+12. [Pipeline View](#12-pipeline-view)
+13. [Home Dashboard](#13-home-dashboard)
+14. [Analytics](#14-analytics)
+15. [Company Profiles & Intelligence](#15-company-profiles--intelligence)
+16. [Contacts](#16-contacts)
+17. [Interview Question Bank](#17-interview-question-bank)
+18. [Email Templates](#18-email-templates)
+19. [Journal](#19-journal)
+20. [Training Tracker](#20-training-tracker)
+21. [Weekly Report](#21-weekly-report)
+22. [Search Settings Reference](#22-search-settings-reference)
+23. [Target Companies Reference](#23-target-companies-reference)
+24. [CLI Reference](#24-cli-reference)
+25. [Tips and Workflow](#25-tips-and-workflow)
+26. [Troubleshooting](#26-troubleshooting)
 
 ---
 
 ## 1. What This App Does
 
-The dashboard is a self-hosted job search system that combines three things most job seekers manage in separate tools:
+The dashboard is a self-hosted job search system that combines four things most job seekers manage in separate tools:
 
-- **Automated discovery** — scrapes careers pages at your target companies daily or on demand, scores every role against your salary, location, and keyword preferences, and surfaces only the matches that meet your bar.
-- **Application CRM** — tracks every application through a full stage workflow (exploring → applied → screening → interviewing → offer), logs events, manages contacts, and schedules follow-ups.
-- **Preparation and analysis** — interview question bank, company research profiles, email templates, a personal journal, and analytics that show where you're converting and where you're stalling.
+- **Automated discovery** — scrapes careers pages at your target companies daily or on demand, scores every role against your salary, location, and keyword preferences.
+- **Tailoring & Generation** — professional-grade resume and cover letter customization grounded in your background and specific job requirements.
+- **Submission Workflow** — a guided process for manual applications that ensures your materials are fresh and your tracking is accurate.
+- **Strategic Calibration** — analytics that show which clusters are hiring and which resume gaps are holding you back.
 
 Everything stays local. No data leaves your machine.
 
@@ -65,7 +76,7 @@ If the dashboard has been useful in your search, you can support ongoing develop
    - macOS: `launch.command`
    - Linux: `bash launch.sh`
 
-On first launch the launcher creates a virtual environment, installs dependencies, and copies the example preferences file if none exists. The dashboard opens automatically at `http://localhost:8501`. If it doesn't, open that URL in your browser.
+On first launch the launcher creates a virtual environment, installs dependencies, and copies the example preferences file if none exists. The dashboard opens automatically at `http://localhost:8501`.
 
 ---
 
@@ -77,598 +88,234 @@ When you first open the app, the Home page shows a setup checklist. Work through
 
 ### Step 1 — Configure Search Settings
 
-Open **Search Settings** in the left sidebar. Use the **Settings Section** dropdown at the top to navigate between these areas:
+Open **Search Settings** in the left sidebar. 
 
 **Compensation & Location**
-- Set your salary floor (`min_salary_usd`) — jobs below this are scored down or filtered out.
-- Set your target salary (`target_salary_usd`) — used for bonus/penalty calculations.
-- Choose `remote_only` or `us_only` as appropriate.
-- **Contractor Preferences** — if you're open to contract roles, enable them here and set your default hours/week, benefits gap, and 1099 overhead percentage. The scorer uses these to normalize hourly rates to an annual equivalent so you can compare contract and FTE roles on equal footing.
+- Set your salary floor and target salary.
+- Enable contractor preferences if desired.
 
 **Job Title Settings**
-- Add positive title keywords with weights (e.g. `solutions architect: 10`, `staff engineer: 8`).
-- Add `negative_disqualifiers` — titles containing these are dropped before scoring (e.g. `product`, `meet the staff`, `blog`).
-- Set `must_have_modifiers` if you only want senior-level roles.
+- Add positive title keywords with weights.
+- Add negative disqualifiers to drop unwanted roles early.
 
 **Job Description Keywords**
-- `Keywords That Boost Score` — keywords in the job description that raise your score (e.g. `api design`, `platform`, `fintech`).
-- `Keywords That Reduce Score` — keywords that lower your score (e.g. `javascript`, `ruby`, `excel`).
+- Add keywords that boost or reduce your score based on your preferred tech stack.
 
 **Scoring Settings**
-- `minimum_score_to_keep` — jobs scoring below this go to the rejected CSV. Start at 35 and adjust after your first run.
-- `Fast-Track Starting Score` and `Fast-Track Minimum Keyword Weight` — controls when a strong title match gets a head-start base score.
-- `Anchor Keyword Cap`, `Baseline Keyword Cap`, `Negative Penalty Cap` — dial how much title keywords, JD-positive keywords, and JD-negative keywords can each move the score.
-- `Apply Now / Review Today / Watch Thresholds` — the score cutoffs that place jobs into each tab.
-- `Re-score Saved Jobs` — re-evaluates currently saved job matches using your latest settings without rerunning the scraper.
-
-**Advanced Editor**
-- Direct access to the raw preferences YAML for power users.
+- Adjust thresholds for **Apply Now**, **Review Today**, and **Watch**.
 
 ### Step 2 — Add Target Companies
 
-Open **Target Companies** → **Add / Edit** tab.
-
-At minimum, provide:
-
-| Field | Description |
-|---|---|
-| `name` | Company name |
-| `careers_url` | Direct link to their jobs board |
-| `Job Board Type` | ATS type: `greenhouse`, `lever`, `ashby`, `workday`, `rippling`, `smartrecruiters`, `generic` |
-| `Job Board Identifier` | The unique slug used by the ATS (e.g. `stripe` for `jobs.ashbyhq.com/stripe`) |
-| `tier` | 1 = top target, 2 = strong, 3 = good, 4 = stretch |
-
-If you don't know the adapter or key, set the adapter to `generic` and run **Fix Job Listings** — it will probe the page and try to identify the correct ATS automatically.
-
-### Step 3 — Run Fix Job Listings
-
-Before your first search, go to **Target Companies** → **Fix Job Listings** and run it on all companies. This verifies that careers URLs are live and corrects any misclassified adapters. Companies with broken boards are marked inactive and added to `results/job_search_manual_review.txt` for manual follow-up.
-
-### Step 4 — Run Your First Search
-
-Go to **Run Job Search** in the sidebar and click **Run**. The scraper checks every active company, fetches open roles, scores them, and saves matches to the database.
+Open **Target Companies** → **Add / Edit** tab. Set the adapter to `generic` if you are unsure; the healer will attempt to identify the ATS for you.
 
 ---
 
-## 4. Finding Jobs — The Scraper
+## 4. Action Center — Your Daily Cockpit
+
+The **Action Center** is the default landing page and serves as your daily prioritized work queue. It synthesizes data from jobs, applications, contacts, and interviews to recommend your "Next Best Action."
+
+### How It Works
+The engine assigns an **Urgency** and **Impact** score to every candidate object:
+- **Urgency (0-100)**: Time-sensitive factors (interview tomorrow, 10 days since application, newly discovered high-match job).
+- **Impact (0-100)**: Value-based factors (fit score, company tier, relationship strength).
+
+### Common Recommendations
+- **Apply Now**: High-fit roles discovered in the last 7 days.
+- **Refresh Export**: Materials were edited in Tailoring Studio after you already prepared the package.
+- **Send Follow-up**: Applied roles with no activity in 7+ days.
+- **Prepare for Interview**: Interviews scheduled in the next 48 hours.
+- **Networking Outreach**: Contacts at target companies with no touchpoint in 21 days.
+
+### Actions
+- **Done**: Marks the action as complete.
+- **Snooze (3d)**: Hides the recommendation for 3 days.
+- **Dismiss**: Permanently removes this specific recommendation.
+- **Quick Export**: Download the submission ZIP directly from the card if ready.
+
+---
+
+## 5. Finding Jobs — The Scraper
 
 ### How Scoring Works
 
 Scoring is a two-layer pipeline:
 
 **Layer 1 — V1 Hard Gates** (runs first, applied to every job)
-- Titles matching `negative_disqualifiers` are dropped immediately (Filtered Out).
-- Non-local onsite/hybrid roles are hard-filtered based on your location settings.
-- Work-type mismatches (e.g., contract when contract is disabled) are filtered out.
-- Any job that fails a hard gate is marked **Disqualified** or **Filtered Out** and goes no further.
+- Titles matching `negative_disqualifiers` are dropped immediately.
+- Non-local onsite/hybrid roles are hard-filtered.
+- Work-type mismatches are filtered out.
 
-**Layer 2 — V2 Primary Scoring** (runs on everything that passes Layer 1)
-1. **Title resolution** — the job title is matched against known title families (e.g., "Solutions Architect", "Staff Engineer"). A matched family and seniority band are assigned.
-2. **Fast-Track check** — if a title keyword weight meets the Fast-Track minimum, the job starts from the Fast-Track base score instead of zero.
-3. **Anchor score** — high-weight title keywords contribute to an anchor score (capped by Anchor Keyword Cap).
-4. **Baseline keyword score** — `Keywords That Boost Score` keywords matched in the JD add to the baseline (capped by Baseline Keyword Cap).
-5. **Negative penalty** — `Keywords That Reduce Score` keywords in the JD subtract points (capped by Negative Penalty Cap).
-6. **Final score** — anchor + baseline − penalty. Tier bonuses (Tier 1: +15 pts, Tier 2: +8 pts, Tier 3: +4 pts) and compensation adjustments are applied on top.
-
-Scores map to fit bands based on your configured bucket thresholds (default: **Apply Now** ≥ 80, **Review Today** ≥ 65, **Watch** ≥ 50, **Weak Match** below 50). Jobs below `minimum_score_to_keep` are written to `results/job_search_v6_rejected.csv` and not shown in the dashboard.
+**Layer 2 — V2 Primary Scoring**
+1. **Title resolution** — job family and seniority band detection.
+2. **Fast-Track check** — instant head-start score for strong title matches.
+3. **Anchor & Baseline** — keyword matches in JD add to or subtract from the score.
+4. **Tier Bonus** — companies in higher tiers receive a persistent score boost.
 
 ### Running Options
 
 | Mode | When to use |
 |---|---|
 | Standard run | Daily use — fast, covers all active companies |
-| `--deep-search` | Sites that require JavaScript rendering (Playwright/Chromium required) |
-| `--contract-sources` | Adds contractor-specific job boards to the standard run |
-| `--aggregator-sources` | Adds lower-trust API aggregator sources such as Adzuna, USAJobs, Jooble, and The Muse |
-| `--jobspy-sources` | Adds the separate experimental JobSpy lane for broader board discovery |
-
-### ATS Healing
-
-Run **Fix Job Listings** periodically (weekly is usually enough) to catch companies that have changed their board URL or moved ATS providers. The healer probes each company and attempts to repair stale entries automatically. Companies it cannot resolve are routed to manual review.
+| `--deep-search` | Sites that require browser rendering (Playwright required) |
+| `--aggregator-sources` | Adds Adzuna, USAJobs, Jooble, and The Muse |
+| `--jobspy-sources` | Adds the experimental JobSpy lane for broader discovery |
 
 ---
 
-## 5. Job Matches
+## 6. Job Matches
 
-The **Job Matches** page shows all scraped jobs that passed the scoring threshold, sorted by score descending.
-
-![Job Matches — scored roles from all active target companies](docs/Screenshots/jobmatches.png)
+The **Job Matches** page shows all scraped jobs that passed the scoring threshold.
 
 ### Search and Analysis
-The dashboard now includes **Full-Text Search (FTS5)** and **AI-powered analysis** to help you sort through matches:
-
-- **Semantic Search**: Use the search bar at the top of the Job Matches page to find specific roles or technologies. The results are ranked using BM25, ensuring the most relevant roles appear first.
-![Job Matches Search — fast full-text search across all jobs](docs/Screenshots/jobmatchessearch.png)
-
-- **AI Fit Analysis**: Click "AI Analysis" on any role across the Apply Now, Review Today, or Watch tabs to see a breakdown of how well the role matches your profile, including detected tech stack, visa sponsorship, and IC vs. Manager alignment.
-![AI Analysis — detailed fit breakdown generated by LLM](docs/Screenshots/jobmatchaianalysis.png)
-
-- **Skills Gap**: The AI also identifies specific technical skills mentioned in the JD that are missing from your resume.
-![Skills Gap — actionable interview prep from AI analysis](docs/Screenshots/gaps.png)
-
-**Key columns:**
-- **Score / Band** — numeric score and fit band label
-- **Matched / Penalized** — the specific keywords that drove the score up or down
-- **Compensation** — raw salary range if posted, plus normalized annual equivalent for contract roles
-- **Work Type** — FTE, W2 hourly, 1099, or C2C
-- **Posted / Velocity** — how long the role has been open; *Stale* or *Recurring* roles signal leverage or problems
-- **Status** — current disposition (New, Considering, Applied, etc.)
-
-**Tabs on this page:**
-- **Apply Now** — top-priority roles that meet your strongest criteria
-- **Review Today** — strong roles worth reviewing today
-- **Watch** — near-miss roles or roles you manually promoted into a follow-up queue
-- **Manual Review** — scraper/manual queue for companies the scraper could not resolve cleanly
-- **Filtered Out** — low-fit saved jobs plus the latest rejected-search output
-
-Each saved role also shows:
-- **Source** — the provider or board family (for example Workday, Rippling, Adzuna, JobSpy)
-- **Lane** — Employer ATS, Contractor, Aggregator, or JobSpy Experimental
-
-**Actions from this page:**
-- Click a role to open the detail panel
-- Change status directly in the table to move it into the tracker
-- Use **Filtered Out -> Move To** to promote false negatives into `Watch`, `Review Today`, or `Apply Now`
+- **Semantic Search**: Sub-15ms search across 10K+ jobs with BM25 ranking.
+- **AI Fit Analysis**: LLM breakdown of tech stack, visa sponsorship, and IC vs. Manager alignment.
+- **Skills Gap**: Identification of missing keywords compared to your resume.
 
 ---
 
-## 6. My Applications — Tracking Your Pipeline
+## 7. Tailoring Studio
 
-The **My Applications** tracker is the core CRM. Every application you actively pursue lives here.
+The **Tailoring Studio** is a professional workspace for customizing your resume and application materials for a specific role.
 
-![My Applications — full pipeline list with Gmail sync and stage counts](docs/Screenshots/myapplications.png)
-
-### Stage Workflow
-
-```
-Exploring → Considering → Applied → Screening → Interviewing → Offer → Accepted / Rejected / Withdrawn
-```
-
-Move an application to the next stage using the status dropdown. The stage history is recorded automatically with timestamps.
-
-### Application Detail
-
-Expanding an application shows tabbed sections:
-
-**Overview**
-- Role details, location, compensation, work type, normalized annual comp
-- Fit score and matched/penalized keywords
-- Links to the job posting, your resume version, and cover letter
-
-**Events**
-- Log any interaction: applied, recruiter outreach, phone screen scheduled/complete, interview scheduled/complete, offer received, offer negotiating, follow-up sent, note
-- Each event is timestamped and shown in a chronological feed
-- Gmail-detected events are imported automatically and shown inline
-
-![Application signal — Gmail-detected interview request](docs/Screenshots/syncedgmailsignal.png)
-
-### Manual Review Fixes
-If you find a broken URL or a job from a company that needs a careers page update, you can fix it directly in the Manual Review tab.
-
-![Manual Review — edit company URLs in-place](docs/Screenshots/manualreview.png)
-
-### Manual Escape Hatch (Bookmarklet)
-For jobs found on niche boards, Slack, or LinkedIn, use the **Manual Escape Hatch** bookmarklet to inject them directly into your dashboard.
-
-![Manual Escape Hatch — browser bookmarklet setup](docs/Screenshots/escapehatchbookmark.png)
-
-To set this up, go to **Search Settings -> Extensions & Tools** and drag the button to your browser's bookmarks bar.
-
-**Follow-up**
-- Set a follow-up date and note
-- The Home dashboard surfaces overdue follow-ups prominently
-- Default follow-up windows: 7 days after applying, 3 days after screening, 2 days after interview or offer
-
-**Contacts**
-- Add the people involved in this process: recruiter, hiring manager, panelists
-- Store name, email, phone, LinkedIn URL, and role in the process
-
-**Interview Prep**
-- Free-text fields for: Why this company, Why this role, Tell me about yourself (tailored version)
-- Space for questions to ask them
-- Links to your relevant STAR stories from the Question Bank
-- **Interview Debrief** — after each interview, capture how it went, signals you noticed (did they mention a start date? did they move quickly?), and your own read on fit. Over time this correlates with outcomes.
-
-**Resume Tailoring**
-- Compares your stored base resume against the role's JD keywords
-- Highlights gaps — terms that appear in the JD but not your resume
-- Lets you draft a tailored version per application without touching your master copy
-- Set up your base resume in **Search Settings → Base Resume**
-
-**Offer Details**
-- When you reach offer stage, record: base, bonus %, equity, signing, PTO, 401k match, remote policy, start date, offer expiry
-- Normalized total comp is calculated automatically for comparison across FTE and contract roles
-
-![Offer details form — compensation fields and policy tracking](docs/Screenshots/offerdetails.png)
-
-**Offer Comparison & Negotiation**
-- Side-by-side total comp comparison across multiple offers
-- Negotiation worksheet: your floor, your target, the posted range, days the role has been open (leverage signal), and a counter-offer note field
-- Offer expiry dates are surfaced prominently on the Home dashboard
-
-**Company Notes**
-- Pulls in any existing Company Profile for this employer
-
-**Gmail Sync**
-- Sync your Gmail inbox to auto-detect interview requests, rejections, and recruiter messages
-- Signals are classified and mapped to event types automatically
-- Set up credentials in **Search Settings → App Settings** using a Google App Password
-
-### Follow-up Reminders
-
-The tracker automatically calculates follow-up due dates based on current stage. Overdue items appear as warnings on the Home page. You can override the date or add notes for any follow-up.
+### Key Features
+- **Structured Form Editor**: Edit your resume content via a clean UI.
+- **Andy Warthog Template**: A locked, designer-grade presentation layer with fixed typography and teal accents.
+- **AI Drafting**: Generate tailored summaries, bullets, and cover letters grounded in the JD.
+- **Normalization UX**: Real-time warnings if your content exceeds template limits.
 
 ---
 
-## 7. Pipeline View
+## 8. Submission Review — The Final Mile
 
-**Pipeline** shows a tabular Kanban across active stages (Applied, Screening, Interviewing, Offer). Use it for a quick status sweep across all live applications. You can change status directly from the table.
+The **Submission Review** page is a guided cockpit for manual applications.
 
-![ATS Pipeline — tabular kanban across active stages](docs/Screenshots/Pipeline.png)
+### Pre-flight Checklist
+- **Package Freshness**: Warns if your exported ZIP is stale (older than 24h).
+- **Readiness**: Blocks export if critical issues (like missing placeholders) are detected.
 
-The view also shows time-in-stage for each application. Applications stuck in the same stage for more than 7 days are highlighted — a signal to follow up or move on.
-
----
-
-## 8. Home Dashboard
-
-The Home page gives an at-a-glance status of your search:
-
-![Home dashboard — KPIs, pipeline summary, and activity trends](docs/Screenshots/Homepage.png)
-
-- **Overdue follow-ups** — applications past their follow-up date, with one-click links
-- **Active pipeline count** — how many roles are in each active stage
-- **Weekly activity goal progress** — compared to your configured weekly targets
-- **Recent events** — the last 20 logged events across all applications
-- **Setup checklist** — shown until all setup steps are complete
+### Workflow
+1. **Open Apply Portal**: Opens the company's careers page.
+2. **Export Package (ZIP)**: Downloads your submission bundle (Styled PDF, ATS-Safe PDF, Cover Letter).
+3. **Log Outcome**: Confirm submission or log friction (e.g., portal too long).
 
 ---
 
-## 9. Analytics
+## 9. My Applications — Tracking Your Pipeline
 
-The **Analytics** page shows where your search is working and where it isn't.
+The tracker is your core CRM. Stage workflow:
+`Exploring → Considering → Prepared → Applied → Screening → Interviewing → Offer`
 
-![Analytics — funnel overview with conversion rates](docs/Screenshots/analytics.png)
-
-**Funnel counts** — how many applications are in each stage, and cumulative totals.
-
-**Conversion rates** — the percentage progressing between each stage pair. If your Applied → Screening conversion is low, your targeting may be off. If Screening → Interviewing is low, your phone presence may need work.
-
-**Time in stage** — median days spent in each stage. Long times in Interviewing often mean ghosting; follow up.
-
-### Application Analysis
-
-**Rejection Pattern Analysis** — after enough data, surfaces which companies and title families are consistently rejecting you, and what penalty signals appear most often.
-
-![Rejection Pattern Analysis — top rejected companies and common penalty signals](docs/Screenshots/rejection.png)
-
-**Resume Keyword Gap Analysis** — compares your stored base resume against all matched roles to surface the most common JD terms you're missing.
-
-![Resume Keyword Gap Analysis — gap keywords ranked by frequency across matched roles](docs/Screenshots/gaps.png)
-
-**Rejected jobs browser** — review the jobs that were scored out. Useful for tuning your `minimum_score_to_keep`.
+Move an application to the next stage using the status dropdown. 
 
 ---
 
-## 10. Company Profiles
+## 10. Market Strategy
 
-**Company Profiles** stores durable research notes about each employer — separate from any specific application. A profile written once appears automatically in every application to that company.
+The **Market Strategy** dashboard helps you see high-level patterns.
 
-![Company Profiles — persistent research notes](docs/Screenshots/companyprofiles.png)
-
----
-
-## 11. Contacts
-
-Standalone contact book for your broader network. Use this for people you're networking with who aren't yet tied to a specific active application.
-
-![Network Contacts — standalone CRM for networking](docs/Screenshots/networkcontacts.png)
-
-
-For each contact you can store:
-- Name, company, role, relationship type (former colleague, recruiter, mentor, referral, friend)
-- Email, phone, LinkedIn URL
-- Last contact date and next follow-up date
-- Notes
-
-**Follow-up reminders** appear at the top of the page when contacts are overdue. Clicking the email icon opens a mailto link pre-addressed to that contact.
+- **Role Clustering**: Groups jobs into themes like *Fintech* or *Data*.
+- **Resume-to-Market Gaps**: Compares market demand against your base resume.
+- **Data Canonicalization**: Merges duplicate postings from multiple sources.
 
 ---
 
-## 12. Interview Question Bank
+## 11. Learning Loop — Outcomes and Calibration
 
-The **Question Bank** is your behavioral interview story library. Write a STAR answer once and reuse it across every interview.
-
-![Question Bank — behavioral categories with STAR story prompts](docs/Screenshots/questionbank.png)
-
-### Categories
-
-- Behavioral, Situational, Leadership, Role-Specific, Technical, Other
-
-### STAR Structure
-
-Each answer has four fields:
-
-| Field | Prompt |
-|---|---|
-| Situation | Set the scene. What was the context? |
-| Task | What was your responsibility? |
-| Action | What did YOU specifically do? (use "I", not "we") |
-| Result | What was the outcome? Quantify where possible. |
-
-### Linking to Applications
-
-Questions can be tagged to a specific company and role, or kept general. When you open an application's Interview Prep tab, the relevant question bank entries are linked from there.
+- **Score Correlation**: Checks if high-score matches actually lead to interviews.
+- **Submission Friction**: Measures the funnel from Ready to Applied.
+- **Keyword ROI**: Surfaces keywords that correlate with actual interview success.
 
 ---
 
-## 13. Email Templates
+## 12. Pipeline View
 
-**Templates** stores reusable messages for every stage of the process.
-
-Available types: Follow-Up, Thank You, Networking, Recruiter Response, Offer, Withdrawal, Other.
-
-### Variables
-
-Use these placeholders in your template text — they are substituted when you render the template:
-
-| Placeholder | Replaced with |
-|---|---|
-| `{company}` | Company name |
-| `{role}` | Role title |
-| `{contact_name}` | Contact's name |
-| `{my_name}` | Your name |
-
-Default templates for follow-up and thank you are pre-loaded. Edit them or add your own.
+A quick tabular Kanban across active stages. Applications stuck in the same stage for more than 7 days are highlighted.
 
 ---
 
-## 14. Journal
+## 13. Home Dashboard
 
-The **Journal** is a private daily log. Use it to capture:
-- Decisions made (why you withdrew, why you're prioritizing one offer)
-- How you're feeling about the search
-- Things to remember for next week
-
-Each entry has an optional mood tag: Energized, Good, Neutral, Low, Frustrated, Uncertain. This isn't surfaced in analytics — it's for you.
+KPIs, pipeline summary, and activity trends.prominently surfaces overdue follow-ups and upcoming interviews.
 
 ---
 
-## 15. Training Tracker
+## 14. Analytics
 
-**Training** tracks any courses, certifications, or skill-building programs you're working on during the search.
-
-Fields: provider, course name, category, status, start/end dates, URL, notes.
-
-Status options: Planned, In Progress, Completed, Paused.
-
-Useful for keeping your resume and interview prep current as you learn, and for demonstrating active professional development during long searches.
+Funnel overview, time-in-stage, rejection pattern analysis, and resume keyword gaps.
 
 ---
 
-## 16. Weekly Report
+## 15. Company Profiles & Intelligence
 
-**Weekly Report** generates a structured activity log for any date range.
-
-Originally designed to simplify unemployment benefit paperwork — the report lists every logged event (applications submitted, calls made, interviews attended) in the format those forms typically require.
-
-![Weekly Report — activity log with benefit certification summary](docs/Screenshots/weeklyactivity.png)
-
-Select a date range and export the table directly. All event types are translated to human-readable descriptions (e.g. `interview_complete` → *In-person / video interview*). The report also dedupes scheduled/completed interview pairs so the same interview round is not counted twice.
+Persistent research notes and strategic playbooks for each employer.
 
 ---
 
-## 17. Search Settings Reference
+## 16. Contacts
 
-The modern configuration UI uses a dropdown to switch between sections.
-
-### JD Evaluation — Positive and Negative Keywords
-
-![Search Settings — JD keyword weights for scoring](docs/Screenshots/searchprefscoring.png)
-
-### Compensation & Location
-
-![Search Settings — compensation and location preferences](docs/Screenshots/searchsettingscomploc.png)
-
-### Job Title Settings
-
-![Search Settings — title weights and disqualifiers](docs/Screenshots/searchsettingstitle.png)
-
-### Scoring Settings
-
-![Search Settings — threshold and cap settings](docs/Screenshots/searchsettingsscoring.png)
-
-| Setting | Description |
-|---|---|
-| `min_salary_usd` | Hard floor — salary below this triggers a score penalty |
-| `target_salary_usd` | Your actual target — salary at or above this adds a bonus |
-| `allow_missing_salary` | Whether to penalize roles with no salary posted |
-| `remote_only` | Only consider remote roles |
-| `us_only` | Filter out non-US locations |
-| `allow_international_remote` | Permit remote roles outside the US |
-
-For location-sensitive searches, non-local onsite/hybrid roles are treated as a hard filter. If you change location settings, use **Re-score Saved Jobs** to update existing Job Matches immediately.
-
-### Contractor Settings
-
-| Setting | Description |
-|---|---|
-| `include_contract_roles` | Whether to score contract roles at all |
-| `allow_w2_hourly` | Accept W2 hourly contracts |
-| `allow_1099_hourly` | Accept 1099 and C2C contracts |
-| `default_hours_per_week` | Used to annualize hourly rates (default 40) |
-| `default_w2_weeks_per_year` | Billable weeks assumed for W2 (default 50) |
-| `default_1099_weeks_per_year` | Billable weeks assumed for 1099 (default 46) |
-| `benefits_replacement_usd` | Annual cost to self-fund benefits on 1099 (default $18,000) |
-| `w2_benefits_gap_usd` | Benefits shortfall on W2 hourly vs. FTE (default $6,000) |
-| `overhead_1099_pct` | SE tax and overhead rate for 1099 (default 18%) |
-
-### Scoring Adjustments
-
-| Setting | Description |
-|---|---|
-| `minimum_score_to_keep` | Jobs below this are rejected to CSV and not shown in the dashboard |
-| `Fast-Track Starting Score` | Base score assigned to a job when a title keyword meets the Fast-Track weight threshold |
-| `Fast-Track Minimum Keyword Weight` | Minimum title keyword weight required to trigger Fast-Track |
-| `Anchor Keyword Cap` | Maximum points that high-weight title keywords can contribute |
-| `Baseline Keyword Cap` | Maximum points that JD-positive keywords can add |
-| `Negative Penalty Cap` | Maximum points that JD-negative keywords can subtract |
-| `Apply Now Threshold` | Minimum score to appear in the Apply Now tab |
-| `Review Today Threshold` | Minimum score to appear in the Review Today tab |
-| `Watch Threshold` | Minimum score to appear in the Watch tab |
+Networking CRM. Tracks name, relationship, last contact, and follow-up dates.
 
 ---
 
-## 18. Target Companies Reference
+## 17. Interview Question Bank
 
-![Target Companies — registry list with adapter and tier columns](docs/Screenshots/targets.png)
-
-### Company Fields
-
-| Field | Required | Description |
-|---|---|---|
-| `name` | Yes | Display name |
-| `careers_url` | Yes | Direct link to the jobs board |
-| `Job Board Type` | Yes | ATS type (see below) |
-| `Job Board Identifier` | Recommended | ATS-specific slug for API-first scrapers |
-| `domain` | Recommended | Used for domain-matching in generic scrapes |
-| `tier` | Yes | 1–4 priority (1 = top target) |
-| `active` | — | Set to `false` to pause scraping without deleting |
-| `heal_skip` | — | Set to `true` to exclude from automated healing |
-
-### Supported Adapters
-
-| Adapter | ATS / Platform |
-|---|---|
-| `greenhouse` | Greenhouse (API and embed) |
-| `lever` | Lever |
-| `ashby` | Ashby |
-| `workday` | Workday (probes wd1–wd25 subdomains) |
-| `rippling` | Rippling ATS |
-| `smartrecruiters` | SmartRecruiters |
-| `usajobs` | USAJobs API |
-| `adzuna` | Adzuna API |
-| `jooble` | Jooble API |
-| `themuse` | The Muse API |
-| `indeed_connector` | Imported Indeed connector feed |
-| `jobspy` | Experimental JobSpy board search |
-| `generic` | Any careers page without a supported ATS |
-
-### Fix Job Listings
-
-![Fix Job Listings — configuration options before running a heal pass](docs/Screenshots/healats.png)
-
-The healer probes each company's careers URL and attempts to:
-- Confirm the board is live
-- Identify the correct ATS type
-- Correct the `adapter` and `Job Board Identifier` if wrong
-- Deactivate companies whose boards are dead or blocked
-
-Companies flagged as **blocked** (Cloudflare or similar anti-bot pages) are routed to `results/job_search_manual_review.txt` — check these manually rather than retrying automatically.
+Behavioral story library using the **STAR** method. Links relevant stories to specific roles in the Interview Prep tab.
 
 ---
 
-## 19. CLI Reference
+## 18. Email Templates
 
-All CLI commands run from the repo root with the virtual environment active.
-
-```bash
-# Run the scraper (standard)
-python -m jobsearch.cli run
-
-# Run with deep search (Playwright, slower)
-python -m jobsearch.cli run --deep-search
-
-# Include contractor sources
-python -m jobsearch.cli run --contract-sources
-
-# Include API aggregators
-python -m jobsearch.cli run --aggregator-sources
-
-# Include JobSpy experimental sources
-python -m jobsearch.cli run --jobspy-sources
-
-# Both
-python -m jobsearch.cli run --deep-search --contract-sources
-
-# Run ATS healing on all companies
-python -m jobsearch.cli heal --all
-
-# Run healing with deep Playwright probing
-python -m jobsearch.cli heal --deep --all
-
-# Launch the dashboard
-python -m jobsearch.cli dashboard
-```
+Reusable messages with `{company}`, `{role}`, and `{my_name}` placeholders.
 
 ---
 
-## 20. Tips and Workflow
+## 19. Journal
 
-### Suggested Daily Routine
-
-1. Open the **Home** dashboard — check overdue follow-ups first.
-2. Log any events from yesterday (emails received, calls made).
-3. Check **Job Matches** for new roles from last night's scraper run.
-4. Move any roles worth pursuing to *Considering* or *Applied*.
-
-### Suggested Weekly Routine
-
-1. Run the scraper — or schedule it via the CLI.
-2. Run **Fix Job Listings** to catch stale boards.
-3. Review the **Analytics** funnel — are conversion rates moving?
-4. Check **High-score, not applied** in Analytics for roles you've been sitting on.
-5. Generate a **Weekly Report** if you need to document activity.
-6. Add new STAR stories to the **Question Bank** while they're fresh.
-
-### Getting More Matches
-
-If your first run returns few results:
-- Lower `min_salary_usd` and `minimum_score_to_keep` temporarily.
-- Add more `Keywords That Boost Score` keywords from job descriptions of roles you liked.
-- Reduce the weight threshold on `title_positive_weights`.
-- Run Fix Job Listings first — stale board URLs return zero results.
-
-### Tuning Scoring Over Time
-
-After 20–30 applications, open **Analytics → Score vs. Outcome**. If low-scoring roles are getting interviews, raise `minimum_score_to_keep`. If high-scoring roles are consistently getting rejected at first contact, reconsider your title weights or keyword choices.
-
-### Using Tier Effectively
-
-- Tier 1 companies get a 15-point score bonus — use this sparingly for companies you'd genuinely prioritize an offer from.
-- Tier 4 companies get no bonus and should represent your aspirational list or fallbacks.
-- Changing a company's tier re-scores all its jobs on the next scraper run.
-
-### Contractor Roles
-
-When a contract role appears, the scraper attempts to detect the work type from the title and description (`w2_contract`, `1099_contract`, `c2c_contract`, or `fte`). The normalized annual compensation accounts for benefits gaps and self-employment overhead, so a $95/hr 1099 role and a $175K FTE role appear on the same scale in the score.
-
-If a role's work type is wrong, you can correct it in the application detail panel.
+Private daily log with mood tags.
 
 ---
 
-## 21. Troubleshooting
+## 20. Training Tracker
 
-### Dashboard doesn't open
-Browse directly to `http://localhost:8501`.
-
-### No matches after a run
-- Check `results/job_search_v6_rejected.csv` — jobs may be scoring out. Lower `minimum_score_to_keep`.
-- Check `results/job_search_v6.log` for adapter errors or zero-result companies.
-- Run Fix Job Listings — stale board URLs silently return nothing.
-
-### Companies keep going inactive
-The healer deactivates companies when their board returns no results or appears blocked. Check `results/job_search_manual_review.txt` for details. For companies you know are active, set `heal_skip: true` in the company entry and verify manually.
-
-### A company's jobs aren't being scraped correctly
-Try switching to a different adapter or providing the correct `Job Board Identifier`. Run Fix Job Listings on that company individually. If the site uses JavaScript rendering, enable Deep Search for that run.
-
-### Scraper is slow
-Standard runs across 100+ companies take 5–15 minutes depending on network conditions. Deep Search runs take significantly longer. For maintenance, run Fix Job Listings without `--deep` first to isolate which companies need deep probing.
-
-### Python not found (manual install)
-Reinstall Python and ensure "Add Python to PATH" is checked during installation. Then re-run the launcher.
+Track certifications and skill-building programs.
 
 ---
 
-*All data lives in `results/jobsearch.db`, `config/job_search_preferences.yaml`, and `config/job_search_companies.yaml`. Back up these three files to preserve your full job search state.*
+## 21. Weekly Report
+
+Generates structured activity logs for unemployment benefit paperwork or personal reviews.
+
+---
+
+## 22. Search Settings Reference
+
+Detailed reference for compensation, location, title, and keyword weights.
+
+---
+
+## 23. Target Companies Reference
+
+Reference for company fields and supported ATS adapters.
+
+---
+
+## 24. CLI Reference
+
+Command line usage for running scrapers, healers, and the dashboard.
+
+---
+
+## 25. Tips and Workflow
+
+- **Daily**: Review Action Center and Submission Review.
+- **Weekly**: Run scraper, Fix Job Listings, and review Learning Loop.
+
+---
+
+## 26. Troubleshooting
+
+Common fixes for dashboard issues, zero-result runs, and blocked companies.
+
+---
+
+*All data lives in `results/jobsearch.db`, `config/job_search_preferences.yaml`, and `config/job_search_companies.yaml`. Back up these files regularly.*

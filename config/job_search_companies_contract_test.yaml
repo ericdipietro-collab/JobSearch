@@ -12,23 +12,18 @@ companies:
   notes: Contractor source with dedicated Motion Recruitment detail-link extraction.
   heal_failure_streak: 0
   manual_only_suggested: false
-  discovery_method: Existing URL confirmed
-  last_healed: '2026-04-09T12:16:37.583416'
+  manual_only: false
 - name: Dice Contract
   active: true
   priority: low
   tier: 4
   adapter: generic
   contractor_source: true
-  careers_url: https://www.dice.com/career-advice
+  careers_url: https://www.dice.com/jobs
   domain: dice.com
   industry: job board | contract
-  status: manual_only
+  status: active
   notes: Contractor source with dedicated Dice adapter for job-detail extraction.
-  heal_failure_streak: 1
-  heal_last_failure_detail: Discovery budget exhausted
+  heal_failure_streak: 0
   manual_only_suggested: false
-  cooldown_until: null
-  discovery_method: Generic career page discovered
-  last_healed: '2026-04-10T20:27:35.437447'
-  manual_only: true
+  manual_only: false
