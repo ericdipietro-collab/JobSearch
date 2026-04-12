@@ -1469,6 +1469,22 @@ def _render_detail(conn, app_id: int) -> None:
     st.markdown("<div style='margin-bottom: 1rem;'></div>", unsafe_allow_html=True)
     render_quick_export(conn, app["id"])
 
+    # Acquisition & Provenance
+    with st.expander("🛠 Acquisition & Provenance", expanded=False):
+        pc1, pc2 = st.columns(2)
+        lane = app.get("source_lane") or "unknown"
+        pc1.write(f"**Source Lane:** `{lane}`")
+        pc1.write(f"**Source Origin:** `{app.get('source') or 'unknown'}`")
+        
+        gid = app.get("canonical_group_id")
+        is_canon = app.get("is_canonical", 1)
+        pc2.write(f"**Canonical:** {'✅ Yes' if is_canon else '🔗 Duplicate'}")
+        if gid:
+            pc2.write(f"**Group ID:** `{gid}`")
+            
+        if app.get("canonical_merge_rationale"):
+            st.caption(f"Rationale: {app['canonical_merge_rationale']}")
+
     if app["job_description"]:
         with st.expander("📄 Full Job Description"):
             st.markdown(app["job_description"])

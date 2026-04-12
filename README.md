@@ -148,6 +148,7 @@ After changing the setting, rerun the installer or launcher.
 
 ```bash
 python -m jobsearch.cli run
+python -m jobsearch.cli run --score-only
 python -m jobsearch.cli run --contract-sources
 python -m jobsearch.cli run --aggregator-sources
 python -m jobsearch.cli run --jobspy-sources

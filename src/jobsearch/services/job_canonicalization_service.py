@@ -6,6 +6,7 @@ from difflib import SequenceMatcher
 from typing import List, Dict, Any, Optional
 
 from jobsearch import ats_db
+from jobsearch.scraper.normalization import SourceLaneRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -87,16 +88,8 @@ class JobCanonicalizationService:
 
     def _should_supersede(self, new_job: Job, current_canon: sqlite3.Row) -> bool:
         """Determines if a new job source is 'better' than the current canonical."""
-        # Trust ranks: direct_api (0) > intercepted_api (1) > jsonld (2) > dom (3) > aggregator (4)
-        lane_ranks = {
-            'employer_ats': 0,
-            'contractor': 1,
-            'aggregator': 4,
-            'jobspy_experimental': 5,
-            'manual': 2
-        }
-        new_rank = lane_ranks.get(new_job.source_lane, 9)
-        cur_rank = lane_ranks.get(current_canon['source_lane'], 9)
+        new_rank = SourceLaneRegistry.get_rank(new_job.source_lane)
+        cur_rank = SourceLaneRegistry.get_rank(current_canon['source_lane'])
         
         if new_rank < cur_rank:
             return True

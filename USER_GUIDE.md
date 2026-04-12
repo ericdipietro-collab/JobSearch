@@ -303,6 +303,32 @@ Reference for company fields and supported ATS adapters.
 
 Command line usage for running scrapers, healers, and the dashboard.
 
+```bash
+# Run the scraper (standard)
+python -m jobsearch.cli run
+
+# Run evaluation pass only (rescore without scraping)
+python -m jobsearch.cli run --score-only
+
+# Run with deep search (Playwright, slower)
+python -m jobsearch.cli run --deep-search
+
+# Include contractor sources
+python -m jobsearch.cli run --contract-sources
+
+# Include API aggregators
+python -m jobsearch.cli run --aggregator-sources
+
+# Include JobSpy experimental sources
+python -m jobsearch.cli run --jobspy-sources
+
+# Run ATS healing on all companies
+python -m jobsearch.cli heal --all
+
+# Launch the dashboard
+python -m jobsearch.cli dashboard
+```
+
 ---
 
 ## 25. Tips and Workflow

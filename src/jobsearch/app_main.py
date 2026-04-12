@@ -1266,16 +1266,65 @@ def main():
         st.title("💼 Job Search")
         st.caption(f"v{__version__}")
         st.markdown("[☕ Buy Me a Coffee](https://www.buymeacoffee.com/ericdipietro)")
-        st.markdown("<div style='margin-bottom: 1.5rem;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-bottom: 1rem;'></div>", unsafe_allow_html=True)
         
-        nav = ["Action Center", "Home", "Tailoring Studio", "Submission Review", "Learning Loop", "Market Strategy", "Job Matches", "My Applications", "Journal", "Contacts", "Company Profiles", "Training", "Question Bank", "Weekly Report", "Templates", "Pipeline", "Analytics", "Run Job Search", "Search Settings", "Target Companies"]
-        page = st.radio("Navigation", nav)
-        
+        # Initialize page state
+        if "page" not in st.session_state:
+            st.session_state.page = "Action Center"
+
+        def nav_item(label, key=None):
+            active = st.session_state.page == label
+            if st.button(
+                label, 
+                key=key or f"nav_{label}", 
+                use_container_width=True, 
+                type="primary" if active else "secondary"
+            ):
+                st.session_state.page = label
+                st.rerun()
+
+        def nav_heading(text):
+            st.markdown(f"<div style='margin-top: 1.5rem; margin-bottom: 0.5rem;'><small style='color: #6b7280; font-weight: 600; text-transform: uppercase;'>{text}</small></div>", unsafe_allow_html=True)
+
+        nav_heading("Work Today")
+        nav_item("Action Center")
+        nav_item("Job Matches")
+        nav_item("My Applications")
+        nav_item("Submission Review")
+        nav_item("Tailoring Studio")
+
+        nav_heading("Insights")
+        nav_item("Dashboard")
+        nav_item("Learning Loop")
+        nav_item("Market Strategy")
+        nav_item("Analytics")
+
+        nav_heading("Company & Network")
+        nav_item("Company Profiles")
+        nav_item("Contacts")
+
+        nav_heading("Preparation")
+        nav_item("Question Bank")
+        nav_item("Message Templates")
+        nav_item("Training Tracker")
+        nav_item("Journal")
+
+        nav_heading("Tracking")
+        nav_item("Pipeline")
+        nav_item("Weekly Activity")
+
+        nav_heading("Operations")
+        # Run Search is a primary action button
+        if st.button("🚀 Run Search", use_container_width=True, type="primary" if st.session_state.page == "Run Search" else "secondary"):
+            st.session_state.page = "Run Search"
+            st.rerun()
+        nav_item("Search Settings")
+        nav_item("Target Companies")
+
+        st.markdown("---")
         if st.button("↺ Refresh Data", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
-
-        st.markdown("---")
 
         # Check for pending high-score alerts in sidebar
         try:
@@ -1293,8 +1342,11 @@ def main():
             st.metric("Leads", sidebar_metrics["scraped_leads"])
             st.metric("Active", sidebar_metrics["active"])
     
-    if page == "Home":
-        conn = ats_db.get_connection(); _safe_render(render_home, conn, page_name="Home")
+    # Route to the selected page
+    page = st.session_state.page
+
+    if page == "Dashboard":
+        conn = ats_db.get_connection(); _safe_render(render_home, conn, page_name="Dashboard")
     
     elif page == "My Applications":
         conn = ats_db.get_connection(); _safe_render(render_tracker, conn, page_name="My Applications")
@@ -3074,7 +3126,7 @@ def main():
                                 finally:
                                     conn.close()
 
-    elif page == "Run Job Search":
+    elif page == "Run Search":
         st.title("Run Search Pipeline")
         t1, t2, t3 = st.tabs(["Run Search", "Recent Run Log", "Manual Job Targets"])
         with t1:
@@ -3331,16 +3383,18 @@ def main():
             "Submission Review": render_submission_review,
             "Learning Loop": render_learning_loop,
             "Market Strategy": render_market_strategy,
-            "Pipeline": render_pipeline, 
-            "Analytics": render_analytics, 
-            "Training": render_training, 
-            "Journal": render_journal, 
-            "Contacts": render_contacts, 
-            "Company Profiles": render_company_profiles, 
-            "Weekly Report": render_activity_report, 
-            "Templates": render_templates, 
-            "Question Bank": render_question_bank
-        }
+            "Dashboard": render_home,
+            "Analytics": render_analytics,
+            "Company Profiles": render_company_profiles,
+            "Contacts": render_contacts,
+            "Question Bank": render_question_bank,
+            "Message Templates": render_templates,
+            "Training Tracker": render_training,
+            "Journal": render_journal,
+            "Pipeline": render_pipeline,
+            "Weekly Activity": render_activity_report,
+            }
+
         conn = ats_db.get_connection(); _safe_render(view_map[page], conn, page_name=page)
 
 if __name__ == "__main__": main()

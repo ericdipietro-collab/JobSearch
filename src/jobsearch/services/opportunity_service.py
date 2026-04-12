@@ -10,6 +10,7 @@ import pandas as pd
 from jobsearch.scraper.models import Job
 from jobsearch import ats_db
 from jobsearch.services.job_canonicalization_service import JobCanonicalizationService
+from jobsearch.scraper.normalization import WorkTypeNormalizer
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -286,7 +287,7 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
                 "salary_text": job.salary_text,
                 "salary_min": job.salary_min,
                 "salary_max": job.salary_max,
-                "work_type": job.work_type,
+                "work_type": WorkTypeNormalizer.normalize(job.work_type),
                 "compensation_unit": job.compensation_unit,
                 "hourly_rate": job.hourly_rate,
                 "hours_per_week": job.hours_per_week,
@@ -347,7 +348,7 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
         merged_salary_text = job.salary_text or old_salary
         merged_salary_min = job.salary_min if job.salary_min is not None else existing["salary_low"]
         merged_salary_max = job.salary_max if job.salary_max is not None else existing["salary_high"]
-        merged_work_type = job.work_type or existing["work_type"]
+        merged_work_type = WorkTypeNormalizer.normalize(job.work_type or existing["work_type"])
         merged_compensation_unit = job.compensation_unit or existing["compensation_unit"]
         merged_hourly_rate = job.hourly_rate if job.hourly_rate is not None else existing["hourly_rate"]
         merged_hours_per_week = job.hours_per_week if job.hours_per_week is not None else existing["hours_per_week"]

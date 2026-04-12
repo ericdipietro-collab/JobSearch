@@ -20,6 +20,8 @@ from jobsearch.config.settings import get_headers, get_shared_session, settings
 from jobsearch import ats_db
 from jobsearch import ats_db as db
 from jobsearch.scraper.ats_routing import CandidateJobURL, choose_extraction_route, fingerprint_ats, rank_candidates, score_candidate_url
+from jobsearch.services.health_monitor import HealthMonitor
+from jobsearch.scraper.scheduler_policy import EscalationPolicy
 
 logger = logging.getLogger(__name__)
 
@@ -404,6 +406,9 @@ class ATSHealer:
         self._search_breaker_lock = threading.Lock()
         # provider -> (opened_until_perf, first_failure_perf, failure_count)
         self._search_breakers: Dict[str, Tuple[float, float, int]] = {}
+        
+        self.escalation_policy = EscalationPolicy(settings)
+        self.health_monitor = HealthMonitor(self.escalation_policy)
         # Optional Deep Heal integration
         try:
             from deep_search import playwright_adapter
@@ -995,24 +1000,27 @@ class ATSHealer:
             
         conn = db.get_connection()
         try:
-            # Map healer status to board state
-            state = "healthy"
+            # Map healer status to health monitor status
+            scrape_status = "ok"
             if result.status == "BLOCKED":
-                state = "blocked_bot_protection"
+                scrape_status = "blocked"
             elif result.status == "NOT_FOUND":
-                state = "broken_site"
+                scrape_status = "error"
             elif result.status == "FALLBACK":
-                state = "fallback_success"
+                scrape_status = "ok"
             
-            ats_db.update_board_health(
+            # Healer is a discovery pass, so evaluated_count is 0 unless it finds jobs
+            # For Phase 1, we just report the status found.
+            self.health_monitor.update_scrape_health(
                 conn,
-                company=company_name,
-                adapter=result.adapter or company.get("adapter"),
-                careers_url=result.careers_url or company.get("careers_url"),
-                board_state=state,
-                last_healed_at=datetime.now().isoformat(),
-                notes=f"Healer: {result.detail}",
-                trigger_subsystem="healer",
+                company=company,
+                adapter_name=result.adapter or company.get("adapter", "generic"),
+                scrape_status=scrape_status,
+                scrape_ms=0.0,
+                scrape_note=f"Healer: {result.detail}",
+                evaluated_count=0, # Discovery pass
+                ats_family=result.adapter or "unknown",
+                final_url=result.careers_url or company.get("careers_url", ""),
             )
         except Exception as e:
             logger.debug("Healer failed to update board_health for %s: %s", company_name, e)

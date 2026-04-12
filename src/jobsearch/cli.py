@@ -584,6 +584,7 @@ def heal(heal_all, force, ignore_cooldown, no_waterfall, deep, workers, deep_tim
 
 @main.command()
 @click.option("--deep-search", is_flag=True, help="Enable deep search using Playwright.")
+@click.option("--score-only", is_flag=True, help="Do not scrape; only run the evaluation/scoring pass on pending jobs.")
 @click.option("--full-refresh", is_flag=True, help="Re-fetch descriptions for all jobs, even if already known.")
 @click.option("--test-companies", is_flag=True, help="Use the test company list.")
 @click.option("--contract-sources", is_flag=True, help="Use the contractor-source company list.")
@@ -595,7 +596,7 @@ def heal(heal_all, force, ignore_cooldown, no_waterfall, deep, workers, deep_tim
 @click.option("--companies", type=click.Path(exists=True), help="Path to companies YAML.")
 @click.option("--legacy", is_flag=True, help="Use the legacy scraper script if it exists.")
 @click.argument("extra_args", nargs=-1)
-def run(deep_search, full_refresh, test_companies, contract_sources, aggregator_sources, jobspy_sources, all_companies, workers, prefs, companies, legacy, extra_args):
+def run(deep_search, score_only, full_refresh, test_companies, contract_sources, aggregator_sources, jobspy_sources, all_companies, workers, prefs, companies, legacy, extra_args):
     """Run the job search pipeline."""
     setup_logging(settings.log_file)
     click.echo("Starting Job Search Pipeline...")
@@ -700,7 +701,7 @@ def run(deep_search, full_refresh, test_companies, contract_sources, aggregator_
     _heal_low_signal_companies(comp_data)
 
     engine = ScraperEngine(prefs_data, comp_data, deep_search=deep_search, full_refresh=full_refresh)
-    engine.run(max_workers=workers)
+    engine.run(max_workers=workers, score_only=score_only)
     click.echo("Pipeline run complete.")
 
 

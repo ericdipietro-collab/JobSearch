@@ -1,85 +1,76 @@
 from __future__ import annotations
-
-import hashlib
+import logging
 import re
-from typing import Any, Dict, List
+from typing import List, Dict, Any, Optional
 from urllib.parse import urljoin
-
-from bs4 import BeautifulSoup
 
 from .base import BaseAdapter
 from jobsearch.scraper.models import Job
+from jobsearch.scraper.normalization import WorkTypeNormalizer, SourceLaneRegistry
 
+logger = logging.getLogger(__name__)
 
 class DiceAdapter(BaseAdapter):
-    def scrape(self, company_config: Dict[str, Any]) -> List[Job]:
-        careers_url = company_config.get("careers_url")
-        if not careers_url:
-            return []
+    """Adapter for Dice.com (High-yield technical board)."""
 
-        html = self.fetch_text(careers_url)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.base_url = "https://www.dice.com"
+
+    def scrape(self, company_name: str, **kwargs) -> List[Job]:
+        """Scrapes Dice.com for a specific company."""
+        # Note: In a real implementation, this would use a search URL.
+        # For this pass, we'll implement the parser logic.
+        search_url = f"https://www.dice.com/jobs?q={company_name.replace(' ', '+')}"
+        html = self.fetch_text(search_url)
         if not html:
             return []
+            
+        return self.parse_jobs(html, company_name)
 
+    def parse_jobs(self, html: str, company_name: str) -> List[Job]:
+        from bs4 import BeautifulSoup
         soup = BeautifulSoup(html, "html.parser")
-        company_name = company_config.get("name", "Dice Contract")
-        jobs: List[Job] = []
-        seen_urls: set[str] = set()
+        jobs = []
+        
+        # Dice uses 'card' or 'search-card' classes
+        cards = soup.select(".card, .search-card, [data-testid='card']")
+        for card in cards:
+            try:
+                title_el = card.select_one(".card-title-link, a[id^='job-title']")
+                if not title_el: continue
+                
+                title = title_el.get_text(strip=True)
+                url = urljoin(self.base_url, title_el.get('href', ''))
+                
+                # Dice often shows the company in a specific span
+                comp_el = card.select_one(".card-company, [data-testid='company-name']")
+                found_co = comp_el.get_text(strip=True) if comp_el else company_name
+                
+                # Location
+                loc_el = card.select_one(".card-location, .search-result-location")
+                location = loc_el.get_text(strip=True) if loc_el else ""
+                
+                # Dice has specific labels for remote
+                is_remote = "remote" in location.lower() or "remote" in title.lower()
+                
+                # Employment type (Dice uses specific labels like 'Contracts', 'Full-time')
+                type_el = card.select_one(".card-type, .search-result-type")
+                raw_type = type_el.get_text(strip=True) if type_el else ""
+                normalized_type = WorkTypeNormalizer.normalize(raw_type)
 
-        for anchor in soup.find_all("a", href=True):
-            href = anchor["href"]
-            full_url = urljoin(careers_url, href)
-            if "/job-detail/" not in full_url.lower():
-                continue
-            if full_url in seen_urls:
-                continue
-
-            title = self._extract_title(anchor)
-            if not title:
-                continue
-
-            seen_urls.add(full_url)
-            job_id = hashlib.md5(f"{company_name}{title}{full_url}".encode()).hexdigest()
-            location = self._extract_location(anchor)
-
-            jobs.append(
-                Job(
-                    id=job_id,
-                    company=company_name,
+                job = Job(
+                    company=found_co,
                     role_title_raw=title,
+                    url=url,
                     location=location,
-                    url=full_url,
-                    source="Dice",
-                    adapter="dice",
-                    tier=str(company_config.get("tier", 4)),
-                    description_excerpt=title,
-                    work_type="w2_contract",
+                    is_remote=is_remote,
+                    work_type=normalized_type,
+                    source="dice",
+                    source_lane=SourceLaneRegistry.LANE_SPECIALTY_BOARD
                 )
-            )
-
+                jobs.append(job)
+            except Exception as e:
+                logger.debug("DiceAdapter failed to parse a card: %s", e)
+                
         return jobs
-
-    def _extract_title(self, anchor) -> str:
-        candidates = [
-            anchor.get_text(" ", strip=True),
-            anchor.get("title", ""),
-            anchor.get("aria-label", ""),
-            anchor.get("data-cy", ""),
-        ]
-        parent = anchor.parent
-        if parent and getattr(parent, "name", "") not in {"body", "html"}:
-            candidates.append(parent.get_text(" ", strip=True))
-        text = " ".join(part for part in candidates if part)
-        text = re.sub(r"\bview details for\b", "", text, flags=re.IGNORECASE)
-        text = re.sub(r"\s+", " ", text).strip(" -:\u2014")
-        if not text or "browse jobs" in text.lower():
-            return ""
-        return text
-
-    def _extract_location(self, anchor) -> str:
-        parent = anchor.parent
-        if not parent:
-            return ""
-        text = parent.get_text(" ", strip=True)
-        match = re.search(r"\b(Remote|[A-Z][a-z]+,\s*[A-Z]{2})\b", text)
-        return match.group(1) if match else ""
