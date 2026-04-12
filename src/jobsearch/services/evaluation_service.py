@@ -173,9 +173,7 @@ class EvaluationService:
                 conn.execute(update_sql, params)
                 count += 1
             except Exception as e:
-                print(f"DEBUG: Error evaluating job {r['id']}: {e}")
-                import traceback
-                traceback.print_exc()
+                logger.error(f"Error evaluating job {r['id']}: {e}")
             
         conn.commit()
         return count, rejected_rows

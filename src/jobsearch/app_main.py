@@ -40,6 +40,8 @@ from jobsearch.views.tailoring_studio_page  import render_tailoring_studio
 from jobsearch.views.learning_loop_page     import render_learning_loop
 from jobsearch.views.submission_review_page  import render_submission_review
 from jobsearch.views.market_strategy_page     import render_market_strategy
+from jobsearch.views.acquisition_ops_page     import render_acquisition_ops
+from jobsearch.services.watch_service import WatchService
 
 # ── Constants ──
 KNOWN_ADAPTERS = [
@@ -1318,6 +1320,7 @@ def main():
         if st.button("🚀 Run Search", use_container_width=True, type="primary" if st.session_state.page == "Run Search" else "secondary"):
             st.session_state.page = "Run Search"
             st.rerun()
+        nav_item("Acquisition Ops")
         nav_item("Search Settings")
         nav_item("Target Companies")
 
@@ -2601,6 +2604,18 @@ def main():
             c_priority = st.selectbox("Priority", ["high", "medium", "low"], index=["high", "medium", "low"].index(selected_company.get("priority", "medium")) if selected_company.get("priority", "medium") in ["high", "medium", "low"] else 1)
             c_active = st.checkbox("Active (include in job search)", value=bool(selected_company.get("active", True)))
             c_manual_only = st.checkbox("Search Manually (skip automatic scraping)", value=bool(selected_company.get("manual_only", False)))
+            
+            conn = ats_db.get_connection()
+            try:
+                watch_service = WatchService(conn)
+                watchlist = watch_service.get_watchlist()
+                watched_names = {w['company'] for w in watchlist}
+                is_currently_watched = selected_company.get("name", "") in watched_names if selected_company.get("name") else False
+            finally:
+                conn.close()
+                
+            c_is_watched = st.checkbox("Priority Watch (high-frequency polling)", value=is_currently_watched)
+            
             status_options = ["active", "broken", "pending", "manual_only"]
             c_status = st.selectbox("Status", status_options, index=status_options.index(selected_company.get("status", "active")) if selected_company.get("status", "active") in status_options else 0)
             c_industry = st.text_input("Industry", value=_normalize_editor_value(selected_company.get("industry", "")))
@@ -2720,6 +2735,18 @@ def main():
                         cos.append(new_company)
                     data["companies"] = cos
                     save_yaml(registry_path, data)
+                    
+                    # Save Watch state
+                    conn = ats_db.get_connection()
+                    try:
+                        watch_service = WatchService(conn)
+                        if c_is_watched:
+                            watch_service.add_to_watchlist(new_company["name"])
+                        else:
+                            watch_service.remove_from_watchlist(new_company["name"])
+                    finally:
+                        conn.close()
+                        
                     st.success(f"Company saved to {registry_path.name}.")
 
             if mode == "Edit Existing" and selected_name and st.button("Delete Company"):
@@ -3398,6 +3425,7 @@ def main():
             "Submission Review": render_submission_review,
             "Learning Loop": render_learning_loop,
             "Market Strategy": render_market_strategy,
+            "Acquisition Ops": render_acquisition_ops,
             "Dashboard": render_home,
             "Analytics": render_analytics,
             "Company Profiles": render_company_profiles,

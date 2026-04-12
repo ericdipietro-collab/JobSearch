@@ -274,8 +274,25 @@ CREATE TABLE IF NOT EXISTS board_health (
     last_attempt_at     TEXT,
     last_healed_at      TEXT,
     cooldown_until      TEXT,
+    is_watched          INTEGER DEFAULT 0,
     notes               TEXT,
     updated_at          TEXT NOT NULL
+)
+"""
+
+_CREATE_ATS_CANDIDATES = """
+CREATE TABLE IF NOT EXISTS ats_candidates (
+    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+    company_name       TEXT,
+    candidate_url      TEXT UNIQUE,
+    normalized_root    TEXT,
+    ats_family_guess   TEXT,
+    confidence         REAL,
+    source             TEXT,
+    rationale          TEXT,
+    validation_status  TEXT DEFAULT 'pending', -- pending, validated, rejected
+    validated_at       TEXT,
+    created_at         TEXT NOT NULL
 )
 """
 

@@ -29,6 +29,7 @@ from jobsearch.scraper.adapters.crawl4ai_adapter import Crawl4AIAdapter
 from jobsearch.scraper.adapters.careeronestop import CareerOneStopAdapter
 from jobsearch.scraper.adapters.remotive import RemotiveAdapter
 from jobsearch.scraper.adapters.remoteok import RemoteOKAdapter
+from jobsearch.scraper.adapters.search_recall import SearchRecallAdapter
 from jobsearch.scraper.adapters.wwr import WWRAdapter
 from jobsearch.scraper.adapters.findwork import FindworkAdapter
 from jobsearch.scraper.adapters.dice import DiceAdapter
@@ -53,6 +54,7 @@ from jobsearch.services.opportunity_service import upsert_job
 from jobsearch.services.enrichment_service import EnrichmentService
 from jobsearch.services.health_monitor import HealthMonitor
 from jobsearch.services.evaluation_service import EvaluationService
+from jobsearch.services.ats_discovery_service import ATSDiscoveryService
 
 logger = logging.getLogger(__name__)
 
@@ -131,7 +133,7 @@ class ScraperEngine:
         "custom_spglobal": GenericAdapter,
     }
 
-    def __init__(self, preferences: Dict[str, Any], companies: List[Dict[str, Any]], deep_search: bool = False, full_refresh: bool = False):
+    def __init__(self, preferences: Dict[str, Any], companies: List[Dict[str, Any]], deep_search: bool = False, full_refresh: bool = False, db_conn: Optional[sqlite3.Connection] = None):
         self.prefs = preferences
         self.deep_search = deep_search
         self.full_refresh = full_refresh
@@ -150,6 +152,10 @@ class ScraperEngine:
         self.escalation_policy = EscalationPolicy(settings)
         self.health_monitor = HealthMonitor(self.escalation_policy)
         self.evaluation_service = EvaluationService(preferences)
+        
+        # Use provided connection or open new one
+        self.conn = db_conn or get_connection()
+        self.discovery_service = ATSDiscoveryService(self.conn)
         self.session = get_shared_session()
         self.bulk_cooldowns: Dict[str, datetime] = {}
         self.known_urls: Dict[str, datetime] = {}
@@ -237,7 +243,7 @@ class ScraperEngine:
             pass
 
         rejected_csv_path = settings.rejected_csv
-        main_conn = get_connection()
+        main_conn = self.conn
 
         try:
             with log_path.open("a", encoding="utf-8") as log_handle:
@@ -587,6 +593,33 @@ class ScraperEngine:
                     for r in raw_jobs]
             return jobs, evidence or {}
         except Exception: return [], {}
+
+    def run_search_recall(self, queries: List[str], location: str = "", days_old: int = 3):
+        """Runs the Search Recall supplemental lane for a set of queries."""
+        adapter = SearchRecallAdapter(session=self.session, scorer=self.scorer)
+        main_conn = self.conn
+        
+        total_found = 0
+        total_candidates = 0
+        
+        for q in queries:
+            print(f"Recall: Searching for '{q}'...")
+            jobs = adapter.scrape_recall(q, location=location, days_old=days_old)
+            if not jobs:
+                continue
+                
+            # 1. Acquisition & Evaluation
+            persisted, inserted, evaluated, process_ms = self._process_and_save_jobs_acquisition(main_conn, {"name": "Recall Discovery"}, jobs)
+            scored, rejected = self.evaluation_service.evaluate_pending_jobs(main_conn)
+            
+            # 2. Harvester: Discover new ATS roots from recall URLs
+            candidate_count = self.discovery_service.process_recall_results([j.__dict__ for j in jobs])
+            
+            total_found += scored
+            total_candidates += candidate_count
+            print(f"Recall: Scored {scored} jobs, discovered {candidate_count} potential ATS roots.")
+            
+        return {"scored": total_found, "candidates": total_candidates}
 
     def enrich_jobs_with_ai(self, min_score_threshold: float = 60.0, max_jobs: int = 50) -> Dict[str, Any]:
         """

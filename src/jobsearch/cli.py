@@ -585,6 +585,7 @@ def heal(heal_all, force, ignore_cooldown, no_waterfall, deep, workers, deep_tim
 @main.command()
 @click.option("--deep-search", is_flag=True, help="Enable deep search using Playwright.")
 @click.option("--score-only", is_flag=True, help="Do not scrape; only run the evaluation/scoring pass on pending jobs.")
+@click.option("--priority-watch", is_flag=True, help="Only run for companies in the priority watchlist.")
 @click.option("--full-refresh", is_flag=True, help="Re-fetch descriptions for all jobs, even if already known.")
 @click.option("--test-companies", is_flag=True, help="Use the test company list.")
 @click.option("--contract-sources", is_flag=True, help="Use the contractor-source company list.")
@@ -596,7 +597,7 @@ def heal(heal_all, force, ignore_cooldown, no_waterfall, deep, workers, deep_tim
 @click.option("--companies", type=click.Path(exists=True), help="Path to companies YAML.")
 @click.option("--legacy", is_flag=True, help="Use the legacy scraper script if it exists.")
 @click.argument("extra_args", nargs=-1)
-def run(deep_search, score_only, full_refresh, test_companies, contract_sources, aggregator_sources, jobspy_sources, all_companies, workers, prefs, companies, legacy, extra_args):
+def run(deep_search, score_only, priority_watch, full_refresh, test_companies, contract_sources, aggregator_sources, jobspy_sources, all_companies, workers, prefs, companies, legacy, extra_args):
     """Run the job search pipeline."""
     setup_logging(settings.log_file)
     click.echo("Starting Job Search Pipeline...")
@@ -693,6 +694,22 @@ def run(deep_search, score_only, full_refresh, test_companies, contract_sources,
             with jobspy_path.open("r", encoding="utf-8") as handle:
                 jobspy_data = (yaml.safe_load(handle) or {}).get("companies", [])
             comp_data = _merge_company_lists(comp_data, jobspy_data)
+
+    # Filter for priority watch if requested
+    if priority_watch:
+        from jobsearch.services.watch_service import WatchService
+        from jobsearch.db.connection import get_connection
+        conn = get_connection()
+        watch_service = WatchService(conn)
+        watchlist = watch_service.get_watchlist()
+        watch_names = {w['company'] for w in watchlist}
+        conn.close()
+        
+        comp_data = [c for c in comp_data if c['name'] in watch_names]
+        if not comp_data:
+            click.echo("Priority watchlist is empty or none of those companies are in the active registry.")
+            return
+        click.echo(f"Running Priority Watch for {len(comp_data)} companies.")
 
     # P2: Pre-scrape heal for low_signal companies.
     # Companies whose careers_url is a bare site root return 0 results every run without
@@ -849,6 +866,69 @@ def generate_jobspy_fallbacks(dry_run, include_cooldown):
         yaml.dump(existing_doc, fh, default_flow_style=False, allow_unicode=True, sort_keys=False)
 
     click.echo(f"Added {len(new_entries)} entries to {jobspy_path.name}.")
+
+
+@main.command()
+@click.option("--query", "-q", multiple=True, help="Search query (e.g. 'Senior Product Manager').")
+@click.option("--location", "-l", default="", help="Location filter.")
+@click.option("--days", "-d", default=3, help="Max age of postings in days.")
+@click.option("--prefs", type=click.Path(exists=True), help="Path to preferences YAML.")
+def recall(query, location, days, prefs):
+    """Run broad discovery via Search Recall lane."""
+    if not query:
+        click.echo("Please provide at least one --query.")
+        return
+        
+    prefs_data = load_yaml(prefs or settings.prefs_yaml)
+    engine = ScraperEngine(prefs_data, [], full_refresh=False)
+    
+    results = engine.run_search_recall(list(query), location=location, days_old=days)
+    click.echo(f"\nRecall complete. Found {results['scored']} scored jobs and {results['candidates']} potential ATS roots.")
+
+
+@main.command()
+@click.option("--validate", is_flag=True, help="Trigger healer validation for all pending candidates.")
+@click.option("--list", "list_pending", is_flag=True, help="List pending candidates.")
+def discover(validate, list_pending):
+    """Manage discovered ATS board candidates."""
+    from jobsearch.services.ats_discovery_service import ATSDiscoveryService
+    from jobsearch.db.connection import get_connection
+    
+    conn = get_connection()
+    discovery_service = ATSDiscoveryService(conn)
+    
+    if list_pending:
+        candidates = discovery_service.get_pending_candidates()
+        if not candidates:
+            click.echo("No pending candidates.")
+        for c in candidates:
+            click.echo(f"[{c['confidence']:.2f}] {c['company_name']:<20} | {c['ats_family_guess']:<12} | {c['candidate_url']}")
+            
+    if validate:
+        from jobsearch.services.healer_service import ATSHealer
+        candidates = discovery_service.get_pending_candidates()
+        if not candidates:
+            click.echo("No pending candidates to validate.")
+            return
+            
+        healer = ATSHealer()
+        click.echo(f"Validating {len(candidates)} candidates...")
+        for c in candidates:
+            click.echo(f"Probing {c['company_name']}...")
+            # We'll use heal_company or discover logic
+            # For Phase 3, we'll just mark them as 'validated' for now if healer confirms
+            try:
+                res = healer.heal_company(c['company_name'])
+                if res and res.status != "NOT_FOUND":
+                    ats_db.update_candidate_status(conn, c['id'], "validated")
+                    click.echo(f"  ✅ Validated: {c['company_name']} uses {res.adapter}")
+                else:
+                    ats_db.update_candidate_status(conn, c['id'], "rejected")
+                    click.echo(f"  ❌ Rejected: {c['company_name']}")
+            except Exception as e:
+                click.echo(f"  ⚠️ Error validating {c['company_name']}: {e}")
+                
+    conn.close()
 
 
 @main.command()

@@ -592,8 +592,22 @@ def init_db(conn: sqlite3.Connection) -> None:
             last_attempt_at TEXT,
             last_healed_at TEXT,
             cooldown_until TEXT,
+            is_watched INTEGER DEFAULT 0,
             notes TEXT,
             updated_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS ats_candidates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_name TEXT,
+            candidate_url TEXT UNIQUE,
+            normalized_root TEXT,
+            ats_family_guess TEXT,
+            confidence REAL,
+            source TEXT,
+            rationale TEXT,
+            validation_status TEXT DEFAULT 'pending',
+            validated_at TEXT,
+            created_at TEXT NOT NULL
         );
         CREATE TABLE IF NOT EXISTS board_health_events (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -683,8 +697,26 @@ def init_db(conn: sqlite3.Connection) -> None:
             last_attempt_at TEXT,
             last_healed_at TEXT,
             cooldown_until TEXT,
+            is_watched INTEGER DEFAULT 0,
             notes TEXT,
             updated_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS ats_candidates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_name TEXT,
+            candidate_url TEXT UNIQUE,
+            normalized_root TEXT,
+            ats_family_guess TEXT,
+            confidence REAL,
+            source TEXT,
+            rationale TEXT,
+            validation_status TEXT DEFAULT 'pending',
+            validated_at TEXT,
+            created_at TEXT NOT NULL
         )
         """
     )
@@ -704,6 +736,14 @@ def init_db(conn: sqlite3.Connection) -> None:
             metadata TEXT
         )
         """
+    )
+
+    _add_columns_if_missing(
+        conn,
+        "board_health",
+        {
+            "is_watched": "is_watched INTEGER DEFAULT 0",
+        },
     )
 
     _add_columns_if_missing(
@@ -2067,6 +2107,57 @@ def get_board_health(conn: sqlite3.Connection, company: str) -> Optional[sqlite3
 
 def get_all_board_health(conn: sqlite3.Connection) -> List[sqlite3.Row]:
     return conn.execute("SELECT * FROM board_health ORDER BY updated_at DESC").fetchall()
+
+
+def set_company_watch(conn: sqlite3.Connection, company: str, is_watched: bool) -> None:
+    conn.execute(
+        "UPDATE board_health SET is_watched = ?, updated_at = ? WHERE company = ?",
+        (1 if is_watched else 0, datetime.now().isoformat(), company),
+    )
+    conn.commit()
+
+
+def get_watched_companies(conn: sqlite3.Connection) -> List[sqlite3.Row]:
+    return conn.execute("SELECT * FROM board_health WHERE is_watched = 1").fetchall()
+
+
+def add_ats_candidate(
+    conn: sqlite3.Connection,
+    company_name: str,
+    candidate_url: str,
+    normalized_root: str,
+    ats_family_guess: str,
+    confidence: float,
+    source: str,
+    rationale: str,
+) -> int:
+    now = datetime.now().isoformat()
+    cur = conn.execute(
+        """
+        INSERT INTO ats_candidates (
+            company_name, candidate_url, normalized_root, ats_family_guess,
+            confidence, source, rationale, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(candidate_url) DO UPDATE SET
+            confidence = MAX(confidence, excluded.confidence),
+            rationale = rationale || ' | ' || excluded.rationale
+        """,
+        (company_name, candidate_url, normalized_root, ats_family_guess, confidence, source, rationale, now),
+    )
+    conn.commit()
+    return cur.lastrowid
+
+
+def get_pending_candidates(conn: sqlite3.Connection) -> List[sqlite3.Row]:
+    return conn.execute("SELECT * FROM ats_candidates WHERE validation_status = 'pending' ORDER BY confidence DESC").fetchall()
+
+
+def update_candidate_status(conn: sqlite3.Connection, candidate_id: int, status: str) -> None:
+    conn.execute(
+        "UPDATE ats_candidates SET validation_status = ?, validated_at = ? WHERE id = ?",
+        (status, datetime.now().isoformat(), candidate_id),
+    )
+    conn.commit()
 
 
 def record_board_health_event(
