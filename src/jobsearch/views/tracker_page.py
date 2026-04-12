@@ -22,6 +22,7 @@ from jobsearch.services.email_signal_service import (
 )
 from jobsearch.services.gmail_sync_service import sync_gmail_email_signals
 from jobsearch.views.export_components import render_quick_export
+from jobsearch.services.job_canonicalization_service import JobCanonicalizationService
 from jobsearch.services.readiness_service import ReadinessService
 from jobsearch.views.readiness_components import render_readiness_badge
 
@@ -1484,6 +1485,28 @@ def _render_detail(conn, app_id: int) -> None:
             
         if app.get("canonical_merge_rationale"):
             st.caption(f"Rationale: {app['canonical_merge_rationale']}")
+
+        # Show conflicts if they exist in notes (JSON blob added by upsert_job)
+        notes = app.get("notes") or ""
+        if "Conflicts: [" in notes:
+            try:
+                conflict_json = notes.split("Conflicts: ")[1].split("\n")[0]
+                conflicts = json.loads(conflict_json)
+                if conflicts:
+                    st.warning("**Metadata Conflicts Detected:**\n" + "\n".join([f"- {c}" for c in conflicts]))
+            except Exception:
+                pass
+
+        # Show Alternate Sources
+        if gid:
+            canon_service = JobCanonicalizationService(conn)
+            members = canon_service.get_group_members(gid)
+            if len(members) > 1:
+                st.markdown("---")
+                st.markdown("**Alternate Sources in Group:**")
+                for m in members:
+                    if m['id'] == app['id']: continue
+                    st.caption(f"🔗 [{m['source_lane']}]({m['job_url']}) - {m['source']} (Score: {m['score']})")
 
     if app["job_description"]:
         with st.expander("📄 Full Job Description"):

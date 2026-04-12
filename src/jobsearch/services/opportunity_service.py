@@ -3,13 +3,14 @@
 from __future__ import annotations
 import sqlite3
 import hashlib
+import json
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from typing import List, Optional, Dict, Any
 import pandas as pd
 from jobsearch.scraper.models import Job
 from jobsearch import ats_db
-from jobsearch.services.job_canonicalization_service import JobCanonicalizationService
+from jobsearch.services.job_canonicalization_service import JobCanonicalizationService, CanonicalDecision
 from jobsearch.scraper.normalization import WorkTypeNormalizer
 
 def _now_iso() -> str:
@@ -29,14 +30,6 @@ def _safe_float(val: Any) -> Optional[float]:
         return float(val)
     except (ValueError, TypeError):
         return None
-
-_BUCKET_TO_STATUS: Dict[str, str] = {
-    "APPLY NOW":     "considering",
-    "REVIEW TODAY":  "considering",
-    "WATCH":         "considering",
-    "MANUAL REVIEW": "considering",
-    "IGNORE":        "withdrawn",
-}
 
 _STAGE_TO_STATUS: Dict[str, str] = {
     "new": "exploring",
@@ -144,10 +137,7 @@ def _record_job_observation(conn: sqlite3.Connection, app_id: int, job: Job, tim
 
 def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
     """
-    Insert or update a Job from the scraper with content-hash sync.
-
-    If job content hasn't changed (same hash), skips update to preserve user annotations.
-    Returns (inserted, app_id).
+    Insert or update a Job from the scraper with content-hash sync and inline canonicalization.
     """
     from jobsearch.db.repository import compute_content_hash
 
@@ -156,84 +146,25 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
 
     # 1. Run Canonicalization logic upstream
     canon_service = JobCanonicalizationService(conn)
-    canon_gid, is_canonical, merge_rationale = canon_service.canonicalize_incremental(job)
+    decision = canon_service.canonicalize_incremental(job)
 
     def _row(r):
         return dict(r) if r is not None else None
 
+    # Check if this exact source record already exists
     existing = _row(conn.execute(
-        """
-        SELECT id, status, description_excerpt, salary_text, location, jd_fingerprint,
-               salary_low, salary_high, work_type, compensation_unit,
-               hourly_rate, hours_per_week, weeks_per_year, normalized_compensation_usd,
-               content_hash
-        FROM applications
-        WHERE scraper_key = ?
-        """,
-        (job.id,),
+        "SELECT * FROM applications WHERE scraper_key = ?", (job.id,)
     ).fetchone())
-
-    source_lane = str(getattr(job, "source_lane", "employer_ats") or "employer_ats").strip().lower() or "employer_ats"
-    canonical_job_url = str(getattr(job, "canonical_job_url", "") or "").strip()
-    normalized_location = _safe_str(job.location).lower()
-
-    if existing is None and source_lane in {"aggregator", "jobspy_experimental"} and canonical_job_url:
-        stronger = _row(conn.execute(
-            """
-            SELECT id
-            FROM applications
-            WHERE source_lane IN ('employer_ats', 'contractor')
-              AND (job_url = ? OR canonical_job_url = ?)
-            ORDER BY CASE source_lane WHEN 'employer_ats' THEN 0 ELSE 1 END
-            LIMIT 1
-            """,
-            (canonical_job_url, canonical_job_url),
-        ).fetchone())
-        if stronger is not None:
-            return False, stronger["id"]
-
-    if existing is None and canonical_job_url:
-        existing = _row(conn.execute(
-            """
-            SELECT id, status, description_excerpt, salary_text, location, jd_fingerprint,
-                   salary_low, salary_high, work_type, compensation_unit,
-                   hourly_rate, hours_per_week, weeks_per_year, normalized_compensation_usd,
-                   content_hash
-            FROM applications
-            WHERE canonical_job_url = ? OR job_url = ?
-            LIMIT 1
-            """,
-            (canonical_job_url, canonical_job_url),
-        ).fetchone())
-
-    # Secondary dedup: prevent duplicate rows for the same company+role still in
-    # 'considering' state (e.g. when a scraper re-discovers the same job at a
-    # slightly different URL, producing a new scraper_key hash).
-    if existing is None and job.role_title_normalized:
-        existing = _row(conn.execute(
-            """
-            SELECT id, status, description_excerpt, salary_text, location, jd_fingerprint,
-                   salary_low, salary_high, work_type, compensation_unit,
-                   hourly_rate, hours_per_week, weeks_per_year, normalized_compensation_usd,
-                   content_hash
-            FROM applications
-            WHERE company = ?
-              AND role_normalized = ?
-              AND LOWER(TRIM(COALESCE(location, ''))) = ?
-              AND status = 'considering'
-            """,
-            (job.company, job.role_title_normalized, normalized_location),
-        ).fetchone())
 
     now = _now_iso()
     status, stage_label = _normalize_status_and_stage(job)
     new_jd_fingerprint = _jd_fingerprint(job.description_excerpt, job.salary_text, job.location)
 
-    if is_canonical == 1 and canon_gid:
-        # If we decided this new job should be the new canonical, demote the old one
+    # Handle Superseding: if this new job is better than current canonical, demote existing
+    if decision.is_canonical == 1 and decision.superseded_id:
         conn.execute(
-            "UPDATE applications SET is_canonical = 0 WHERE canonical_group_id = ? OR id = ?",
-            (canon_gid, canon_gid.replace("group_", ""))
+            "UPDATE applications SET is_canonical = 0, canonical_merge_rationale = 'Superseded by higher-trust source' WHERE id = ?",
+            (decision.superseded_id,)
         )
 
     if existing is None:
@@ -250,7 +181,7 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
                 date_discovered, date_applied,
                 extraction_method, extraction_confidence,
                 canonical_group_id, is_canonical, canonical_merge_rationale,
-                user_priority, tier, notes, created_at, updated_at
+                req_id, notes, created_at, updated_at
             ) VALUES (
                 :company, :role, :role_normalized, :url, :source, :source_lane, :canonical_job_url, :id,
                 :status, :score, :fit_band, :apply_now_eligible, :matched_keywords, :penalized_keywords,
@@ -260,7 +191,7 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
                 :date_discovered, :date_applied,
                 :extraction_method, :extraction_confidence,
                 :canon_gid, :is_canonical, :merge_rationale,
-                :user_priority, :tier, :notes, :created_at, :updated_at
+                :req_id, :notes, :created_at, :updated_at
             )
             """,
             {
@@ -269,8 +200,8 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
                 "role_normalized": job.role_title_normalized,
                 "url": job.url,
                 "source": job.source,
-                "source_lane": source_lane,
-                "canonical_job_url": canonical_job_url,
+                "source_lane": str(job.source_lane or "employer_ats"),
+                "canonical_job_url": str(job.canonical_job_url or ""),
                 "id": job.id,
                 "status": status,
                 "score": job.score,
@@ -297,12 +228,11 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
                 "date_applied": job.date_applied,
                 "extraction_method": getattr(job, "extraction_method", ""),
                 "extraction_confidence": getattr(job, "extraction_confidence", 0.0),
-                "canon_gid": canon_gid,
-                "is_canonical": is_canonical,
-                "merge_rationale": merge_rationale,
-                "user_priority": job.user_priority,
-                "tier": job.tier,
-                "notes": job.notes,
+                "canon_gid": decision.canonical_group_id,
+                "is_canonical": decision.is_canonical,
+                "merge_rationale": decision.rationale,
+                "req_id": getattr(job, "req_id", None),
+                "notes": (job.notes or "") + (f"\nConflicts: {json.dumps(decision.conflicts)}" if decision.conflicts else ""),
                 "created_at": now,
                 "updated_at": now,
             }
@@ -312,18 +242,14 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
         _insert_stage_history(conn, app_id, None, stage_label, "Scraper discovery")
         return True, app_id
     else:
-        # UPDATE scraper-owned fields (with content-hash sync)
+        # UPDATE
         app_id = existing["id"]
         old_hash = existing.get("content_hash")
 
-        # If content hash unchanged, skip update to preserve user annotations
         if old_hash == new_hash:
             _record_job_observation(conn, app_id, job, now, old_hash)
             return False, app_id
 
-        # INCREMENTAL SCRAPE SUPPORT: If the scraper provided an empty description, 
-        # it means it's skipping the detail fetch because it already exists.
-        # We update the observation timestamp but don't clear the description.
         if not str(job.description_excerpt or "").strip() and existing.get("description_excerpt"):
             _record_job_observation(conn, app_id, job, now, old_hash)
             return False, app_id
@@ -345,47 +271,26 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
             if material_jd_change
             else None
         )
+        
         merged_salary_text = job.salary_text or old_salary
         merged_salary_min = job.salary_min if job.salary_min is not None else existing["salary_low"]
         merged_salary_max = job.salary_max if job.salary_max is not None else existing["salary_high"]
         merged_work_type = WorkTypeNormalizer.normalize(job.work_type or existing["work_type"])
-        merged_compensation_unit = job.compensation_unit or existing["compensation_unit"]
-        merged_hourly_rate = job.hourly_rate if job.hourly_rate is not None else existing["hourly_rate"]
-        merged_hours_per_week = job.hours_per_week if job.hours_per_week is not None else existing["hours_per_week"]
-        merged_weeks_per_year = job.weeks_per_year if job.weeks_per_year is not None else existing["weeks_per_year"]
-        merged_normalized_comp = (
-            job.normalized_compensation_usd
-            if job.normalized_compensation_usd is not None
-            else existing["normalized_compensation_usd"]
-        )
-
+        
         conn.execute(
             """
             UPDATE applications SET
-                score = :score,
-                fit_band = :fit_band,
-                apply_now_eligible = :apply_now_eligible,
-                matched_keywords = :matched_keywords,
-                penalized_keywords = :penalized_keywords,
-                decision_reason = :decision_reason,
-                description_excerpt = :description_excerpt,
+                score = :score, fit_band = :fit_band, apply_now_eligible = :apply_now_eligible,
+                matched_keywords = :matched_keywords, penalized_keywords = :penalized_keywords,
+                decision_reason = :decision_reason, description_excerpt = :description_excerpt,
                 jd_fingerprint = :jd_fingerprint,
                 jd_last_changed_at = CASE WHEN :jd_needs_review = 1 THEN :updated_at ELSE jd_last_changed_at END,
                 jd_change_summary = CASE WHEN :jd_needs_review = 1 THEN :jd_change_summary ELSE jd_change_summary END,
                 jd_needs_review = CASE WHEN :jd_needs_review = 1 THEN 1 ELSE jd_needs_review END,
-                salary_text = :salary_text,
-                salary_low = :salary_min,
-                salary_high = :salary_max,
+                salary_text = :salary_text, salary_low = :salary_min, salary_high = :salary_max,
                 work_type = :work_type,
-                compensation_unit = :compensation_unit,
-                hourly_rate = :hourly_rate,
-                hours_per_week = :hours_per_week,
-                weeks_per_year = :weeks_per_year,
-                normalized_compensation_usd = :normalized_compensation_usd,
-                extraction_method = :extraction_method,
-                extraction_confidence = :extraction_confidence,
-                canonical_group_id = :canon_gid,
-                is_canonical = :is_canonical,
+                extraction_method = :extraction_method, extraction_confidence = :extraction_confidence,
+                canonical_group_id = :canon_gid, is_canonical = :is_canonical, 
                 canonical_merge_rationale = :merge_rationale,
                 updated_at = :updated_at
             WHERE id = :app_id
@@ -406,20 +311,13 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> tuple[bool, int]:
                 "salary_min": merged_salary_min,
                 "salary_max": merged_salary_max,
                 "work_type": merged_work_type,
-                "compensation_unit": merged_compensation_unit,
-                "hourly_rate": merged_hourly_rate,
-                "hours_per_week": merged_hours_per_week,
-                "weeks_per_year": merged_weeks_per_year,
-                "normalized_compensation_usd": merged_normalized_comp,
                 "extraction_method": getattr(job, "extraction_method", ""),
                 "extraction_confidence": getattr(job, "extraction_confidence", 0.0),
-                "canon_gid": canon_gid,
-                "is_canonical": is_canonical,
-                "merge_rationale": merge_rationale,
+                "canon_gid": decision.canonical_group_id,
+                "is_canonical": decision.is_canonical,
+                "merge_rationale": decision.rationale,
                 "updated_at": now,
             }
         )
         _record_job_observation(conn, app_id, job, now, new_jd_fingerprint)
-        if material_jd_change:
-            _record_jd_change(conn, app_id, jd_change_summary or "job description changed", now)
         return False, app_id

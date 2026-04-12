@@ -1382,11 +1382,31 @@ def main():
         if df_all.empty and rejected_df.empty and not manual_review_items:
             st.info("No jobs yet. Run the pipeline.")
             return
+        # Duplicate and Search Control
+        c1, c2 = st.columns(2)
+        with c1:
+            use_fts_search = st.checkbox(
+                "🔎 Use Full-Text Search",
+                value=False,
+                help="Use database-level full-text search for faster queries on large job lists.",
+            )
+        with c2:
+            hide_duplicates = st.checkbox(
+                "🔗 Hide suspected duplicates",
+                value=True,
+                help="Show only the highest-trust canonical version of each job posting.",
+            )
+
+        if hide_duplicates:
+            df_all = df_all[df_all.get("is_canonical", 1) == 1].copy()
+
         velocity_summary = _role_velocity_summary(df_all)
         vm1, vm2, vm3 = st.columns(3)
         vm1.metric("Older Postings", velocity_summary["stale"])
         vm2.metric("Reposted Jobs", velocity_summary["reposted"])
         vm3.metric("No Longer Listed", velocity_summary["dormant"])
+        
+        # Use filtered df_all for work type metrics
         ats_df = _ats_only_df(df_all)
         match_population = ats_df[ats_df["effective_bucket"].isin(["APPLY NOW", "REVIEW TODAY", "WATCH"])].copy()
         work_type_series = match_population.get("work_type", pd.Series(["unknown"] * len(match_population), index=match_population.index)).map(_normalize_work_type)
@@ -1411,13 +1431,6 @@ def main():
             index=0,
         )
 
-        # Advanced FTS5 search option
-        use_fts_search = st.checkbox(
-            "🔎 Use Full-Text Search (search all jobs across database)",
-            value=False,
-            help="Use database-level full-text search for faster queries on large job lists. Searches by company, role, and description.",
-        )
-
         if use_fts_search:
             fts_query = st.text_input(
                 "Full-Text Search",
@@ -1429,7 +1442,9 @@ def main():
                 try:
                     search_conn = ats_db.get_connection()
                     try:
-                        fts_results = search_jobs(search_conn, fts_query, limit=500)
+                        # Pass canonical filter to search service if hiding duplicates
+                        canon_only = 1 if hide_duplicates else None
+                        fts_results = search_jobs(search_conn, fts_query, limit=500, is_canonical=canon_only)
                         if fts_results:
                             matching_ids = {r["id"] for r in fts_results}
                             df_all = df_all[df_all["id"].isin(matching_ids)].copy()

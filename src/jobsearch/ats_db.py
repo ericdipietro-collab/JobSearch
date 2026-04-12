@@ -793,6 +793,7 @@ def init_db(conn: sqlite3.Connection) -> None:
             "canonical_group_id": "canonical_group_id TEXT",
             "is_canonical": "is_canonical INTEGER DEFAULT 1",
             "canonical_merge_rationale": "canonical_merge_rationale TEXT",
+            "req_id": "req_id TEXT",
         },
     )
 

@@ -1,127 +1,125 @@
 from __future__ import annotations
 import logging
 import sqlite3
-import hashlib
-from difflib import SequenceMatcher
+from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
 
-from jobsearch import ats_db
+from jobsearch.scraper.models import Job
 from jobsearch.scraper.normalization import SourceLaneRegistry
 
 logger = logging.getLogger(__name__)
 
+@dataclass
+class CanonicalDecision:
+    canonical_group_id: Optional[str]
+    is_canonical: int  # 1 or 0
+    rationale: str
+    is_new_group: bool = False
+    superseded_id: Optional[int] = None
+    conflicts: List[str] = field(default_factory=list)
+
 class JobCanonicalizationService:
-    """Service for identifying and consolidating duplicate job postings."""
+    """Service for identifying and consolidating duplicate job postings with provenance."""
 
     def __init__(self, conn: sqlite3.Connection):
         self.conn = conn
 
-    def find_duplicates(self):
-        """Tiered duplicate detection across the entire application set."""
-        # Reset current canonical markers
-        self.conn.execute("UPDATE applications SET is_canonical = 1, canonical_group_id = NULL")
-        
-        # 1. Tier 1: Exact matches on (Company, Normalized Title, Location)
-        rows = self.conn.execute(
-            """
-            SELECT company, role_normalized, location, COUNT(*) as n, GROUP_CONCAT(id) as ids
-            FROM applications
-            GROUP BY company, role_normalized, location
-            HAVING n > 1
-            """
-        ).fetchall()
-        
-        for row in rows:
-            ids = [int(i) for i in row['ids'].split(',')]
-            self._merge_group(ids, "Exact match on Company, Title, and Location.")
-
-        # 2. Tier 2: Fuzzy Description Match for same Company + Title
-        # (Heuristic: Similarity > 0.8)
-        self.conn.commit()
-
-    def canonicalize_incremental(self, job: Job) -> tuple[str, int, str]:
+    def canonicalize_incremental(self, job: Job) -> CanonicalDecision:
         """
         Determines if a new job belongs to an existing canonical group.
-        Returns (canonical_group_id, is_canonical, rationale).
+        Implements Tiered matching:
+        1. Exact req_id
+        2. (Company + Normalized Title + Normalized Location)
         """
         company = job.company
         title_norm = job.role_title_normalized
         loc_norm = str(job.location or "").strip().lower()
         req_id = getattr(job, "req_id", None)
         
-        # 1. High Confidence: Match by req_id
-        if req_id:
-            match = self.conn.execute(
-                "SELECT canonical_group_id, id FROM applications WHERE company = ? AND scraper_key LIKE ? LIMIT 1",
-                (company, f"%{req_id}%")
-            ).fetchone()
-            if match:
-                gid = match['canonical_group_id'] or f"group_{match['id']}"
-                return gid, 0, f"Matched existing req_id: {req_id}"
+        # Try to find existing group
+        existing_canon = None
+        match_rationale = ""
 
-        # 2. Medium-High Confidence: Match by (Company, Title, Location)
-        match = self.conn.execute(
-            """
-            SELECT canonical_group_id, id, source_lane, extraction_method 
-            FROM applications 
-            WHERE company = ? AND role_normalized = ? AND LOWER(TRIM(COALESCE(location, ''))) = ?
-            AND is_canonical = 1
-            LIMIT 1
-            """,
-            (company, title_norm, loc_norm)
-        ).fetchone()
-        
-        if match:
-            gid = match['canonical_group_id'] or f"group_{match['id']}"
+        # 1. Match by req_id
+        if req_id:
+            existing_canon = self.conn.execute(
+                "SELECT * FROM applications WHERE company = ? AND req_id = ? AND is_canonical = 1 LIMIT 1",
+                (company, req_id)
+            ).fetchone()
+            if existing_canon:
+                match_rationale = f"Exact req_id match: {req_id}"
+
+        # 2. Match by Identity (Company, Title, Location)
+        if not existing_canon:
+            existing_canon = self.conn.execute(
+                """
+                SELECT * FROM applications 
+                WHERE company = ? AND role_normalized = ? AND LOWER(TRIM(COALESCE(location, ''))) = ?
+                AND is_canonical = 1
+                LIMIT 1
+                """,
+                (company, title_norm, loc_norm)
+            ).fetchone()
+            if existing_canon:
+                match_rationale = "Matched existing canonical by title and location."
+
+        if existing_canon:
+            gid = existing_canon['canonical_group_id'] or f"group_{existing_canon['id']}"
             
-            # Determine if new job should supersede current canonical
-            should_supersede = self._should_supersede(job, match)
-            if should_supersede:
-                # We'll mark this one as canonical and the existing one as duplicate
-                # Note: This requires a bit of state management in the caller
-                return gid, 1, f"Superseded existing canonical due to better source lane ({job.source_lane})"
+            # Conflict Detection
+            conflicts = self._detect_conflicts(job, existing_canon)
             
-            return gid, 0, "Matched existing canonical by title and location."
+            # Trust Rank Check: Should we supersede?
+            new_rank = SourceLaneRegistry.get_rank(job.source_lane)
+            cur_rank = SourceLaneRegistry.get_rank(existing_canon['source_lane'])
+            
+            if new_rank < cur_rank:
+                return CanonicalDecision(
+                    canonical_group_id=gid,
+                    is_canonical=1,
+                    rationale=f"Superseded existing canonical (rank {cur_rank} -> {new_rank}). {match_rationale}",
+                    superseded_id=existing_canon['id'],
+                    conflicts=conflicts
+                )
+            else:
+                return CanonicalDecision(
+                    canonical_group_id=gid,
+                    is_canonical=0,
+                    rationale=match_rationale,
+                    conflicts=conflicts
+                )
 
         # 3. New unique job
-        return None, 1, "No duplicates found; marked as new canonical."
-
-    def _should_supersede(self, new_job: Job, current_canon: sqlite3.Row) -> bool:
-        """Determines if a new job source is 'better' than the current canonical."""
-        new_rank = SourceLaneRegistry.get_rank(new_job.source_lane)
-        cur_rank = SourceLaneRegistry.get_rank(current_canon['source_lane'])
-        
-        if new_rank < cur_rank:
-            return True
-        return False
-
-    def _merge_group(self, ids: List[int], rationale: str):
-        """Consolidates a group of IDs under one canonical record."""
-        if not ids: return
-        
-        ids.sort() # First ID becomes canonical (usually oldest seen)
-        canonical_id = ids[0]
-        group_id = f"group_{canonical_id}"
-        
-        # Mark all as part of group
-        id_str = ",".join(map(str, ids))
-        self.conn.execute(
-            f"UPDATE applications SET canonical_group_id = ?, is_canonical = 0 WHERE id IN ({id_str})",
-            (group_id,)
-        )
-        # Re-mark the primary one
-        self.conn.execute(
-            "UPDATE applications SET is_canonical = 1, notes = notes || ? WHERE id = ?",
-            (f"\nCanonical Merge: {rationale} ({len(ids)} sources)", canonical_id)
+        return CanonicalDecision(
+            canonical_group_id=None,
+            is_canonical=1,
+            rationale="No duplicates found; marked as new canonical.",
+            is_new_group=True
         )
 
-    def get_canonical_jobs(self, status: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Returns only canonical job records."""
-        query = "SELECT * FROM applications WHERE is_canonical = 1"
-        params = []
-        if status:
-            query += " AND status = ?"
-            params.append(status)
+    def _detect_conflicts(self, new_job: Job, existing: sqlite3.Row) -> List[str]:
+        conflicts = []
         
-        rows = self.conn.execute(query, params).fetchall()
+        # Salary Conflict
+        new_sal = new_job.salary_max or 0
+        old_sal = existing['salary_high'] or 0
+        if new_sal > 0 and old_sal > 0:
+            diff = abs(new_sal - old_sal) / max(new_sal, old_sal)
+            if diff > 0.2:
+                conflicts.append(f"Salary mismatch: {old_sal} vs {new_sal}")
+        
+        # Work Type Conflict
+        new_wt = (new_job.work_type or "").lower()
+        old_wt = (existing['work_type'] or "").lower()
+        if new_wt and old_wt and new_wt != old_wt:
+            conflicts.append(f"Work type conflict: {old_wt} vs {new_wt}")
+            
+        return conflicts
+
+    def get_group_members(self, group_id: str) -> List[Dict[str, Any]]:
+        """Returns all members of a canonical group."""
+        rows = self.conn.execute(
+            "SELECT * FROM applications WHERE canonical_group_id = ? OR id = ?",
+            (group_id, group_id.replace("group_", ""))
+        ).fetchall()
         return [dict(r) for r in rows]

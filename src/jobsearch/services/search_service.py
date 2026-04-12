@@ -14,6 +14,7 @@ def search_jobs(
     query: str,
     limit: int = 50,
     include_filtered: bool = False,
+    is_canonical: Optional[int] = None,
 ) -> List[Dict[str, Any]]:
     """
     Search jobs using FTS5 BM25 ranking.
@@ -23,6 +24,7 @@ def search_jobs(
         query: Search query (e.g., "Python backend remote")
         limit: Maximum results to return (default 50)
         include_filtered: If True, include all jobs; if False, exclude filtered statuses
+        is_canonical: 1 for canonical only, 0 for duplicates only, None for all
 
     Returns:
         List of matching jobs with rank and score
@@ -38,10 +40,19 @@ def search_jobs(
     try:
         cur = conn.cursor()
 
-        # Build the WHERE clause for filtered statuses
-        status_filter = ""
+        # Build the WHERE clause filters
+        where_parts = ["jobs_fts MATCH ?"]
+        params = [fts_query]
+
         if not include_filtered:
-            status_filter = "AND a.status NOT IN ('rejected', 'archived')"
+            where_parts.append("a.status NOT IN ('rejected', 'archived', 'withdrawn')")
+        
+        if is_canonical is not None:
+            where_parts.append("a.is_canonical = ?")
+            params.append(is_canonical)
+
+        where_clause = " AND ".join(where_parts)
+        params.append(limit)
 
         # Use BM25 ranking with FTS5
         sql = f"""
@@ -62,14 +73,13 @@ def search_jobs(
             rank
         FROM jobs_fts
         JOIN applications a ON jobs_fts.rowid = a.id
-        WHERE jobs_fts MATCH ?
-            {status_filter}
+        WHERE {where_clause}
         ORDER BY rank
         LIMIT ?
         """
 
         results = []
-        for row in cur.execute(sql, (fts_query, limit)).fetchall():
+        for row in cur.execute(sql, tuple(params)).fetchall():
             results.append({
                 "id": row[0],
                 "company": row[1],

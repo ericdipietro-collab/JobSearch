@@ -25,6 +25,7 @@ class SearchRecallAdapter(BaseAdapter):
                 role_title_raw=item.get("title", "Unknown"),
                 url=item.get("url", ""),
                 location=item.get("location", ""),
+                req_id=item.get("req_id"),
                 source="search_recall",
                 source_lane=SourceLaneRegistry.LANE_SEARCH_RECALL
             )

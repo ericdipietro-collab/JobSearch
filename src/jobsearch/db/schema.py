@@ -454,6 +454,7 @@ def init_db(conn: sqlite3.Connection) -> None:
     _add_column_if_missing(cur, "applications", "canonical_group_id", "canonical_group_id TEXT")
     _add_column_if_missing(cur, "applications", "is_canonical", "is_canonical INTEGER DEFAULT 1")
     _add_column_if_missing(cur, "applications", "canonical_merge_rationale", "canonical_merge_rationale TEXT")
+    _add_column_if_missing(cur, "applications", "req_id", "req_id TEXT")
     migrate_stage_history(conn)
     migrate_content_hash(conn)
     cur.execute("CREATE TABLE IF NOT EXISTS schema_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
