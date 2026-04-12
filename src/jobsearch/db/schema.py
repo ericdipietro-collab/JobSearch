@@ -378,6 +378,7 @@ def init_db(conn: sqlite3.Connection) -> None:
     _add_column_if_missing(cur, "applications", "v2_anchor_score", "v2_anchor_score REAL")
     _add_column_if_missing(cur, "applications", "v2_baseline_score", "v2_baseline_score REAL")
     _add_column_if_missing(cur, "applications", "v2_flags", "v2_flags TEXT")
+    _add_column_if_missing(cur, "applications", "talking_points", "talking_points TEXT")
     migrate_stage_history(conn)
     migrate_content_hash(conn)
     cur.execute("CREATE TABLE IF NOT EXISTS schema_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")

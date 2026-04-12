@@ -50,6 +50,7 @@ class SmokeTests(unittest.TestCase):
         self.assertIn(tipalti.get("careers_url"), {
             "https://tipalti.com/company/jobs",
             "https://tipalti.com/company/jobs/",
+            "https://boards.greenhouse.io/tipaltisolutions",
         })
 
     def test_contract_test_registry_exists(self):

@@ -828,7 +828,9 @@ def _render_apply_now_cards(df):
         c1, c2, c3, c4 = st.columns([4, 1.5, 1.5, 2])
         lane_label = r.get("source_lane_label", "Employer ATS")
         source_name = r.get("source", "Direct")
-        c1.markdown(f"**{co}** — {ti} <small>score {sc:.0f}</small>  \n<small style='color: #6b7280'>{source_name} • {lane_label}</small>", unsafe_allow_html=True)
+        age_days = r.get("age_days", 0) or 0
+        age_badge = f" <span style='background:#f59e0b;color:#fff;font-size:0.7rem;padding:1px 5px;border-radius:3px'>{int(age_days)}d old</span>" if age_days > 14 else ""
+        c1.markdown(f"**{co}** — {ti} <small>score {sc:.0f}</small>{age_badge}  \n<small style='color: #6b7280'>{source_name} • {lane_label}</small>", unsafe_allow_html=True)
         if url: c2.markdown(f"[🔗 Open]({url})")
         
         if c3.button("✨ AI Analysis", key=f"ai_{key}"):
@@ -907,6 +909,53 @@ def _render_apply_now_cards(df):
                             unsafe_allow_html=True
                         )
             except: pass
+
+        # Talking Points — generate and cache per job
+        talking_points_raw = r.get("talking_points")
+        with st.expander("✍️ Talking Points"):
+            if talking_points_raw:
+                try:
+                    tp = json.loads(talking_points_raw)
+                    st.markdown(f"**Opening:** {tp.get('opening', '')}")
+                    for b in tp.get("bullets", []):
+                        if b:
+                            st.markdown(f"- {b}")
+                    if tp.get("company_line"):
+                        st.markdown(f"*{tp['company_line']}*")
+                except Exception:
+                    st.write(talking_points_raw)
+            else:
+                if st.button("Generate Talking Points", key=f"tp_{key}"):
+                    conn = ats_db.get_connection()
+                    try:
+                        google_key = ats_db.get_setting(conn, "google_api_key", default=os.getenv("GOOGLE_API_KEY", ""))
+                        openai_key = ats_db.get_setting(conn, "openai_api_key", default=os.getenv("OPENAI_API_KEY", ""))
+                        resume_text = ats_db.get_setting(conn, "base_resume_text", default="")
+                        if not google_key and not openai_key:
+                            st.error("Add a Google or OpenAI API key in Settings first.")
+                        elif not resume_text:
+                            st.error("Upload a Base Resume in Settings first.")
+                        else:
+                            with st.spinner("Generating talking points..."):
+                                from jobsearch.services.talking_points_service import TalkingPointsService
+                                svc = TalkingPointsService(google_api_key=google_key, openai_api_key=openai_key)
+                                matched_kw = []
+                                result = svc.generate(ti, co, desc, resume_text, matched_kw)
+                                if result:
+                                    now = datetime.now(timezone.utc).isoformat()
+                                    conn.execute(
+                                        "UPDATE applications SET talking_points=?, updated_at=? WHERE scraper_key=?",
+                                        (json.dumps(result), now, key),
+                                    )
+                                    conn.commit()
+                                    _invalidate_data_cache()
+                                    st.rerun()
+                                else:
+                                    st.error("Failed to generate talking points. Check API key and try again.")
+                    finally:
+                        conn.close()
+                else:
+                    st.caption("Click to generate AI-powered talking points tailored to this role.")
 
         st.markdown("<hr style='margin:2px 0;border-color:#374151'>", unsafe_allow_html=True)
 

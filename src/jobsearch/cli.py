@@ -472,8 +472,18 @@ def heal(heal_all, force, ignore_cooldown, no_waterfall, deep, workers, deep_tim
                         careers_url=result.careers_url,
                         status=result.status,
                         detail=detail_override,
+                        confidence=result.confidence,
+                        source=result.source,
+                        candidates=result.candidates,
+                        route_decision=result.route_decision,
                     )
 
+                top_candidates = [item for item in (result.candidates or []) if isinstance(item, dict)]
+                if top_candidates:
+                    company["discovery_urls"] = [item.get("final_url") or item.get("url") for item in top_candidates if item.get("final_url") or item.get("url")]
+                    company["discovery_candidates"] = top_candidates
+                elif company.get("careers_url"):
+                    company["discovery_urls"] = [company.get("careers_url")]
                 company["discovery_method"] = result.detail
                 company["last_healed"] = datetime.now().isoformat()
 

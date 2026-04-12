@@ -280,6 +280,7 @@ _EXP_PATTERNS: List[re.Pattern] = [
     re.compile(r"(\d+)\s+years?\s+(?:working|managing|developing|building)", re.I),
     re.compile(r"(?:require|need|requires|needs)\s+(?:at\s+least\s+)?(\d+)\s+years?", re.I),
 ]
+_EXP_RANGE_PATTERN = re.compile(r"(\d+)\s*[-–]\s*(\d+)\s+years?(?:\s+(?:of\s+)?(?:experience|exp))?", re.I)
 
 _SENIOR_TITLE_RE = re.compile(
     r"\b(lead|principal|staff|director|head\s+of|vp|vice\s+president|senior|sr\.?)\b", re.I
@@ -288,6 +289,18 @@ _JUNIOR_TITLE_RE = re.compile(r"\b(junior|jr\.?|entry[- ]level|associate)\b", re
 
 
 def _extract_required_years(text: str) -> Optional[float]:
+    range_matches: List[float] = []
+    for m in _EXP_RANGE_PATTERN.finditer(text):
+        try:
+            years = [float(m.group(1)), float(m.group(2))]
+            values = [y for y in years if 0 < y <= 30]
+            if values:
+                range_matches.append(min(values))
+        except (ValueError, IndexError):
+            pass
+    if range_matches:
+        return min(range_matches)
+
     matches: List[float] = []
     for pat in _EXP_PATTERNS:
         for m in pat.finditer(text):

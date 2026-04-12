@@ -126,23 +126,39 @@ class JobSpyExperimentalAdapter(BaseAdapter):
         Auto-derive search queries from job title preferences when no search_queries
         are configured. Picks the top high-weight title keywords as search terms,
         paired with industry context for precision.
+
+        If explicit search_queries are configured under preferences["jobspy_experimental"],
+        those are returned directly (bypassing the auto-derive logic entirely).
         """
+        jobspy_cfg = (preferences or {}).get("jobspy_experimental") or {}
+
+        # If explicit search_queries are configured in preferences, use them directly
+        explicit = jobspy_cfg.get("search_queries")
+        if explicit:
+            return search_queries_for_tier(explicit, max_query_tier(preferences, "jobspy_experimental"))
+
+        # Auto-derive from title weights
         titles = (preferences or {}).get("titles", {})
-        weights = titles.get("positive_weights") or []
-        keywords = [
-            k for k, w in (weights if isinstance(weights[0], (list, tuple)) else [])
-            if isinstance(w, (int, float)) and w >= 8
-        ] if weights else []
+        weights = titles.get("positive_weights") or {}
+        keywords: List[str] = []
+        if isinstance(weights, dict):
+            keywords = [k for k, w in weights.items() if isinstance(w, (int, float)) and w >= 8]
+        elif weights:
+            try:
+                keywords = [k for k, w in weights if isinstance(w, (int, float)) and w >= 8]
+            except (TypeError, ValueError):
+                pass
 
         # Fall back to positive_keywords if no weighted titles
         if not keywords:
             keywords = (titles.get("positive_keywords") or [])[:10]
 
-        # Build diverse queries: title + domain modifier
-        domain_suffix = "fintech"
-        queries = []
+        # Build diverse queries: title × domain modifier
+        domain_modifiers: List[str] = jobspy_cfg.get("domain_modifiers") or ["fintech"]
+        queries: List[str] = []
         for kw in keywords[:6]:
-            queries.append(f"{kw} {domain_suffix}")
+            for mod in domain_modifiers[:4]:
+                queries.append(f"{kw} {mod}")
         return queries or []
 
     @staticmethod

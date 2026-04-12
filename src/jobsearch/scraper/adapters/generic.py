@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 
 from .base import BaseAdapter
 from jobsearch.scraper.models import Job
+from jobsearch.scraper.jsonld_extractor import jsonld_jobs_to_canonical
 
 logger = logging.getLogger(__name__)
 
@@ -123,10 +124,26 @@ class GenericAdapter(BaseAdapter):
                         company_config.get("name", "?"), url, detected_ats,
                     )
 
+                company_name = company_config.get("name", "Unknown")
+                jsonld_jobs = jsonld_jobs_to_canonical(
+                    html,
+                    base_url=url,
+                    company_name=company_name,
+                    adapter="generic",
+                    tier=company_config.get("tier", 4),
+                    source="Generic JSON-LD",
+                )
+                if jsonld_jobs:
+                    for job in jsonld_jobs:
+                        if job.url in seen_urls:
+                            continue
+                        seen_urls.add(job.url)
+                        jobs.append(job)
+                    continue
+
                 soup = BeautifulSoup(html, "html.parser")
                 if not self._page_looks_like_openings_page(url, soup, html, company_config):
                     continue
-                company_name = company_config.get("name", "Unknown")
 
                 for anchor in soup.find_all("a", href=True):
                     href = anchor["href"]

@@ -10,7 +10,7 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from urllib.parse import urljoin, urlparse, parse_qs
 from bs4 import BeautifulSoup
 from requests.adapters import HTTPAdapter
@@ -18,6 +18,7 @@ from urllib3.util.retry import Retry
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 from jobsearch.config.settings import get_headers, get_shared_session, settings
 from jobsearch import ats_db as db
+from jobsearch.scraper.ats_routing import CandidateJobURL, choose_extraction_route, fingerprint_ats, rank_candidates, score_candidate_url
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,10 @@ class DiscoveryResult:
     careers_url: Optional[str]
     status: str # VALID, FOUND, FALLBACK, NOT_FOUND, BLOCKED
     detail: str
+    confidence: float = 1.0  # 0.0–1.0; how certain this URL+adapter pairing is
+    source: str = ""  # what phase found it: embed_scan, slug_probe, search, sitemap, etc.
+    candidates: List[Dict[str, Any]] = field(default_factory=list)
+    route_decision: str = ""
 
 class ATSHealer:
     CACHE_TTL_S = 600.0
@@ -492,9 +497,39 @@ class ATSHealer:
                 allow_redirects=True,
             )
             if resp.status_code == 200:
-                return self._scan_content(resp.text, resp.url, name)
+                result = self._scan_content(resp.text, resp.url, name)
+                candidate = self._build_candidate(
+                    source="existing_url",
+                    url=url,
+                    final_url=resp.url or url,
+                    status_code=resp.status_code,
+                    ats_family=fingerprint_ats(resp.url or url, html=resp.text),
+                    redirect_chain=[url, resp.url or url],
+                    extra_flags=["existing_assignment"],
+                )
+                if result:
+                    result.candidates = self._top_candidate_dicts([candidate])
+                    result.route_decision = choose_extraction_route(ats_family=result.adapter or candidate.ats_family).decision
+                return result
             if resp.status_code == 403 and self._looks_like_careersish_url(resp.url or url):
-                return DiscoveryResult("generic", None, resp.url or url, "FALLBACK", "Potential blocked career page")
+                candidate = self._build_candidate(
+                    source="existing_url",
+                    url=url,
+                    final_url=resp.url or url,
+                    status_code=resp.status_code,
+                    ats_family=fingerprint_ats(resp.url or url),
+                    redirect_chain=[url, resp.url or url],
+                    extra_flags=["blocked_existing_url"],
+                )
+                return DiscoveryResult(
+                    "generic",
+                    None,
+                    resp.url or url,
+                    "FALLBACK",
+                    "Potential blocked career page",
+                    candidates=self._top_candidate_dicts([candidate]),
+                    route_decision=choose_extraction_route(ats_family=candidate.ats_family, blocked=True).decision,
+                )
         except Exception:
             return None
         return None
@@ -625,7 +660,25 @@ class ATSHealer:
         
         # 0. Manual Override check
         if company.get("heal_skip") and not force:
-            return DiscoveryResult(None, None, existing_url, "VALID", "User-verified (heal_skip)")
+            return DiscoveryResult(
+                None,
+                None,
+                existing_url,
+                "VALID",
+                "User-verified (heal_skip)",
+                candidates=self._top_candidate_dicts(
+                    [
+                        self._build_candidate(
+                            source="provided_url",
+                            url=existing_url,
+                            final_url=existing_url,
+                            status_code=200 if existing_url else None,
+                            ats_family=fingerprint_ats(existing_url),
+                            company_domain=str(company.get("domain", "") or ""),
+                        )
+                    ]
+                ) if existing_url else [],
+            )
 
         if not force and not ignore_cooldown:
             health_skip_reason = self._persistent_health_skip_reason(company)
@@ -636,6 +689,18 @@ class ATSHealer:
                     existing_url,
                     "VALID",
                     health_skip_reason,
+                    candidates=self._top_candidate_dicts(
+                        [
+                            self._build_candidate(
+                                source="existing_url",
+                                url=existing_url,
+                                final_url=existing_url,
+                                status_code=200 if existing_url else None,
+                                ats_family=fingerprint_ats(existing_url),
+                                company_domain=str(company.get("domain", "") or ""),
+                            )
+                        ]
+                    ) if existing_url else [],
                 )
 
         # 1a. Unsupported ATS fast-exit — mark manual_only immediately, no waterfall waste.
@@ -645,6 +710,20 @@ class ATSHealer:
                 company.get("adapter"), company.get("adapter_key"),
                 existing_url, "BLOCKED",
                 f"Unsupported ATS vendor: {existing_url}",
+                candidates=self._top_candidate_dicts(
+                    [
+                        self._build_candidate(
+                            source="existing_url",
+                            url=existing_url,
+                            final_url=existing_url,
+                            status_code=200,
+                            ats_family=fingerprint_ats(existing_url),
+                            company_domain=str(company.get("domain", "") or ""),
+                            extra_flags=["unsupported_ats"],
+                        )
+                    ]
+                ),
+                route_decision=choose_extraction_route(ats_family=fingerprint_ats(existing_url), unsupported=True).decision,
             )
 
         # 1b. Adapter mismatch auto-correct — if the URL clearly belongs to a different ATS,
@@ -667,6 +746,19 @@ class ATSHealer:
             return DiscoveryResult(
                 company.get("adapter"), company.get("adapter_key"),
                 existing_url, "VALID", detail,
+                candidates=self._top_candidate_dicts(
+                    [
+                        self._build_candidate(
+                            source="existing_url",
+                            url=existing_url,
+                            final_url=existing_url,
+                            status_code=200,
+                            ats_family=fingerprint_ats(existing_url),
+                            company_domain=str(company.get("domain", "") or ""),
+                        )
+                    ]
+                ) if existing_url else [],
+                route_decision=choose_extraction_route(ats_family=fingerprint_ats(existing_url)).decision if existing_url else "",
             )
 
         # Create slug candidates
@@ -1194,6 +1286,12 @@ class ATSHealer:
         # The outer heal already has search/direct-probe/deep paths; waterfall is a "cheap hint" mechanism.
         candidates = candidates[:24]
 
+        # Fast path: check sitemap.xml before probing dozens of paths — costs at most 2 requests.
+        if not self._timed_out(deadline):
+            sitemap_result = self._discover_from_sitemap(domain, name, deadline)
+            if sitemap_result:
+                return sitemap_result
+
         def check_url(base, url):
             if self._timed_out(deadline):
                 return None
@@ -1258,6 +1356,103 @@ class ATSHealer:
         if self._timed_out(deadline):
             return None
         return self._search_discovery(name, domain, deadline)
+
+    def _discover_from_sitemap(self, domain: str, name: str, deadline: Optional[float] = None) -> Optional[DiscoveryResult]:
+        """Check sitemap.xml (and sitemap_index.xml) for career-related URLs.
+
+        Tries /sitemap.xml then /sitemap_index.xml; recursively resolves one level of
+        <sitemapindex> sub-sitemaps.  Returns the first DiscoveryResult found, or None.
+        Budget: at most 2 HTTP requests; 3s timeout each; skips on non-200.
+        """
+        import xml.etree.ElementTree as ET
+
+        sitemap_urls = [
+            f"https://{domain}/sitemap.xml",
+            f"https://www.{domain}/sitemap.xml",
+            f"https://{domain}/sitemap_index.xml",
+        ]
+        seen: set[str] = set()
+
+        def _extract_locs(xml_text: str) -> List[str]:
+            locs: List[str] = []
+            try:
+                root = ET.fromstring(xml_text)
+                ns = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+                for elem in root.iter():
+                    tag = elem.tag.split("}")[-1] if "}" in elem.tag else elem.tag
+                    if tag == "loc" and elem.text:
+                        locs.append(elem.text.strip())
+            except ET.ParseError:
+                pass
+            return locs
+
+        def _fetch_sitemap(url: str) -> Optional[str]:
+            if url in seen or self._timed_out(deadline):
+                return None
+            seen.add(url)
+            try:
+                resp = self.session.get(
+                    url,
+                    headers=self._get_headers(),
+                    timeout=self._request_timeout(None, deadline, default=3),
+                    allow_redirects=True,
+                )
+                if resp.status_code == 200 and resp.text:
+                    return resp.text
+            except Exception:
+                pass
+            return None
+
+        requests_made = 0
+        for sitemap_url in sitemap_urls:
+            if requests_made >= 2 or self._timed_out(deadline):
+                break
+            xml_text = _fetch_sitemap(sitemap_url)
+            requests_made += 1
+            if not xml_text:
+                continue
+            locs = _extract_locs(xml_text)
+            # If this is a sitemap index, recurse one level into sub-sitemaps that contain career signals
+            career_sub_sitemaps = [
+                loc for loc in locs
+                if any(m in loc.lower() for m in ("career", "job", "position", "opening"))
+                and loc.endswith(".xml")
+            ]
+            if career_sub_sitemaps and requests_made < 2:
+                sub_xml = _fetch_sitemap(career_sub_sitemaps[0])
+                requests_made += 1
+                if sub_xml:
+                    locs.extend(_extract_locs(sub_xml))
+            # Filter locs for career-signal paths
+            career_locs = [
+                loc for loc in locs
+                if any(m in loc.lower() for m in self.GENERIC_POSITIVE_URL_MARKERS + ["/career", "/job-"])
+                and not any(m in loc.lower() for m in self.GENERIC_NEGATIVE_URL_MARKERS)
+            ]
+            for loc in career_locs:
+                result = self._scan_content_from_url(loc, name, deadline)
+                if result:
+                    result.source = "sitemap"
+                    return result
+            break  # Only try one sitemap file if first succeeds
+        return None
+
+    def _scan_content_from_url(self, url: str, name: str, deadline: Optional[float] = None) -> Optional[DiscoveryResult]:
+        """Fetch a URL and run _scan_content on it. Returns DiscoveryResult or None."""
+        if self._timed_out(deadline):
+            return None
+        try:
+            resp = self.session.get(
+                url,
+                headers=self._get_headers(),
+                timeout=self._request_timeout(None, deadline, default=4),
+                allow_redirects=True,
+            )
+            if resp.status_code == 200:
+                return self._scan_content(resp.text, resp.url, name)
+        except Exception:
+            pass
+        return None
 
     def _find_careers_links(self, html: str, base_url: str) -> List[str]:
         """Find non-standard career links on a page."""
@@ -1438,19 +1633,51 @@ class ATSHealer:
         if not links:
             return None
 
+        verified: List[DiscoveryResult] = []
+        candidate_hits: List[CandidateJobURL] = []
+
         def verify_link(url):
             if self._timed_out(deadline):
-                return None
+                return None, None
             try:
                 url_l = url.lower()
+                ats_family = fingerprint_ats(url)
 
                 # Reject generic ATS marketing homepages (stale / not company-specific boards).
                 if self._url_is_generic_ats_homepage(url):
-                    return None
+                    candidate = self._build_candidate(
+                        source="search",
+                        url=url,
+                        final_url=url,
+                        status_code=200,
+                        ats_family=ats_family,
+                        company_domain=domain,
+                        extra_flags=["generic_ats_homepage"],
+                    )
+                    return None, candidate
 
                 # If it's on an ATS vendor we can't scrape, return BLOCKED so CLI can route to manual_only.
                 if self._url_is_unsupported_ats(url):
-                    return DiscoveryResult(None, None, url, "BLOCKED", f"Unsupported ATS vendor: {url}")
+                    candidate = self._build_candidate(
+                        source="search",
+                        url=url,
+                        final_url=url,
+                        status_code=200,
+                        ats_family=ats_family,
+                        company_domain=domain,
+                        extra_flags=["unsupported_ats"],
+                    )
+                    result = DiscoveryResult(
+                        None,
+                        None,
+                        url,
+                        "BLOCKED",
+                        f"Unsupported ATS vendor: {url}",
+                        confidence=candidate.confidence_score,
+                        source="search",
+                        route_decision=choose_extraction_route(ats_family=ats_family, unsupported=True).decision,
+                    )
+                    return result, candidate
 
                 # If it's on a known ATS host, often we can fast-return without parsing HTML.
                 known_adapter = self._classify_known_ats_host(url)
@@ -1460,7 +1687,25 @@ class ATSHealer:
                     # Require a non-trivial path so root/login pages aren't mistaken for boards.
                     if path0 and len(path0) >= 3:
                         key0 = self._extract_key(url, known_adapter) if known_adapter not in {"generic"} else None
-                        return DiscoveryResult(known_adapter, key0, url, "FOUND", f"{known_adapter} (Search host match)")
+                        candidate = self._build_candidate(
+                            source="search",
+                            url=url,
+                            final_url=url,
+                            status_code=200,
+                            ats_family=known_adapter,
+                            company_domain=domain,
+                        )
+                        result = DiscoveryResult(
+                            known_adapter,
+                            key0,
+                            url,
+                            "FOUND",
+                            f"{known_adapter} (Search host match)",
+                            confidence=candidate.confidence_score,
+                            source="search",
+                            route_decision=choose_extraction_route(ats_family=known_adapter).decision,
+                        )
+                        return result, candidate
 
                 # If it's a known ATS domain, try to extract and return immediately
                 for adapter, marker in self.EMBED_MARKERS:
@@ -1472,7 +1717,25 @@ class ATSHealer:
                             path = p.path.strip('/')
                             if len(path) > 3 and not re.fullmatch(r"[a-z]{2}(?:-[A-Z]{2})?", path):
                                 cp = re.sub(r"/[a-z]{2}-[a-z]{2}/?", "/", p.path, flags=re.I).rstrip("/")
-                                return DiscoveryResult(adapter, f"{p.netloc}{cp}" if adapter == "workday" else key, url, "FOUND", f"{adapter} (Search)")
+                                candidate = self._build_candidate(
+                                    source="search",
+                                    url=url,
+                                    final_url=url,
+                                    status_code=200,
+                                    ats_family=adapter,
+                                    company_domain=domain,
+                                )
+                                result = DiscoveryResult(
+                                    adapter,
+                                    f"{p.netloc}{cp}" if adapter == "workday" else key,
+                                    url,
+                                    "FOUND",
+                                    f"{adapter} (Search)",
+                                    confidence=candidate.confidence_score,
+                                    source="search",
+                                    route_decision=choose_extraction_route(ats_family=adapter).decision,
+                                )
+                                return result, candidate
 
                 v_resp = self.session.get(
                     url,
@@ -1480,27 +1743,84 @@ class ATSHealer:
                     timeout=self._request_timeout(None, deadline, default=6),
                     allow_redirects=True,
                 )
+                candidate = self._build_candidate(
+                    source="search",
+                    url=url,
+                    final_url=v_resp.url or url,
+                    status_code=v_resp.status_code,
+                    ats_family=fingerprint_ats(v_resp.url or url, html=v_resp.text),
+                    redirect_chain=[url, v_resp.url or url],
+                    company_domain=domain,
+                )
                 if v_resp.status_code == 200:
-                    return self._scan_content(v_resp.text, v_resp.url, name)
+                    result = self._scan_content(v_resp.text, v_resp.url, name)
+                    if result:
+                        result.confidence = max(result.confidence, candidate.confidence_score)
+                        result.source = result.source or "search"
+                        if not result.route_decision:
+                            result.route_decision = choose_extraction_route(ats_family=result.adapter or candidate.ats_family).decision
+                    return result, candidate
                 if v_resp.status_code == 403 and self._classify_known_ats_host(v_resp.url or url):
                     # Some ATS boards block without a browser; keep the URL as a fallback.
-                    return DiscoveryResult("generic", None, v_resp.url or url, "FALLBACK", "Potential blocked ATS board")
+                    result = DiscoveryResult(
+                        "generic",
+                        None,
+                        v_resp.url or url,
+                        "FALLBACK",
+                        "Potential blocked ATS board",
+                        confidence=candidate.confidence_score,
+                        source="search",
+                        route_decision=choose_extraction_route(ats_family=candidate.ats_family, blocked=True).decision,
+                    )
+                    return result, candidate
             except Exception:
                 pass
-            return None
+            return None, None
 
         remaining = max(1.0, self._remaining_budget_s(deadline))
         with ThreadPoolExecutor(max_workers=3) as executor:
             futures = [executor.submit(verify_link, l) for l in links]
             try:
                 for future in as_completed(futures, timeout=remaining):
-                    res = future.result()
+                    res, candidate = future.result()
+                    if candidate:
+                        candidate_hits.append(candidate)
                     if res:
-                        executor.shutdown(wait=False, cancel_futures=True)
-                        return res
+                        verified.append(res)
             except FuturesTimeout:
                 executor.shutdown(wait=False, cancel_futures=True)
-        return None
+        if not verified:
+            return None
+
+        for result in verified:
+            merged_candidates = list(candidate_hits)
+            if result.careers_url:
+                merged_candidates.append(
+                    self._build_candidate(
+                        source=result.source or "search",
+                        url=result.careers_url,
+                        final_url=result.careers_url,
+                        status_code=200 if result.status == "FOUND" else None,
+                        ats_family=result.adapter or "unknown",
+                        company_domain=domain,
+                    )
+                )
+            result.candidates = self._top_candidate_dicts(merged_candidates)
+            if not result.route_decision:
+                result.route_decision = choose_extraction_route(
+                    ats_family=result.adapter or "unknown",
+                    blocked=result.status == "BLOCKED",
+                    unsupported=result.status == "BLOCKED" and "unsupported" in result.detail.lower(),
+                ).decision
+
+        verified.sort(
+            key=lambda item: (
+                0 if item.status == "FOUND" else 1,
+                -(item.confidence or 0.0),
+                item.careers_url or "",
+            )
+        )
+        return verified[0]
 
     def _scan_content(self, html: str, url: str, name: str) -> Optional[DiscoveryResult]:
         if not self._looks_like_html(html):
@@ -1536,7 +1856,15 @@ class ATSHealer:
                     if key:
                         # Verify the key is actually a company board
                         board_url = canonical_board_url(adapter, key, url)
-                        res = DiscoveryResult(adapter, key, board_url, "FOUND", f"Embedded {adapter} found in scripts")
+                        res = DiscoveryResult(
+                            adapter,
+                            key,
+                            board_url,
+                            "FOUND",
+                            f"Embedded {adapter} found in scripts",
+                            source="embed_scan",
+                            route_decision=choose_extraction_route(ats_family=adapter).decision,
+                        )
                         if self._validate_discovery(res, name):
                             return res
 
@@ -1551,13 +1879,32 @@ class ATSHealer:
                 if marker in href:
                     key = self._extract_key(href, adapter)
                     if key:
-                        res = DiscoveryResult(adapter, key, href, "FOUND", f"Link or iframe to {adapter} board found")
+                        res = DiscoveryResult(
+                            adapter,
+                            key,
+                            href,
+                            "FOUND",
+                            f"Link or iframe to {adapter} board found",
+                            source="embed_scan",
+                            route_decision=choose_extraction_route(ats_family=adapter).decision,
+                        )
                         if self._validate_discovery(res, name):
                             return res
 
         # 3. Fallback to generic if page seems valid
         if self._is_probable_careers_page(html, url, name):
-            return DiscoveryResult("generic", None, url, "FALLBACK", "Generic career page discovered")
+            return DiscoveryResult(
+                "generic",
+                None,
+                url,
+                "FALLBACK",
+                "Generic career page discovered",
+                source="embed_scan",
+                route_decision=choose_extraction_route(
+                    ats_family=fingerprint_ats(url, html=html),
+                    has_jsonld="application/ld+json" in html.lower(),
+                ).decision,
+            )
             
         return None
 
@@ -1676,3 +2023,53 @@ class ATSHealer:
             if m:
                 return m.group(1).split("?")[0].strip("/")
         return None
+
+    def _candidate_reason_flags(self, url: str, ats_family: str, source: str) -> List[str]:
+        flags: List[str] = []
+        url_l = str(url or "").lower()
+        if any(token in url_l for token in self.GENERIC_POSITIVE_URL_MARKERS):
+            flags.append("careersish_path")
+        if ats_family and ats_family != "unknown":
+            flags.append("ats_host")
+        if "search" in str(source or "").lower():
+            flags.append("search_discovered")
+        if self._url_is_unsupported_ats(url):
+            flags.append("unsupported_ats")
+        return flags
+
+    def _build_candidate(
+        self,
+        *,
+        source: str,
+        url: str,
+        final_url: str,
+        status_code: Optional[int],
+        ats_family: str,
+        redirect_chain: Optional[List[str]] = None,
+        company_domain: str = "",
+        extra_flags: Optional[List[str]] = None,
+    ) -> CandidateJobURL:
+        flags = self._candidate_reason_flags(final_url or url, ats_family, source)
+        if extra_flags:
+            flags.extend([flag for flag in extra_flags if flag and flag not in flags])
+        candidate = CandidateJobURL(
+            source=source,
+            url=url,
+            final_url=final_url or url,
+            status_code=status_code,
+            redirect_chain=list(redirect_chain or [url, final_url or url]),
+            ats_family=ats_family or "unknown",
+            reason_flags=flags,
+        )
+        candidate.confidence_score = score_candidate_url(
+            candidate.final_url,
+            source=source,
+            ats_family=candidate.ats_family,
+            status_code=status_code,
+            company_domain=company_domain,
+            reason_flags=candidate.reason_flags,
+        )
+        return candidate
+
+    def _top_candidate_dicts(self, candidates: List[CandidateJobURL], limit: int = 3) -> List[Dict[str, Any]]:
+        return [candidate.to_dict() for candidate in rank_candidates(candidates, limit=limit)]

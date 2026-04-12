@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Type
 from urllib.parse import urlparse
 
 from jobsearch.config.settings import BASE_DIR, get_runtime_setting, get_shared_session, rotate_log_file, settings
+from jobsearch.services.heal_evidence import HealEvidenceWriter
 from jobsearch import ats_db as db
 from jobsearch.db.connection import get_connection
 from jobsearch.scraper.adapters.ashby import AshbyAdapter
@@ -43,6 +44,7 @@ from jobsearch.scraper.adapters.smartrecruiters import SmartRecruitersAdapter
 from jobsearch.scraper.adapters.themuse import TheMuseAdapter
 from jobsearch.scraper.adapters.usajobs import USAJobsAdapter
 from jobsearch.scraper.adapters.workday import WorkdayAdapter
+from jobsearch.scraper.ats_routing import choose_extraction_route, fingerprint_ats
 from jobsearch.scraper.scoring import Scorer
 from jobsearch.services.opportunity_service import upsert_job
 from jobsearch.services.enrichment_service import EnrichmentService
@@ -164,6 +166,7 @@ class ScraperEngine:
             except Exception:
                 self._deep_playwright = None
         self._adapter_semaphores = self._build_adapter_semaphores()
+        self._evidence_writer = HealEvidenceWriter()
 
     def _build_adapter_semaphores(self) -> Dict[str, BoundedSemaphore]:
         limits = {
@@ -195,6 +198,13 @@ class ScraperEngine:
             safe_limit = max(1, int(limit))
             semaphores[adapter_name] = BoundedSemaphore(safe_limit)
         return semaphores
+
+    @staticmethod
+    def _normalize_deep_scrape_result(result: Any) -> tuple[List[Any], Dict[str, Any]]:
+        if isinstance(result, tuple) and len(result) == 2:
+            jobs, evidence = result
+            return list(jobs or []), dict(evidence or {})
+        return list(result or []), {}
 
     def _resolve_adapter_name(self, company: Dict[str, Any]) -> str:
         adapter_name = str(company.get("adapter", "custom_manual") or "custom_manual").lower()
@@ -322,8 +332,34 @@ class ScraperEngine:
                                 used_deep_search = scrape_result["used_deep_search"]
                                 scrape_status = scrape_result.get("status", "ok")
                                 scrape_note = scrape_result.get("note", "")
+                                route_info = scrape_result.get("route") or {}
+                                browser_evidence = scrape_result.get("browser_evidence") or {}
                                 persisted, inserted, dropped, evaluated, process_ms, score_stats, company_rejected_rows = self._process_and_save_jobs(main_conn, company, jobs)
                                 self._update_scrape_health(main_conn, company, adapter_name, scrape_status, scrape_ms, scrape_note, evaluated)
+                                failure_reason = self._classify_empty_result(scrape_status, scrape_note, company) if evaluated == 0 else None
+                                self._evidence_writer.write(
+                                    company=str(company.get("name", "")),
+                                    input_url=str(company.get("careers_url", "") or ""),
+                                    adapter=adapter_name,
+                                    adapter_key=str(company.get("adapter_key", "") or ""),
+                                    final_url=str(company.get("careers_url", "") or ""),
+                                    status=scrape_status,
+                                    failure_reason=failure_reason,
+                                    jobs_found=evaluated,
+                                    elapsed_ms=scrape_ms,
+                                    candidates_tried=scrape_result.get("candidates_tried") or [],
+                                    ats_family=str(route_info.get("ats_family") or fingerprint_ats(str(company.get("careers_url", "") or ""))),
+                                    extraction_method=str(route_info.get("decision") or adapter_name),
+                                    route_decision=str(route_info.get("decision") or ""),
+                                    screenshot_path=str(browser_evidence.get("screenshot_path") or ""),
+                                    html_snapshot_path=str(browser_evidence.get("html_snapshot_path") or ""),
+                                    top_network_response_urls=list(browser_evidence.get("network_response_urls") or [])[:8],
+                                    timing_metrics={
+                                        "scrape_ms": scrape_ms,
+                                        "process_ms": process_ms,
+                                    },
+                                    detail=scrape_note,
+                                )
                                 total_evaluated += evaluated
                                 total_persisted += persisted
                                 total_inserted += inserted
@@ -424,6 +460,41 @@ class ScraperEngine:
         started_at = time.perf_counter()
         name = company.get("name", "")
         adapter_hint = self._resolve_adapter_name(company)
+        careers_url = str(company.get("careers_url", "") or "")
+        ats_family = fingerprint_ats(careers_url)
+        routing = choose_extraction_route(ats_family=ats_family)
+        candidates_tried = []
+        for item in company.get("discovery_candidates") or []:
+            if isinstance(item, dict):
+                candidates_tried.append(item)
+        if not candidates_tried:
+            for url in (company.get("discovery_urls") or []):
+                if url:
+                    candidates_tried.append(
+                        {
+                            "source": "registry_discovery_urls",
+                            "url": str(url),
+                            "final_url": str(url),
+                            "status_code": None,
+                            "redirect_chain": [str(url)],
+                            "ats_family": fingerprint_ats(str(url)),
+                            "confidence_score": 0.0,
+                            "reason_flags": [],
+                        }
+                    )
+        if not candidates_tried and careers_url:
+            candidates_tried.append(
+                {
+                    "source": "careers_url",
+                    "url": careers_url,
+                    "final_url": careers_url,
+                    "status_code": None,
+                    "redirect_chain": [careers_url],
+                    "ats_family": ats_family,
+                    "confidence_score": 0.0,
+                    "reason_flags": [],
+                }
+            )
 
         # FAST EXIT: Check pre-fetched cooldowns
         if hasattr(self, "bulk_cooldowns") and name in self.bulk_cooldowns:
@@ -435,6 +506,8 @@ class ScraperEngine:
                 "used_deep_search": False,
                 "status": "cooldown",
                 "note": f"Cooldown until {until.isoformat()}",
+                "route": routing.to_dict(),
+                "candidates_tried": candidates_tried,
             }
 
         cooldown_adapter, cooldown_reason = self._cooldown_reason(company)
@@ -446,6 +519,8 @@ class ScraperEngine:
                 "used_deep_search": False,
                 "status": "cooldown",
                 "note": cooldown_reason,
+                "route": routing.to_dict(),
+                "candidates_tried": candidates_tried,
             }
         generic_low_signal_reason = self._generic_low_signal_reason(company)
         if generic_low_signal_reason:
@@ -456,6 +531,8 @@ class ScraperEngine:
                 "used_deep_search": False,
                 "status": "low_signal",
                 "note": generic_low_signal_reason,
+                "route": routing.to_dict(),
+                "candidates_tried": candidates_tried,
             }
         scrape_semaphore = self._adapter_semaphores.get(adapter_hint)
         if scrape_semaphore is None:
@@ -466,7 +543,7 @@ class ScraperEngine:
             try:
                 jobs, adapter_name, adapter_status, adapter_note = self._scrape_company(company)
                 if not jobs and self.deep_search:
-                    deep_jobs = self._deep_scrape(company)
+                    deep_jobs, deep_evidence = self._normalize_deep_scrape_result(self._deep_scrape(company))
                     return {
                         "jobs": deep_jobs,
                         "adapter": "deep_search" if deep_jobs else adapter_name,
@@ -474,6 +551,13 @@ class ScraperEngine:
                         "used_deep_search": bool(deep_jobs),
                         "status": "ok" if deep_jobs or jobs else adapter_status,
                         "note": "" if deep_jobs else adapter_note,
+                        "route": choose_extraction_route(
+                            ats_family=ats_family,
+                            has_hidden_api=bool(deep_evidence.get("hidden_api_detected")),
+                            has_jsonld=deep_evidence.get("extraction_method") == "jsonld",
+                        ).to_dict(),
+                        "candidates_tried": candidates_tried,
+                        "browser_evidence": deep_evidence,
                     }
                 return {
                     "jobs": jobs,
@@ -482,10 +566,13 @@ class ScraperEngine:
                     "used_deep_search": False,
                     "status": "ok" if jobs else adapter_status,
                     "note": adapter_note,
+                    "route": routing.to_dict(),
+                    "candidates_tried": candidates_tried,
+                    "browser_evidence": {},
                 }
             except BlockedSiteError as exc:
                 if self.deep_search:
-                    deep_jobs = self._deep_scrape(company)
+                    deep_jobs, deep_evidence = self._normalize_deep_scrape_result(self._deep_scrape(company))
                     return {
                         "jobs": deep_jobs,
                         "adapter": "deep_search" if deep_jobs else str(company.get("adapter", "unknown")),
@@ -493,6 +580,13 @@ class ScraperEngine:
                         "used_deep_search": bool(deep_jobs),
                         "status": "ok" if deep_jobs else "blocked",
                         "note": "" if deep_jobs else exc.reason,
+                        "route": choose_extraction_route(
+                            ats_family=ats_family,
+                            blocked=not bool(deep_jobs),
+                            has_hidden_api=bool(deep_evidence.get("hidden_api_detected")),
+                        ).to_dict(),
+                        "candidates_tried": candidates_tried,
+                        "browser_evidence": deep_evidence,
                     }
                 return {
                     "jobs": [],
@@ -501,17 +595,28 @@ class ScraperEngine:
                     "used_deep_search": False,
                     "status": "blocked",
                     "note": exc.reason,
+                    "route": choose_extraction_route(ats_family=ats_family, blocked=True).to_dict(),
+                    "candidates_tried": candidates_tried,
+                    "browser_evidence": {},
                 }
             except Exception as exc:
                 message = str(exc).lower()
                 if any(token in message for token in ["403", "blocked", "forbidden"]) and self.deep_search:
-                    deep_jobs = self._deep_scrape(company)
+                    deep_jobs, deep_evidence = self._normalize_deep_scrape_result(self._deep_scrape(company))
                     return {
                         "jobs": deep_jobs,
                         "adapter": "deep_search" if deep_jobs else str(company.get("adapter", "unknown")),
                         "scrape_ms": round((time.perf_counter() - started_at) * 1000, 1),
                         "used_deep_search": bool(deep_jobs),
                         "status": "ok" if deep_jobs else "empty",
+                        "note": "" if deep_jobs else str(exc),
+                        "route": choose_extraction_route(
+                            ats_family=ats_family,
+                            blocked=not bool(deep_jobs),
+                            has_hidden_api=bool(deep_evidence.get("hidden_api_detected")),
+                        ).to_dict(),
+                        "candidates_tried": candidates_tried,
+                        "browser_evidence": deep_evidence,
                     }
                 raise
 
@@ -611,6 +716,47 @@ class ScraperEngine:
             return "Generic URL points to site root"
         return ""
 
+    @staticmethod
+    def _classify_empty_result(scrape_status: str, scrape_note: str, company: Dict[str, Any]) -> str | None:
+        """Classify why a scrape returned 0 jobs into a machine-readable reason code.
+
+        Returns one of:
+          blocked_bot_protection, auth_required, broken_site, wrong_url,
+          no_openings, hidden_api_not_parsed, selector_miss, geo_or_cookie_gate,
+          unsupported_ats, or unknown.
+        """
+        note_lower = str(scrape_note or "").lower()
+        careers_url = str(company.get("careers_url") or "").lower()
+
+        if scrape_status == "blocked":
+            if any(tok in note_lower for tok in ("401", "403", "login", "auth", "sign in")):
+                return "auth_required"
+            if any(tok in note_lower for tok in ("cookie", "consent", "gdpr", "region", "geo", "country not supported")):
+                return "geo_or_cookie_gate"
+            return "blocked_bot_protection"
+
+        if scrape_status in {"empty", "budget_exhausted", "low_signal", ""}:
+            if any(tok in note_lower for tok in ("500", "502", "503", "504", "connection", "timeout", "refused")):
+                return "broken_site"
+            if any(tok in note_lower for tok in ("redirect", "wrong domain", "not a careers", "homepage")):
+                return "wrong_url"
+            if any(tok in note_lower for tok in ("no open", "no current", "no position", "no job", "0 opening")):
+                return "no_openings"
+            if any(tok in note_lower for tok in ("xhr", "hidden api", "json endpoint not parsed")):
+                return "hidden_api_not_parsed"
+            if any(tok in note_lower for tok in ("selector", "no matching element", "low_signal")):
+                return "selector_miss"
+            if any(tok in note_lower for tok in ("cookie", "consent", "gdpr", "region", "geo", "country not supported")):
+                return "geo_or_cookie_gate"
+            if any(tok in note_lower for tok in ("icims", "taleo", "successfactors", "oracle hcm", "sap", "unsupported")):
+                return "unsupported_ats"
+            # If careers_url points to a known unsupported ATS vendor homepage
+            for vendor in ("icims.com", "taleo.net", "successfactors.com", "oraclecloud.com"):
+                if vendor in careers_url:
+                    return "unsupported_ats"
+
+        return "unknown"
+
     def _update_scrape_health(
         self,
         conn,
@@ -652,6 +798,7 @@ class ScraperEngine:
             # Companies with previous successes get a lighter cooldown (3d vs 7d)
             # since their openings may just be cyclical.
             cooldown_days = 3 if success_count > 0 else settings.workday_empty_cooldown_days
+        failure_reason = self._classify_empty_result(scrape_status, scrape_note, company) if evaluated_count == 0 else None
         db.update_workday_target_health(
             conn,
             company=company.get("name", ""),
@@ -661,6 +808,7 @@ class ScraperEngine:
             evaluated_count=evaluated_count,
             cooldown_days=cooldown_days,
             notes=scrape_note,
+            failure_reason=failure_reason,
         )
 
     def _update_generic_scrape_health(
@@ -705,6 +853,7 @@ class ScraperEngine:
             and low_priority
         ):
             cooldown_days = max(cooldown_days, settings.generic_empty_cooldown_days)
+        failure_reason = self._classify_empty_result(scrape_status, scrape_note, company) if evaluated_count == 0 else None
         db.update_generic_target_health(
             conn,
             company=company.get("name", ""),
@@ -714,20 +863,21 @@ class ScraperEngine:
             evaluated_count=evaluated_count,
             cooldown_days=cooldown_days,
             notes=scrape_note,
+            failure_reason=failure_reason,
         )
 
-    def _deep_scrape(self, company: Dict[str, Any]) -> List[Any]:
+    def _deep_scrape(self, company: Dict[str, Any]) -> tuple[List[Any], Dict[str, Any]]:
         from jobsearch.ats_db import Job
         import hashlib
 
         careers_url = company.get("careers_url")
         name = company.get("name", "Unknown")
         if not careers_url:
-            return []
+            return [], {}
 
         try:
             if not self._deep_playwright:
-                return []
+                return [], {}
 
             deep_semaphore = self._adapter_semaphores.get("deep_search")
             if deep_semaphore is None:
@@ -743,6 +893,12 @@ class ScraperEngine:
                     raw_jobs = self._deep_playwright.scrape_jobs_spglobal(careers_url, name)
                 else:
                     raw_jobs = self._deep_playwright.scrape_jobs_generic(careers_url, name)
+                evidence = {}
+                if hasattr(self._deep_playwright, "get_last_run_evidence"):
+                    try:
+                        evidence = self._deep_playwright.get_last_run_evidence() or {}
+                    except Exception:
+                        evidence = {}
             jobs: List[Job] = []
             for raw in raw_jobs:
                 title = raw.get("title", "")
@@ -761,10 +917,10 @@ class ScraperEngine:
                         description_excerpt=raw.get("description", ""),
                     )
                 )
-            return jobs
+            return jobs, evidence
         except Exception as exc:
             logger.error("Deep scrape failed for %s: %s", name, exc)
-            return []
+            return [], {}
 
     def _process_and_save_jobs(self, conn, company: Dict[str, Any], jobs: List[Any]):
         if not jobs:

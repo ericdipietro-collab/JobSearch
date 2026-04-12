@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import html
 import re
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
@@ -1090,6 +1091,14 @@ class Scorer:
         # Experience soft penalty
         score += exp_soft_penalty
 
+        # Freshness adjustment (configurable; does not override hard-drops)
+        freshness_cfg = (self.scoring_cfg.get("freshness") or {}) if hasattr(self, "scoring_cfg") else {}
+        if freshness_cfg.get("enabled", False):
+            freshness_pts = self._freshness_adjustment(job_data.get("date_discovered"), freshness_cfg)
+            score += freshness_pts
+        else:
+            freshness_pts = 0
+
         # Final score bounding
         score = max(0.0, min(100.0, score))
 
@@ -1153,12 +1162,54 @@ class Scorer:
                 # Store the signed delta for downstream explanations (negative = penalty).
                 "source_penalty": -source_penalty,
                 "exp_soft_penalty": exp_soft_penalty,
+                "freshness_adjustment": freshness_pts,
                 "title_aligned": title_aligned,
             },
             **comp_data,
         }
 
         return score_result
+
+    @staticmethod
+    def _freshness_adjustment(date_discovered: Optional[str], freshness_cfg: Optional[Dict[str, Any]] = None) -> int:
+        """Return a score adjustment based on how many days ago the job was discovered.
+
+        Default thresholds (overridable via scoring.freshness config):
+          Age < 3 days:   +4
+          Age 3–14 days:   0
+          Age 14–30 days: -6
+          Age > 30 days: -14
+          Age unknown:     0
+        """
+        if not date_discovered:
+            return 0
+        cfg = freshness_cfg or {}
+        thresholds = cfg.get("thresholds") or {}
+        adjustments = cfg.get("adjustments") or {}
+        new_days = int(thresholds.get("new_days", 3))
+        neutral_days = int(thresholds.get("neutral_days", 14))
+        stale_days = int(thresholds.get("stale_days", 30))
+        adj_new = int(adjustments.get("new", 4))
+        adj_aging = int(adjustments.get("aging", -6))
+        adj_stale = int(adjustments.get("stale", -14))
+
+        try:
+            # Accept ISO8601 or SQLite datetime format
+            dt_str = str(date_discovered).strip().replace(" ", "T")
+            if "+" not in dt_str and not dt_str.endswith("Z"):
+                dt_str += "Z"
+            discovered = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
+            age_days = (datetime.now(timezone.utc) - discovered).days
+        except (ValueError, TypeError):
+            return 0
+
+        if age_days < new_days:
+            return adj_new
+        if age_days <= neutral_days:
+            return 0
+        if age_days <= stale_days:
+            return adj_aging
+        return adj_stale
 
     def apply_enrichment_adjustments(
         self, score_result: Dict[str, Any], enriched_data: Optional[Dict[str, Any]]

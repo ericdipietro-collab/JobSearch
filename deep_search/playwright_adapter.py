@@ -19,12 +19,20 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 import threading
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 from urllib.parse import urljoin
 
+from jobsearch.config.settings import settings
+from jobsearch.scraper.ats_routing import fingerprint_ats
+from jobsearch.scraper.jsonld_extractor import extract_jobposting_objects
+
 logger = logging.getLogger("deep_search")
+_THREAD_STATE = threading.local()
 
 # ---------------------------------------------------------------------------
 # Availability
@@ -74,15 +82,21 @@ _USER_AGENT = (
 def _new_context(playwright_instance):
     """Launch a browser and return (browser, context)."""
     browser = playwright_instance.chromium.launch(headless=True, args=_LAUNCH_ARGS)
-    context = browser.new_context(
-        user_agent=_USER_AGENT,
-        viewport={"width": 1280, "height": 900},
-        locale="en-US",
-        extra_http_headers={
+    context_kwargs = {
+        "user_agent": _USER_AGENT,
+        "viewport": {"width": 1280, "height": 900},
+        "locale": "en-US",
+        "extra_http_headers": {
             "Accept-Language": "en-US,en;q=0.9",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         },
-    )
+    }
+    context_kwargs["service_workers"] = "block"
+    try:
+        context = browser.new_context(**context_kwargs)
+    except TypeError:
+        context_kwargs.pop("service_workers", None)
+        context = browser.new_context(**context_kwargs)
     # Hide automation fingerprint
     context.add_init_script(
         "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
@@ -109,27 +123,9 @@ def _abs_url(base: str, href: str) -> str:
 def _extract_jsonld(html: str) -> List[Dict]:
     """Extract JobPosting objects from JSON-LD script tags."""
     results = []
-    for m in re.finditer(
-        r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
-        html,
-        re.DOTALL | re.IGNORECASE,
-    ):
-        try:
-            obj = json.loads(m.group(1))
-        except (json.JSONDecodeError, ValueError):
-            continue
-        if isinstance(obj, list):
-            items = obj
-        elif isinstance(obj, dict) and obj.get("@graph"):
-            items = obj["@graph"]
-        else:
-            items = [obj]
-        for item in items:
-            t = item.get("@type") or ""
-            if isinstance(t, list):
-                t = " ".join(t)
-            if "JobPosting" in t:
-                results.append(item)
+    for item in extract_jobposting_objects(html):
+        if isinstance(item, dict):
+            results.append(item)
     return results
 
 
@@ -205,6 +201,123 @@ def _jobs_from_next_data(data: Any, base_url: str, _depth: int = 0) -> List[Dict
             for v in data.values():
                 jobs.extend(_jobs_from_next_data(v, base_url, _depth + 1))
     return jobs
+
+
+def _set_last_run_evidence(evidence: Dict[str, Any]) -> None:
+    _THREAD_STATE.last_run_evidence = evidence
+
+
+def get_last_run_evidence() -> Dict[str, Any]:
+    return dict(getattr(_THREAD_STATE, "last_run_evidence", {}) or {})
+
+
+def _artifact_paths(company_name: str) -> Dict[str, str]:
+    if not settings.scrape_debug_artifacts:
+        return {"screenshot_path": "", "html_snapshot_path": ""}
+    slug = re.sub(r"[^a-z0-9]+", "-", str(company_name or "company").lower()).strip("-") or "company"
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    directory = settings.debug_artifacts_dir / slug
+    directory.mkdir(parents=True, exist_ok=True)
+    return {
+        "screenshot_path": str(directory / f"{stamp}.png"),
+        "html_snapshot_path": str(directory / f"{stamp}.html"),
+    }
+
+
+def _collect_jobs_from_api_payload(data: Any, base_url: str, source_label: str, _depth: int = 0) -> List[Dict]:
+    if _depth > 8:
+        return []
+    jobs: List[Dict] = []
+    if isinstance(data, list):
+        for item in data:
+            jobs.extend(_collect_jobs_from_api_payload(item, base_url, source_label, _depth + 1))
+        return jobs
+    if not isinstance(data, dict):
+        return jobs
+
+    lower_keys = {str(key).lower() for key in data.keys()}
+    has_title = bool(lower_keys & {"title", "name", "jobtitle", "job_title", "postingtitle"})
+    has_url = bool(lower_keys & {"url", "applyurl", "externalpath", "hostedurl", "joburl", "absolute_url"})
+    has_location = bool(lower_keys & {"location", "locationname", "locationstext", "joblocation"})
+    if has_title and (has_url or has_location):
+        title = _clean(
+            data.get("title")
+            or data.get("name")
+            or data.get("jobTitle")
+            or data.get("job_title")
+            or data.get("postingTitle")
+            or ""
+        )
+        url = _abs_url(
+            base_url,
+            str(
+                data.get("url")
+                or data.get("applyUrl")
+                or data.get("hostedUrl")
+                or data.get("jobUrl")
+                or data.get("absolute_url")
+                or data.get("externalPath")
+                or ""
+            ),
+        )
+        location = data.get("location") or data.get("locationName") or data.get("locationsText") or data.get("jobLocation") or ""
+        if isinstance(location, dict):
+            location = (
+                location.get("name")
+                or location.get("city")
+                or ", ".join(part for part in [location.get("city"), location.get("region")] if part)
+            )
+        if isinstance(location, list):
+            location = ", ".join(str(item) for item in location if item)
+        description = data.get("description") or data.get("content") or data.get("descriptionPlain") or ""
+        if title and len(title) > 3 and (url or location):
+            jobs.append(
+                {
+                    "title": title,
+                    "location": _clean(str(location)),
+                    "url": url or base_url,
+                    "description": _clean(re.sub(r"<[^>]+>", " ", str(description))),
+                    "posted_at": str(data.get("datePosted") or data.get("publicationDate") or ""),
+                    "source": source_label,
+                }
+            )
+
+    for value in data.values():
+        if isinstance(value, (dict, list)):
+            jobs.extend(_collect_jobs_from_api_payload(value, base_url, source_label, _depth + 1))
+    return jobs
+
+
+def _parse_jobs_from_api_response(
+    url: str,
+    content_type: str,
+    body_text: str,
+    *,
+    base_url: str,
+    source_label: str,
+) -> List[Dict]:
+    if not body_text:
+        return []
+    content_l = str(content_type or "").lower()
+    url_l = str(url or "").lower()
+    likely_endpoint = any(token in url_l for token in ("/jobs", "/job", "/postings", "/positions", "/openings", "/search"))
+    likely_json = "json" in content_l or body_text.lstrip().startswith(("{", "["))
+    if not (likely_endpoint or likely_json):
+        return []
+    try:
+        payload = json.loads(body_text)
+    except (json.JSONDecodeError, ValueError, TypeError):
+        return []
+    jobs = _collect_jobs_from_api_payload(payload, base_url, f"{source_label} (Intercepted API)")
+    unique: List[Dict] = []
+    seen: set[str] = set()
+    for job in jobs:
+        key = str(job.get("url") or "") + "|" + str(job.get("title") or "")
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(job)
+    return unique
 
 
 # CSS selectors tried in order to find job listing cards in the rendered DOM
@@ -365,10 +478,71 @@ def scrape_jobs_generic(
 
     jobs: List[Dict] = []
     seen: set = set()
+    evidence = {
+        "network_response_urls": [],
+        "network_events": [],
+        "hidden_api_detected": False,
+        "ats_family": fingerprint_ats(careers_url),
+        "extraction_method": "",
+        "screenshot_path": "",
+        "html_snapshot_path": "",
+    }
+    artifacts = _artifact_paths(company_name)
+    evidence.update(artifacts)
+
+    def _capture_response(response) -> None:
+        try:
+            req = response.request
+            if req.resource_type not in {"xhr", "fetch"}:
+                return
+            url = response.url
+            content_type = response.headers.get("content-type", "")
+            body_text = ""
+            parsed_jobs: List[Dict] = []
+            try:
+                if "json" in content_type.lower():
+                    body_text = response.text()[:4000]
+                    parsed_jobs = _parse_jobs_from_api_response(
+                        url,
+                        content_type,
+                        body_text,
+                        base_url=careers_url,
+                        source_label=source_label,
+                    )
+                else:
+                    body_text = response.text()[:800]
+            except Exception:
+                body_text = ""
+
+            record = {
+                "url": url,
+                "status": int(response.status),
+                "content_type": content_type[:120],
+                "body_preview": body_text[:500],
+                "parsed_job_count": len(parsed_jobs),
+            }
+            evidence["network_events"].append(record)
+            if url not in evidence["network_response_urls"]:
+                evidence["network_response_urls"].append(url)
+            if parsed_jobs:
+                evidence["hidden_api_detected"] = True
+                evidence["ats_family"] = fingerprint_ats(
+                    careers_url,
+                    response_urls=[url],
+                )
+                for job in parsed_jobs:
+                    key = str(job.get("url") or "") + "|" + str(job.get("title") or "")
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    jobs.append(job)
+        except Exception:
+            return
 
     with sync_playwright() as pw:
         browser, ctx = _new_context(pw)
         page = ctx.new_page()
+        page.on("response", _capture_response)
         try:
             logger.info("deep_search navigating to %s (%s)", careers_url, company_name)
             try:
@@ -389,6 +563,23 @@ def scrape_jobs_generic(
                 page.wait_for_timeout(700)
 
             html = page.content()
+            if artifacts.get("html_snapshot_path"):
+                try:
+                    Path(artifacts["html_snapshot_path"]).write_text(html, encoding="utf-8")
+                except Exception:
+                    pass
+            if artifacts.get("screenshot_path"):
+                try:
+                    page.screenshot(path=artifacts["screenshot_path"], full_page=True)
+                except Exception:
+                    pass
+
+            if jobs:
+                evidence["extraction_method"] = "intercepted_api"
+                _set_last_run_evidence(evidence)
+                logger.info("deep_search intercepted API found %d jobs (%s)", len(jobs), company_name)
+                browser.close()
+                return jobs
 
             # --- Strategy 1: JSON-LD ---
             for obj in _extract_jsonld(html):
@@ -406,6 +597,8 @@ def scrape_jobs_generic(
                     "source": source_label,
                 })
             if jobs:
+                evidence["extraction_method"] = "jsonld"
+                _set_last_run_evidence(evidence)
                 logger.info("deep_search JSON-LD found %d jobs (%s)", len(jobs), company_name)
                 browser.close()
                 return jobs
@@ -419,6 +612,8 @@ def scrape_jobs_generic(
                         job["source"] = source_label
                         jobs.append(job)
             if jobs:
+                evidence["extraction_method"] = "next_data"
+                _set_last_run_evidence(evidence)
                 logger.info("deep_search NextData found %d jobs (%s)", len(jobs), company_name)
                 browser.close()
                 return jobs
@@ -427,6 +622,8 @@ def scrape_jobs_generic(
             card_jobs = _extract_cards(page, careers_url, source_label, seen)
             jobs.extend(card_jobs)
             if jobs:
+                evidence["extraction_method"] = "dom_render"
+                _set_last_run_evidence(evidence)
                 logger.info("deep_search DOM cards found %d jobs (%s)", len(jobs), company_name)
                 browser.close()
                 return jobs
@@ -469,6 +666,9 @@ def scrape_jobs_generic(
             except Exception:
                 pass
 
+    if jobs:
+        evidence["extraction_method"] = evidence["extraction_method"] or "dom_render"
+    _set_last_run_evidence(evidence)
     logger.info("deep_search total %d jobs (%s)", len(jobs), company_name)
     return jobs
 
@@ -775,6 +975,8 @@ def deep_heal_company(
 
     result: Optional[Dict] = None
     result_lock = threading.Lock()
+    network_evidence: List[Dict] = []
+    evidence_lock = threading.Lock()
 
     def _on_request(request) -> None:
         nonlocal result
@@ -785,6 +987,36 @@ def deep_heal_company(
             with result_lock:
                 if not result:
                     result = {**hit, "detail": f"network request → {hit['adapter']} ({request.url[:100]})"}
+
+    def _on_response(response) -> None:
+        """Capture response metadata for URLs matching ATS patterns."""
+        url = response.url
+        hit = _match_ats_url(url)
+        if not hit:
+            return
+        status = response.status
+        content_type = ""
+        body_excerpt = ""
+        try:
+            content_type = response.headers.get("content-type", "")
+            if "json" in content_type or "javascript" in content_type:
+                try:
+                    body_raw = response.body()
+                    body_excerpt = body_raw[:500].decode("utf-8", errors="replace") if isinstance(body_raw, bytes) else str(body_raw)[:500]
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        record = {
+            "url": url[:200],
+            "status": status,
+            "content_type": content_type[:80],
+            "body_excerpt": body_excerpt,
+            "adapter": hit.get("adapter"),
+        }
+        with evidence_lock:
+            network_evidence.append(record)
+        logger.debug("deep_heal response captured: %s %s %s", status, content_type[:40], url[:80])
 
     # Build probe list: known careers URL first, then homepage variants
     probe_urls: List[str] = []
@@ -807,6 +1039,7 @@ def deep_heal_company(
         browser, ctx = _new_context(pw)
         page = ctx.new_page()
         page.on("request", _on_request)
+        page.on("response", _on_response)
 
         try:
             i = 0
@@ -892,7 +1125,10 @@ def deep_heal_company(
             "deep_heal identified %s for %s: %s",
             result.get("adapter"), company_name, result.get("detail"),
         )
+        result["_network_evidence"] = network_evidence
     else:
         logger.info("deep_heal found nothing for %s", company_name)
+        if network_evidence:
+            logger.debug("deep_heal %s: %d ATS response(s) captured but no match", company_name, len(network_evidence))
 
     return result

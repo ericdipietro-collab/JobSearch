@@ -770,6 +770,7 @@ def init_db(conn: sqlite3.Connection) -> None:
         {
             "success_count": "INTEGER NOT NULL DEFAULT 0",
             "last_evaluated": "INTEGER NOT NULL DEFAULT 0",
+            "failure_reason": "TEXT",
         },
     )
     _add_columns_if_missing(
@@ -778,6 +779,7 @@ def init_db(conn: sqlite3.Connection) -> None:
         {
             "success_count": "INTEGER NOT NULL DEFAULT 0",
             "last_evaluated": "INTEGER NOT NULL DEFAULT 0",
+            "failure_reason": "TEXT",
         },
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_events_app_date ON events(application_id, event_date)")
@@ -1515,6 +1517,7 @@ def update_workday_target_health(
     evaluated_count: int = 0,
     cooldown_days: int = 0,
     notes: str = "",
+    failure_reason: Optional[str] = None,
 ) -> None:
     now = _now()
     conn.execute("BEGIN IMMEDIATE")
@@ -1527,6 +1530,7 @@ def update_workday_target_health(
     if normalized_status == "ok" and evaluated_count > 0:
         empty_streak = 0
         success_count += 1
+        failure_reason = None  # clear on success
     elif normalized_status in {"empty", "budget_exhausted", "blocked"} and evaluated_count == 0:
         empty_streak += 1
         if cooldown_days > 0:
@@ -1538,19 +1542,19 @@ def update_workday_target_health(
         conn.execute(
             """
             UPDATE workday_target_health
-            SET careers_url = ?, empty_streak = ?, success_count = ?, last_evaluated = ?, cooldown_until = ?, last_status = ?, last_elapsed_ms = ?, notes = ?, updated_at = ?
+            SET careers_url = ?, empty_streak = ?, success_count = ?, last_evaluated = ?, cooldown_until = ?, last_status = ?, last_elapsed_ms = ?, notes = ?, failure_reason = ?, updated_at = ?
             WHERE company = ?
             """,
-            (careers_url, empty_streak, success_count, int(evaluated_count), cooldown_until, normalized_status, elapsed_ms, notes, now, company),
+            (careers_url, empty_streak, success_count, int(evaluated_count), cooldown_until, normalized_status, elapsed_ms, notes, failure_reason, now, company),
         )
     else:
         conn.execute(
             """
             INSERT INTO workday_target_health
-            (company, careers_url, empty_streak, success_count, last_evaluated, cooldown_until, last_status, last_elapsed_ms, notes, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (company, careers_url, empty_streak, success_count, last_evaluated, cooldown_until, last_status, last_elapsed_ms, notes, failure_reason, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (company, careers_url, empty_streak, success_count, int(evaluated_count), cooldown_until, normalized_status, elapsed_ms, notes, now),
+            (company, careers_url, empty_streak, success_count, int(evaluated_count), cooldown_until, normalized_status, elapsed_ms, notes, failure_reason, now),
         )
     conn.commit()
 
@@ -1572,6 +1576,7 @@ def update_generic_target_health(
     evaluated_count: int = 0,
     cooldown_days: int = 0,
     notes: str = "",
+    failure_reason: Optional[str] = None,
 ) -> None:
     now = _now()
     conn.execute("BEGIN IMMEDIATE")
@@ -1584,6 +1589,7 @@ def update_generic_target_health(
     if normalized_status == "ok" and evaluated_count > 0:
         empty_streak = 0
         success_count += 1
+        failure_reason = None  # clear on success
     elif normalized_status in {"empty", "cooldown", "low_signal", "blocked"} and evaluated_count == 0:
         empty_streak += 1
         if cooldown_days > 0:
@@ -1595,21 +1601,37 @@ def update_generic_target_health(
         conn.execute(
             """
             UPDATE generic_target_health
-            SET careers_url = ?, empty_streak = ?, success_count = ?, last_evaluated = ?, cooldown_until = ?, last_status = ?, last_elapsed_ms = ?, notes = ?, updated_at = ?
+            SET careers_url = ?, empty_streak = ?, success_count = ?, last_evaluated = ?, cooldown_until = ?, last_status = ?, last_elapsed_ms = ?, notes = ?, failure_reason = ?, updated_at = ?
             WHERE company = ?
             """,
-            (careers_url, empty_streak, success_count, int(evaluated_count), cooldown_until, normalized_status, elapsed_ms, notes, now, company),
+            (careers_url, empty_streak, success_count, int(evaluated_count), cooldown_until, normalized_status, elapsed_ms, notes, failure_reason, now, company),
         )
     else:
         conn.execute(
             """
             INSERT INTO generic_target_health
-            (company, careers_url, empty_streak, success_count, last_evaluated, cooldown_until, last_status, last_elapsed_ms, notes, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (company, careers_url, empty_streak, success_count, last_evaluated, cooldown_until, last_status, last_elapsed_ms, notes, failure_reason, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (company, careers_url, empty_streak, success_count, int(evaluated_count), cooldown_until, normalized_status, elapsed_ms, notes, now),
+            (company, careers_url, empty_streak, success_count, int(evaluated_count), cooldown_until, normalized_status, elapsed_ms, notes, failure_reason, now),
         )
     conn.commit()
+
+
+def get_unenriched_high_score_jobs(conn: sqlite3.Connection, limit: int = 10) -> List[sqlite3.Row]:
+    """Return high-score jobs that have not yet been enriched, ordered by score descending."""
+    return conn.execute(
+        """
+        SELECT id, company, role_title_raw, description_excerpt, score, fit_band
+        FROM applications
+        WHERE fit_band IN ('Strong Match', 'Good Match')
+          AND (enriched_data IS NULL OR enriched_data = '' OR enriched_data = '{}')
+          AND status = 'considering'
+        ORDER BY score DESC
+        LIMIT ?
+        """,
+        (limit,),
+    ).fetchall()
 
 
 def upsert_email_signal(

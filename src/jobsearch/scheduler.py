@@ -65,19 +65,24 @@ def start_auto_refresh(
         try:
             import yaml
             from jobsearch.config.settings import settings
-            
+
             logger.info(f"Starting auto-refresh (interval={interval_hours}h)")
-            
+
             # Load preferences and companies
             with settings.prefs_yaml.open("r", encoding="utf-8") as h:
                 prefs = yaml.safe_load(h) or {}
             with settings.companies_yaml.open("r", encoding="utf-8") as h:
                 comps = (yaml.safe_load(h) or {}).get("companies", [])
-            
+
+            # Snapshot high-score job count before scrape for digest delta
+            pre_scrape_count = _count_high_score_jobs(conn)
+
             engine = ScraperEngine(prefs, comps)
             engine.run()
             _update_last_run(conn)
             _check_for_high_score_alerts(conn)
+            _auto_enrich_high_score_jobs(conn)
+            _send_email_digest_if_needed(conn, prefs, pre_scrape_count)
             logger.info("Auto-refresh completed successfully")
         except Exception as e:
             logger.error(f"Auto-refresh failed: {e}", exc_info=True)
@@ -157,6 +162,41 @@ def _check_for_high_score_alerts(conn: sqlite3.Connection) -> None:
         logger.error(f"Error checking for alerts: {e}", exc_info=True)
 
 
+def _auto_enrich_high_score_jobs(conn: sqlite3.Connection, max_jobs: int = 10) -> None:
+    """Auto-trigger enrichment on up to max_jobs high-score jobs that lack enriched_data."""
+    try:
+        from jobsearch.services.enrichment_service import EnrichmentService
+        jobs = ats_db.get_unenriched_high_score_jobs(conn, limit=max_jobs)
+        if not jobs:
+            return
+        svc = EnrichmentService()
+        enriched_count = 0
+        for row in jobs:
+            job_id = row["id"]
+            title = row["role_title_raw"] or ""
+            description = row["description_excerpt"] or ""
+            if not title or not description:
+                continue
+            try:
+                result = svc.enrich_job(title, description)
+                if result:
+                    import json
+                    conn.execute(
+                        "UPDATE applications SET enriched_data = ? WHERE id = ?",
+                        (json.dumps(result), job_id),
+                    )
+                    conn.commit()
+                    enriched_count += 1
+            except Exception as exc:
+                logger.debug("Auto-enrich failed for job %s: %s", job_id, exc)
+        if enriched_count:
+            logger.info("Auto-enriched %d high-score job(s)", enriched_count)
+    except ImportError:
+        pass
+    except Exception as exc:
+        logger.error("Auto-enrich error: %s", exc, exc_info=True)
+
+
 def get_and_clear_alerts(conn: sqlite3.Connection) -> int:
     """Get pending alert count and clear it."""
     try:
@@ -165,3 +205,61 @@ def get_and_clear_alerts(conn: sqlite3.Connection) -> int:
         return count
     except Exception:
         return 0
+
+
+def _count_high_score_jobs(conn: sqlite3.Connection) -> int:
+    """Count current high-score (Apply Now / Review Today) jobs."""
+    try:
+        row = conn.execute(
+            "SELECT COUNT(*) FROM applications WHERE fit_band IN ('Strong Match', 'Good Match') AND status = 'considering'"
+        ).fetchone()
+        return row[0] if row else 0
+    except Exception:
+        return 0
+
+
+def _send_email_digest_if_needed(
+    conn: sqlite3.Connection,
+    prefs: dict,
+    pre_scrape_count: int,
+) -> None:
+    """Send email digest if new high-score jobs appeared and digest is enabled."""
+    try:
+        notif_cfg = (prefs or {}).get("notifications", {}).get("email_digest", {})
+        if not notif_cfg.get("enabled", False):
+            return
+
+        recipient = notif_cfg.get("recipient", "").strip()
+        if not recipient:
+            return
+
+        sender = ats_db.get_setting(conn, "gmail_address", default="")
+        password = ats_db.get_setting(conn, "gmail_app_password", default="")
+        if not sender or not password:
+            logger.debug("Email digest skipped — gmail credentials not configured in settings")
+            return
+
+        # Fetch all high-score jobs discovered since the pre-scrape snapshot
+        new_jobs = conn.execute(
+            """
+            SELECT company, role_title_raw, score, fit_band, url, careers_url, date_discovered
+            FROM applications
+            WHERE fit_band IN ('Strong Match', 'Good Match')
+              AND status = 'considering'
+            ORDER BY score DESC
+            """,
+        ).fetchall()
+
+        if len(new_jobs) <= pre_scrape_count:
+            logger.debug("Email digest skipped — no new high-score jobs")
+            return
+
+        # Only include jobs added after the pre-scrape snapshot (i.e., new ones)
+        # Use total count delta as a proxy — send the newest N jobs
+        delta = len(new_jobs) - pre_scrape_count
+        jobs_to_send = list(new_jobs[:delta])
+
+        from jobsearch.services.email_digest_service import send_digest
+        send_digest(conn, jobs_to_send, recipient, sender, password)
+    except Exception as exc:
+        logger.error("Email digest check failed: %s", exc, exc_info=True)

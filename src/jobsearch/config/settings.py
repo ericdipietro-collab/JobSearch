@@ -42,6 +42,7 @@ class Settings:
         self.rejected_csv = self.results_dir / "job_search_v6_rejected.csv"
         self.log_file = self.results_dir / "job_search_v6.log"
         self.manual_review_file = self.results_dir / "job_search_manual_review.txt"
+        self.debug_artifacts_dir = self.results_dir / "debug_artifacts"
         
         # Registry Discovery
         self.registry_patterns = ["job_search_companies*.yaml"]
@@ -106,11 +107,13 @@ class Settings:
         self.generic_low_signal_cooldown_days = int(os.getenv("JOBSEARCH_GENERIC_LOW_SIGNAL_COOLDOWN_DAYS", "14"))
         self.proxies = os.getenv("JOBSEARCH_PROXIES", "").strip()
         self.llm_daily_token_budget = int(os.getenv("JOBSEARCH_LLM_DAILY_TOKEN_BUDGET", "500000"))
+        self.scrape_debug_artifacts = str(os.getenv("JOBSEARCH_SCRAPE_DEBUG_ARTIFACTS", "false")).strip().lower() in {"1", "true", "yes", "on"}
 
         # Ensure directories exist
         self.results_dir.mkdir(parents=True, exist_ok=True)
         self.config_dir.mkdir(parents=True, exist_ok=True)
         self.aggregator_import_dir.mkdir(parents=True, exist_ok=True)
+        self.debug_artifacts_dir.mkdir(parents=True, exist_ok=True)
         self._seed_runtime_config()
 
     def _seed_runtime_config(self) -> None:
